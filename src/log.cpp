@@ -227,7 +227,7 @@ namespace swinx
     }
 
     ////////////////////////////////////////////////////////////////////////
-    static SoWinapiLogCallback gs_LogFunc = NULL;
+    static SWinxLogCallback gs_LogFunc = NULL;
     static int gs_level = Log::LOG_INFO;
 
 	Log::Log(const char *tag, int level, const char* filename, const char* funname, int lineIndex):
@@ -288,7 +288,7 @@ namespace swinx
 #endif
 		}
 	}
-	void Log::setLogCallback(::SoWinapiLogCallback logCallback) {
+	void Log::setLogCallback(::SWinxLogCallback logCallback) {
 		if (gs_LogFunc == NULL && logCallback != NULL)
 		{
 			gs_LogFunc = logCallback;

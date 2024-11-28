@@ -4,7 +4,7 @@
 #include <string>
 #include <sstream>
 
-typedef void (*SoWinapiLogCallback)(const char* pLogStr, int level);
+typedef void (*SWinxLogCallback)(const char* pLogStr, int level);
 
 namespace swinx
 {
@@ -90,7 +90,7 @@ namespace swinx
 
         ~Log();
         SLogStream& stream();
-        static void setLogCallback(::SoWinapiLogCallback logCallback);
+        static void setLogCallback(::SWinxLogCallback logCallback);
         static void PrintLog(const char *log, int level);
         static void setLogLevel(int level);
     private:

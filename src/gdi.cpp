@@ -2007,7 +2007,7 @@ BOOL WINAPI GetTextExtentExPointA(
     if (lpnDx) {
         if (lpnFit) *lpnFit = cchString;
         for (int i = 0,ichar=0; i < nWords; i++) {
-            int chars = sowinapi::UTF8CharLength(lpszString[ichar]);
+            int chars = swinx::UTF8CharLength(lpszString[ichar]);
             if (pCharWid[i] > nMaxExtent)
             {
                 if (lpnFit) *lpnFit = ichar;                
@@ -2052,7 +2052,7 @@ BOOL WINAPI GetTextExtentExPointW(
     if (lpnDx) {
         if (lpnFit) *lpnFit = cchString;
         for (int i = 0, ichar = 0; i < nWords; i++) {
-            int chars = sowinapi::WideCharLength(lpszString[ichar]);
+            int chars = swinx::WideCharLength(lpszString[ichar]);
             if (pCharWid[i] > nMaxExtent)
             {
                 if (lpnFit) *lpnFit = ichar;
@@ -3031,7 +3031,7 @@ BOOL WINAPI ExtTextOutA(HDC hdc,          // handle to DC
 
         const char *p = lpString;
         for(int i=0;i<glyph_num;i++){
-            int charLen = sowinapi::UTF8CharLength(*p);
+            int charLen = swinx::UTF8CharLength(*p);
             cairo_move_to(hdc->cairo, x, y);
             cairo_show_text2(hdc->cairo, p, charLen);
             x+=lpDx[i];

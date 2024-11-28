@@ -256,7 +256,7 @@ public:
 };
 
 class SConnMgr {
-    Sync::SRwLock m_rwLock;
+    swinx::SRwLock m_rwLock;
     std::map<pthread_t, SConnection *> m_conns;
     HANDLE m_hHeap;
 
