@@ -1,0 +1,6 @@
+swinx License
+swinx是一套运行在linux及macos上的windows api，目标在于帮助为windows平台开发的项目实现跨平台支持，前期目标主要是为soui4开源项目支持跨平台设计。非商用免费，商用收费，收费方式请联系作者。
+使用swinx请遵守以下协议：
+1、待定
+
+启程软件

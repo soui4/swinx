@@ -1,0 +1,1351 @@
+#include <windows.h>
+#include <sys/stat.h>
+#include <mutex>
+#include <map>
+#include <string>
+#include <atomic>
+#include <assert.h>
+#include <fcntl.h>
+#include <semaphore.h>
+#include <uuid/uuid.h>
+#include <sys/mman.h>
+#include "sharedmem.h"
+#include "handle.h"
+#include "uimsg.h"
+
+enum
+{
+    HUnknown = 0,
+    HEvent = 1,
+    HNamedEvent,
+    HSemaphore,
+    HNamedSemaphore,
+    HMutex,
+    HNamedMutex,
+    HFileMap,
+};
+
+enum
+{
+    kKey_SharedMem = 0x00110207, // key for shared memory
+    kGlobal_Handle_Size = 65535, // global handle size
+};
+
+static const char *kFifoRoot = "/tmp";
+static const char *kFifoNameTemplate = "/tmp/soui-2BACFFE6-9ED7-4AC8-B699-A95AB24431E1.%d";
+static const char *kGlobalShareMemName = "/share_mem_soui-2BACFFE6-9ED7-4AC8-B699-A95AB24431E7";
+
+struct EventData
+{
+    BOOL bManualReset;
+};
+struct SemaphoreData
+{
+    LONG sigCount;
+    LONG maxSignal;
+};
+
+struct MutexData
+{
+    tid_t tid_owner;
+};
+
+struct FileMapData
+{
+    UINT uFlags;
+    LARGE_INTEGER size;
+    LARGE_INTEGER offset;
+    LARGE_INTEGER mappedSize;
+};
+
+struct HandleData
+{
+    int type;
+    int nRef;
+    char szName[100];
+    char szNick[MAX_PATH + 1];
+    union {
+        EventData eventData;
+        SemaphoreData semaphoreData;
+        MutexData mutexData;
+        FileMapData fmData;
+    } data;
+};
+
+#pragma pack(push, 4)
+struct TableHeader
+{
+    uint32_t key;
+    uint32_t totalSize;
+    uint32_t used;
+};
+#pragma pack(pop)
+
+/*--------------------------------------------------------------
+global table layout:
+table total length: 4 bytes
+table used : 4 bytes
+next mutex key: 4 bytes
+table data: HandleData *
+---------------------------------------------------------------*/
+class GLobalHandleTable {
+    SharedMemory *m_sharedMem;
+    TableHeader *m_header;
+    HandleData *m_table;
+    uint32_t m_key;
+
+  public:
+    GLobalHandleTable(const char *name, int maxObjects, uint32_t key)
+        : m_header(nullptr)
+        , m_table(nullptr)
+    {
+        m_sharedMem = new SharedMemory();
+        SharedMemory::InitStat ret = m_sharedMem->init(name, maxObjects * sizeof(HandleData) + sizeof(TableHeader));
+        assert(ret);
+        if (!ret)
+        {
+            delete m_sharedMem;
+            m_sharedMem = nullptr;
+        }
+        else
+        {
+            getRwLock()->lockExclusive();
+            m_header = (TableHeader *)m_sharedMem->buffer();
+            m_table = (HandleData *)(m_header + 1);
+            if (ret == SharedMemory::Existed)
+            {
+                if (m_header->key != key || m_header->totalSize != maxObjects)
+                {
+                    getRwLock()->unlockExclusive();
+                    delete m_sharedMem;
+                    m_sharedMem = nullptr;
+                    assert(false);
+                    return;
+                }
+            }
+            else
+            {
+                // init global table
+                m_header->key = key;
+                m_header->totalSize = maxObjects;
+                m_header->used = 0;
+                HandleData *tbl = m_table;
+                for (int i = 0; i < maxObjects; i++)
+                {
+                    tbl->type = HUnknown;
+                    tbl++;
+                }
+            }
+            m_key = key;
+            getRwLock()->unlockExclusive();
+        }
+    }
+    ~GLobalHandleTable()
+    {
+        if (m_sharedMem)
+        {
+            assert(m_key == m_header->key);
+            delete m_sharedMem;
+            m_sharedMem = nullptr;
+        }
+    };
+
+    TableHeader *getHeader()
+    {
+        return m_header;
+    }
+    HandleData *getHandleData(int iHandle)
+    {
+        assert(m_sharedMem);
+        return m_table + iHandle;
+    }
+
+    int findExistedHandleDataIndex(const char *name, int type)
+    {
+        HandleData *data = getHandleData(0);
+        int objs = 0;
+        for (uint32_t i = 0, maxObj = getHeader()->totalSize; i < maxObj; i++, data++)
+        {
+            if (data->type == type && strcmp(data->szNick, name) == 0)
+            {
+                return i;
+            }
+            if (data->type != HUnknown)
+                objs++;
+            if (objs == getTableUsed())
+                break;
+        }
+        return -1;
+    }
+
+    int findAvailableHandleDataIndex()
+    {
+        HandleData *data = getHandleData(0);
+        for (uint32_t i = 0, maxObj = getHeader()->totalSize; i < maxObj; i++, data++)
+        {
+            if (data->type == HUnknown)
+            {
+                return i;
+            }
+            data++;
+        }
+        return -1;
+    }
+
+    ISemRwLock *getRwLock()
+    {
+        return m_sharedMem->getRwLock();
+    }
+
+    uint32_t &getTableUsed()
+    {
+        assert(m_sharedMem);
+        return getHeader()->used;
+    }
+};
+
+static GLobalHandleTable s_globalHandleTable(kGlobalShareMemName, kGlobal_Handle_Size, kKey_SharedMem);
+
+struct GlobalMutex : TSemRwLock<1>
+{
+    void lock()
+    {
+        lockExclusive();
+    }
+    void unlock()
+    {
+        unlockExclusive();
+    }
+};
+
+struct _SynHandle
+{
+    int type;
+    _SynHandle()
+        : type(HUnknown)
+    {
+    }
+    virtual ~_SynHandle()
+    {
+    }
+
+    virtual int getType() const
+    {
+        return type;
+    }
+    virtual bool init(LPCSTR pszName, void *initData) = 0;
+    virtual int getReadFd() = 0;
+    virtual int getWriteFd() = 0;
+    virtual bool onWaitDone()
+    {
+        return true;
+    }
+    virtual void lock() = 0;
+    virtual void unlock() = 0;
+    virtual void *getData() = 0;
+
+    bool readSignal(bool bLock = true)
+    {
+        if (bLock)
+            lock();
+        fd_set readfds;
+        int fd = getReadFd();
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 0;
+        FD_ZERO(&readfds);
+        FD_SET(fd, &readfds);
+
+        select(fd + 1, &readfds, NULL, NULL, &timeout);
+        bool bSignal = FD_ISSET(fd, &readfds);
+        if (bSignal)
+        {
+            char buffer[2] = { 0 };
+            ssize_t len = read(fd, buffer, 1);
+        }
+        if (bLock)
+            unlock();
+        return bSignal;
+    }
+    bool writeSignal()
+    {
+        int fd = getWriteFd();
+        return write(fd, "a", 1) == 1;
+    }
+};
+
+static void FreeSynObj(void *ptr)
+{
+    _SynHandle *sysHandle = (_SynHandle *)ptr;
+    delete sysHandle;
+}
+
+static HANDLE NewSynHandle(_SynHandle *synObj)
+{
+    return new _Handle(SYN_OBJ, synObj, FreeSynObj);
+}
+
+static _SynHandle *GetSynHandle(HANDLE h)
+{
+    if (h->type != SYN_OBJ)
+        return nullptr;
+    return (_SynHandle *)h->ptr;
+}
+
+struct NoNameWaitbleObj : _SynHandle
+{
+    std::recursive_mutex mutex;
+    int fd[2];
+    NoNameWaitbleObj()
+    {
+        fd[0] = fd[1] = -1;
+    }
+
+    ~NoNameWaitbleObj()
+    {
+        if (fd[0] != -1)
+            close(fd[0]);
+        if (fd[1] != -1)
+            close(fd[1]);
+    }
+
+    void lock() override
+    {
+        mutex.lock();
+    }
+    void unlock() override
+    {
+        mutex.unlock();
+    }
+    int getReadFd() override
+    {
+        return fd[0];
+    }
+
+    int getWriteFd() override
+    {
+        return fd[1];
+    }
+
+    bool init(LPCSTR pszName, void *initData) override
+    {
+        bool bRet = pipe(fd) != -1;
+        if (!bRet)
+            return false;
+        onInit(nullptr, initData);
+        return true;
+    }
+    virtual void onInit(HandleData *pData, void *initData) = 0;
+};
+
+struct NamedWaitbleObj : _SynHandle
+{
+    int index;
+    GlobalMutex mutex;
+    int fifo;
+    NamedWaitbleObj()
+        : fifo(-1)
+        , index(-1)
+    {
+    }
+
+    ~NamedWaitbleObj()
+    {
+        if (index != -1)
+        {
+            // update global table
+            s_globalHandleTable.getRwLock()->lockExclusive();
+            HandleData *pData = s_globalHandleTable.getHandleData(index);
+            if (fifo != -1)
+            {
+                close(fifo);
+            }
+            if (--pData->nRef == 0)
+            {
+                unlink(pData->szName);
+                pData->type = HUnknown;
+                --s_globalHandleTable.getTableUsed();
+            }
+            s_globalHandleTable.getRwLock()->unlockExclusive();
+        }
+    }
+
+    void lock() override
+    {
+        mutex.lock();
+    }
+    void unlock() override
+    {
+        mutex.unlock();
+    }
+
+    int getReadFd() override
+    {
+        return fifo;
+    }
+
+    int getWriteFd() override
+    {
+        return fifo;
+    }
+
+    HandleData *handleData()
+    {
+        assert(index != -1);
+        return s_globalHandleTable.getHandleData(index);
+    }
+
+    bool init2(int idx)
+    {
+        HandleData *pData = s_globalHandleTable.getHandleData(idx);
+        errno = NOERROR;
+
+        mkdir(kFifoRoot, 0666); // make sure fifo root is valid
+        int ret = mkfifo(pData->szName, 0666);
+        if (ret != NOERROR && errno != EEXIST)
+        {
+            return false;
+        }
+        fifo = open(pData->szName, IPC_CREAT | 0666);
+        if (fifo == -1)
+        {
+            return false;
+        }
+        pData->nRef++;
+        mutex.init(s_globalHandleTable.getHeader()->key + idx + 10000);
+        this->index = idx;
+        return true;
+    }
+
+    bool init(LPCSTR pszName, void *initData) override
+    {
+        s_globalHandleTable.getRwLock()->lockExclusive();
+        bool bExisted = true;
+        int index = s_globalHandleTable.findExistedHandleDataIndex(pszName, type);
+        if (index == -1)
+        {
+            s_globalHandleTable.getTableUsed()++;
+            index = s_globalHandleTable.findAvailableHandleDataIndex();
+            assert(index != -1);
+            HandleData *pData = s_globalHandleTable.getHandleData(index);
+            strcpy(pData->szNick, pszName);
+            sprintf(pData->szName, kFifoNameTemplate, index);
+            pData->type = type;
+            pData->nRef = 0;
+            onInit(pData, initData);
+            bExisted = false;
+        }
+        assert(index != -1);
+        if (!init2(index))
+        {
+            HandleData *pData = s_globalHandleTable.getHandleData(index);
+            pData->type = HUnknown;
+            pData->nRef = 0;
+            s_globalHandleTable.getTableUsed()--;
+            s_globalHandleTable.getRwLock()->unlockExclusive();
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return false;
+        }
+        s_globalHandleTable.getRwLock()->unlockExclusive();
+        return true;
+    }
+
+    virtual void onInit(HandleData *pData, void *initData) = 0;
+};
+
+struct NoNameEvent
+    : NoNameWaitbleObj
+    , EventData
+{
+    NoNameEvent()
+    {
+        type = HEvent;
+    }
+    void onInit(HandleData *pData, void *initData) override
+    {
+        memcpy((EventData *)this, initData, sizeof(EventData));
+    }
+    void *getData() override
+    {
+        return (EventData *)this;
+    }
+};
+
+struct NamedEvent : NamedWaitbleObj
+{
+    NamedEvent()
+    {
+        type = HNamedEvent;
+    }
+    void onInit(HandleData *pData, void *initData) override
+    {
+        memcpy(&pData->data.eventData, initData, sizeof(EventData));
+    }
+    void *getData() override
+    {
+        return &handleData()->data.eventData;
+    }
+};
+
+struct NoNameSemaphore
+    : NoNameWaitbleObj
+    , SemaphoreData
+{
+    NoNameSemaphore()
+    {
+        type = HSemaphore;
+    }
+    void onInit(HandleData *pData, void *initData) override
+    {
+        memcpy((SemaphoreData *)this, initData, sizeof(SemaphoreData));
+    }
+    void *getData() override
+    {
+        return (SemaphoreData *)this;
+    }
+};
+
+struct NamedSemaphore : NamedWaitbleObj
+{
+    NamedSemaphore()
+    {
+        type = HNamedSemaphore;
+    }
+
+    void onInit(HandleData *pData, void *initData) override
+    {
+        memcpy(&pData->data.semaphoreData, initData, sizeof(SemaphoreData));
+    }
+
+    void *getData() override
+    {
+        return &handleData()->data.semaphoreData;
+    }
+};
+
+struct NoNameMutex
+    : NoNameWaitbleObj
+    , MutexData
+{
+    NoNameMutex()
+    {
+        type = HMutex;
+    }
+    void onInit(HandleData *pData, void *initData) override
+    {
+        memcpy((MutexData *)this, initData, sizeof(MutexData));
+    }
+    void *getData() override
+    {
+        return (MutexData *)this;
+    }
+};
+
+struct NamedMutex : NamedWaitbleObj
+{
+    NamedMutex()
+    {
+        type = HNamedMutex;
+    }
+    void onInit(HandleData *pData, void *initData) override
+    {
+        memcpy(&pData->data.mutexData, initData, sizeof(MutexData));
+    }
+    void *getData() override
+    {
+        return &handleData()->data.mutexData;
+    }
+};
+
+template <typename T>
+struct EventOp : T
+{
+    bool onWaitDone() override
+    {
+        EventData *data = (EventData *)T::getData();
+        if (data->bManualReset)
+            return true;
+        // clear all signals
+        int signals = 0;
+        while (T::readSignal())
+            signals++;
+        return signals > 0;
+    }
+};
+
+template <typename T>
+struct SemaphoreOp : T
+{
+    bool init(LPCSTR pszName, void *initData) override
+    {
+        if (!T::init(pszName, initData))
+            return false;
+        SemaphoreData *data = (SemaphoreData *)T::getData();
+        for (LONG i = 0, cnt = data->sigCount; i < cnt; i++)
+        {
+            T::writeSignal();
+        }
+        return true;
+    }
+
+    bool onWaitDone() override
+    {
+        bool ret = false;
+        T::lock();
+        SemaphoreData *data = (SemaphoreData *)T::getData();
+        if (data->sigCount > 0)
+        {
+            ret = T::readSignal(false);
+            if (ret)
+            {
+                data->sigCount--;
+            }
+        }
+        T::unlock();
+        return ret;
+    }
+};
+
+template <typename T>
+struct MutexOp : T
+{
+    bool onWaitDone() override
+    {
+        bool ret = T::readSignal();
+        if (!ret)
+            return false;
+        MutexData *data = (MutexData *)T::getData();
+        data->tid_owner = GetCurrentThreadId();
+        return true;
+    }
+};
+
+typedef EventOp<NoNameEvent> NoNameEventObj;
+typedef EventOp<NamedEvent> NamedEventObj;
+typedef SemaphoreOp<NoNameSemaphore> NoNameSemaphoreObj;
+typedef SemaphoreOp<NamedSemaphore> NamedSemaphoreObj;
+typedef MutexOp<NoNameMutex> NoNameMutexObj;
+typedef MutexOp<NamedMutex> NamedMutexObj;
+
+struct FileMapObject
+{
+    int index;
+    GlobalMutex mutex;
+    int fd;
+    void *ptr;
+    FileMapObject()
+        : index(-1)
+        , fd(-1)
+        , ptr(nullptr)
+    {
+    }
+
+    ~FileMapObject()
+    {
+        if (index != -1)
+        {
+            if (ptr != nullptr)
+            {
+                // unmap now
+                UnmapViewOfFile(ptr);
+            }
+            // update global table
+            s_globalHandleTable.getRwLock()->lockExclusive();
+            HandleData *pData = s_globalHandleTable.getHandleData(index);
+            if (--pData->nRef == 0)
+            {
+                shm_unlink(pData->szName);
+                pData->type = HUnknown;
+                --s_globalHandleTable.getTableUsed();
+            }
+            s_globalHandleTable.getRwLock()->unlockExclusive();
+        }
+    }
+
+    void lock()
+    {
+        mutex.lock();
+    }
+    void unlock()
+    {
+        mutex.unlock();
+    }
+
+    HandleData *handleData()
+    {
+        assert(index != -1);
+        return s_globalHandleTable.getHandleData(index);
+    }
+
+    bool init2(int idx)
+    {
+        HandleData *pData = s_globalHandleTable.getHandleData(idx);
+        FileMapData &fmData = pData->data.fmData;
+        int flag = 0;
+        switch (fmData.uFlags)
+        {
+        case PAGE_READONLY:
+        case PAGE_EXECUTE_READ:
+            flag = O_RDONLY;
+            break;
+        case PAGE_EXECUTE_READWRITE:
+        case PAGE_READWRITE:
+            flag = O_RDWR;
+            break;
+        }
+        int fd = shm_open(pData->szName, O_CREAT | O_EXCL | flag, 0666);
+        if (fd == -1)
+            return false;
+        if (ftruncate(fd, fmData.size.QuadPart) == -1)
+        {
+            close(fd);
+            perror("ftruncate");
+            return false;
+        }
+        this->fd = fd;
+
+        errno = NOERROR;
+        pData->nRef++;
+        mutex.init(s_globalHandleTable.getHeader()->key + idx + 10000);
+        this->index = idx;
+        return true;
+    }
+
+    bool init(LPCSTR pszName, void *initData)
+    {
+        s_globalHandleTable.getRwLock()->lockExclusive();
+        bool bExisted = true;
+        int index = s_globalHandleTable.findExistedHandleDataIndex(pszName, HFileMap);
+        if (index == -1)
+        {
+            s_globalHandleTable.getTableUsed()++;
+            index = s_globalHandleTable.findAvailableHandleDataIndex();
+            assert(index != -1);
+            HandleData *pData = s_globalHandleTable.getHandleData(index);
+            strcpy(pData->szNick, pszName);
+            sprintf(pData->szName, kFifoNameTemplate, index);
+            pData->type = HFileMap;
+            pData->nRef = 0;
+            memcpy(&pData->data.fmData, initData, sizeof(FileMapData));
+            bExisted = false;
+        }
+        assert(index != -1);
+        if (!init2(index))
+        {
+            HandleData *pData = s_globalHandleTable.getHandleData(index);
+            pData->type = HUnknown;
+            pData->nRef = 0;
+            s_globalHandleTable.getTableUsed()--;
+            s_globalHandleTable.getRwLock()->unlockExclusive();
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return false;
+        }
+        s_globalHandleTable.getRwLock()->unlockExclusive();
+        return true;
+    }
+};
+
+static void FreeFileMapObj(void *ptr)
+{
+    FileMapObject *fmObj = (FileMapObject *)ptr;
+    delete fmObj;
+}
+
+static HANDLE NewFmHandle(FileMapObject *ptr)
+{
+    return new _Handle(FILEMAP_OBJ, ptr, FreeFileMapObj);
+}
+
+static HANDLE OpenExistObject(LPCSTR name, int type)
+{
+    HANDLE ret = 0;
+    s_globalHandleTable.getRwLock()->lockExclusive();
+    int idx = s_globalHandleTable.findExistedHandleDataIndex(name, type);
+    if (idx != -1)
+    {
+        switch (type)
+        {
+        case HNamedEvent:
+        {
+            NamedEventObj *new_obj = new NamedEventObj();
+            new_obj->init2(idx);
+            ret = NewSynHandle(new_obj);
+        }
+        break;
+        case HNamedSemaphore:
+        {
+            NamedSemaphoreObj *new_obj = new NamedSemaphoreObj();
+            new_obj->init2(idx);
+            ret = NewSynHandle(new_obj);
+        }
+        break;
+        case HNamedMutex:
+        {
+            NamedMutexObj *new_obj = new NamedMutexObj();
+            new_obj->init2(idx);
+            ret = NewSynHandle(new_obj);
+        }
+        break;
+        case HFileMap:
+        {
+            FileMapObject *new_obj = new FileMapObject();
+            new_obj->init2(idx);
+            ret = NewFmHandle(new_obj);
+        }
+        break;
+        }
+        SetLastError(ERROR_ALREADY_EXISTS);
+    }
+    else
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+    }
+    s_globalHandleTable.getRwLock()->unlockExclusive();
+    return ret;
+}
+
+HANDLE WINAPI CreateSemaphoreA(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCSTR name)
+{
+    _SynHandle *ret = 0;
+    if (name)
+    {
+        if (HANDLE exist = OpenExistObject(name, HNamedSemaphore))
+        {
+            return exist;
+        }
+        NamedWaitbleObj *obj = new NamedSemaphoreObj;
+        ret = obj;
+    }
+    else
+    {
+        ret = new NoNameSemaphoreObj;
+    }
+    SemaphoreData data = { lInitialCount, lMaximumCount };
+    if (!ret->init(name, &data))
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        FreeSynObj(ret);
+        return 0;
+    }
+    return NewSynHandle(ret);
+}
+
+HANDLE WINAPI CreateSemaphoreW(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCWSTR lpName)
+{
+    if (!lpName)
+        return CreateSemaphoreA(lpSemaphoreAttributes, lInitialCount, lMaximumCount, nullptr);
+    char szName[MAX_PATH] = { 0 };
+    if (0 == WideCharToMultiByte(CP_ACP, 0, lpName, -1, szName, MAX_PATH, nullptr, nullptr))
+        return 0;
+    return CreateSemaphoreA(lpSemaphoreAttributes, lInitialCount, lMaximumCount, szName);
+}
+
+HANDLE WINAPI OpenSemaphoreA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName)
+{
+    return OpenExistObject(lpName, HNamedSemaphore);
+}
+
+HANDLE WINAPI OpenSemaphoreW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName)
+{
+    char szName[MAX_PATH] = { 0 };
+    if (0 == WideCharToMultiByte(CP_ACP, 0, lpName, -1, szName, MAX_PATH, nullptr, nullptr))
+        return 0;
+    return OpenExistObject(szName, HNamedSemaphore);
+}
+
+BOOL WINAPI ReleaseSemaphore(HANDLE h, LONG lReleaseCount, LPLONG lpPreviousCount)
+{
+    _SynHandle *hSemaphore = GetSynHandle(h);
+    if (!hSemaphore)
+        return FALSE;
+    if ((hSemaphore->type != HSemaphore && hSemaphore->type != HNamedSemaphore) || lReleaseCount <= 0)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    hSemaphore->lock();
+    SemaphoreData *pData = (SemaphoreData *)hSemaphore->getData();
+    if (lReleaseCount > pData->maxSignal - pData->sigCount)
+    {
+        hSemaphore->unlock();
+        return FALSE;
+    }
+    if (lpPreviousCount)
+    {
+        *lpPreviousCount = pData->sigCount;
+    }
+    for (LONG i = 0; i < lReleaseCount; i++)
+    {
+        hSemaphore->writeSignal();
+    }
+    pData->sigCount += lReleaseCount;
+    hSemaphore->unlock();
+    return TRUE;
+}
+
+HANDLE WINAPI OpenEventA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName)
+{
+    return OpenExistObject(lpName, HNamedEvent);
+}
+
+HANDLE WINAPI OpenEventW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName)
+{
+    char szName[MAX_PATH] = { 0 };
+    if (0 == WideCharToMultiByte(CP_ACP, 0, lpName, -1, szName, MAX_PATH, nullptr, nullptr))
+        return 0;
+    return OpenExistObject(szName, HNamedEvent);
+}
+
+HANDLE WINAPI CreateEventA(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCSTR lpName)
+{
+    _SynHandle *ret = 0;
+    if (lpName)
+    {
+        if (HANDLE ret = OpenExistObject(lpName, HNamedEvent))
+        {
+            return ret;
+        }
+        ret = new NamedEventObj;
+    }
+    else
+    {
+        ret = new NoNameEventObj;
+    }
+
+    EventData data = { bManualReset };
+    if (!ret->init(lpName, &data))
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        FreeSynObj(ret);
+        return 0;
+    }
+    if (bInitialState)
+    {
+        ret->writeSignal();
+    }
+    return NewSynHandle(ret);
+}
+
+HANDLE WINAPI CreateEventW(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCWSTR lpName)
+{
+    if (!lpName)
+        return CreateEventA(lpEventAttributes, bManualReset, bInitialState, nullptr);
+    char szName[MAX_PATH] = { 0 };
+    if (0 == WideCharToMultiByte(CP_ACP, 0, lpName, -1, szName, MAX_PATH, nullptr, nullptr))
+        return 0;
+    return CreateEventA(lpEventAttributes, bManualReset, bInitialState, szName);
+}
+
+HANDLE WINAPI CreateMutexA(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCSTR lpName)
+{
+    _SynHandle *ret = 0;
+    if (lpName)
+    {
+        if (HANDLE ret = OpenExistObject(lpName, HNamedMutex))
+        {
+            return ret;
+        }
+        ret = new NamedMutexObj;
+    }
+    else
+    {
+        ret = new NoNameMutexObj;
+    }
+
+    MutexData data = { bInitialOwner ? GetCurrentThreadId() : 0 };
+    if (!ret->init(lpName, &data))
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        FreeSynObj(ret);
+        return 0;
+    }
+    return NewSynHandle(ret);
+}
+
+HANDLE WINAPI CreateMutexW(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCWSTR lpName)
+{
+    if (!lpName)
+        return CreateMutexA(lpMutexAttributes, bInitialOwner, nullptr);
+    char szName[MAX_PATH] = { 0 };
+    if (0 == WideCharToMultiByte(CP_ACP, 0, lpName, -1, szName, MAX_PATH, nullptr, nullptr))
+        return 0;
+    return CreateMutexA(lpMutexAttributes, bInitialOwner, szName);
+}
+
+BOOL WINAPI ReleaseMutex(HANDLE h)
+{
+    _SynHandle *hMutex = GetSynHandle(h);
+    if (!hMutex)
+        return FALSE;
+    if (hMutex->type != HMutex && hMutex->type != HNamedMutex)
+        return FALSE;
+    MutexData *data = (MutexData *)hMutex->getData();
+    if (data->tid_owner != GetCurrentThreadId())
+        return FALSE;
+    return hMutex->writeSignal();
+}
+
+HANDLE WINAPI OpenMutexA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName)
+{
+    return OpenExistObject(lpName, HNamedMutex);
+}
+
+HANDLE WINAPI OpenMutexW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName)
+{
+    char szName[MAX_PATH] = { 0 };
+    if (0 == WideCharToMultiByte(CP_ACP, 0, lpName, -1, szName, MAX_PATH, nullptr, nullptr))
+        return 0;
+    return OpenExistObject(szName, HNamedMutex);
+}
+
+BOOL WINAPI ResetEvent(HANDLE h)
+{
+    _SynHandle *hEvent = GetSynHandle(h);
+    if (!hEvent)
+        return FALSE;
+    if (hEvent->getType() != HEvent && hEvent->getType() != HNamedEvent)
+        return FALSE;
+    int signals = 0;
+    while (hEvent->readSignal())
+        signals++;
+    return TRUE;
+}
+
+BOOL WINAPI SetEvent(HANDLE h)
+{
+    _SynHandle *hEvent = GetSynHandle(h);
+    if (!hEvent)
+        return FALSE;
+
+    if (hEvent->type == HEvent || hEvent->type == HNamedEvent)
+    {
+        hEvent->writeSignal();
+        return TRUE;
+    }
+    return FALSE;
+}
+
+static int selectfds(int *fds, int nCount, DWORD timeoutMs, bool *states)
+{
+    fd_set read_fds;
+    FD_ZERO(&read_fds);
+    int max_fd = -1;
+    for (int i = 0; i < nCount; i++)
+    {
+        if ((fds[i] != -1) && (!states || !states[i]))
+        {
+            FD_SET(fds[i], &read_fds);
+            max_fd = std::max(max_fd, fds[i]);
+        }
+    }
+
+    int ret = 0;
+    if (timeoutMs == INFINITE)
+        ret = select(max_fd + 1, &read_fds, NULL, NULL, NULL);
+    else
+    {
+        timeval val;
+        val.tv_sec = timeoutMs / 1000;
+        val.tv_usec = (timeoutMs % 1000) * 1000;
+        ret = select(max_fd + 1, &read_fds, NULL, NULL, &val);
+    }
+    if (ret > 0 && states)
+    {
+        for (int i = 0; i < nCount; i++)
+        {
+            if (!states[i] && fds[i] != -1)
+            {
+                states[i] = FD_ISSET(fds[i], &read_fds);
+            }
+        }
+    }
+    return ret;
+}
+
+DWORD WINAPI WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds)
+{
+    int fd = -1;
+    s_globalHandleTable.getRwLock()->lockShared();
+    HANDLE hTmp = AddHandleRef(hHandle);
+    _SynHandle *synObj = GetSynHandle(hHandle);
+    fd = synObj->getReadFd();
+    s_globalHandleTable.getRwLock()->unlockShared();
+    if (fd == -1)
+    {
+        return WAIT_ABANDONED;
+    }
+start_wait:
+    uint64_t ts1 = GetTickCount64();
+    int ret = selectfds(&fd, 1, dwMilliseconds, nullptr);
+    if (ret == 0)
+    {
+        CloseHandle(hTmp);
+        return WAIT_TIMEOUT;
+    }
+    else if (ret < 0)
+    {
+        // error
+        CloseHandle(hTmp);
+        return WAIT_ABANDONED;
+    }
+    else
+    {
+        if (synObj->onWaitDone())
+        {
+            CloseHandle(hTmp);
+            return WAIT_OBJECT_0;
+        }
+        else
+        {
+            if (dwMilliseconds != INFINITE)
+            {
+                uint64_t ts2 = GetTickCount64();
+                if (ts2 - ts1 > dwMilliseconds)
+                {
+                    CloseHandle(hTmp);
+                    return WAIT_TIMEOUT;
+                }
+                dwMilliseconds -= ts2 - ts1;
+            }
+            goto start_wait;
+        }
+    }
+}
+
+DWORD WINAPI WaitForMultipleObjects(DWORD nCount, const HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds)
+{
+    if (nCount > MAXIMUM_WAIT_OBJECTS)
+        return 0;
+    int fd[MAXIMUM_WAIT_OBJECTS] = { 0 };
+    bool states[MAXIMUM_WAIT_OBJECTS] = { false };
+    HANDLE tmpHandles[MAXIMUM_WAIT_OBJECTS] = { 0 };
+    s_globalHandleTable.getRwLock()->lockShared();
+    for (int i = 0; i < nCount; i++)
+    {
+        if (lpHandles[i] != INVALID_HANDLE_VALUE)
+        {
+            tmpHandles[i] = AddHandleRef(lpHandles[i]);
+            _SynHandle *e = GetSynHandle(tmpHandles[i]);
+            fd[i] = e->getReadFd();
+        }
+        else
+        {
+            fd[i] = -1;
+            states[i] = true;
+            tmpHandles[i] = INVALID_HANDLE_VALUE;
+        }
+    }
+    s_globalHandleTable.getRwLock()->unlockShared();
+
+start_wait:
+    DWORD dwToInit = dwMilliseconds;
+    uint64_t ts1_all = GetTickCount64();
+    int nRet = 0;
+    for (;;)
+    {
+        uint64_t ts1 = GetTickCount64();
+        nRet = selectfds(fd, nCount, dwMilliseconds, states);
+        if (nRet <= 0)
+        {
+            nRet = nRet == 0 ? WAIT_TIMEOUT : WAIT_ABANDONED;
+            break; // timeout or error
+        }
+        if (!bWaitAll)
+        {
+            for (int i = 0; i < nCount; i++)
+            {
+                if (states[i])
+                {
+                    nRet = WAIT_OBJECT_0 + i;
+                    break;
+                }
+            }
+            break;
+        }
+        else
+        {
+            // wait for all objects.
+            bool bAllReady = true;
+            for (int i = 0; i < nCount; i++)
+            {
+                if (!states[i])
+                {
+                    bAllReady = false;
+                    break;
+                }
+            }
+            if (bAllReady)
+            {
+                nRet = WAIT_OBJECT_0;
+                break;
+            }
+            uint64_t ts2 = GetTickCount64();
+            if (dwMilliseconds != INFINITE)
+            {
+                if (ts2 - ts1 > dwMilliseconds)
+                {
+                    nRet = WAIT_TIMEOUT;
+                    break;
+                }
+                dwMilliseconds -= ts2 - ts1;
+            }
+        }
+    }
+    if (nRet >= WAIT_OBJECT_0)
+    {
+        // check for state again
+        bool bValid = true;
+        for (int i = 0; i < nCount; i++)
+        {
+            if (states[i] && tmpHandles[i] != INVALID_HANDLE_VALUE)
+            {
+                if (!GetSynHandle(tmpHandles[i])->onWaitDone())
+                {
+                    states[i] = false; // reset to false
+                    bValid = false;
+                    break;
+                }
+            }
+        }
+        if (!bValid)
+        {
+            uint64_t ts2_all = GetTickCount64();
+            if (dwToInit != INFINITE)
+            {
+                if (ts2_all - ts1_all > dwToInit)
+                {
+                    nRet = WAIT_TIMEOUT;
+                }
+                else
+                {
+                    dwMilliseconds = dwToInit - (ts2_all - ts1_all);
+                }
+            }
+            if (nRet != WAIT_TIMEOUT)
+                goto start_wait;
+        }
+    }
+
+    for (int i = 0; i < nCount; i++)
+    {
+        CloseHandle(tmpHandles[i]);
+    }
+
+    return nRet;
+}
+
+HANDLE OpenFileMappingA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName)
+{
+    return OpenExistObject(lpName, HFileMap);
+}
+
+HANDLE OpenFileMappingW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName)
+{
+    char szPath[MAX_PATH];
+    if (0 == WideCharToMultiByte(CP_UTF8, 0, lpName, -1, szPath, MAX_PATH, nullptr, nullptr))
+        return FALSE;
+    return OpenFileMappingA(dwDesiredAccess, bInheritHandle, szPath);
+}
+
+HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCSTR lpName)
+{
+    if (hFile != INVALID_HANDLE_VALUE)
+        return INVALID_HANDLE_VALUE;
+    FileMapData fmData;
+    fmData.uFlags = flProtect;
+    fmData.mappedSize.QuadPart = 0;
+    fmData.offset.QuadPart = 0;
+    fmData.size.HighPart = dwMaximumSizeHigh;
+    fmData.size.LowPart = dwMaximumSizeLow;
+    std::string name(lpName);
+    if (name.empty())
+    {
+        // generate random name.
+        uuid_t id;
+        uuid_generate(id);
+        char szBuf[33];
+        IpcMsg::uuid2string(id, szBuf);
+        name += "/random_share_map_";
+        name += szBuf;
+    }
+    FileMapObject *fmObj = new FileMapObject();
+    if (!fmObj->init(name.c_str(), &fmData))
+    {
+        delete fmObj;
+        return INVALID_HANDLE_VALUE;
+    }
+    return NewFmHandle(fmObj);
+}
+
+HANDLE WINAPI CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCWSTR lpName)
+{
+    char szPath[MAX_PATH];
+    if (0 == WideCharToMultiByte(CP_UTF8, 0, lpName, -1, szPath, MAX_PATH, nullptr, nullptr))
+        return FALSE;
+    return CreateFileMappingA(hFile, lpAttributes, flProtect, dwMaximumSizeHigh, dwMaximumSizeLow, szPath);
+}
+
+static std::mutex s_mutex4fmview;
+static std::map<void *, HANDLE> s_fmviewMap;
+
+LPVOID WINAPI MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, size_t dwNumberOfBytesToMap)
+{
+    if (hFileMappingObject->type != FILEMAP_OBJ)
+        return nullptr;
+    LPVOID ret = nullptr;
+    FileMapObject *fmObj = (FileMapObject *)hFileMappingObject->ptr;
+    fmObj->lock();
+    FileMapData &fmData = fmObj->handleData()->data.fmData;
+    LARGE_INTEGER offset;
+    offset.HighPart = dwFileOffsetHigh;
+    offset.LowPart = dwFileOffsetLow;
+    int flag = 0;
+    if (offset.QuadPart + dwNumberOfBytesToMap >= fmData.size.QuadPart)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        goto end;
+    }
+    assert(fmObj->fd != -1);
+    if (dwDesiredAccess & FILE_MAP_READ)
+        flag |= PROT_READ;
+    if (dwDesiredAccess & FILE_MAP_WRITE)
+        flag |= PROT_WRITE;
+    if (dwDesiredAccess & FILE_MAP_EXECUTE)
+        flag |= PROT_EXEC;
+    if (dwNumberOfBytesToMap == 0)
+        dwNumberOfBytesToMap = fmData.size.QuadPart - offset.QuadPart;
+    ret = mmap(nullptr, dwNumberOfBytesToMap, flag, MAP_SHARED, fmObj->fd, offset.QuadPart);
+    if (ret != MAP_FAILED)
+    {
+        fmData.offset = offset;
+        fmData.mappedSize.QuadPart = dwNumberOfBytesToMap;
+
+        std::unique_lock<std::mutex> lock(s_mutex4fmview);
+        s_fmviewMap.insert(std::make_pair(ret, hFileMappingObject));
+    }
+    fmObj->ptr = ret;
+
+end:
+    fmObj->unlock();
+    return ret;
+}
+
+BOOL WINAPI UnmapViewOfFile(LPCVOID lpBaseAddress)
+{
+    if (lpBaseAddress == nullptr)
+        return FALSE;
+    std::unique_lock<std::mutex> lock(s_mutex4fmview);
+    auto it = s_fmviewMap.find((void *)lpBaseAddress);
+    if (it == s_fmviewMap.end())
+        return FALSE;
+    FileMapObject *fmObj = (FileMapObject *)it->second->ptr;
+    fmObj->lock();
+    assert(fmObj->ptr == lpBaseAddress);
+    FileMapData &fmData = fmObj->handleData()->data.fmData;
+    munmap(fmObj->ptr, fmData.mappedSize.QuadPart);
+    fmObj->ptr = nullptr;
+    fmData.mappedSize.QuadPart = 0;
+    fmObj->unlock();
+    s_fmviewMap.erase(it);
+    return TRUE;
+}
