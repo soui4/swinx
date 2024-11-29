@@ -1344,6 +1344,9 @@ BOOL SConnection::GetCursorPos(LPPOINT ppt) const
 
 int SConnection::GetDpi(BOOL bx) const
 {
+    if (!screen) {
+        SLOG_STME() << "screen is null! swinx will crash!!!";
+    }
     if(m_forceDpi != -1){
         return m_forceDpi;
     }
