@@ -182,27 +182,37 @@ SConnection::SConnection(int screenNum)
     }
     screen = iter.data;
 
-    rgba_visual = 0;
-    xcb_depth_iterator_t depth_iter = xcb_screen_allowed_depths_iterator(screen);
-    for (; depth_iter.rem && rgba_visual==0; xcb_depth_next(&depth_iter)) {
-        if (depth_iter.data->depth == 32) {
-            xcb_visualtype_iterator_t visual_iter = xcb_depth_visuals_iterator(depth_iter.data);
-            for (; visual_iter.rem; xcb_visualtype_next(&visual_iter)) {
-                xcb_visualtype_t* visual_type = visual_iter.data;
-                if (visual_type->_class == XCB_VISUAL_CLASS_TRUE_COLOR &&
-                    visual_type->red_mask == 0xFF0000 &&
-                    visual_type->green_mask == 0x00FF00 &&
-                    visual_type->blue_mask == 0x0000FF) {
-                    rgba_visual = visual_type->visual_id;
-                    break;
+    {
+        xcb_depth_iterator_t depth_iter = xcb_screen_allowed_depths_iterator(screen);
+        for (; depth_iter.rem && rgba_visual == 0; xcb_depth_next(&depth_iter)) {
+            if (depth_iter.data->depth == 32) {
+                xcb_visualtype_iterator_t visual_iter = xcb_depth_visuals_iterator(depth_iter.data);
+                for (; visual_iter.rem; xcb_visualtype_next(&visual_iter)) {
+                    xcb_visualtype_t* visual_type = visual_iter.data;
+                    if (visual_type->_class == XCB_VISUAL_CLASS_TRUE_COLOR &&
+                        visual_type->red_mask == 0xFF0000 &&
+                        visual_type->green_mask == 0x00FF00 &&
+                        visual_type->blue_mask == 0x0000FF) {
+                        rgba_visual = visual_type;
+                        break;
+                    }
                 }
             }
         }
+        if(rgba_visual)
+            SLOG_STMI() << "32 bit visual id=" << rgba_visual->visual_id;
     }
-
     readXResources();
 
-    
+    if (rgba_visual) {//get composited for screen
+        char szAtom[50];
+        sprintf(szAtom, "_XSETTINGS_S%d", screenNum);
+        xcb_atom_t atom = SAtoms::internAtom(connection, FALSE, szAtom);        
+        xcb_get_selection_owner_cookie_t owner_cookie = xcb_get_selection_owner(connection, atom);
+        xcb_get_selection_owner_reply_t* owner_reply = xcb_get_selection_owner_reply(connection, owner_cookie, NULL);
+        m_bComposited =  owner_reply->owner!=0;
+        free(owner_reply);
+    }
     m_tid = GetCurrentThreadId();
 
     atoms.Init(connection);

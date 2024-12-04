@@ -122,7 +122,7 @@ static BOOL InitWndDC(HWND hwnd, int cx, int cy)
     WndObj wndObj = WndMgr::fromHwnd(hwnd);
     assert(wndObj);
     cairo_surface_t *surface = cairo_xcb_surface_create(wndObj->mConnection->connection, hwnd, 
-        xcb_aux_find_visual_by_id(wndObj->mConnection->screen, wndObj->mConnection->screen->root_visual), 
+        xcb_aux_find_visual_by_id(wndObj->mConnection->screen, wndObj->visualId), 
         std::max(cx, 1), std::max(cy, 1));
     wndObj->bmp = InitGdiObj(OBJ_BITMAP, surface);
     wndObj->hdc = new _SDC(hwnd);
@@ -490,25 +490,39 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     pWnd->rc.bottom = cs->y + cs->cy;
     pWnd->showSbFlags |= (cs->style & WS_HSCROLL)?SB_HORZ:0;
     pWnd->showSbFlags |= (cs->style & WS_VSCROLL)?SB_VERT:0;
+    pWnd->visualId = conn->screen->root_visual;
+    int depth = XCB_COPY_FROM_PARENT;
+    if ((pWnd->dwExStyle & WS_EX_COMPOSITED) && (pWnd->dwStyle & WS_POPUP) && conn->IsScreenComposited())
+    {
+        pWnd->visualId = conn->rgba_visual->visual_id;
+        depth = 32;
+    }
+    else {
+        pWnd->dwExStyle &= ~WS_EX_COMPOSITED;
+    }
 
     HWND hWnd = xcb_generate_id(conn->connection);
 
+    xcb_colormap_t cmap = xcb_generate_id(conn->connection);
+    xcb_create_colormap(conn->connection, XCB_COLORMAP_ALLOC_NONE, cmap, conn->screen->root, pWnd->visualId);
+
     const uint32_t evt_mask = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
 
-    const uint32_t mask = XCB_CW_BACK_PIXMAP | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_SAVE_UNDER | XCB_CW_EVENT_MASK;
+    const uint32_t mask = XCB_CW_BACK_PIXMAP | XCB_CW_BORDER_PIXEL| XCB_CW_OVERRIDE_REDIRECT | XCB_CW_SAVE_UNDER | XCB_CW_EVENT_MASK | XCB_CW_COLORMAP;
 
-    const uint32_t values[] = { // XCB_CW_BACK_PIXMAP
-                                XCB_NONE,
-                                // XCB_CW_OVERRIDE_REDIRECT
-                                cs->dwExStyle & WS_EX_TOOLWINDOW ? 1u : 0u,
-                                // XCB_CW_SAVE_UNDER
-                                0,
-                                // XCB_CW_EVENT_MASK
-                                evt_mask
+    const uint32_t values[] = { 
+                                XCB_NONE,//XCB_CW_BACK_PIXMAP
+                                0,//XCB_CW_BORDER_PIXEL                                
+                                0,// XCB_CW_OVERRIDE_REDIRECT                                
+                                0,// XCB_CW_SAVE_UNDER
+                                evt_mask,// XCB_CW_EVENT_MASK
+                                cmap//XCB_CW_COLORMAP
     };
     if ((cs->style & WS_POPUP) || !hParent)
         hParent = conn->screen->root;
-    xcb_void_cookie_t cookie = xcb_create_window_checked(conn->connection, XCB_COPY_FROM_PARENT, hWnd, hParent, cs->x, cs->y, std::max(cs->cx, 1u), std::max(cs->cy, 1u), 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, conn->screen->root_visual, mask, values);
+    xcb_void_cookie_t cookie = xcb_create_window_checked(conn->connection, depth, hWnd, hParent, cs->x, cs->y, std::max(cs->cx, 1u), std::max(cs->cy, 1u), 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, pWnd->visualId, mask, values);
+    xcb_free_colormap(conn->connection, cmap);
+
     xcb_generic_error_t *err = xcb_request_check(conn->connection, cookie);
     if (err)
     {

@@ -58,11 +58,11 @@ class SConnection {
 
   public:
     struct hook_table *m_hook_table;
-    xcb_connection_t *connection;
-    xcb_screen_t *screen;
-    xcb_visualid_t rgba_visual;
-    const xcb_setup_t *m_setup;
-    int  m_forceDpi;
+    xcb_connection_t *connection = nullptr;
+    xcb_screen_t *screen = nullptr;
+    const xcb_setup_t *m_setup = nullptr;
+    xcb_visualtype_t * rgba_visual=nullptr;
+    int  m_forceDpi=false;
     SAtoms atoms;
   public:
     SHORT GetKeyState(int vk);
@@ -198,6 +198,10 @@ public:
         xcb_generic_event_t* checkEvent(int type);
 
         xcb_generic_event_t* checkEvent(IEventChecker* checker);
+
+        BOOL IsScreenComposited() const {
+            return m_bComposited;
+        }
   private:
     int _waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, DWORD dwWaitMask);
     void readXResources();
@@ -253,6 +257,8 @@ public:
     CaretInfo m_caretInfo;
     UINT m_caretBlinkTime = TS_CARET;
     SHORT m_mouseKeyState[4] = { 0 };
+
+    BOOL m_bComposited = FALSE;
 };
 
 class SConnMgr {

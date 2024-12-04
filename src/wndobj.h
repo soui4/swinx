@@ -88,6 +88,7 @@ public:
     UINT_PTR wIDmenu;    /* ID or hmenu (from CreateWindow) */
     UINT helpContext;    /* Help context ID */
     UINT flags;          /* Misc. flags (see below) */
+    xcb_visualid_t visualId;
     DWORD_PTR userdata;  /* User private data */
     int cbWndExtra;      /* class cbWndExtra at window creation */
     char* extra;

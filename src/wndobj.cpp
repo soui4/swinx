@@ -20,6 +20,7 @@ _Window::_Window(size_t extraLen)
     , iconBig(0)
     , objOpaque(0)
     , htCode(HTNOWHERE)
+    , visualId(0)
 {
     invalid.hRgn = CreateRectRgn(0, 0, 0, 0);
     invalid.bErase = TRUE;
