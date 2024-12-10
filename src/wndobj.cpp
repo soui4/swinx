@@ -142,7 +142,7 @@ BOOL WndMgr::enumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam)
     for (auto& it : map_copy) {
         if (map_wnd.find(it.first) == map_wnd.end())
             continue;
-        if (0 == (GetWindowLongA(it.first, GWL_STYLE) & WS_POPUP))
+        if (GetWindowLongA(it.first, GWL_STYLE) & WS_CHILD)
             continue;
         if (!lpEnumFunc(it.first, lParam))
             return FALSE;

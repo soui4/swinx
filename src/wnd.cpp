@@ -492,7 +492,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     pWnd->showSbFlags |= (cs->style & WS_VSCROLL)?SB_VERT:0;
     pWnd->visualId = conn->screen->root_visual;
     int depth = XCB_COPY_FROM_PARENT;
-    if ((pWnd->dwExStyle & WS_EX_COMPOSITED) && (pWnd->dwStyle & WS_POPUP) && conn->IsScreenComposited())
+    if ((pWnd->dwExStyle & WS_EX_COMPOSITED) && !(pWnd->dwStyle & WS_CHILD) && conn->IsScreenComposited())
     {
         pWnd->visualId = conn->rgba_visual->visual_id;
         depth = 32;
@@ -518,7 +518,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
                                 evt_mask,// XCB_CW_EVENT_MASK
                                 cmap//XCB_CW_COLORMAP
     };
-    if ((cs->style & WS_POPUP) || !hParent)
+    if (!(cs->style & WS_CHILD) || !hParent)
         hParent = conn->screen->root;
     xcb_void_cookie_t cookie = xcb_create_window_checked(conn->connection, depth, hWnd, hParent, cs->x, cs->y, std::max(cs->cx, 1u), std::max(cs->cy, 1u), 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, pWnd->visualId, mask, values);
     xcb_free_colormap(conn->connection, cmap);
@@ -559,7 +559,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     WndMgr::insertWindow(hWnd, pWnd);
 
     SetWindowLongPtrA(hWnd, GWLP_ID, cs->hMenu);
-    if(cs->style & WS_POPUP)
+    if(!(cs->style & WS_CHILD))
         SetParent(hWnd, cs->hwndParent);
     InitWndDC(hWnd, cs->cx, cs->cy);
     
@@ -705,7 +705,7 @@ BOOL ClientToScreen(HWND hWnd, LPPOINT ppt)
         ppt->x += cxEdge;
         ppt->y += cyEdge;
     }
-    if (wndObj->dwStyle & WS_POPUP)
+    if (!(wndObj->dwStyle & WS_CHILD))
         return TRUE;
     HWND hParent = wndObj->parent;
     while (hParent) {
@@ -716,7 +716,7 @@ BOOL ClientToScreen(HWND hWnd, LPPOINT ppt)
             ppt->x += cxEdge;
             ppt->y += cyEdge;
         }
-        if (wndObj->dwStyle & WS_POPUP)
+        if (!(wndObj->dwStyle & WS_CHILD))
             break;
         hParent = wndObj->parent;
     }
@@ -736,7 +736,7 @@ BOOL ScreenToClient(HWND hWnd, LPPOINT ppt)
         ppt->x -= cxEdge;
         ppt->y -= cyEdge;
     }
-    if (wndObj->dwStyle & WS_POPUP)
+    if (!(wndObj->dwStyle & WS_CHILD))
         return TRUE;
 
     HWND hParent = wndObj->parent;
@@ -748,7 +748,7 @@ BOOL ScreenToClient(HWND hWnd, LPPOINT ppt)
             ppt->x -= cxEdge;
             ppt->y -= cyEdge;
         }
-        if (wndObj->dwStyle & WS_POPUP)
+        if (!(wndObj->dwStyle & WS_CHILD))
             break;
         hParent = wndObj->parent;
     }
@@ -1975,7 +1975,7 @@ HWND GetParent(HWND hWnd)
 HWND SetParent(HWND hWnd, HWND hParent)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (wndObj->dwStyle & WS_POPUP)
+    if (!(wndObj->dwStyle & WS_CHILD))
     {
         xcb_icccm_set_wm_transient_for(wndObj->mConnection->connection, hWnd, hParent);
     }
@@ -2139,7 +2139,7 @@ BOOL GetWindowRect(HWND hWnd, RECT* rc)
         return FALSE;
 
     for (;;) {
-        if (GetWindowLongA(hWnd, GWL_STYLE) & WS_POPUP)
+        if (!(GetWindowLongA(hWnd, GWL_STYLE) & WS_CHILD))
             break;
         hWnd = GetParent(hWnd);
         if (!hWnd)
@@ -3562,7 +3562,7 @@ int WINAPI GetDlgCtrlID(HWND hWnd) {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return 0;
-    if (wndObj->dwStyle & WS_POPUP)
+    if (!(wndObj->dwStyle & WS_CHILD))
         return 0;
     return wndObj->wIDmenu;
 }
