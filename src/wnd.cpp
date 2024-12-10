@@ -513,7 +513,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     const uint32_t values[] = { 
                                 XCB_NONE,//XCB_CW_BACK_PIXMAP
                                 0,//XCB_CW_BORDER_PIXEL                                
-                                (cs->dwExStyle&WS_EX_TOOLWINDOW)?1:0,// XCB_CW_OVERRIDE_REDIRECT                                
+                                (cs->dwExStyle&WS_EX_TOOLWINDOW)?1u:0,// XCB_CW_OVERRIDE_REDIRECT                                
                                 0,// XCB_CW_SAVE_UNDER
                                 evt_mask,// XCB_CW_EVENT_MASK
                                 cmap//XCB_CW_COLORMAP
