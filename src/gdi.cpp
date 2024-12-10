@@ -2833,7 +2833,7 @@ BOOL DrawIconEx(HDC hDC, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWi
     HGDIOBJ oldBmp = SelectObject(memdc, hIcon->hbmColor);
     BLENDFUNCTION bf;
     bf.BlendOp = AC_SRC_ALPHA;
-    bf.SourceConstantAlpha = 0;
+    bf.SourceConstantAlpha = 255;
     AlphaBlend(hDC, xLeft, yTop, cxWidth, cyWidth, memdc, 0, 0, bm.bmWidth, bm.bmHeight, bf);
     SelectObject(memdc, oldBmp);
     DeleteDC(memdc);
