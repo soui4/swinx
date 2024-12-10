@@ -158,6 +158,8 @@ class SConnection {
     UINT GetCaretBlinkTime() const {
         return m_caretBlinkTime;
     }
+
+    void GetWorkArea(RECT* prc);
 public:
     SClipboard* getClipboard() {
         return m_clipboard;
@@ -214,7 +216,7 @@ public:
     static void *readProc(void *p);
     void _readProc();
 
-
+    void updateWorkArea();
   private:
     std::mutex m_mutex4Evt;
     std::list<xcb_generic_event_t *> m_evtQueue;
@@ -259,6 +261,7 @@ public:
     SHORT m_mouseKeyState[4] = { 0 };
 
     BOOL m_bComposited = FALSE;
+    RECT m_rcWorkArea = { 0 };
 };
 
 class SConnMgr {

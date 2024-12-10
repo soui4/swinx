@@ -41,6 +41,7 @@ class SAtoms {
     xcb_atom_t _MOTIF_WM_HINTS;
     xcb_atom_t _XEMBED_INFO;
     xcb_atom_t _NET_WM_WINDOW_OPACITY;
+    xcb_atom_t _NET_WORKAREA;
 
     xcb_atom_t _NET_DOUBLE_CLICK_TIME;
     xcb_atom_t CLIPBOARD,
@@ -95,6 +96,7 @@ class SAtoms {
             "_MOTIF_WM_HINTS",
             "_XEMBED_INFO",
             "_NET_WM_WINDOW_OPACITY",
+            "_NET_WORKAREA",
             "_NET_DOUBLE_CLICK_TIME",
 
             "CLIPBOARD",

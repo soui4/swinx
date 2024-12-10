@@ -234,6 +234,10 @@ SConnection::SConnection(int screenNum)
 
     memset(&m_caretInfo,0, sizeof(m_caretInfo));
 
+    m_rcWorkArea.left = m_rcWorkArea.top = 0;
+    m_rcWorkArea.right = screen->width_in_pixels;
+    m_rcWorkArea.bottom = screen->height_in_pixels;
+
     m_evtSync = CreateEventA(nullptr, FALSE, FALSE, nullptr);
     m_trdEvtReader = std::move(std::thread(std::bind(&readProc, this)));
 
@@ -1608,7 +1612,10 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_PROPERTY_NOTIFY:
     {
         xcb_property_notify_event_t *e2 = (xcb_property_notify_event_t *)event;
-        if (e2->atom == atoms._NET_WM_STATE || e2->atom == atoms.WM_STATE)
+        if (e2->atom == atoms._NET_WORKAREA) {
+            updateWorkArea();
+        }
+        else if (e2->atom == atoms._NET_WM_STATE || e2->atom == atoms.WM_STATE)
         {
             uint32_t newState = -1;
             if (e2->atom == atoms.WM_STATE)
@@ -1908,6 +1915,36 @@ void SConnection::_readProc()
     m_mutex4Evt.unlock();
 
     SLOG_STMI()<<"event reader done";
+}
+
+void SConnection::updateWorkArea()
+{
+    memset(&m_rcWorkArea, 0, sizeof(RECT));
+    xcb_get_property_reply_t* workArea =
+        xcb_get_property_reply(connection,
+            xcb_get_property_unchecked(connection, false, screen->root,
+                atoms._NET_WORKAREA,
+                XCB_ATOM_CARDINAL, 0, 1024), NULL);
+    if (workArea && workArea->type == XCB_ATOM_CARDINAL && workArea->format == 32 && workArea->value_len >= 4) {
+        // If workArea->value_len > 4, the remaining ones seem to be for WM's virtual desktops
+        // (don't mess with QXcbVirtualDesktop which represents an X screen).
+        // But QScreen doesn't know about that concept.  In reality there could be a
+        // "docked" panel (with _NET_WM_STRUT_PARTIAL atom set) on just one desktop.
+        // But for now just assume the first 4 values give us the geometry of the
+        // "work area", AKA "available geometry"
+        uint32_t* geom = (uint32_t*)xcb_get_property_value(workArea);
+        m_rcWorkArea.left = geom[0];
+        m_rcWorkArea.top = geom[1];
+        m_rcWorkArea.right = m_rcWorkArea.left + geom[2];
+        m_rcWorkArea.bottom = m_rcWorkArea.top + geom[3];
+    }
+    free(workArea);
+    SLOG_STMI() << "updateWorkArea, rc="<<m_rcWorkArea.left<<","<<m_rcWorkArea.top<<","<<m_rcWorkArea.right<<","<<m_rcWorkArea.bottom;
+}
+
+void SConnection::GetWorkArea(RECT* prc)
+{
+    memcpy(prc, &m_rcWorkArea, sizeof(RECT));
 }
 
 
