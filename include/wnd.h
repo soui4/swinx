@@ -410,6 +410,11 @@ extern "C"
 #endif // !UNICODE
 
     BOOL WINAPI IsWindowUnicode(HWND hWnd);
+
+    typedef BOOL (CALLBACK *WNDENUMPROC)(HWND hwnd, LPARAM lParam );
+
+    BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam );
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus

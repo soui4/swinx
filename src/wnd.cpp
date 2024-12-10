@@ -1017,6 +1017,14 @@ LRESULT CallWindowProc(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     return proc(hWnd,msg,wp,lp);
 }
 
+static BOOL CALLBACK Enum4DestroyOwned(HWND hwnd, LPARAM lParam) {
+    HWND hTest = (HWND)lParam;
+    if (GetParent(hwnd) == hTest) {
+        DestroyWindow(hwnd);
+    }
+    return TRUE;
+}
+
 static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 {
 	LRESULT ret = 0;
@@ -1240,6 +1248,8 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 	}
 	else if (msg == WM_DESTROY)
 	{
+        //auto destroy all popup that owned by this
+        EnumWindows(Enum4DestroyOwned, hWnd);
 		//auto destory all children
 		HWND hChild = GetWindow(hWnd, GW_CHILDLAST);
 		while (hChild) {
@@ -3638,4 +3648,9 @@ UINT WINAPI	RegisterWindowMessageW(_In_ LPCWSTR lpString) {
 
 BOOL WINAPI IsWindowUnicode(HWND hWnd) {
     return FALSE;
+}
+
+BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc,   LPARAM lParam
+) {
+    return WndMgr::enumWindows(lpEnumFunc, lParam);
 }
