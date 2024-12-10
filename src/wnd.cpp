@@ -705,6 +705,8 @@ BOOL ClientToScreen(HWND hWnd, LPPOINT ppt)
         ppt->x += cxEdge;
         ppt->y += cyEdge;
     }
+    if (wndObj->dwStyle & WS_POPUP)
+        return TRUE;
     HWND hParent = wndObj->parent;
     while (hParent) {
         WndObj wndObj = WndMgr::fromHwnd(hParent);
@@ -714,6 +716,8 @@ BOOL ClientToScreen(HWND hWnd, LPPOINT ppt)
             ppt->x += cxEdge;
             ppt->y += cyEdge;
         }
+        if (wndObj->dwStyle & WS_POPUP)
+            break;
         hParent = wndObj->parent;
     }
     return TRUE;
@@ -732,6 +736,8 @@ BOOL ScreenToClient(HWND hWnd, LPPOINT ppt)
         ppt->x -= cxEdge;
         ppt->y -= cyEdge;
     }
+    if (wndObj->dwStyle & WS_POPUP)
+        return TRUE;
 
     HWND hParent = wndObj->parent;
     while (hParent) {
@@ -742,6 +748,8 @@ BOOL ScreenToClient(HWND hWnd, LPPOINT ppt)
             ppt->x -= cxEdge;
             ppt->y -= cyEdge;
         }
+        if (wndObj->dwStyle & WS_POPUP)
+            break;
         hParent = wndObj->parent;
     }
     return TRUE;
@@ -791,11 +799,12 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     {
         MSG msg;
         if (!WaitMessage())
-            break;
+            continue;
         while (PeekMessage(&msg, hWnd, 0, 0, TRUE))
         {
             if (msg.message == WM_QUIT)
             {
+                SLOG_STMI() << "HandleNcTestCode,WM_QUIT";
                 bQuit = TRUE;
                 wndObj->mConnection->postMsg(msg.hwnd, msg.message, msg.wParam, msg.lParam);
                 break;
@@ -2114,17 +2123,21 @@ static BOOL _GetWndRect(HWND hWnd, RECT* rc) {
     return TRUE;
 }
 
-BOOL GetWindowRect(HWND hWnd, RECT *rc)
+BOOL GetWindowRect(HWND hWnd, RECT* rc)
 {
     if (!_GetWndRect(hWnd, rc))
         return FALSE;
-    HWND hParent = GetParent(hWnd);
-    while (hParent) {
+
+    for (;;) {
+        if (GetWindowLongA(hWnd, GWL_STYLE) & WS_POPUP)
+            break;
+        hWnd = GetParent(hWnd);
+        if (!hWnd)
+            break;
         RECT rcParent;
-        if (!_GetWndRect(hParent, &rcParent))
-            return FALSE;
+        if (!_GetWndRect(hWnd, &rcParent))
+            break;
         OffsetRect(rc, rcParent.left, rcParent.top);
-        hParent = GetParent(hParent);
     }
     return TRUE;
 }
