@@ -5,6 +5,8 @@
 #include "handle.h"
 #include "tostring.hpp"
 
+static std::string s_curDir;
+
 struct _FileData
 {
     int f;
@@ -516,4 +518,90 @@ BOOL WINAPI DeleteFileW(LPCWSTR lpFileName) {
     std::string str;
     tostring(lpFileName, -1, str);
     return DeleteFileA(str.c_str());
+}
+
+
+BOOL WINAPI SetCurrentDirectoryA(LPCSTR lpPathName) {
+    s_curDir = lpPathName;
+    return TRUE;
+}
+
+BOOL WINAPI SetCurrentDirectoryW(LPCWSTR lpPathName) {
+    std::string str;
+    tostring(lpPathName, -1, str);
+    s_curDir = str;
+    return TRUE;
+}
+
+DWORD WINAPI GetCurrentDirectoryA(
+    DWORD nBufferLength,
+    LPSTR lpBuffer
+) {
+    if (!lpBuffer)
+        return s_curDir.length() + 1;
+    if (nBufferLength <= s_curDir.length())
+        return 0;
+    memcpy(lpBuffer, s_curDir.c_str(), s_curDir.length() + 1);
+    return s_curDir.length() + 1;
+}
+
+DWORD WINAPI GetCurrentDirectoryW(
+    DWORD nBufferLength,
+    LPWSTR lpBuffer
+) {
+    std::wstring wpath;
+    towstring(s_curDir.c_str(), s_curDir.length(), wpath);
+    if (!lpBuffer)
+        return wpath.length() + 1;
+    if (nBufferLength <= wpath.length())
+        return 0;
+    memcpy(lpBuffer, wpath.c_str(), (wpath.length() + 1)*sizeof(wchar_t));
+    return wpath.length() + 1;
+}
+
+//todo:hjx
+
+HANDLE
+WINAPI
+FindFirstFileA(
+    _In_ LPCSTR lpFileName,
+    _Out_ LPWIN32_FIND_DATAA lpFindFileData
+) {
+    return 0;
+
+}
+
+HANDLE
+WINAPI
+FindFirstFileW(
+    _In_ LPCWSTR lpFileName,
+    _Out_ LPWIN32_FIND_DATAW lpFindFileData
+) {
+    return 0;
+
+}
+
+BOOL
+WINAPI
+FindNextFileA(
+    _In_ HANDLE hFindFile,
+    _Out_ LPWIN32_FIND_DATAA lpFindFileData
+) {
+    return FALSE;
+
+}
+
+BOOL
+WINAPI
+FindNextFileW(
+    _In_ HANDLE hFindFile,
+    _Out_ LPWIN32_FIND_DATAW lpFindFileData
+) {
+    return FALSE;
+}
+
+BOOL WINAPI FindClose(
+    HANDLE hFindFile
+) {
+    return FALSE;
 }

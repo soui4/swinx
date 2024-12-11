@@ -61,6 +61,8 @@ LPVOID WINAPI CoTaskMemRealloc(LPVOID ptr, SIZE_T size);
 HRESULT WINAPI OleInitialize(LPVOID reserved);
 void WINAPI OleUninitialize(void);
 
+HRESULT WINAPI CoCreateGuid(GUID* pguid);
+
 #undef __deref_out
 #undef __in_opt
 #undef __in

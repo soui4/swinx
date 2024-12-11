@@ -31,6 +31,7 @@
 
 #define _Outptr_
 #define _Out_writes_bytes_to_(p1,p2)
+#define _Out_writes_bytes_(p)
 #define _Out_opt_
 #define _In_reads_bytes_(x)
 #define _In_

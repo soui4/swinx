@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <objbase.h>
 #include <oaidl.h>
+#include <uuid/uuid.h>
 
 static inline void* AllocateForBSTR(size_t cb) { return ::malloc(cb); }
 static inline void FreeForBSTR(void* pv) { ::free(pv); }
@@ -191,4 +192,11 @@ HRESULT WINAPI OleInitialize(LPVOID reserved) {
 
 void WINAPI OleUninitialize(void) {
     //todo:hjx
+}
+
+HRESULT WINAPI CoCreateGuid(GUID* pguid) {
+    uuid_t id;
+    uuid_generate(id);
+    memcpy(pguid, &id, sizeof(id));
+    return S_OK;
 }

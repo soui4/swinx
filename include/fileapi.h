@@ -204,4 +204,115 @@ BOOL WINAPI WritePrivateProfileStructW(LPCWSTR section, LPCWSTR key,
 BOOL WINAPI WritePrivateProfileStructA(LPCSTR section, LPCSTR key,
     LPVOID buf, UINT bufsize, LPCSTR filename);
 
+
+BOOL WINAPI SetCurrentDirectoryA(LPCSTR lpPathName);
+BOOL WINAPI SetCurrentDirectoryW(LPCWSTR lpPathName);
+DWORD WINAPI GetCurrentDirectoryA(
+    DWORD nBufferLength,
+    LPSTR lpBuffer
+);
+
+DWORD WINAPI GetCurrentDirectoryW(
+    DWORD nBufferLength,
+    LPWSTR lpBuffer
+);
+
+#ifdef UNICODE
+#define SetCurrentDirectory SetCurrentDirectoryW
+#define GetCurrentDirectory GetCurrentDirectoryW
+#else
+#define SetCurrentDirectory SetCurrentDirectoryA
+#define GetCurrentDirectory GetCurrentDirectoryA
+#endif//UNICODE
+
+
+
+typedef struct _WIN32_FIND_DATAA {
+    DWORD dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD nFileSizeHigh;
+    DWORD nFileSizeLow;
+    DWORD dwReserved0;
+    DWORD dwReserved1;
+    CHAR   cFileName[MAX_PATH];
+    CHAR   cAlternateFileName[14];
+#ifdef _MAC
+    DWORD dwFileType;
+    DWORD dwCreatorType;
+    WORD  wFinderFlags;
+#endif
+} WIN32_FIND_DATAA, * PWIN32_FIND_DATAA, * LPWIN32_FIND_DATAA;
+typedef struct _WIN32_FIND_DATAW {
+    DWORD dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD nFileSizeHigh;
+    DWORD nFileSizeLow;
+    DWORD dwReserved0;
+    DWORD dwReserved1;
+    WCHAR  cFileName[MAX_PATH];
+    WCHAR  cAlternateFileName[14];
+#ifdef _MAC
+    DWORD dwFileType;
+    DWORD dwCreatorType;
+    WORD  wFinderFlags;
+#endif
+} WIN32_FIND_DATAW, * PWIN32_FIND_DATAW, * LPWIN32_FIND_DATAW;
+#ifdef UNICODE
+typedef WIN32_FIND_DATAW WIN32_FIND_DATA;
+typedef PWIN32_FIND_DATAW PWIN32_FIND_DATA;
+typedef LPWIN32_FIND_DATAW LPWIN32_FIND_DATA;
+#else
+typedef WIN32_FIND_DATAA WIN32_FIND_DATA;
+typedef PWIN32_FIND_DATAA PWIN32_FIND_DATA;
+typedef LPWIN32_FIND_DATAA LPWIN32_FIND_DATA;
+#endif // UNICODE
+
+HANDLE
+WINAPI
+FindFirstFileA(
+    _In_ LPCSTR lpFileName,
+    _Out_ LPWIN32_FIND_DATAA lpFindFileData
+);
+
+HANDLE
+WINAPI
+FindFirstFileW(
+    _In_ LPCWSTR lpFileName,
+    _Out_ LPWIN32_FIND_DATAW lpFindFileData
+);
+
+#ifdef UNICODE
+#define FindFirstFile  FindFirstFileW
+#else
+#define FindFirstFile  FindFirstFileA
+#endif // !UNICODE
+
+BOOL
+WINAPI
+FindNextFileA(
+    _In_ HANDLE hFindFile,
+    _Out_ LPWIN32_FIND_DATAA lpFindFileData
+);
+
+BOOL
+WINAPI
+FindNextFileW(
+    _In_ HANDLE hFindFile,
+    _Out_ LPWIN32_FIND_DATAW lpFindFileData
+);
+
+#ifdef UNICODE
+#define FindNextFile  FindNextFileW
+#else
+#define FindNextFile  FindNextFileA
+#endif // !UNICODE
+
+BOOL WINAPI FindClose(
+    HANDLE hFindFile
+);
+
 #endif // _FILE_API_H_
