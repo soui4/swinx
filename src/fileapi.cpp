@@ -620,6 +620,9 @@ FindNextFileA(
     _In_ HANDLE hFindFile,
     _Out_ LPWIN32_FIND_DATAA lpFindFileData
 ) {
+    if (hFindFile == INVALID_HANDLE_VALUE)
+        return FALSE;
+
     FIND_FIRST_INFO* info = (FIND_FIRST_INFO*)hFindFile;
     if(info->magic != FIND_FIRST_MAGIC)
         return FALSE;
@@ -654,6 +657,7 @@ FindNextFileA(
             TimeSpec2FileTime(fileStat.st_atim, &lpFindFileData->ftLastAccessTime);
             lpFindFileData->nFileSizeLow = fileStat.st_size & 0xffffffff;
             lpFindFileData->nFileSizeHigh = (fileStat.st_size & 0xffffffff00000000)>>32;
+            break;
         }
     }
     LeaveCriticalSection(&info->cs);
@@ -685,6 +689,8 @@ FindNextFileW(
 BOOL WINAPI FindClose(
     HANDLE hFindFile
 ) {
+    if (hFindFile == INVALID_HANDLE_VALUE)
+        return FALSE;
     FIND_FIRST_INFO* info = (FIND_FIRST_INFO*)hFindFile;
     if (info->magic != FIND_FIRST_MAGIC)
         return FALSE;
