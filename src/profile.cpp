@@ -70,7 +70,16 @@ static PROFILE *MRUProfile[N_CACHED_PROFILES]={NULL};
 /* Check for comments in profile */
 #define IS_ENTRY_COMMENT(str)  ((str)[0] == ';')
 
-static CRITICAL_SECTION PROFILE_CritSect;
+class CProfileCS : public CRITICAL_SECTION {
+public:
+    CProfileCS() {
+        InitializeCriticalSection(this);
+    }
+    ~CProfileCS() {
+        DeleteCriticalSection(this);
+    }
+};
+static CProfileCS PROFILE_CritSect;
 
 static const char hex[] = "0123456789ABCDEF";
 
@@ -715,13 +724,13 @@ static BOOL PROFILE_Open( LPCWSTR filename, BOOL write_access )
         filename = L"win.ini";
 
         
-    hFile = CreateFileW(buffer, GENERIC_READ | (write_access ? GENERIC_WRITE : 0),
+    hFile = CreateFileW(filename, GENERIC_READ | (write_access ? GENERIC_WRITE : 0),
                         FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL,
                         OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
-    if ((hFile == INVALID_HANDLE_VALUE) && (GetLastError() != ERROR_FILE_NOT_FOUND))
+    if (hFile == INVALID_HANDLE_VALUE)
     {
-        SLOG_STMW()<<"Error "<< GetLastError()<<" opening file "<<buffer;
+        SLOG_STMW()<<"Error "<< GetLastError()<<" opening file "<< filename;
         return FALSE;
     }
 

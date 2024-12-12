@@ -69,7 +69,7 @@ HANDLE WINAPI CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwSha
 {
     char szPath[MAX_PATH];
     if (0 == WideCharToMultiByte(CP_UTF8, 0, lpFileName, -1, szPath, MAX_PATH, nullptr, nullptr))
-        return 0;
+        return INVALID_HANDLE_VALUE;
     return CreateFileA(szPath, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
 
