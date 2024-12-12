@@ -1253,3 +1253,52 @@ UINT WINAPI GetACP(void) {
 BOOL WINAPI IsDBCSLeadByte(BYTE  c){
     return UTF8CharLength(c)>1;
 }
+
+//todo:hjx verify
+HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName) {
+    if (lpModuleName)
+    {
+        void* hMod = dlopen(lpModuleName, RTLD_LAZY);
+        if (hMod) dlclose(hMod);
+        return (HMODULE)hMod;
+    }
+    else {
+        char pathexe[MAX_PATH];
+        ssize_t len;
+        len = readlink("/proc/self/exe", pathexe, sizeof(pathexe) - 1);
+        if (len == -1)
+        {
+            perror("readlink");
+            return 0;
+        }
+        pathexe[len] = 0;
+        FILE* fp;
+        char path[1024];
+        char line[1024];
+        void* module_addr = NULL;
+        // 打开 /proc/self/maps 文件
+        fp = fopen("/proc/self/maps", "r");
+        if (fp == NULL) {
+            perror("fopen");
+            return 0;
+        }
+
+        // 读取文件内容，查找包含当前进程可执行文件路径的行
+        while (fgets(line, sizeof(line), fp)) {
+            if (strstr(line, pathexe) != NULL) {  // 替换为你的可执行文件路径
+                sscanf(line, "%lx", &module_addr);  // 从行中读取模块地址
+                break;
+            }
+        }
+        fclose(fp);
+        return (HMODULE)module_addr;
+    }
+}
+
+HMODULE WINAPI GetModuleHandleW(LPCWSTR lpModuleName) {
+    if (!lpModuleName)
+        return GetModuleHandleA(NULL);
+    std::string str;
+    tostring(lpModuleName, -1, str);
+    return GetModuleHandleA(str.c_str());
+}

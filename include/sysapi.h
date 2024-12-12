@@ -651,4 +651,13 @@ UINT WINAPI GetACP(void);
 
 BOOL WINAPI IsDBCSLeadByte(BYTE  c);
 
+HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName);
+HMODULE WINAPI GetModuleHandleW(LPCWSTR lpModuleName);
+
+#ifdef UNICODE
+#define GetModuleHandle GetModuleHandleW
+#else
+#define GetModuleHandle GetModuleHandleA
+#endif//UNICODE
+
 #endif//_SYSAPI_H_
