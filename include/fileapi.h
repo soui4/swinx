@@ -271,6 +271,25 @@ typedef PWIN32_FIND_DATAA PWIN32_FIND_DATA;
 typedef LPWIN32_FIND_DATAA LPWIN32_FIND_DATA;
 #endif // UNICODE
 
+typedef enum _FINDEX_INFO_LEVELS
+{
+    FindExInfoStandard,
+    FindExInfoBasic,
+    FindExInfoMaxInfoLevel
+} FINDEX_INFO_LEVELS;
+
+#define FIND_FIRST_EX_CASE_SENSITIVE 1
+#define FIND_FIRST_EX_LARGE_FETCH    2
+
+
+typedef enum _FINDEX_SEARCH_OPS
+{
+    FindExSearchNameMatch,
+    FindExSearchLimitToDirectories,
+    FindExSearchLimitToDevices,
+    FindExSearchMaxSearchOp
+} FINDEX_SEARCH_OPS;
+
 HANDLE
 WINAPI
 FindFirstFileA(
@@ -304,6 +323,14 @@ FindNextFileW(
     _In_ HANDLE hFindFile,
     _Out_ LPWIN32_FIND_DATAW lpFindFileData
 );
+
+HANDLE WINAPI FindFirstFileExA(const char* filename, FINDEX_INFO_LEVELS level,
+    void* data, FINDEX_SEARCH_OPS search_op,
+    void* filter, DWORD flags);
+
+HANDLE WINAPI FindFirstFileExW(const wchar_t* filename, FINDEX_INFO_LEVELS level,
+    void* data, FINDEX_SEARCH_OPS search_op,
+    void* filter, DWORD flags);
 
 #ifdef UNICODE
 #define FindNextFile  FindNextFileW
