@@ -280,7 +280,8 @@ typedef struct tagCOPYDATASTRUCT
 #define WM_PRINTCLIENT 0x0318
 
 #define WM_MSG_W2A     0x0330 //
-#define WM_INTERNAL 0x0350 // internal message
+#define WM_INTERNAL    0x0350 // internal message
+#define WM_REG_FIRST   0x2000 // registered message start
 #define WM_APP 0x8000
 
 #define QS_KEY            0x0001                                                        //队列中WM_KEYUP、WM_KEYDOWN、WM_SYSKEYUP或WM_SYSKEYDOWN消息。

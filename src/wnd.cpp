@@ -3631,13 +3631,8 @@ int WINAPI ScrollWindowEx(HWND hWnd,
 }
 
 UINT WINAPI	RegisterWindowMessageA(_In_ LPCSTR lpString) {
-    //todo:hjx
-    UINT ret = 0;
-    int len = strlen(lpString);
-    for (int i = 0; i < len; i++) {
-        ret += lpString[i];
-    }
-    return ret;
+    SConnection* conn = SConnMgr::instance()->getConnection();
+    return WM_REG_FIRST + SAtoms::internAtom(conn->connection, 0, lpString);
 }
 
 UINT WINAPI	RegisterWindowMessageW(_In_ LPCWSTR lpString) {
