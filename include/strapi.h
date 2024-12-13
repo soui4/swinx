@@ -78,7 +78,7 @@ const wchar_t *WINAPI CharNextW(const wchar_t *src);
 #define _tcscpy   wcscpy
 #define _tcstok   wcstok
 #define _tcsncpy  wcsncpy
-#define _tcsrchr  wcschr
+#define _tcsrchr  wcsrchr
 #define _tcsstr   wcsstr
 #define CharNext  CharNextW
 #define _stprintf wprintf
@@ -95,7 +95,7 @@ const wchar_t *WINAPI CharNextW(const wchar_t *src);
 #define _tcscpy   strcpy
 #define _tcstok   strtok
 #define _tcsncpy  strncpy
-#define _tcsrchr  strchr
+#define _tcsrchr  strrchr
 #define _tcsstr   strstr
 #define CharNext  CharNextA
 #define _stprintf sprintf
