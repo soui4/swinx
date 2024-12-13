@@ -30,6 +30,10 @@ typedef enum tagCLSCTX
 	CLSCTX_PS_DLL = 0x80000000
 } 	CLSCTX;
 
+#define CLSCTX_ALL              (CLSCTX_INPROC_SERVER| \
+                                 CLSCTX_INPROC_HANDLER| \
+                                 CLSCTX_LOCAL_SERVER| \
+                                 CLSCTX_REMOTE_SERVER)
 
 #define __in
 #define __out

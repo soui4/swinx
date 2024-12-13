@@ -32,6 +32,7 @@
 #define _Outptr_
 #define _Out_writes_bytes_to_(p1,p2)
 #define _Out_writes_bytes_(p)
+#define _Out_writes_opt_(cch)
 #define _Out_opt_
 #define _In_reads_bytes_(x)
 #define _In_
@@ -380,6 +381,7 @@ typedef struct _BLENDFUNCTION
 
 typedef HANDLE              HGLOBAL;
 typedef HANDLE              HLOCAL;
+typedef HANDLE              HDROP;
 
 typedef struct _FILETIME
 {
@@ -533,5 +535,6 @@ enum tagSTATFLAG
 } 	STATFLAG;
 
 typedef /* [context_handle] */ void* HCONTEXT;
+
 
 #endif //__PLATFORM_LINUX_
