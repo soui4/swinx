@@ -53,6 +53,26 @@ class SAtoms {
         CLIP_TEMPORARY,
         CLIPBOARD_MANAGER;
 
+        // Xdnd
+    xcb_atom_t    XdndEnter,
+        XdndPosition,
+        XdndStatus,
+        XdndLeave,
+        XdndDrop,
+        XdndFinished,
+        XdndTypelist,
+        XdndActionList,
+
+        XdndSelection,
+
+        XdndAware,
+        XdndProxy,
+
+        XdndActionCopy,
+        XdndActionLink,
+        XdndActionMove,
+        XdndActionPrivate;
+
     //use defined atom
     xcb_atom_t WM_WIN4XCB_IPC;
     xcb_atom_t SO_SELECTION;
@@ -107,6 +127,26 @@ class SAtoms {
             "SAVE_TARGETS",
             "CLIP_TEMPORARY",
             "CLIPBOARD_MANAGER",
+
+        // Xdnd
+       "XdndEnter",
+       "XdndPosition",
+       "XdndStatus",
+       "XdndLeave",
+       "XdndDrop",
+       "XdndFinished",
+       "XdndTypelist",
+       "XdndActionList",
+
+       "XdndSelection",
+
+       "XdndAware",
+       "XdndProxy",
+
+       "XdndActionCopy",
+       "XdndActionLink",
+       "XdndActionMove",
+       "XdndActionPrivate",
 
             //use defined atom
             "WM_WIN4XCB_IPC",
