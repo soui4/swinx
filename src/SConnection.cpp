@@ -215,7 +215,7 @@ SConnection::SConnection(int screenNum)
     }
     m_tid = GetCurrentThreadId();
 
-    atoms.Init(connection);
+    atoms.Init(connection,screenNum);
 
     m_tsDoubleSpan = GetDoubleClickSpan(connection, screen);
 

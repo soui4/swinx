@@ -16,7 +16,7 @@ xcb_atom_t SAtoms::internAtom(xcb_connection_t *connection, uint8_t onlyIfExist,
     return atom;
 }
 
-void SAtoms::Init(xcb_connection_t *conn)
+void SAtoms::Init(xcb_connection_t *conn,int nScrNo)
 {
     const int kAtomCount = sizeof(SAtoms) / sizeof(xcb_atom_t);
     xcb_intern_atom_cookie_t cookies[kAtomCount];
@@ -25,7 +25,13 @@ void SAtoms::Init(xcb_connection_t *conn)
     assert(kAtomCount == kAtomCount2);
     for (int i = 0; i < kAtomCount; i++)
     {
-        cookies[i] = xcb_intern_atom(conn, false, strlen(kAtomNames[i]), kAtomNames[i]);
+        if(strchr(kAtomNames[i],'%')!=nullptr){
+            char szAtomName[200];
+            int len = _snprintf(szAtomName,200,kAtomNames[i],nScrNo);
+            cookies[i] = xcb_intern_atom(conn, false, len, szAtomName);
+        }else{
+            cookies[i] = xcb_intern_atom(conn, false, strlen(kAtomNames[i]), kAtomNames[i]);
+        }
     }
 
     xcb_atom_t* atom = (xcb_atom_t*)this;
