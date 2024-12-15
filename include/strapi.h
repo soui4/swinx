@@ -7,7 +7,7 @@
 #include <ctypes.h>
 #include <errno.h>
 
-#define _vscprintf(fmt, ...)  snprintf(nullptr, 0, fmt, __VA_ARGS__)
+#define _vscprintf(fmt, argList)  vsnprintf(nullptr, 0, fmt, argList)
 #define _snprintf             snprintf
 #define vsprintf_s            vsnprintf
 #define sprintf_s             snprintf
