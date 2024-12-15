@@ -23,11 +23,11 @@ static size_t breakTextEx(cairo_t *ctx, const char *textD, size_t length, SkScal
         }
         p = (const char *)_mbsinc((const uint8_t *)p);
     }
-    if (nRet < length)
+    if (nRet < nLineLen)
     {
-        if (nRet + 1 < length && textD[nRet] == '\r' && textD[nRet + 1] == '\n')
+        if (p+1<textD+length && *p == '\r' && *(p+1) == '\n')
             endLen = 2;
-        else if (textD[nRet] == '\r' || textD[nRet] == '\n')
+        else if (*p == '\r' || *p == '\n')
             endLen = 1;
     }
     return nRet;
