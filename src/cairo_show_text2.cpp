@@ -26,7 +26,6 @@ size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxW
     cairo_scaled_font_t *scaled_font = cairo_get_scaled_font(cr);
     cairo_glyph_t stack_glyphs[5];
     cairo_glyph_t *glyphs = stack_glyphs;
-    int num_glyphs = 1;
     size_t ret = 0;
     float wid = 0.f;
     const char *p1 = utf8;
@@ -35,6 +34,7 @@ size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxW
     {
         const char *next = (const char *)_mbsinc((const uint8_t *)p1);
         int len = next - p1;
+        int num_glyphs = 1;
         cairo_scaled_font_text_to_glyphs(scaled_font, 0, 0, p1, len, &glyphs, &num_glyphs, NULL, NULL, NULL);
         if (num_glyphs)
         {
