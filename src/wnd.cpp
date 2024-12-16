@@ -463,7 +463,7 @@ static void SetWindowTransparent(HWND hWnd,BOOL bTransparent) {
     xcb_rectangle_t* rect = 0;
     int nrect = 0;
 
-    if (!transparent) {
+    if (!bTransparent) {
         rectangle.x = 0;
         rectangle.y = 0;
         rectangle.width = wndObj->rc.right-wndObj->rc.left;
@@ -477,7 +477,7 @@ static void SetWindowTransparent(HWND hWnd,BOOL bTransparent) {
     xcb_xfixes_set_window_shape_region_checked(wndObj->mConnection->connection, hWnd, XCB_SHAPE_SK_INPUT, 0, 0, region);
     xcb_xfixes_destroy_region(wndObj->mConnection->connection, region);
 
-    if (transparent)
+    if (bTransparent)
         wndObj->dwExStyle |= WS_EX_TRANSPARENT;
     else
         wndObj->dwExStyle &= ~WS_EX_TRANSPARENT;
@@ -621,8 +621,9 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     {
         SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)clsInfo.hIconSm);
     }
-    if (isTransparent) {
-        SetWindowTransparent(hWnd, isTransparent);
+    if (isTransparent) 
+    {
+        SetWindowTransparent(hWnd, TRUE);
     }
     if (!isMsgWnd && cs->style & WS_VISIBLE)
     {
