@@ -181,6 +181,8 @@ public:
 
     UINT RegisterClipboardFormatA(LPCSTR pszName);
   public:
+      bool hasXFixes() const { return xfixes_first_event > 0; }
+  public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);
 
@@ -207,6 +209,7 @@ public:
   private:
     int _waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, DWORD dwWaitMask);
     void readXResources();
+    void initializeXFixes();
     bool event2Msg(bool bTimeout, UINT elapse, uint64_t ts);
     xcb_cursor_t createXcbCursor(HCURSOR cursor);
     uint32_t netWmStates(HWND hWnd);
@@ -262,6 +265,7 @@ public:
 
     BOOL m_bComposited = FALSE;
     RECT m_rcWorkArea = { 0 };
+    uint32_t xfixes_first_event = 0;
 };
 
 class SConnMgr {

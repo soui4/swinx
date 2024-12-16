@@ -6,6 +6,7 @@
 #include <xcb/xcb_aux.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/randr.h>
+#include <xcb/xfixes.h>
 #include <map>
 #include <mutex>
 #include <string>
@@ -452,6 +453,36 @@ BOOL InvalidateRect(HWND hWnd, const RECT* lpRect, BOOL bErase)
     return TRUE;
 }
 
+static void SetWindowTransparent(HWND hWnd,BOOL bTransparent) {
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    BOOL transparent = (wndObj->dwExStyle & WS_EX_TRANSPARENT) != 0;
+    if (!(transparent ^ bTransparent) || !wndObj->mConnection->hasXFixes())
+        return;
+    xcb_rectangle_t rectangle;
+
+    xcb_rectangle_t* rect = 0;
+    int nrect = 0;
+
+    if (!transparent) {
+        rectangle.x = 0;
+        rectangle.y = 0;
+        rectangle.width = wndObj->rc.right-wndObj->rc.left;
+        rectangle.height = wndObj->rc.bottom - wndObj->rc.top;
+        rect = &rectangle;
+        nrect = 1;
+    }
+
+    xcb_xfixes_region_t region = xcb_generate_id(wndObj->mConnection->connection);
+    xcb_xfixes_create_region(wndObj->mConnection->connection, region, nrect, rect);
+    xcb_xfixes_set_window_shape_region_checked(wndObj->mConnection->connection, hWnd, XCB_SHAPE_SK_INPUT, 0, 0, region);
+    xcb_xfixes_destroy_region(wndObj->mConnection->connection, region);
+
+    if (transparent)
+        wndObj->dwExStyle |= WS_EX_TRANSPARENT;
+    else
+        wndObj->dwExStyle &= ~WS_EX_TRANSPARENT;
+}
+
 /***********************************************************************
  *           WIN_CreateWindowEx
  *
@@ -471,7 +502,14 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
 
     SConnection *conn = SConnMgr::instance()->getConnection(pWnd->tid);
     HWND hParent = cs->hwndParent;
-
+    BOOL isMsgWnd = hParent == HWND_MESSAGE;
+    BOOL isTransparent = cs->dwExStyle & WS_EX_TRANSPARENT;
+    cs->dwExStyle &= ~WS_EX_TRANSPARENT;
+    if (isMsgWnd)
+    {
+        hParent = 0;
+        cs->cx = cs->cy = 1;
+    }
     pWnd->mConnection = conn;
     pWnd->state = WS_Normal;
     pWnd->dwStyle = cs->style & ~WS_VISIBLE; // remove visible
@@ -518,7 +556,12 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
                                 evt_mask,// XCB_CW_EVENT_MASK
                                 cmap//XCB_CW_COLORMAP
     };
-    if (!(cs->style & WS_CHILD) || !hParent)
+    xcb_window_class_t wndCls = XCB_WINDOW_CLASS_INPUT_OUTPUT;
+    if (isMsgWnd)
+    {
+        hParent = conn->screen->root;
+        wndCls = XCB_WINDOW_CLASS_INPUT_ONLY;
+    }else if (!(cs->style & WS_CHILD) || !hParent)
         hParent = conn->screen->root;
     xcb_void_cookie_t cookie = xcb_create_window_checked(conn->connection, depth, hWnd, hParent, cs->x, cs->y, std::max(cs->cx, 1u), std::max(cs->cy, 1u), 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, pWnd->visualId, mask, values);
     xcb_free_colormap(conn->connection, cmap);
@@ -578,7 +621,10 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     {
         SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)clsInfo.hIconSm);
     }
-    if (cs->style & WS_VISIBLE)
+    if (isTransparent) {
+        SetWindowTransparent(hWnd, isTransparent);
+    }
+    if (!isMsgWnd && cs->style & WS_VISIBLE)
     {
         ShowWindow(hWnd, SW_SHOW);
         InvalidateRect(hWnd, NULL, TRUE);

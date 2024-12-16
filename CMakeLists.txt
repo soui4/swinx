@@ -24,6 +24,7 @@ file(GLOB_RECURSE SRCS
     thirdparty/xcb-util-renderutil/*.c  
     thirdparty/xcb-util-keysyms/*.c
     thirdparty/xcb-util-wm/*.c 
+    thirdparty/libxcb/*.c 
     src/*.cpp
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
@@ -46,6 +47,8 @@ target_include_directories(swinx
 	PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 	PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xcb
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/sysinclude
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xkbcommon
 )
 

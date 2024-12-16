@@ -7,6 +7,7 @@
 #include <xcb/xcb_image.h>
 #include <xcb/shape.h>
 #include <xcb/xcb_aux.h>
+#include <xcb/xfixes.h>
 #include <algorithm>
 #include <sstream>
 #include <string>
@@ -203,7 +204,7 @@ SConnection::SConnection(int screenNum)
             SLOG_STMI() << "32 bit visual id=" << rgba_visual->visual_id;
     }
     readXResources();
-
+    initializeXFixes();
     if (rgba_visual) {//get composited for screen
         char szAtom[50];
         sprintf(szAtom, "_XSETTINGS_S%d", screenNum);
@@ -294,6 +295,28 @@ SConnection::~SConnection()
     m_msgStack.clear();
 
     CloseHandle(m_evtSync);
+}
+
+void SConnection::initializeXFixes()
+{
+    xcb_generic_error_t* error = 0;
+    const xcb_query_extension_reply_t* reply = xcb_get_extension_data(connection, &xcb_xfixes_id);
+    if (!reply || !reply->present)
+        return;
+
+    xfixes_first_event = reply->first_event;
+    xcb_xfixes_query_version_cookie_t xfixes_query_cookie = xcb_xfixes_query_version(connection,
+        XCB_XFIXES_MAJOR_VERSION,
+        XCB_XFIXES_MINOR_VERSION);
+    xcb_xfixes_query_version_reply_t* xfixes_query = xcb_xfixes_query_version_reply(connection,
+        xfixes_query_cookie, &error);
+    if (!xfixes_query || error || xfixes_query->major_version < 2) {
+        SLOG_STMW()<<"SConnection: Failed to initialize XFixes";
+        free(error);
+        xfixes_first_event = 0;
+    }
+    free(xfixes_query);
+    SLOG_STMI() << "hasXFixes()=" << hasXFixes();
 }
 
 bool SConnection::event2Msg(bool bTimeout, UINT elapse, uint64_t ts)
