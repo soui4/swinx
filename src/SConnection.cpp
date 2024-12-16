@@ -1772,6 +1772,27 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             m_tsPrevPress = e2->time;
 //            printf("button press, focus=%d\n",(int)m_hFocus);
         }
+        else if (e2->detail == XCB_BUTTON_INDEX_4 || e2->detail == XCB_BUTTON_INDEX_5) {
+            //mouse wheel event
+            SLOG_STMI() << "mouse wheel, dir = " << (e2->detail == XCB_BUTTON_INDEX_4 ? "up" : "down");
+            pMsg = new Msg;
+            pMsg->hwnd = e2->event;
+            pMsg->message = WM_MOUSEWHEEL;
+
+            pMsg->pt.x = e2->event_x;
+            pMsg->pt.y = e2->event_y;
+            ClientToScreen(pMsg->hwnd, &pMsg->pt);
+            pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
+
+            WORD vkFlag = 0;
+            vkFlag |= GetKeyState(VK_CONTROL) ? MK_CONTROL : 0;
+            vkFlag |= GetKeyState(VK_LBUTTON) ? MK_LBUTTON : 0;
+            vkFlag |= GetKeyState(VK_MBUTTON) ? MK_MBUTTON : 0;
+            vkFlag |= GetKeyState(VK_RBUTTON) ? MK_RBUTTON : 0;
+            vkFlag |= GetKeyState(VK_SHIFT) ? MK_SHIFT : 0;
+            int delta = e2->detail == XCB_BUTTON_INDEX_4 ? WHEEL_DELTA : -WHEEL_DELTA;
+            pMsg->wParam = MAKEWPARAM(vkFlag,delta);
+        }
         break;
     }
     case XCB_BUTTON_RELEASE:
