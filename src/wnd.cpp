@@ -835,9 +835,10 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     POINT ptClick;
     if (!wndObj->mConnection->GetCursorPos(&ptClick))
         return -1;
-    if (!(htCode >= HTCAPTION && htCode <= HTBOTTOMRIGHT))
+    if (!(htCode >= HTCAPTION && htCode <= HTBOTTOMRIGHT) || htCode == HTVSCROLL ||htCode == HTHSCROLL)
         return -2;
-    SLOG_STMI() << "HandleNcTestCode";
+
+    SLOG_STMI() << "HandleNcTestCode,code="<<htCode;
     wndObj->mConnection->SetTimerBlock(true);
     RECT rcWnd = wndObj->rc;
     BOOL bQuit = FALSE;
@@ -1094,8 +1095,8 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 		}
 		return 0;
 	case WM_LBUTTONDOWN:
-		if (bSkipMsg = (0 == HandleNcTestCode(hWnd, wndObj->htCode)));
-		break;
+		if (bSkipMsg = (0 == HandleNcTestCode(hWnd, wndObj->htCode)))
+		    break;
 	case WM_MBUTTONDOWN:
 	case WM_RBUTTONDOWN:
 	case WM_LBUTTONDBLCLK:
