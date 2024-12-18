@@ -244,6 +244,7 @@ SConnection::SConnection(int screenNum)
 
     m_keyboard = new SKeyboard(this);
     m_clipboard = new SClipboard(this);
+    m_trayIconMgr = new STrayIconMgr(this);
 }
 
 
@@ -256,7 +257,7 @@ SConnection::~SConnection()
 
     delete m_keyboard;
     delete m_clipboard;
-
+    delete m_trayIconMgr;
     for (auto it : m_sysCursor)
     {
         xcb_free_cursor(connection, it.second);

@@ -15,6 +15,7 @@
 #include "uimsg.h"
 #include "atoms.h"
 #include "SClipboard.h"
+#include "STrayIconMgr.h"
 
 struct TimerInfo
 {
@@ -182,6 +183,7 @@ public:
     UINT RegisterClipboardFormatA(LPCSTR pszName);
   public:
       bool hasXFixes() const { return xfixes_first_event > 0; }
+      STrayIconMgr* GetTrayIconMgr() { return m_trayIconMgr; }
   public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);
@@ -254,6 +256,7 @@ public:
 
     SKeyboard *m_keyboard;
     SClipboard* m_clipboard;
+    STrayIconMgr* m_trayIconMgr;
 
     HANDLE m_evtSync;
     tid_t m_tid;
