@@ -227,8 +227,8 @@ public:
     mutable std::recursive_mutex m_mutex4Msg;
     std::list<Msg *> m_msgQueue;
     xcb_timestamp_t m_tsSelection;
-    xcb_timestamp_t m_tsPrevPress;    
-    xcb_timestamp_t m_tsDoubleSpan;
+    xcb_timestamp_t m_tsPrevPress=-1;    
+    xcb_timestamp_t m_tsDoubleSpan = 400;
 
     std::list<Msg *> m_msgStack; // msg stack that are handling
     std::list<CbTask *> m_lstCallbackTask;

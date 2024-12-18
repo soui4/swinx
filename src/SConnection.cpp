@@ -246,6 +246,7 @@ SConnection::SConnection(int screenNum)
     m_clipboard = new SClipboard(this);
 }
 
+
 SConnection::~SConnection()
 {
     if (!connection)
@@ -272,10 +273,38 @@ SConnection::~SConnection()
     DestroyCaret();
 
     SLOG_STMI()<<"quit sconnection";
-    m_bQuit = true;
-    xcb_disconnect(connection);
+    //m_bQuit = true;
+
+    xcb_window_t hTmp = xcb_generate_id(connection);
+    xcb_create_window(connection,
+                                     XCB_COPY_FROM_PARENT,            // depth -- same as root
+                                     hTmp,                        // window id
+                                     screen->root,                   // parent window id
+                                     0,0,3,3,
+                                     0,                               // border width
+                                     XCB_WINDOW_CLASS_INPUT_ONLY,   // window class
+                                     screen->root_visual, // visual
+                                     0,                               // value mask
+                                     0);                             // value list
+
+    // the hWnd is valid window id.
+    xcb_client_message_event_t client_msg_event = {
+        XCB_CLIENT_MESSAGE,          //.response_type
+        32,                          //.format
+        0,                           //.sequence
+        (xcb_window_t)hTmp,          //.window
+        atoms.WM_DISCONN //.type
+    };
+    xcb_send_event(connection, 0, hTmp, XCB_EVENT_MASK_NO_EVENT, (const char *)&client_msg_event);
+    xcb_flush(connection);
     m_trdEvtReader.join();
     SLOG_STMI()<<"event reader quited";
+
+    xcb_destroy_window(connection,hTmp);
+    xcb_flush(connection);
+    xcb_disconnect(connection);
+
+ 
 
     for (auto it : m_msgQueue)
     {
@@ -1939,8 +1968,12 @@ void SConnection::_readProc()
         xcb_generic_event_t *event = xcb_wait_for_event(connection);
         if (!event)
         {
+            continue;
+        }
+        if((event->response_type& 0x7f)==XCB_CLIENT_MESSAGE && ((xcb_client_message_event_t *)event)->type == atoms.WM_DISCONN){
             m_bQuit = true;
             SetEvent(m_evtSync);
+            SLOG_STMI()<<"recv WM_DISCONN, quit event reading thread";
             break;
         }
         {
