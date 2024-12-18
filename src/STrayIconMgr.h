@@ -3,6 +3,8 @@
 #include <shellapi.h>
 #include <list>
 #include <mutex>
+#include <xcb/xproto.h>
+
 
 class SConnection;
 class STrayIconMgr {
@@ -31,6 +33,8 @@ private:
 	BOOL DelIcon(PNOTIFYICONDATAA lpData);
 
 	TRAYLIST::iterator findIcon(PNOTIFYICONDATAA src);
+
+	static xcb_window_t locateTrayWindow(xcb_connection_t* connection, xcb_atom_t selection);
 private:
 	std::recursive_mutex m_mutex;
 

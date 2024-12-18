@@ -73,7 +73,8 @@ class SAtoms {
         XdndActionMove,
         XdndActionPrivate;
 
-    xcb_atom_t _NET_SYSTEM_TRAY_S;
+    xcb_atom_t _NET_SYSTEM_TRAY_OPCODE;
+    xcb_atom_t _NET_SYSTEM_TRAY_S0;
     //use defined atom
     xcb_atom_t WM_WIN4XCB_IPC;
     xcb_atom_t SO_SELECTION;
@@ -148,7 +149,7 @@ class SAtoms {
        "XdndActionLink",
        "XdndActionMove",
        "XdndActionPrivate",
-
+       "_NET_SYSTEM_TRAY_OPCODE",
         "_NET_SYSTEM_TRAY_S%d",
             //use defined atom
             "WM_WIN4XCB_IPC",
