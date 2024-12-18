@@ -205,6 +205,21 @@ BOOL StrToIntExW(const wchar_t *str, DWORD flags, INT *ret)
     return res;
 }
 
+BOOL StrToInt64ExA(const char* str, DWORD flags, LONGLONG* ret) {
+    std::wstring wstr;
+    towstring(str, -1, wstr);
+    return StrToInt64ExW(wstr.c_str(), flags, ret);
+}
+
+BOOL StrToIntExA(const char* str, DWORD flags, INT* ret) {
+    LONGLONG value;
+    BOOL res;
+    res = StrToInt64ExA(str, flags, &value);
+    if (res)
+        *ret = value;
+    return res;
+}
+
 void GetLocalTime(SYSTEMTIME *pSysTime)
 {
     struct timeval tv;

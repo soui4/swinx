@@ -67,6 +67,18 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
 BOOL StrToInt64ExW(const wchar_t *str, DWORD flags, LONGLONG *ret);
 BOOL StrToIntExW(const wchar_t *str, DWORD flags, INT *ret);
 
+BOOL StrToInt64ExA(const char* str, DWORD flags, LONGLONG* ret);
+BOOL StrToIntExA(const char* str, DWORD flags, INT* ret);
+
+#ifdef UNICODE
+#define StrToInt64Ex StrToInt64ExW
+#define StrToIntEx StrToIntExW
+#else
+#define StrToInt64Ex StrToInt64ExA
+#define StrToIntEx StrToIntExA
+#endif//UNICODE
+
+
 void GetLocalTime(SYSTEMTIME *pSysTime);
 void GetSystemTime(SYSTEMTIME *lpSystemTime);
 

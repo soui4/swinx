@@ -83,6 +83,7 @@ const wchar_t *WINAPI CharNextW(const wchar_t *src);
 #define CharNext  CharNextW
 #define _stprintf wprintf
 #define lstrcpyn lstrcpynW
+#define _tcstol	 wcstol
 #else
 #define lstrlen   lstrlenA
 #define lstrcpy   lstrcpyA
@@ -100,6 +101,7 @@ const wchar_t *WINAPI CharNextW(const wchar_t *src);
 #define CharNext  CharNextA
 #define _stprintf sprintf
 #define lstrcpyn lstrcpynA
+#define _tcstol	 strtol
 #endif
 
 #define CP_ACP        0  // default to ANSI code page
