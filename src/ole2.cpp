@@ -19,9 +19,7 @@ void CoUninitialize(void) {
 
 }
 
-HRESULT RevokeDragDrop(
-  HWND hwnd
-){
+HRESULT RevokeDragDrop( HWND hwnd){
     //todo:hjx
     return E_NOTIMPL;
 }

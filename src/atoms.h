@@ -139,9 +139,7 @@ class SAtoms {
        "XdndFinished",
        "XdndTypelist",
        "XdndActionList",
-
        "XdndSelection",
-
        "XdndAware",
        "XdndProxy",
 
@@ -149,6 +147,7 @@ class SAtoms {
        "XdndActionLink",
        "XdndActionMove",
        "XdndActionPrivate",
+
        "_NET_SYSTEM_TRAY_OPCODE",
         "_NET_SYSTEM_TRAY_S%d",
             //use defined atom

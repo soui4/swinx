@@ -1629,7 +1629,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
         pMsg->lParam = scanCode << 16 | m_keyboard->getRepeatCount();
-        SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
+        //SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
         break;
     }
     case XCB_KEY_RELEASE:
@@ -1642,7 +1642,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
         pMsg->lParam = scanCode << 16;
-        SLOG_FMTI("onkeyup, detail=%d,vk=%d", e2->detail, vk);
+        //SLOG_FMTI("onkeyup, detail=%d,vk=%d", e2->detail, vk);
         break;
     }
     case XCB_EXPOSE:

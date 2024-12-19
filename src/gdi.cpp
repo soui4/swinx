@@ -1743,14 +1743,38 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
 {
     if (cchText < 0)
         cchText = strlen(pszBuf);
-
+    assert(pRect);
     cairo_save(hdc->cairo);
     ApplyFont(hdc);
+    ApplyPen(hdc->cairo, hdc->pen);
     CairoColor cr(hdc->crText);
     cairo_set_source_rgba(hdc->cairo, cr.r, cr.g, cr.b, cr.a);
     cairo_matrix_t mtx = { 0 };
     cairo_get_matrix(hdc->cairo, &mtx);
+    const LOGFONT* lf = (const LOGFONT*)GetGdiObjPtr(hdc->hfont);
+    assert(lf);
     cairo_draw_text(hdc->cairo, pszBuf, cchText, pRect, uFormat);
+    if (lf->lfUnderline || lf->lfStrikeOut) {
+        cairo_font_extents_t font_ext;
+        cairo_font_extents(hdc->cairo, &font_ext);
+        HPEN pen = CreatePen(PS_SOLID, 1, GetTextColor(hdc));
+        ApplyPen(hdc->cairo, pen);
+        ApplyRop2(hdc->cairo, hdc->rop2);
+        if (lf->lfStrikeOut)
+        {
+            double y_line = (pRect->top + pRect->bottom) / 2.0;
+            cairo_move_to(hdc->cairo, pRect->left, y_line);
+            cairo_line_to(hdc->cairo, pRect->right, y_line);
+        }
+        if (lf->lfUnderline)
+        {
+            double y_line = pRect->top + font_ext.ascent+1;
+            cairo_move_to(hdc->cairo, pRect->left, y_line);
+            cairo_line_to(hdc->cairo, pRect->right, y_line);
+        }
+        cairo_stroke(hdc->cairo);
+        DeleteObject(pen);
+    }
     cairo_restore(hdc->cairo);
 
     return TRUE;
