@@ -2863,6 +2863,7 @@ BOOL WINAPI GetTextMetricsA(HDC hdc, TEXTMETRICA *txtMetric)
     cairo_save(hdc->cairo);
     if (!ApplyFont(hdc))
         return FALSE;
+    memset(txtMetric, 0, sizeof(TEXTMETRICA));
     cairo_font_extents_t font_extents;
     cairo_font_extents(hdc->cairo, &font_extents);
     txtMetric->tmAscent = font_extents.ascent;
@@ -2892,6 +2893,7 @@ BOOL WINAPI GetTextMetricsW(HDC hdc, TEXTMETRICW* txtMetric)
     TEXTMETRICA metricA;
     if (!GetTextMetricsA(hdc, &metricA))
         return FALSE;
+    memset(txtMetric, 0, sizeof(TEXTMETRICW));
     txtMetric->tmAscent = metricA.tmAscent;
     txtMetric->tmDescent = metricA.tmDescent;
     txtMetric->tmHeight = metricA.tmHeight;
@@ -2905,6 +2907,8 @@ BOOL WINAPI GetTextMetricsW(HDC hdc, TEXTMETRICW* txtMetric)
     txtMetric->tmStruckOut = metricA.tmStruckOut;
     txtMetric->tmCharSet = metricA.tmCharSet;
     txtMetric->tmPitchAndFamily = metricA.tmPitchAndFamily;
+    txtMetric->tmOverhang = metricA.tmOverhang;
+
     return TRUE;
 }
 
