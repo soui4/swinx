@@ -631,6 +631,18 @@ BOOL SConnection::TranslateMessage(const MSG *pMsg)
     {
         if (pMsg->wParam >= VK_PRIOR && pMsg->wParam <= VK_HELP)
             return FALSE;
+        //handle shortcut key
+        SHORT ctrlState = GetKeyState(VK_CONTROL);
+        if ((ctrlState & 0x8000) && (
+            pMsg->wParam=='A' 
+            || pMsg->wParam == 'S' 
+            || pMsg->wParam == 'D'
+            || pMsg->wParam == 'Z'
+            || pMsg->wParam == 'X'
+            || pMsg->wParam == 'C'
+            || pMsg->wParam == 'V')) {
+            return FALSE;
+        }
         std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
         Msg *msg = new Msg;
         msg->message = WM_CHAR;
@@ -643,11 +655,6 @@ BOOL SConnection::TranslateMessage(const MSG *pMsg)
         {
             msg->wParam += 0x20; // tolower
         }
-        // else {
-        //    printf("shift is pressed!\n");
-        //}
-        // printf("TranslateMessage, vk=%c\n", msg->wParam);
-
         m_msgQueue.push_back(msg);
         return TRUE;
     }
@@ -1558,7 +1565,7 @@ uint32_t SConnection::netWmStates(HWND hWnd)
     else
     {
 #ifdef NET_WM_STATE_DEBUG
-        printf("getting net wm state (%x), empty\n", m_window);
+        SLOG_FMTI("getting net wm state (%x), empty", m_window);
 #endif
     }
 
@@ -1622,7 +1629,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
         pMsg->lParam = scanCode << 16 | m_keyboard->getRepeatCount();
-        printf("onkeydown, detail=%c,vk=%d, repeat=%d\n", e2->detail, vk, (int)m_keyboard->getRepeatCount());
+        SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
         break;
     }
     case XCB_KEY_RELEASE:
@@ -1635,7 +1642,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
         pMsg->lParam = scanCode << 16;
-        printf("onkeyup, detail=%c,vk=%d\n", e2->detail, vk);
+        SLOG_FMTI("onkeyup, detail=%d,vk=%d", e2->detail, vk);
         break;
     }
     case XCB_EXPOSE:
@@ -1823,7 +1830,6 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                 m_mouseKeyState[e2->detail - XCB_BUTTON_INDEX_1] = 0x8000;
             pMsg->wParam = ButtonState2Mask(e2->state);
             m_tsPrevPress = e2->time;
-//            printf("button press, focus=%d\n",(int)m_hFocus);
         }
         else if (e2->detail == XCB_BUTTON_INDEX_4 || e2->detail == XCB_BUTTON_INDEX_5) {
             //mouse wheel event
@@ -1887,39 +1893,36 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
         pMsg->wParam = ButtonState2Mask(e2->state);
         pMsg->time = e2->time;
-        //        printf("XCB_MOTION_NOTIFY!!, msg=%d,pt=(%d,%d)\n", pMsg->message, pMsg->pt.x, pMsg->pt.y);
         break;
     }
     case XCB_FOCUS_IN:
-    {
-        xcb_focus_in_event_t *e2 = (xcb_focus_in_event_t *)event;
-                     pMsg = new Msg;
-             pMsg->hwnd = e2->event;
-             pMsg->message = WM_SETFOCUS;
-if (m_hFocus != pMsg->hwnd)
-        {
-             pMsg->wParam = (WPARAM)m_hFocus;
-m_hFocus = e2->event;
-        }
-             pMsg->lParam = 0;
-             printf("focus in, wnd=%u\n", e2->event);
-             break;
-    }
+	{
+		xcb_focus_in_event_t* e2 = (xcb_focus_in_event_t*)event;
+		pMsg = new Msg;
+		pMsg->hwnd = e2->event;
+		pMsg->message = WM_SETFOCUS;
+		if (m_hFocus != pMsg->hwnd)
+		{
+			pMsg->wParam = (WPARAM)m_hFocus;
+			m_hFocus = e2->event;
+		}
+		pMsg->lParam = 0;
+		break;
+	}
     case XCB_FOCUS_OUT:
     {
-        xcb_focus_out_event_t *e2 = (xcb_focus_out_event_t *)event;
-                pMsg = new Msg;
-                pMsg->hwnd = e2->event;
-                pMsg->message = WM_KILLFOCUS;
-                                pMsg->wParam = (WPARAM)m_hFocus;
-                pMsg->lParam = 0;
-                if (e2->event == m_hFocus)
-        {
-            m_hFocus = 0;
-             }
-             printf("focus out, wnd=%u\n", e2->event);
-        break;
-    }
+		xcb_focus_out_event_t* e2 = (xcb_focus_out_event_t*)event;
+		pMsg = new Msg;
+		pMsg->hwnd = e2->event;
+		pMsg->message = WM_KILLFOCUS;
+		pMsg->wParam = (WPARAM)m_hFocus;
+		pMsg->lParam = 0;
+		if (e2->event == m_hFocus)
+		{
+			m_hFocus = 0;
+		}
+		break;
+	}
     case XCB_MAP_NOTIFY:
     {
         xcb_map_notify_event_t *e2 = (xcb_map_notify_event_t *)event;
