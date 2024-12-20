@@ -14,8 +14,8 @@
 #include "drawtext.h"
 #include "tostring.hpp"
 #include "uniconv.h"
-
-#define SASSERT assert
+#include "log.h"
+#define kLogTag "gdi"
 
 static bool DumpBmp(HBITMAP bmp, const char *path)
 {
@@ -1507,7 +1507,7 @@ static LPCTSTR SkipNumber(LPCTSTR p)
 
 static LPCTSTR WordNext(LPCTSTR pszBuf, bool bWordbreak)
 {
-    SASSERT(pszBuf);
+    assert(pszBuf);
     LPCTSTR p = CharNext(pszBuf);
     if (!bWordbreak)
         return p;
@@ -1631,7 +1631,7 @@ void DrawMultiLine(HDC hdc, LPCTSTR pszBuf, int cchText, LPRECT pRect, UINT uFor
     while (i < cchText)
     {
         LPCTSTR p2 = WordNext(p1, uFormat & DT_WORDBREAK);
-        SASSERT(p2 > p1);
+        assert(p2 > p1);
         if ((*p1 == _T('\n') && p2))
         {
             if (pLineTail > pLineHead && !(uFormat & DT_CALCRECT))
