@@ -10,22 +10,22 @@
 // IDataObject Error Codes
 #define DATA_E_FORMATETC        DV_E_FORMATETC
 
-HRESULT CoInitialize(
+HRESULT WINAPI CoInitialize(
     LPVOID pvReserved
 );
 
-HRESULT CoInitializeEx(
+HRESULT WINAPI CoInitializeEx(
     void* pvReserved,
     DWORD dwCoInit
 );
 
-void CoUninitialize(void);
+void WINAPI CoUninitialize(void);
 
-HRESULT RevokeDragDrop(
-  HWND hwnd
-);
+HRESULT WINAPI RevokeDragDrop(HWND hwnd);
 
-HRESULT DoDragDrop(
+HRESULT  WINAPI RegisterDragDrop(HWND, LPDROPTARGET);
+
+HRESULT WINAPI DoDragDrop(
   LPDATAOBJECT pDataObj,
   LPDROPSOURCE pDropSource,
   DWORD        dwOKEffects,

@@ -1129,6 +1129,11 @@ HCURSOR SConnection::SetCursor(HCURSOR cursor)
 
 enum
 {
+    CIDC_NODROP = 1,
+    CIDC_MOVE   = 2,
+    CIDC_COPY   = 3,
+    CIDC_LINK   = 4,
+
     CIDC_ARROW = 32512,
     CIDC_IBEAM = 32513,
     CIDC_WAIT = 32514,
@@ -1158,6 +1163,22 @@ static bool getStdCursorCData(WORD wId, CData &data)
     bool ret = true;
     switch (wId)
     {
+    case CIDC_MOVE:
+        data.buf = drag_move_cur;
+        data.length = sizeof(drag_move_cur);
+        break;
+    case CIDC_COPY:
+        data.buf = drag_copy_cur;
+        data.length = sizeof(drag_copy_cur);
+        break;
+    case CIDC_LINK:
+        data.buf = drag_link_cur;
+        data.length = sizeof(drag_link_cur);
+        break;
+    case CIDC_NODROP:
+        data.buf = drag_nodrop_cur;
+        data.length = sizeof(drag_nodrop_cur);
+        break;
     case CIDC_ARROW:
         data.buf = ocr_normal_cur;
         data.length = sizeof(ocr_normal_cur);

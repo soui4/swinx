@@ -827,11 +827,6 @@ uint64_t GetTickCount64()
     return (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 
-BOOL RegisterDragDrop(HWND, IDropTarget *pDrapTarget)
-{
-    return 0;
-}
-
 BOOL CallMsgFilter(LPMSG lpMsg, int nCode)
 {
     return 0;
