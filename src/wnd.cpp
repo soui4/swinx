@@ -24,6 +24,8 @@
 #include "tostring.hpp"
 #include "wndobj.h"
 #include "debug.h"
+#include "SDragdrop.h"
+
 #define kLogTag "wnd"
 
 // xcb-icccm 3.8 support
@@ -571,6 +573,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     {
         printf("xcb_create_window failed, errcode=%d\n", err->error_code);
         free(err);
+        delete pWnd;
         return 0;
     }
     xcb_change_window_attributes(conn->connection, hWnd, mask, values);
@@ -1094,6 +1097,68 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			wndObj->mConnection->SetWindowOpacity(hWnd, wndObj->byAlpha);
 		}
 		return 0;
+    case UM_XDND_DRAG_ENTER:
+    {
+        SLOG_STMI() << "UM_XDND_DRAG_ENTER!";
+        DragEnterData* data = (DragEnterData*)lp;
+        if (!wndObj->dropTarget || !wndObj->dragData)
+        {
+            SLOG_STMW() << "should not run into here!";
+            return 1;
+        }
+        SDataObjectProxy* dragData = (SDataObjectProxy*)wndObj->dragData;
+        DWORD grfKeyState = 0;//todo:hjx
+        wndObj->dropTarget->DragEnter(wndObj->dragData, grfKeyState, data->pt, &dragData->m_dwEffect);
+        return 0;
+    }
+    case UM_XDND_DRAG_LEAVE:
+    {
+        SLOG_STMI() << "UM_XDND_DRAG_LEAVE!";
+
+        if (!wndObj->dropTarget || !wndObj->dragData)
+        {
+            SLOG_STMW() << "should not run into here!";
+            return 1;
+        }
+        HRESULT hr = wndObj->dropTarget->DragLeave();
+        wndObj->dragData->Release();
+        wndObj->dragData = NULL;
+        SLOG_STMI() << "UM_XDND_DRAG_LEAVE! set dragData to null";
+        return 0;
+    }
+    case UM_XDND_DRAG_OVER:
+    {
+        //SLOG_STMI() << "UM_XDND_DRAG_OVER!";
+        DragOverData* data = (DragOverData*)lp;
+        if (!wndObj->dropTarget)
+        {
+            SLOG_STMW() << "should not run into here!";
+            return 1;
+        }
+        SDataObjectProxy* dragData = (SDataObjectProxy*)wndObj->dragData;
+        dragData->m_dwKeyState = data->dwKeyState;
+        HRESULT hr = wndObj->dropTarget->DragOver(dragData->m_dwKeyState, data->pt, &dragData->m_dwEffect);
+        wndObj->mConnection->SendXdndStatus(hWnd,dragData->m_hSource, hr == S_OK, dragData->m_dwEffect);
+        return 0;
+    }
+    case UM_XDND_DRAG_DROP:
+    {
+        SLOG_STMI() << "UM_XDND_DRAG_DROP!";
+        DragDropData* data = (DragDropData*)lp;
+        if (!wndObj->dropTarget || !wndObj->dragData)
+        {
+            SLOG_STMW() << "should not run into here!";
+            return 1;
+        }
+        SDataObjectProxy* dragData =(SDataObjectProxy *) wndObj->dragData;
+        DWORD dwEffect = wp;
+        HRESULT hr = wndObj->dropTarget->Drop(wndObj->dragData, dragData->m_dwKeyState, data->pt, &dwEffect);
+        wndObj->mConnection->SendXdndFinish(hWnd, dragData->m_hSource, hr == S_OK, dwEffect);
+        wndObj->dragData->Release();
+        wndObj->dragData = NULL;
+        SLOG_STMI() << "UM_XDND_DRAG_DROP, set dragData to null";
+        return 0;
+    }
 	case WM_LBUTTONDOWN:
 		if (bSkipMsg = (0 == HandleNcTestCode(hWnd, wndObj->htCode)))
 		    break;
@@ -2040,9 +2105,101 @@ BOOL GetCursorPos(LPPOINT ppt)
     return conn->GetCursorPos(ppt);
 }
 
-HWND WindowFromPoint(POINT pt)
+// 根据给定的 X 和 Y 坐标查找屏幕上的窗口
+xcb_window_t getWindowFromPoint(xcb_connection_t* connection, int16_t x, int16_t y) {
+    xcb_query_tree_reply_t* tree;
+    xcb_query_tree_cookie_t tree_cookie;
+    xcb_window_t root, parent, * children;
+    int children_num;
+
+    root = xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
+    tree_cookie = xcb_query_tree(connection, root);
+    tree = xcb_query_tree_reply(connection, tree_cookie, NULL);
+
+    if (!tree) {
+        return XCB_NONE;
+    }
+
+    children = xcb_query_tree_children(tree);
+    children_num = xcb_query_tree_children_length(tree);
+
+    for (int i = 0; i < children_num; i++) {
+        xcb_get_geometry_reply_t* geo = xcb_get_geometry_reply(connection, xcb_get_geometry(connection, children[i]), NULL);
+
+        if (geo && x >= geo->x && y >= geo->y && x < geo->x + geo->width && y < geo->y + geo->height) {
+            parent = children[i];
+            free(geo);
+            break;
+        }
+
+        free(geo);
+    }
+
+    free(tree);
+
+    return parent;
+}
+
+static void XcbGeo2Rect(xcb_get_geometry_reply_t* geo, RECT* rc) {
+    rc->left = geo->x;
+    rc->top = geo->y;
+    rc->right = geo->x + geo->width;
+    rc->bottom = geo->y + geo->height;
+}
+
+static HWND _WindowFromPoint(xcb_connection_t * connection, xcb_window_t parent, POINT pt)
 {
-    return 0;
+    xcb_query_tree_reply_t* tree;
+    xcb_query_tree_cookie_t tree_cookie;
+    xcb_window_t * children;
+    HWND ret = XCB_NONE;
+    int children_num;
+
+    tree_cookie = xcb_query_tree(connection, parent);
+    tree = xcb_query_tree_reply(connection, tree_cookie, NULL);
+
+    if (!tree) {
+        return XCB_NONE;
+    }
+    xcb_get_geometry_reply_t* geoParent = xcb_get_geometry_reply(connection, xcb_get_geometry(connection, parent), NULL);
+    if (!geoParent)
+        return XCB_NONE;
+    RECT rcParent;
+    XcbGeo2Rect(geoParent, &rcParent);
+    free(geoParent);
+    if (!PtInRect(&rcParent, pt))
+        return XCB_NONE;
+    children = xcb_query_tree_children(tree);
+    children_num = xcb_query_tree_children_length(tree);
+    
+    for (int i = children_num-1; i>=0; i--) {
+        if (!IsWindowVisible(children[i]))
+            continue;
+        xcb_get_geometry_reply_t* geo = xcb_get_geometry_reply(connection, xcb_get_geometry(connection, children[i]), NULL);
+        if (!geo) continue;
+        RECT rc;
+        XcbGeo2Rect(geo, &rc);
+        free(geo);
+        if (PtInRect(&rc,pt)) {
+            ret = children[i];
+            break;
+        }
+    }
+    free(tree);
+    if (ret != XCB_NONE) {
+        pt.x -= rcParent.left;
+        pt.y -= rcParent.top;
+        ret = _WindowFromPoint(connection, ret, pt);
+    }
+    else {
+        ret = parent;
+    }
+    return ret;
+}
+
+HWND WindowFromPoint(POINT pt) {
+    SConnection* pConn = SConnMgr::instance()->getConnection();
+    return _WindowFromPoint(pConn->connection, pConn->screen->root, pt);
 }
 
 UINT_PTR SetTimer(HWND hWnd, UINT_PTR nIDEvent, UINT uElapse, TIMERPROC lpTimerFunc)
@@ -2995,10 +3152,8 @@ BOOL MoveWindow(HWND hWnd, int x, int y, int nWidth, int nHeight, BOOL bRepaint)
 
 BOOL IsWindowVisible(HWND hWnd)
 {
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return FALSE;
-    xcb_connection_t *connection = wndObj->mConnection->connection;
+    SConnection* conn = SConnMgr::instance()->getConnection();
+    xcb_connection_t *connection = conn->connection;
 
     xcb_get_window_attributes_cookie_t cookie = xcb_get_window_attributes(connection, hWnd);
     xcb_get_window_attributes_reply_t *reply = xcb_get_window_attributes_reply(connection, cookie, NULL);

@@ -734,7 +734,8 @@ BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, 
 
 int GetSystemScale(){
     //todo:hjx
-    return GetDpiForWindow(0)/96*100;
+    int dpi = GetDpiForWindow(0);
+    return dpi*100/96;
 }
 
 int GetSystemMetrics(int nIndex)
@@ -844,14 +845,15 @@ __time64_t _time64(__time64_t *_Time)
 
 HCURSOR LoadCursor(HINSTANCE hInstance, LPCSTR lpCursorName)
 {
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->LoadCursor(lpCursorName);
+    return CursorMgr::LoadCursor(lpCursorName);
 }
 
 BOOL DestroyCursor(HCURSOR hCursor)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->DestroyCursor(hCursor);
+    BOOL bRet = conn->DestroyCursor(hCursor);
+    if(!bRet) return FALSE;
+    return CursorMgr::DestroyCursor(hCursor);
 }
 
 HCURSOR SetCursor(HCURSOR hCursor)

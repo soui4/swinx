@@ -1,4 +1,4 @@
-﻿#include "nativewnd.h"
+﻿#include "../nativewnd.h"
 #include "../tostring.hpp"
 #include "cmnctl32.h"
 #include <unordered_map>
@@ -195,7 +195,7 @@ int MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType)
     dwStyle &= ~WS_MINIMIZEBOX; // 设置窗体取消最小化按钮
     dwStyle &= ~WS_MAXIMIZEBOX; // 设置窗体取消最大化按钮
 
-    msgBoxWnd.CreateWindow(WS_EX_TOPMOST, WC_NATIVE, lpCaption, dwStyle, 0, 0, 10, 10, 0, 0, 0);
+    msgBoxWnd.CreateWindowA(WS_EX_TOPMOST, CLS_WINDOW, lpCaption, dwStyle, 0, 0, 10, 10, 0, 0, 0);
     // ShowWindow(msgBoxWnd.m_hWnd,SW_HIDE);
     SetParent(msgBoxWnd.m_hWnd, hWnd);
     msgBoxWnd.InitMsgBox(lpText, uType);

@@ -21,6 +21,8 @@ _Window::_Window(size_t extraLen)
     , objOpaque(0)
     , htCode(HTNOWHERE)
     , visualId(0)
+    , dropTarget(NULL)
+    , dragData(NULL)
 {
     invalid.hRgn = CreateRectRgn(0, 0, 0, 0);
     invalid.bErase = TRUE;
@@ -35,6 +37,13 @@ _Window::_Window(size_t extraLen)
 }
 
 _Window::~_Window() {
+    if (dropTarget)
+    {
+        dropTarget->Release();
+    }
+    if (dragData) {
+        dragData->Release();
+    }
     if (hdc)
     {
         DeleteDC(hdc);

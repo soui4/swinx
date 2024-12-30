@@ -7,6 +7,7 @@
 #include "handle.h"
 #include "sharedmem.h"
 #include <uuid/uuid.h>
+#include <xcb/xproto.h>
 
 enum _MsgType
 {
@@ -327,6 +328,45 @@ struct IpcMsg : Msg
     }
 };
 
-#define UM_STATE     (WM_INTERNAL + 1)
-#define UM_MAPNOTIFY (UM_STATE + 1)
+enum {
+    UM_STATE = (WM_INTERNAL + 1),
+    UM_MAPNOTIFY,
+    UM_XDND_DRAG_ENTER=0x400,
+    UM_XDND_DRAG_OVER,
+    UM_XDND_DRAG_LEAVE,
+    UM_XDND_DRAG_DROP,
+    UM_XDND_FINISH,
+    UM_XDND_STATUS,
+};
+
+struct DragBase {
+    HWND hFrom;
+};
+struct DragEnterData : DragBase {
+    POINTL pt;
+};
+
+struct DragEnterMsg : Msg , DragEnterData {
+    DragEnterMsg() {
+        lParam = (LPARAM)(DragEnterData*)this;
+    }
+
+    ~DragEnterMsg() {
+    }
+};
+typedef struct DragEnterData DragDropData;
+typedef struct DragEnterMsg DragDropMsg;
+
+struct DragOverData : DragBase {
+    POINTL pt;
+    DWORD dwKeyState;
+    uint32_t supported_actions;
+};
+
+struct DragOverMsg : Msg, DragOverData {
+    DragOverMsg() {
+        lParam = (LPARAM)(DragOverData*)this;
+    }
+};
+
 #endif //_UIMSG_H_

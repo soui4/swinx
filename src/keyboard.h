@@ -69,6 +69,7 @@ class SKeyboard {
     uint32_t onKeyEvent(bool bPress, xcb_keycode_t code, uint16_t state, xcb_timestamp_t ts);
     SHORT    getRepeatCount() const { return m_repeatCount; }
     void onMappingNotifyEvent(xcb_mapping_notify_event_t* event);
+    void setKeyState(uint8_t vk, BYTE state);
   protected:
     xcb_connection_t *xcb_connection();
     void updateModifiers();

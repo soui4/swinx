@@ -1,4 +1,4 @@
-﻿#include "nativewnd.h"
+﻿#include "../nativewnd.h"
 #include <menu.h>
 #include <map>
 #include <string>

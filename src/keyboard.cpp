@@ -501,6 +501,11 @@ void SKeyboard::onMappingNotifyEvent(xcb_mapping_notify_event_t* event)
     updateModifiers();
 }
 
+void SKeyboard::setKeyState(uint8_t vk, BYTE state)
+{
+    m_byKeyboardState[vk] = state;
+}
+
 void SKeyboard::updateModifiers()
 {
     // The core protocol does not provide a convenient way to determine the mapping

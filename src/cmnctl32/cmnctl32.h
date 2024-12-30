@@ -1,12 +1,11 @@
 ﻿#ifndef _CMNCTL32_H__
 #define _CMNCTL32_H__
 
-#include "nativewnd.h"
+#include "../nativewnd.h"
 
 class CControl : public CNativeWnd{
-  BOOL m_bAutoFree;
   public:
-    CControl(BOOL bAutoFree):m_bAutoFree(bAutoFree){};
+    CControl(BOOL bAutoFree):CNativeWnd(bAutoFree){};
     virtual ~CControl(){};
     void DrawText(HDC dc, LPCSTR lpText, RECT *rc, UINT format = DT_CENTER | DT_VCENTER)
     {
@@ -18,12 +17,6 @@ class CControl : public CNativeWnd{
     }
     void DrawIcon(HDC dc, HICON hBitmap, RECT *rc)
     {
-
-    }
-  protected:
-    void OnFinalMessage(HWND hWnd) override{
-      if(m_bAutoFree)
-        delete this;
     }
 };
 

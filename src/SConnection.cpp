@@ -11,11 +11,15 @@
 #include <algorithm>
 #include <sstream>
 #include <string>
-
+#include <math.h>
+#include "cursormgr.h"
 #include "uimsg.h"
-#include "cursors.hpp"
 #include "keyboard.h"
+#include "SClipboard.h"
+#include "SDragdrop.h"
 #include "tostring.hpp"
+#include "clsmgr.h"
+#include "wndobj.h"
 #include "log.h"
 #define kLogTag "SConnection"
 
@@ -216,8 +220,7 @@ SConnection::SConnection(int screenNum)
     }
     m_tid = GetCurrentThreadId();
 
-    atoms.Init(connection,screenNum);
-
+    atoms.Init(connection,screenNum);    
     m_tsDoubleSpan = GetDoubleClickSpan(connection, screen);
 
     m_bQuit = false;
@@ -242,9 +245,11 @@ SConnection::SConnection(int screenNum)
     m_evtSync = CreateEventA(nullptr, FALSE, FALSE, nullptr);
     m_trdEvtReader = std::move(std::thread(std::bind(&readProc, this)));
 
+    
     m_keyboard = new SKeyboard(this);
-    m_clipboard = new SClipboard(this);
     m_trayIconMgr = new STrayIconMgr(this);
+    m_clipboard = new SClipboard(this);
+    m_lstSelListener.push_back(m_clipboard);
 }
 
 
@@ -255,6 +260,7 @@ SConnection::~SConnection()
         return;
     }
 
+    m_lstSelListener.clear();
     delete m_keyboard;
     delete m_clipboard;
     delete m_trayIconMgr;
@@ -263,11 +269,7 @@ SConnection::~SConnection()
         xcb_free_cursor(connection, it.second);
     }
     m_sysCursor.clear();
-    for (auto it : m_stdCursor)
-    {
-        DestroyIcon((HICON)it.second);
-    }
-    m_stdCursor.clear();
+
 
     delete m_deskDC;
     DeleteObject(m_deskBmp);
@@ -379,6 +381,7 @@ bool SConnection::event2Msg(bool bTimeout, UINT elapse, uint64_t ts)
                 pMsg->wParam = it.id;
                 pMsg->lParam = (LPARAM)it.proc;
                 pMsg->time = ts;
+                GetCursorPos(&pMsg->pt);
                 m_msgQueue.push_back(pMsg);
                 it.fireRemain = it.elapse;
                 bRet = true;
@@ -614,9 +617,6 @@ BOOL SConnection::GetKeyboardState(PBYTE lpKeyState)
 
 SHORT SConnection::GetAsyncKeyState(int vk)
 {
-    if (vk == VK_LBUTTON || vk == VK_MBUTTON || vk == VK_RBUTTON) {
-        return m_mouseKeyState[vk - VK_LBUTTON];
-    }
     return m_keyboard->getKeyState((BYTE)vk);
 }
 
@@ -655,6 +655,7 @@ BOOL SConnection::TranslateMessage(const MSG *pMsg)
         {
             msg->wParam += 0x20; // tolower
         }
+        GetCursorPos(&msg->pt);
         m_msgQueue.push_back(msg);
         return TRUE;
     }
@@ -760,6 +761,7 @@ void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp)
     pMsg->message = message;
     pMsg->wParam = wp;
     pMsg->lParam = lp;
+    GetCursorPos(&pMsg->pt);
     m_msgQueue.push_back(pMsg);
 }
 
@@ -772,6 +774,7 @@ void SConnection::postMsg2(BOOL bWideChar,HWND hWnd, UINT message, WPARAM wp, LP
         pMsg->message = message;
         pMsg->wParam = wp;
         pMsg->lParam = lp;
+        GetCursorPos(&pMsg->pt);
         m_msgQueue.push_back(pMsg);
     }else{
         MsgW2A *pMsg = new MsgW2A(reply);
@@ -779,6 +782,7 @@ void SConnection::postMsg2(BOOL bWideChar,HWND hWnd, UINT message, WPARAM wp, LP
         pMsg->orgMsg.wParam = wp;
         pMsg->orgMsg.lParam = lp;
         pMsg->hwnd = hWnd;
+        GetCursorPos(&pMsg->pt);
         m_msgQueue.push_back(pMsg);
     }
 }
@@ -856,6 +860,94 @@ void SConnection::SetCaretBlinkTime(UINT blinkTime) {
     m_caretBlinkTime = blinkTime;
 }
 
+
+void SConnection::AddSelectionListener(ISelectionListener* pListener)
+{
+    for (auto it : m_lstSelListener)
+        if (it == pListener)
+            return;
+    m_lstSelListener.push_back(pListener);
+}
+
+void SConnection::RemoveSelectionListener(ISelectionListener* pListener)
+{
+    for (auto it =m_lstSelListener.begin();it!= m_lstSelListener.end();it++)
+        if (*it == pListener)
+        {
+            m_lstSelListener.erase(it);
+            return;
+        }
+}
+
+void SConnection::EnableDragDrop(HWND hWnd, BOOL enable)
+{
+    if (enable) {
+        xcb_atom_t atm = SDragDrop::xdnd_version;
+        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd,
+            atoms.XdndAware, XCB_ATOM_ATOM, 32, 1, &atm);
+    }
+    else {
+        xcb_delete_property(connection, hWnd, atoms.XdndAware);
+    }
+}
+
+void SConnection::SendXdndStatus(HWND hTarget,HWND hSource, BOOL accept, DWORD dwEffect)
+{
+    xcb_client_message_event_t response;
+    response.response_type = XCB_CLIENT_MESSAGE;
+    response.sequence = 0;
+    response.window = hSource;
+    response.format = 32;
+    response.type = atoms.XdndStatus;
+    response.data.data32[0] = hTarget;
+    response.data.data32[1] = accept?1:0; // flags
+    response.data.data32[2] = 0; // x, y
+    response.data.data32[3] = 0; // w, h
+    uint32_t action = 0;
+    switch (dwEffect) {
+    case DROPEFFECT_NONE: action = XCB_NONE;break;
+    case DROPEFFECT_MOVE: action = atoms.XdndActionMove; break;
+    case DROPEFFECT_LINK: action = atoms.XdndActionLink; break;
+    case DROPEFFECT_COPY: 
+    default:
+        action = atoms.XdndActionCopy; 
+        break;
+    }
+    response.data.data32[4] = action; // action
+    xcb_send_event(connection, false, hSource,
+        XCB_EVENT_MASK_NO_EVENT, (const char*)&response);
+}
+
+
+void SConnection::SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect)
+{
+    xcb_client_message_event_t response;
+    response.response_type = XCB_CLIENT_MESSAGE;
+    response.sequence = 0;
+    response.window = hSource;
+    response.format = 32;
+    response.type = atoms.XdndFinished;
+    response.data.data32[0] = hTarget;
+    response.data.data32[1] = accept ? 1 : 0; // flags
+    uint32_t action = 0;
+    switch (dwEffect) {
+    case DROPEFFECT_NONE: action = XCB_NONE; break;
+    case DROPEFFECT_MOVE: action = atoms.XdndActionMove; break;
+    case DROPEFFECT_LINK: action = atoms.XdndActionLink; break;
+    case DROPEFFECT_COPY:
+    default:
+        action = atoms.XdndActionCopy;
+        break;
+    }
+    response.data.data32[2] = action; // action
+    xcb_send_event(connection, false, hSource,
+        XCB_EVENT_MASK_NO_EVENT, (const char*)&response);
+}
+
+std::shared_ptr<std::vector<char>> SConnection::readXdndSelection(uint32_t fmt)
+{
+    return m_clipboard->getDataInFormat(atoms.XdndSelection,getXcbFmtAtom(fmt));
+}
 
 void SConnection::BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 {
@@ -1102,7 +1194,7 @@ HCURSOR SConnection::GetCursor() {
 HCURSOR SConnection::SetCursor(HCURSOR cursor)
 {
     if (!cursor)
-        cursor = LoadCursor(IDC_ARROW);
+        cursor = ::LoadCursor(nullptr,IDC_ARROW);
     assert(cursor);
     if (cursor == m_hCursor)
         return cursor;
@@ -1116,7 +1208,7 @@ HCURSOR SConnection::SetCursor(HCURSOR cursor)
         xcbCursor = createXcbCursor(cursor);
         if (!xcbCursor)
         {
-            // todo: print error
+            SLOG_STMW()<<"create xcb cursor failed!";
             return 0;
         }
     }
@@ -1127,164 +1219,17 @@ HCURSOR SConnection::SetCursor(HCURSOR cursor)
     return ret;
 }
 
-enum
-{
-    CIDC_NODROP = 1,
-    CIDC_MOVE   = 2,
-    CIDC_COPY   = 3,
-    CIDC_LINK   = 4,
-
-    CIDC_ARROW = 32512,
-    CIDC_IBEAM = 32513,
-    CIDC_WAIT = 32514,
-    CIDC_CROSS = 32515,
-    CIDC_UPARROW = 32516,
-    CIDC_SIZE = 32640,
-    CIDC_ICON = 32641,
-    CIDC_SIZENWSE = 32642,
-    CIDC_SIZENESW = 32643,
-    CIDC_SIZEWE = 32644,
-    CIDC_SIZENS = 32645,
-    CIDC_SIZEALL = 32646,
-    CIDC_NO = 32648,
-    CIDC_HAND = 32649,
-    CIDC_APPSTARTING = 32650,
-    CIDC_HELP = 32651,
-};
-
-struct CData
-{
-    const unsigned char *buf;
-    UINT length;
-};
-
-static bool getStdCursorCData(WORD wId, CData &data)
-{
-    bool ret = true;
-    switch (wId)
-    {
-    case CIDC_MOVE:
-        data.buf = drag_move_cur;
-        data.length = sizeof(drag_move_cur);
-        break;
-    case CIDC_COPY:
-        data.buf = drag_copy_cur;
-        data.length = sizeof(drag_copy_cur);
-        break;
-    case CIDC_LINK:
-        data.buf = drag_link_cur;
-        data.length = sizeof(drag_link_cur);
-        break;
-    case CIDC_NODROP:
-        data.buf = drag_nodrop_cur;
-        data.length = sizeof(drag_nodrop_cur);
-        break;
-    case CIDC_ARROW:
-        data.buf = ocr_normal_cur;
-        data.length = sizeof(ocr_normal_cur);
-        break;
-        ;
-    case CIDC_IBEAM:
-        data.buf = ocr_ibeam_cur;
-        data.length = sizeof(ocr_ibeam_cur);
-        break;
-        ;
-    case CIDC_WAIT:
-        data.buf = ocr_wait_cur;
-        data.length = sizeof(ocr_wait_cur);
-        break;
-    case CIDC_CROSS:
-        data.buf = ocr_cross_cur;
-        data.length = sizeof(ocr_cross_cur);
-        break;
-    case CIDC_UPARROW:
-        data.buf = ocr_up_cur;
-        data.length = sizeof(ocr_up_cur);
-        break;
-    case CIDC_SIZE:
-        data.buf = ocr_size_cur;
-        data.length = sizeof(ocr_size_cur);
-        break;
-    case CIDC_SIZEALL:
-        data.buf = ocr_sizeall_cur;
-        data.length = sizeof(ocr_sizeall_cur);
-        break;
-    case CIDC_ICON:
-        data.buf = ocr_icon_cur;
-        data.length = sizeof(ocr_icon_cur);
-        break;
-    case CIDC_SIZENWSE:
-        data.buf = ocr_sizenwse_cur;
-        data.length = sizeof(ocr_sizenwse_cur);
-        break;
-    case CIDC_SIZENESW:
-        data.buf = ocr_sizenesw_cur;
-        data.length = sizeof(ocr_sizenesw_cur);
-        break;
-    case CIDC_SIZEWE:
-        data.buf = ocr_sizewe_cur;
-        data.length = sizeof(ocr_sizewe_cur);
-        break;
-    case CIDC_SIZENS:
-        data.buf = ocr_sizens_cur;
-        data.length = sizeof(ocr_sizens_cur);
-        break;
-    case CIDC_HAND:
-        data.buf = ocr_hand_cur;
-        data.length = sizeof(ocr_hand_cur);
-        break;
-    case CIDC_HELP:
-        data.buf = ocr_help_cur;
-        data.length = sizeof(ocr_help_cur);
-        break;
-    case CIDC_APPSTARTING:
-        data.buf = ocr_appstarting_cur;
-        data.length = sizeof(ocr_appstarting_cur);
-        break;
-    default:
-        ret = false;
-        break;
-    }
-    return ret;
-}
-
-HCURSOR SConnection::LoadCursor(LPCSTR lpCursorName)
-{
-    HCURSOR ret = 0;
-    if (IS_INTRESOURCE(lpCursorName))
-    {
-        WORD wId = (WORD)(ULONG_PTR)lpCursorName;
-        if (m_stdCursor.find(wId) != m_stdCursor.end())
-            return m_stdCursor[wId];
-        CData data;
-        if (!getStdCursorCData(wId, data))
-        {
-            getStdCursorCData(CIDC_ARROW, data);
-        }
-        ret = (HCURSOR)LoadImageBuf((PBYTE)data.buf, data.length, IMAGE_CURSOR, 0, 0, LR_DEFAULTSIZE | LR_DEFAULTCOLOR);
-        assert(ret);
-        m_stdCursor.insert(std::make_pair(wId, ret));
-    }
-    else
-    {
-        ret = (HCURSOR)LoadImage(0, lpCursorName, IMAGE_CURSOR, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE | LR_DEFAULTCOLOR);
-    }
-    return ret;
-}
 
 BOOL SConnection::DestroyCursor(HCURSOR cursor)
 {
+    if(m_hCursor == cursor)
+        return FALSE;
     // look for sys cursor
     auto it = m_sysCursor.find(cursor);
     if (it == m_sysCursor.end())
         return FALSE;
-    for (auto it : m_stdCursor)
-    {
-        if (cursor == it.second)
-            return TRUE;
-    }
+    xcb_free_cursor(connection, it->second);
     m_sysCursor.erase(cursor);
-    DestroyIcon((HICON)cursor);
     return TRUE;
 }
 
@@ -1447,11 +1392,11 @@ int SConnection::GetDpi(BOOL bx) const
     }
     if (bx)
     {
-        return screen->width_in_pixels * 25.4 / screen->width_in_millimeters;
+        return floor(25.4 * screen->width_in_pixels  / screen->width_in_millimeters+0.5f);
     }
     else
     {
-        return screen->height_in_pixels * 25.4 / screen->height_in_millimeters;
+        return floor(25.4 * screen->height_in_pixels / screen->height_in_millimeters + 0.5f);
     }
 }
 
@@ -1604,18 +1549,21 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     {
         xcb_selection_request_event_t* e2 = (xcb_selection_request_event_t*)event;
         m_tsSelection = e2->time;
-        m_clipboard->handleSelectionRequest(e2);
+        for(auto it:m_lstSelListener){
+            it->handleSelectionRequest(e2);
+        }
         return false;
     }
     case XCB_SELECTION_CLEAR:
     {
         xcb_selection_clear_event_t* e2 = (xcb_selection_clear_event_t*)event;
         m_tsSelection = e2->time;
-        m_clipboard->handleSelectionClearRequest(e2);
+        m_clipboard->handleSelectionClear(e2);
         return false;
     }
     case XCB_SELECTION_NOTIFY:
     {
+        //todo:hjx
         xcb_selection_notify_event_t* e2 = (xcb_selection_notify_event_t*)event;
         m_tsSelection = e2->time;
         return false;
@@ -1780,12 +1728,14 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->message = WM_MOVE;
         pMsg->wParam = 0;
         pMsg->lParam = MAKELPARAM(pos.x, pos.y);
+        GetCursorPos(&pMsg->pt);
         m_msgQueue.push_back(pMsg);
         pMsg = new Msg;
         pMsg->hwnd = e2->window;
         pMsg->message = WM_SIZE;
         pMsg->wParam = 0;
         pMsg->lParam = MAKELPARAM(e2->width, e2->height);
+        GetCursorPos(&pMsg->pt);
         m_msgQueue.push_back(pMsg);
         pMsg = nullptr;
         break;
@@ -1821,7 +1771,143 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg->wParam = e2->data.data32[0];
             pMsg->lParam = 0;
         }
-        break;
+        else if (e2->type == atoms.XdndEnter) {
+            WndObj wndObj = WndMgr::fromHwnd(e2->window);
+            if (!wndObj)
+                break;
+            DragEnterMsg *pMsg2 = new DragEnterMsg;
+            pMsg2->hwnd = e2->window;
+            pMsg2->message = UM_XDND_DRAG_ENTER;
+            pMsg2->hFrom = e2->data.data32[0];
+            int version = (int)(e2->data.data32[1] >> 24);
+            if (version > SDragDrop::xdnd_version)
+                break;
+            SDataObjectProxy* pData = new SDataObjectProxy(this,pMsg2->hFrom);
+            if (e2->data.data32[1] & 1) {
+                xcb_get_property_cookie_t cookie = xcb_get_property(connection, false, pMsg2->hFrom,
+                    atoms.XdndTypelist, XCB_ATOM_ATOM,
+                    0, SDragDrop::xdnd_max_type);
+                xcb_get_property_reply_t* reply = xcb_get_property_reply(connection, cookie, 0);
+                if (reply && reply->type != XCB_NONE && reply->format == 32) {
+                    int length = xcb_get_property_value_length(reply) / 4;
+                    if (length > SDragDrop::xdnd_max_type)
+                        length = SDragDrop::xdnd_max_type;
+
+                    xcb_atom_t* atoms = (xcb_atom_t*)xcb_get_property_value(reply);
+                    pData->getTypeList().resize(length);
+                    for (int i = 0; i < length; ++i)
+                        pData->getTypeList()[i]= getClipFormat(atoms[i]);
+                }
+                free(reply);
+            }
+            else {
+                for (int i = 2; i < 5; i++) {
+                    if (e2->data.data32[i]) {
+                        uint32_t cf = getClipFormat(e2->data.data32[i]);
+                        if(cf)
+                            pData->getTypeList().push_back(cf);
+                    }
+                }
+            }
+            wndObj->dragData = pData;
+
+            POINT pt;
+            GetCursorPos(&pt);
+            pMsg2->DragEnterData::pt.x = pt.x;
+            pMsg2->DragEnterData::pt.y = pt.y;
+            
+            pMsg = pMsg2;
+        }
+        else if (e2->type == atoms.XdndPosition) {
+            //remove old position
+            std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+            for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++) {
+                if ((*it)->message == UM_XDND_DRAG_OVER && (*it)->hwnd == e2->window)
+                {
+                    m_msgQueue.erase(it);
+                    break;
+                }
+            }
+            WndObj wndObj = WndMgr::fromHwnd(e2->window);
+            if (!wndObj || !wndObj->dragData)
+                break;
+            SDataObjectProxy* pData = (SDataObjectProxy*)wndObj->dragData;
+            if (pData->getSource() != e2->data.data32[0])
+                break;
+            if (e2->data.data32[3] != XCB_NONE)
+                pData->m_targetTime = e2->data.data32[3];
+            DragOverMsg* pMsg2 = new DragOverMsg;
+            pMsg2->hwnd = e2->window;
+            pMsg2->message = UM_XDND_DRAG_OVER;
+            pMsg2->hFrom = e2->data.data32[0];
+            pMsg2->dwKeyState = e2->data.data32[1];
+            pMsg2->supported_actions = e2->data.data32[4];
+            pMsg2->DragOverData::pt.x = GET_X_LPARAM(e2->data.data32[2]);
+            pMsg2->DragOverData::pt.y = GET_Y_LPARAM(e2->data.data32[2]);
+            pMsg = pMsg2;
+        }
+        else if (e2->type == atoms.XdndLeave) {
+            Msg * pMsg2 = new Msg;
+            pMsg2->hwnd = e2->window;
+            pMsg2->message = UM_XDND_DRAG_LEAVE;
+            pMsg2->wParam = e2->data.data32[0];
+            pMsg = pMsg2;
+        }
+        else if (e2->type == atoms.XdndDrop) {
+            DragDropMsg* pMsg2 = new DragDropMsg;
+            pMsg2->hwnd = e2->window;
+            pMsg2->message = UM_XDND_DRAG_DROP;
+            pMsg2->hFrom = e2->data.data32[0];
+            if (e2->data.data32[4] == atoms.XdndActionMove)
+            {
+                pMsg2->wParam = DROPEFFECT_MOVE;
+            }
+            else if (e2->data.data32[4] == atoms.XdndActionCopy)
+            {
+                pMsg2->wParam = DROPEFFECT_COPY;
+            }
+            else if (e2->data.data32[4] == atoms.XdndActionLink)
+            {
+                pMsg2->wParam = DROPEFFECT_LINK;
+            }
+            else
+            {
+                pMsg2->wParam = DROPEFFECT_NONE;
+            }
+            pMsg2->DragEnterData::pt.x = GET_X_LPARAM(e2->data.data32[2]);
+            pMsg2->DragEnterData::pt.y = GET_Y_LPARAM(e2->data.data32[2]);
+            pMsg = pMsg2;
+        }
+        else if (e2->type == atoms.XdndFinished) {
+            pMsg = new Msg;
+            pMsg->hwnd = e2->window;
+            pMsg->message = UM_XDND_FINISH;
+            pMsg->wParam = e2->data.data32[1];//accept flag
+            uint32_t action = e2->data.data32[2];
+            if (action == XCB_NONE)
+                pMsg->lParam = DROPEFFECT_NONE;
+            else if (action == atoms.XdndActionLink)
+                pMsg->lParam = DROPEFFECT_LINK;
+            else if (action == atoms.XdndActionMove)
+                pMsg->lParam = DROPEFFECT_MOVE;
+            else
+                pMsg->lParam = DROPEFFECT_COPY;
+        }
+        else if (e2->type == atoms.XdndStatus) {
+            pMsg = new Msg;
+            pMsg->hwnd = e2->window;
+            pMsg->message = UM_XDND_STATUS;
+            pMsg->wParam = e2->data.data32[1];//accept flag
+            uint32_t action = e2->data.data32[4];
+            if (action == XCB_NONE)
+                pMsg->lParam = DROPEFFECT_NONE;
+            else if (action == atoms.XdndActionLink)
+                pMsg->lParam = DROPEFFECT_LINK;
+            else if (action == atoms.XdndActionMove)
+                pMsg->lParam = DROPEFFECT_MOVE;
+            else
+                pMsg->lParam = DROPEFFECT_COPY;
+        }
     }
     break;
     case XCB_BUTTON_PRESS:
@@ -1848,7 +1934,15 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                 break;
             }
             if (e2->detail <= XCB_BUTTON_INDEX_3)
-                m_mouseKeyState[e2->detail - XCB_BUTTON_INDEX_1] = 0x8000;
+            {
+                uint8_t vk = 0;
+                switch(e2->detail){
+                case XCB_BUTTON_INDEX_1:vk = VK_LBUTTON; break;
+                case XCB_BUTTON_INDEX_2:vk = VK_MBUTTON; break;
+                case XCB_BUTTON_INDEX_3:vk = VK_RBUTTON; break;
+                }
+                m_keyboard->setKeyState(vk,0x80);
+            }
             pMsg->wParam = ButtonState2Mask(e2->state);
             m_tsPrevPress = e2->time;
         }
@@ -1885,20 +1979,23 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg->pt.x = e2->event_x;
             pMsg->pt.y = e2->event_y;
             pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
+            uint8_t vk = 0;
             switch (e2->detail)
             {
             case XCB_BUTTON_INDEX_1: // left button
                 pMsg->message = WM_LBUTTONUP;
+                vk = VK_LBUTTON;
                 break;
             case XCB_BUTTON_INDEX_2:
                 pMsg->message = WM_MBUTTONUP;
+                vk = VK_MBUTTON;
                 break;
             case XCB_BUTTON_INDEX_3:
                 pMsg->message = WM_RBUTTONUP;
+                vk = VK_RBUTTON;
                 break;
             }
-            if(e2->detail <= XCB_BUTTON_INDEX_3)
-                m_mouseKeyState[e2->detail - XCB_BUTTON_INDEX_1] = 0;
+            m_keyboard->setKeyState(vk, 0);
             pMsg->wParam = ButtonState2Mask(e2->state);
         }
         break;
@@ -1974,6 +2071,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     if (pMsg)
     {
         std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+        GetCursorPos(&pMsg->pt);
         m_msgQueue.push_back(pMsg);
     }
     return ret;
@@ -2103,4 +2201,21 @@ HANDLE SConnection::SetClipboardData( UINT uFormat, HANDLE hMem) {
 UINT SConnection::RegisterClipboardFormatA(LPCSTR pszName)
 {
     return CF_MAX +  SAtoms::internAtom(connection, 0, pszName);
+}
+
+BOOL SConnection::IsDropTarget(HWND hWnd) {
+    xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, hWnd, atoms.XdndAware, XCB_GET_PROPERTY_TYPE_ANY, 0, 1024);
+    xcb_get_property_reply_t* reply = xcb_get_property_reply(connection, cookie, NULL);
+    int ret = 0;
+    if (reply) {
+        if (reply->type != XCB_NONE) {
+            char* data = (char *)xcb_get_property_value(reply);
+            if (data[0] <= SDragDrop::xdnd_version) {
+                ret = data[0];
+            }
+        }
+        free(reply);
+    }
+//    SLOG_STMD() << "IsDropTarget for " << hWnd << " ret=" << ret;
+    return ret;
 }

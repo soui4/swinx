@@ -10,12 +10,14 @@
 #include <thread>
 #include <atomic>
 #include <condition_variable>
+#include <memory>
+#include <vector>
 #include "sdc.h"
 #include "SRwLock.hpp"
 #include "uimsg.h"
 #include "atoms.h"
-#include "SClipboard.h"
 #include "STrayIconMgr.h"
+#include "cursormgr.h"
 
 struct TimerInfo
 {
@@ -31,7 +33,13 @@ struct hook_table;
 struct IEventChecker {
     virtual bool checkEvent(xcb_generic_event_t* e) const = 0;
 };
+
+struct ISelectionListener {
+  virtual void handleSelectionRequest(xcb_selection_request_event_t *e)=0;
+};
+
 class SKeyboard;
+class SClipboard;
 class SConnection {
     friend class SClipboard;
   public:
@@ -99,7 +107,7 @@ class SConnection {
 
     HCURSOR SetCursor(HCURSOR cursor);
     HCURSOR GetCursor();
-    HCURSOR LoadCursor(LPCSTR pszName);
+    //HCURSOR LoadCursor(LPCSTR pszName);
     BOOL DestroyCursor(HCURSOR cursor);
 
     void SetTimerBlock(bool bBlock)
@@ -136,6 +144,8 @@ class SConnection {
         return m_hFocus;
     }
     HWND SetFocus(HWND hWnd);
+
+    BOOL IsDropTarget(HWND hWnd);
   public:
       struct CaretInfo {
           HWND hOwner;
@@ -184,6 +194,31 @@ public:
   public:
       bool hasXFixes() const { return xfixes_first_event > 0; }
       STrayIconMgr* GetTrayIconMgr() { return m_trayIconMgr; }
+
+      void AddSelectionListener(ISelectionListener* pListener);
+      void RemoveSelectionListener(ISelectionListener* pListener);
+      void EnableDragDrop(HWND hWnd, BOOL enable);
+      void SendXdndStatus(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect);
+      void SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect);
+      xcb_atom_t getXcbFmtAtom(UINT uFormat)
+      {
+          switch (uFormat) {
+          case CF_TEXT: return atoms.UTF8_STRING;
+          case CF_UNICODETEXT: return atoms.UTF8_STRING;
+          default:
+              if (uFormat > CF_MAX) {
+                  return uFormat - CF_MAX;
+              }
+          }
+          return 0;
+      }
+      uint32_t getClipFormat(xcb_atom_t atom) {
+          if (atom == atoms.UTF8_STRING)
+              return CF_TEXT;
+          else
+              return 0;//todo:hjx
+      }
+      std::shared_ptr< std::vector<char>> readXdndSelection(uint32_t fmt);
   public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);
@@ -252,7 +287,6 @@ public:
     HWND m_hWndActive;
     HWND m_hFocus;
     std::map<HCURSOR, xcb_cursor_t> m_sysCursor;
-    std::map<WORD, HCURSOR> m_stdCursor;
 
     SKeyboard *m_keyboard;
     SClipboard* m_clipboard;
@@ -264,11 +298,11 @@ public:
 
     CaretInfo m_caretInfo;
     UINT m_caretBlinkTime = TS_CARET;
-    SHORT m_mouseKeyState[4] = { 0 };
-
     BOOL m_bComposited = FALSE;
     RECT m_rcWorkArea = { 0 };
     uint32_t xfixes_first_event = 0;
+
+    std::list<ISelectionListener*> m_lstSelListener;
 };
 
 class SConnMgr {
