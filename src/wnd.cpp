@@ -3852,3 +3852,9 @@ BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc,   LPARAM lParam
 ) {
     return WndMgr::enumWindows(lpEnumFunc, lParam);
 }
+
+BOOL WINAPI FlashWindow(HWND hWnd, BOOL bInvert)
+{
+    //todo:hjx
+    return FALSE;
+}

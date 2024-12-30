@@ -1,25 +1,30 @@
 ﻿#ifndef _MENU_H__
 #define _MENU_H__
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif //__cplusplus
+
 #ifndef WINUSERAPI
 #define WINUSERAPI
 #endif
 
-typedef struct tagMENUITEMINFO
-{
-    UINT cbSize;
-    UINT fMask;
-    UINT fType;
-    UINT fState;
-    UINT wID;
-    HMENU hSubMenu;
-    HBITMAP hbmpChecked;
-    HBITMAP hbmpUnchecked;
-    ULONG_PTR dwItemData;
-    LPSTR dwTypeData;
-    UINT cch;
-    HBITMAP hbmpItem;
-} MENUITEMINFO, *LPMENUITEMINFO, *const LPCMENUITEMINFO;
+    typedef struct tagMENUITEMINFO
+    {
+        UINT cbSize;
+        UINT fMask;
+        UINT fType;
+        UINT fState;
+        UINT wID;
+        HMENU hSubMenu;
+        HBITMAP hbmpChecked;
+        HBITMAP hbmpUnchecked;
+        ULONG_PTR dwItemData;
+        LPSTR dwTypeData;
+        UINT cch;
+        HBITMAP hbmpItem;
+    } MENUITEMINFO, *LPMENUITEMINFO, *const LPCMENUITEMINFO;
 
 #define MIIM_BITMAP     0x00000080  // 检索或设置 hbmpItem 成员。
 #define MIIM_CHECKMARKS 0x00000008  // 检索或设置 hbmpChecked 和 hbmpUnchecked 成员。
@@ -41,59 +46,59 @@ typedef struct tagMENUITEMINFO
 #define MFT_SEPARATOR    0x00000800L // 指定菜单项是分隔符。 菜单项分隔符显示为水平分隔线。 忽略 dwTypeData 和 cch 成员。 此值仅在下拉菜单、子菜单或快捷菜单中有效。
 #define MFT_STRING       0x00000000L // 使用文本字符串显示菜单项。 dwTypeData 成员是指向以 null 结尾的字符串的指针，cch 成员是字符串的长度。MFT_STRING 替换为 MIIM_STRING。
 
-WINUSERAPI
-HMENU
-WINAPI
-CreatePopupMenu(VOID);
+    WINUSERAPI
+    HMENU
+    WINAPI
+    CreatePopupMenu(VOID);
 
-WINUSERAPI
-BOOL WINAPI DestroyMenu(HMENU hMenu);
+    WINUSERAPI
+    BOOL WINAPI DestroyMenu(HMENU hMenu);
 
-WINUSERAPI
-DWORD
-WINAPI
-CheckMenuItem(HMENU hMenu, UINT uIDCheckItem, UINT uCheck);
+    WINUSERAPI
+    DWORD
+    WINAPI
+    CheckMenuItem(HMENU hMenu, UINT uIDCheckItem, UINT uCheck);
 
-WINUSERAPI
-BOOL WINAPI EnableMenuItem(HMENU hMenu, UINT uIDEnableItem, UINT uEnable);
+    WINUSERAPI
+    BOOL WINAPI EnableMenuItem(HMENU hMenu, UINT uIDEnableItem, UINT uEnable);
 
-WINUSERAPI
-HMENU
-WINAPI
-GetSubMenu(HMENU hMenu, int nPos);
+    WINUSERAPI
+    HMENU
+    WINAPI
+    GetSubMenu(HMENU hMenu, int nPos);
 
-WINUSERAPI
-UINT WINAPI GetMenuItemID(HMENU hMenu, int nPos);
+    WINUSERAPI
+    UINT WINAPI GetMenuItemID(HMENU hMenu, int nPos);
 
-WINUSERAPI
-BOOL WINAPI InsertMenuItem(HMENU hmenu, UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi);
+    WINUSERAPI
+    BOOL WINAPI InsertMenuItem(HMENU hmenu, UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi);
 
-WINUSERAPI
-BOOL WINAPI SetMenuItemInfo(HMENU hmenu, UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi);
+    WINUSERAPI
+    BOOL WINAPI SetMenuItemInfo(HMENU hmenu, UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi);
 
-WINUSERAPI
-BOOL WINAPI GetMenuItemInfo(HMENU hmenu, UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi);
+    WINUSERAPI
+    BOOL WINAPI GetMenuItemInfo(HMENU hmenu, UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi);
 
-WINUSERAPI
-int WINAPI GetMenuItemCount(HMENU hMenu);
+    WINUSERAPI
+    int WINAPI GetMenuItemCount(HMENU hMenu);
 
-WINUSERAPI
-BOOL WINAPI InsertMenuA(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCSTR lpNewItem);
+    WINUSERAPI
+    BOOL WINAPI InsertMenuA(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCSTR lpNewItem);
 
-WINUSERAPI
-BOOL WINAPI InsertMenuW(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem);
+    WINUSERAPI
+    BOOL WINAPI InsertMenuW(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem);
 
-WINUSERAPI
-BOOL WINAPI AppendMenuA(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCSTR lpNewItem);
+    WINUSERAPI
+    BOOL WINAPI AppendMenuA(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCSTR lpNewItem);
 
-WINUSERAPI
-BOOL WINAPI AppendMenuW(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem);
+    WINUSERAPI
+    BOOL WINAPI AppendMenuW(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem);
 
-WINUSERAPI
-BOOL WINAPI ModifyMenuA(HMENU hMnu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCSTR lpNewItem);
+    WINUSERAPI
+    BOOL WINAPI ModifyMenuA(HMENU hMnu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCSTR lpNewItem);
 
-WINUSERAPI
-BOOL WINAPI ModifyMenuW(HMENU hMnu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem);
+    WINUSERAPI
+    BOOL WINAPI ModifyMenuW(HMENU hMnu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem);
 
 #ifdef UNICODE
 #define InsertMenu InsertMenuW
@@ -103,22 +108,22 @@ BOOL WINAPI ModifyMenuW(HMENU hMnu, UINT uPosition, UINT uFlags, UINT_PTR uIDNew
 #define InsertMenu InsertMenuA
 #define AppendMenu AppendMenuA
 #define ModifyMenu ModifyMenuA
-#endif//UNICDOE
+#endif // UNICDOE
 
-WINUSERAPI
-BOOL WINAPI RemoveMenu(HMENU hMenu, UINT uPosition, UINT uFlags);
+    WINUSERAPI
+    BOOL WINAPI RemoveMenu(HMENU hMenu, UINT uPosition, UINT uFlags);
 
-WINUSERAPI
-BOOL WINAPI DeleteMenu(HMENU hMenu, UINT uPosition, UINT uFlags);
+    WINUSERAPI
+    BOOL WINAPI DeleteMenu(HMENU hMenu, UINT uPosition, UINT uFlags);
 
-WINUSERAPI
-BOOL WINAPI SetMenuItemBitmaps(HMENU hMenu, UINT uPosition, UINT uFlags, HBITMAP hBitmapUnchecked, HBITMAP hBitmapChecked);
+    WINUSERAPI
+    BOOL WINAPI SetMenuItemBitmaps(HMENU hMenu, UINT uPosition, UINT uFlags, HBITMAP hBitmapUnchecked, HBITMAP hBitmapChecked);
 
-WINUSERAPI
-LONG WINAPI GetMenuCheckMarkDimensions(VOID);
+    WINUSERAPI
+    LONG WINAPI GetMenuCheckMarkDimensions(VOID);
 
-WINUSERAPI
-BOOL WINAPI TrackPopupMenu(HMENU hMenu, UINT uFlags, int x, int y, int nReserved, HWND hWnd, CONST RECT *prcRect);
+    WINUSERAPI
+    BOOL WINAPI TrackPopupMenu(HMENU hMenu, UINT uFlags, int x, int y, int nReserved, HWND hWnd, CONST RECT *prcRect);
 
 /* return codes for WM_MENUCHAR */
 #define MNC_IGNORE  0
@@ -126,15 +131,15 @@ BOOL WINAPI TrackPopupMenu(HMENU hMenu, UINT uFlags, int x, int y, int nReserved
 #define MNC_EXECUTE 2
 #define MNC_SELECT  3
 
-typedef struct tagTPMPARAMS
-{
-    UINT cbSize;    /* Size of structure */
-    RECT rcExclude; /* Screen coordinates of rectangle to exclude when positioning */
-} TPMPARAMS;
-typedef TPMPARAMS FAR *LPTPMPARAMS;
+    typedef struct tagTPMPARAMS
+    {
+        UINT cbSize;    /* Size of structure */
+        RECT rcExclude; /* Screen coordinates of rectangle to exclude when positioning */
+    } TPMPARAMS;
+    typedef TPMPARAMS FAR *LPTPMPARAMS;
 
-WINUSERAPI
-BOOL WINAPI TrackPopupMenuEx(HMENU, UINT, int, int, HWND, LPTPMPARAMS);
+    WINUSERAPI
+    BOOL WINAPI TrackPopupMenuEx(HMENU, UINT, int, int, HWND, LPTPMPARAMS);
 
 #define MNS_NOCHECK     0x80000000
 #define MNS_MODELESS    0x40000000
@@ -150,33 +155,38 @@ BOOL WINAPI TrackPopupMenuEx(HMENU, UINT, int, int, HWND, LPTPMPARAMS);
 #define MIM_STYLE           0x00000010
 #define MIM_APPLYTOSUBMENUS 0x80000000
 
-typedef struct tagMENUINFO
-{
-    DWORD cbSize;
-    DWORD fMask;
-    DWORD dwStyle;
-    UINT cyMax;
-    HBRUSH hbrBack;
-    DWORD dwContextHelpID;
-    ULONG_PTR dwMenuData;
-} MENUINFO, FAR *LPMENUINFO;
-typedef MENUINFO CONST FAR *LPCMENUINFO;
+    typedef struct tagMENUINFO
+    {
+        DWORD cbSize;
+        DWORD fMask;
+        DWORD dwStyle;
+        UINT cyMax;
+        HBRUSH hbrBack;
+        DWORD dwContextHelpID;
+        ULONG_PTR dwMenuData;
+    } MENUINFO, FAR *LPMENUINFO;
+    typedef MENUINFO CONST FAR *LPCMENUINFO;
 
-WINUSERAPI
-BOOL WINAPI GetMenuInfo(HMENU, LPMENUINFO);
+    WINUSERAPI
+    BOOL WINAPI GetMenuInfo(HMENU, LPMENUINFO);
 
-WINUSERAPI
-BOOL WINAPI SetMenuInfo(HMENU, LPCMENUINFO);
+    WINUSERAPI
+    BOOL WINAPI SetMenuInfo(HMENU, LPCMENUINFO);
 
-WINUSERAPI
-BOOL WINAPI SetMenuContextHelpId(HMENU hMenu, DWORD dwHelpID);
+    WINUSERAPI
+    BOOL WINAPI SetMenuContextHelpId(HMENU hMenu, DWORD dwHelpID);
 
-WINUSERAPI
-DWORD WINAPI GetMenuContextHelpId(HMENU hMenu);
+    WINUSERAPI
+    DWORD WINAPI GetMenuContextHelpId(HMENU hMenu);
 
-WINUSERAPI
-BOOL WINAPI IsMenu(HMENU hMenu);
+    WINUSERAPI
+    BOOL WINAPI IsMenu(HMENU hMenu);
 
-WINUSERAPI
-BOOL WINAPI CheckMenuRadioItem(HMENU hmenu, UINT first, UINT last, UINT check, UINT flags);
+    WINUSERAPI
+    BOOL WINAPI CheckMenuRadioItem(HMENU hmenu, UINT first, UINT last, UINT check, UINT flags);
+
+#ifdef __cplusplus
+}
+#endif //__cplusplus
+
 #endif

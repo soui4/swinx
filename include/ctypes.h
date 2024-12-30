@@ -50,6 +50,9 @@
 #define _Out_writes_to_opt_(x,y)
 #define __RPC__deref_opt_inout_opt
 
+#define __RPC__deref_out
+
+
 #ifndef _INTPTR_T
 #ifndef __intptr_t_defined
 typedef __INTPTR_TYPE__ intptr_t;

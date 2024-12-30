@@ -415,6 +415,7 @@ extern "C"
 
     BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam );
 
+    BOOL WINAPI FlashWindow(HWND hWnd, BOOL bInvert);
 #ifdef __cplusplus
 }
 #endif //__cplusplus

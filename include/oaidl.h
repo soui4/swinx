@@ -2,6 +2,140 @@
 #define _OAIDL_H_
 #include <unknwn.h>
 
+/* Forward Declarations */
+
+#ifndef __ICreateTypeInfo_FWD_DEFINED__
+#define __ICreateTypeInfo_FWD_DEFINED__
+typedef interface ICreateTypeInfo ICreateTypeInfo;
+
+#endif /* __ICreateTypeInfo_FWD_DEFINED__ */
+
+#ifndef __ICreateTypeInfo2_FWD_DEFINED__
+#define __ICreateTypeInfo2_FWD_DEFINED__
+typedef interface ICreateTypeInfo2 ICreateTypeInfo2;
+
+#endif /* __ICreateTypeInfo2_FWD_DEFINED__ */
+
+#ifndef __ICreateTypeLib_FWD_DEFINED__
+#define __ICreateTypeLib_FWD_DEFINED__
+typedef interface ICreateTypeLib ICreateTypeLib;
+
+#endif /* __ICreateTypeLib_FWD_DEFINED__ */
+
+#ifndef __ICreateTypeLib2_FWD_DEFINED__
+#define __ICreateTypeLib2_FWD_DEFINED__
+typedef interface ICreateTypeLib2 ICreateTypeLib2;
+
+#endif /* __ICreateTypeLib2_FWD_DEFINED__ */
+
+#ifndef __IDispatch_FWD_DEFINED__
+#define __IDispatch_FWD_DEFINED__
+typedef interface IDispatch IDispatch;
+
+#endif /* __IDispatch_FWD_DEFINED__ */
+
+#ifndef __IEnumVARIANT_FWD_DEFINED__
+#define __IEnumVARIANT_FWD_DEFINED__
+typedef interface IEnumVARIANT IEnumVARIANT;
+
+#endif /* __IEnumVARIANT_FWD_DEFINED__ */
+
+#ifndef __ITypeComp_FWD_DEFINED__
+#define __ITypeComp_FWD_DEFINED__
+typedef interface ITypeComp ITypeComp;
+
+#endif /* __ITypeComp_FWD_DEFINED__ */
+
+#ifndef __ITypeInfo_FWD_DEFINED__
+#define __ITypeInfo_FWD_DEFINED__
+typedef interface ITypeInfo ITypeInfo;
+
+#endif /* __ITypeInfo_FWD_DEFINED__ */
+
+#ifndef __ITypeInfo2_FWD_DEFINED__
+#define __ITypeInfo2_FWD_DEFINED__
+typedef interface ITypeInfo2 ITypeInfo2;
+
+#endif /* __ITypeInfo2_FWD_DEFINED__ */
+
+#ifndef __ITypeLib_FWD_DEFINED__
+#define __ITypeLib_FWD_DEFINED__
+typedef interface ITypeLib ITypeLib;
+
+#endif /* __ITypeLib_FWD_DEFINED__ */
+
+#ifndef __ITypeLib2_FWD_DEFINED__
+#define __ITypeLib2_FWD_DEFINED__
+typedef interface ITypeLib2 ITypeLib2;
+
+#endif /* __ITypeLib2_FWD_DEFINED__ */
+
+#ifndef __ITypeChangeEvents_FWD_DEFINED__
+#define __ITypeChangeEvents_FWD_DEFINED__
+typedef interface ITypeChangeEvents ITypeChangeEvents;
+
+#endif /* __ITypeChangeEvents_FWD_DEFINED__ */
+
+#ifndef __IErrorInfo_FWD_DEFINED__
+#define __IErrorInfo_FWD_DEFINED__
+typedef interface IErrorInfo IErrorInfo;
+
+#endif /* __IErrorInfo_FWD_DEFINED__ */
+
+#ifndef __ICreateErrorInfo_FWD_DEFINED__
+#define __ICreateErrorInfo_FWD_DEFINED__
+typedef interface ICreateErrorInfo ICreateErrorInfo;
+
+#endif /* __ICreateErrorInfo_FWD_DEFINED__ */
+
+#ifndef __ISupportErrorInfo_FWD_DEFINED__
+#define __ISupportErrorInfo_FWD_DEFINED__
+typedef interface ISupportErrorInfo ISupportErrorInfo;
+
+#endif /* __ISupportErrorInfo_FWD_DEFINED__ */
+
+#ifndef __ITypeFactory_FWD_DEFINED__
+#define __ITypeFactory_FWD_DEFINED__
+typedef interface ITypeFactory ITypeFactory;
+
+#endif /* __ITypeFactory_FWD_DEFINED__ */
+
+#ifndef __ITypeMarshal_FWD_DEFINED__
+#define __ITypeMarshal_FWD_DEFINED__
+typedef interface ITypeMarshal ITypeMarshal;
+
+#endif /* __ITypeMarshal_FWD_DEFINED__ */
+
+#ifndef __IRecordInfo_FWD_DEFINED__
+#define __IRecordInfo_FWD_DEFINED__
+typedef interface IRecordInfo IRecordInfo;
+
+#endif /* __IRecordInfo_FWD_DEFINED__ */
+
+#ifndef __IErrorLog_FWD_DEFINED__
+#define __IErrorLog_FWD_DEFINED__
+typedef interface IErrorLog IErrorLog;
+
+#endif /* __IErrorLog_FWD_DEFINED__ */
+
+#ifndef __IPropertyBag_FWD_DEFINED__
+#define __IPropertyBag_FWD_DEFINED__
+typedef interface IPropertyBag IPropertyBag;
+
+#endif /* __IPropertyBag_FWD_DEFINED__ */
+
+#ifndef __ITypeLibRegistrationReader_FWD_DEFINED__
+#define __ITypeLibRegistrationReader_FWD_DEFINED__
+typedef interface ITypeLibRegistrationReader ITypeLibRegistrationReader;
+
+#endif /* __ITypeLibRegistrationReader_FWD_DEFINED__ */
+
+#ifndef __ITypeLibRegistration_FWD_DEFINED__
+#define __ITypeLibRegistration_FWD_DEFINED__
+typedef interface ITypeLibRegistration ITypeLibRegistration;
+
+#endif /* __ITypeLibRegistration_FWD_DEFINED__ */
+
 /* 0 == FALSE, -1 == TRUE */
 typedef short VARIANT_BOOL;
 typedef VARIANT_BOOL _VARIANT_BOOL;

@@ -3,6 +3,603 @@
 
 #include <unknwn.h>
 
+
+/* Forward Declarations */
+
+#ifndef __IMarshal_FWD_DEFINED__
+#define __IMarshal_FWD_DEFINED__
+typedef interface IMarshal IMarshal;
+
+#endif /* __IMarshal_FWD_DEFINED__ */
+
+#ifndef __INoMarshal_FWD_DEFINED__
+#define __INoMarshal_FWD_DEFINED__
+typedef interface INoMarshal INoMarshal;
+
+#endif /* __INoMarshal_FWD_DEFINED__ */
+
+#ifndef __IAgileObject_FWD_DEFINED__
+#define __IAgileObject_FWD_DEFINED__
+typedef interface IAgileObject IAgileObject;
+
+#endif /* __IAgileObject_FWD_DEFINED__ */
+
+#ifndef __IActivationFilter_FWD_DEFINED__
+#define __IActivationFilter_FWD_DEFINED__
+typedef interface IActivationFilter IActivationFilter;
+
+#endif /* __IActivationFilter_FWD_DEFINED__ */
+
+#ifndef __IMarshal2_FWD_DEFINED__
+#define __IMarshal2_FWD_DEFINED__
+typedef interface IMarshal2 IMarshal2;
+
+#endif /* __IMarshal2_FWD_DEFINED__ */
+
+#ifndef __IMalloc_FWD_DEFINED__
+#define __IMalloc_FWD_DEFINED__
+typedef interface IMalloc IMalloc;
+
+#endif /* __IMalloc_FWD_DEFINED__ */
+
+#ifndef __IStdMarshalInfo_FWD_DEFINED__
+#define __IStdMarshalInfo_FWD_DEFINED__
+typedef interface IStdMarshalInfo IStdMarshalInfo;
+
+#endif /* __IStdMarshalInfo_FWD_DEFINED__ */
+
+#ifndef __IExternalConnection_FWD_DEFINED__
+#define __IExternalConnection_FWD_DEFINED__
+typedef interface IExternalConnection IExternalConnection;
+
+#endif /* __IExternalConnection_FWD_DEFINED__ */
+
+#ifndef __IMultiQI_FWD_DEFINED__
+#define __IMultiQI_FWD_DEFINED__
+typedef interface IMultiQI IMultiQI;
+
+#endif /* __IMultiQI_FWD_DEFINED__ */
+
+#ifndef __AsyncIMultiQI_FWD_DEFINED__
+#define __AsyncIMultiQI_FWD_DEFINED__
+typedef interface AsyncIMultiQI AsyncIMultiQI;
+
+#endif /* __AsyncIMultiQI_FWD_DEFINED__ */
+
+#ifndef __IInternalUnknown_FWD_DEFINED__
+#define __IInternalUnknown_FWD_DEFINED__
+typedef interface IInternalUnknown IInternalUnknown;
+
+#endif /* __IInternalUnknown_FWD_DEFINED__ */
+
+#ifndef __IEnumUnknown_FWD_DEFINED__
+#define __IEnumUnknown_FWD_DEFINED__
+typedef interface IEnumUnknown IEnumUnknown;
+
+#endif /* __IEnumUnknown_FWD_DEFINED__ */
+
+#ifndef __IEnumString_FWD_DEFINED__
+#define __IEnumString_FWD_DEFINED__
+typedef interface IEnumString IEnumString;
+
+#endif /* __IEnumString_FWD_DEFINED__ */
+
+#ifndef __ISequentialStream_FWD_DEFINED__
+#define __ISequentialStream_FWD_DEFINED__
+typedef interface ISequentialStream ISequentialStream;
+
+#endif /* __ISequentialStream_FWD_DEFINED__ */
+
+#ifndef __IStream_FWD_DEFINED__
+#define __IStream_FWD_DEFINED__
+typedef interface IStream IStream;
+
+#endif /* __IStream_FWD_DEFINED__ */
+
+#ifndef __IRpcChannelBuffer_FWD_DEFINED__
+#define __IRpcChannelBuffer_FWD_DEFINED__
+typedef interface IRpcChannelBuffer IRpcChannelBuffer;
+
+#endif /* __IRpcChannelBuffer_FWD_DEFINED__ */
+
+#ifndef __IRpcChannelBuffer2_FWD_DEFINED__
+#define __IRpcChannelBuffer2_FWD_DEFINED__
+typedef interface IRpcChannelBuffer2 IRpcChannelBuffer2;
+
+#endif /* __IRpcChannelBuffer2_FWD_DEFINED__ */
+
+#ifndef __IAsyncRpcChannelBuffer_FWD_DEFINED__
+#define __IAsyncRpcChannelBuffer_FWD_DEFINED__
+typedef interface IAsyncRpcChannelBuffer IAsyncRpcChannelBuffer;
+
+#endif /* __IAsyncRpcChannelBuffer_FWD_DEFINED__ */
+
+#ifndef __IRpcChannelBuffer3_FWD_DEFINED__
+#define __IRpcChannelBuffer3_FWD_DEFINED__
+typedef interface IRpcChannelBuffer3 IRpcChannelBuffer3;
+
+#endif /* __IRpcChannelBuffer3_FWD_DEFINED__ */
+
+#ifndef __IRpcSyntaxNegotiate_FWD_DEFINED__
+#define __IRpcSyntaxNegotiate_FWD_DEFINED__
+typedef interface IRpcSyntaxNegotiate IRpcSyntaxNegotiate;
+
+#endif /* __IRpcSyntaxNegotiate_FWD_DEFINED__ */
+
+#ifndef __IRpcProxyBuffer_FWD_DEFINED__
+#define __IRpcProxyBuffer_FWD_DEFINED__
+typedef interface IRpcProxyBuffer IRpcProxyBuffer;
+
+#endif /* __IRpcProxyBuffer_FWD_DEFINED__ */
+
+#ifndef __IRpcStubBuffer_FWD_DEFINED__
+#define __IRpcStubBuffer_FWD_DEFINED__
+typedef interface IRpcStubBuffer IRpcStubBuffer;
+
+#endif /* __IRpcStubBuffer_FWD_DEFINED__ */
+
+#ifndef __IPSFactoryBuffer_FWD_DEFINED__
+#define __IPSFactoryBuffer_FWD_DEFINED__
+typedef interface IPSFactoryBuffer IPSFactoryBuffer;
+
+#endif /* __IPSFactoryBuffer_FWD_DEFINED__ */
+
+#ifndef __IChannelHook_FWD_DEFINED__
+#define __IChannelHook_FWD_DEFINED__
+typedef interface IChannelHook IChannelHook;
+
+#endif /* __IChannelHook_FWD_DEFINED__ */
+
+#ifndef __IClientSecurity_FWD_DEFINED__
+#define __IClientSecurity_FWD_DEFINED__
+typedef interface IClientSecurity IClientSecurity;
+
+#endif /* __IClientSecurity_FWD_DEFINED__ */
+
+#ifndef __IServerSecurity_FWD_DEFINED__
+#define __IServerSecurity_FWD_DEFINED__
+typedef interface IServerSecurity IServerSecurity;
+
+#endif /* __IServerSecurity_FWD_DEFINED__ */
+
+#ifndef __IRpcOptions_FWD_DEFINED__
+#define __IRpcOptions_FWD_DEFINED__
+typedef interface IRpcOptions IRpcOptions;
+
+#endif /* __IRpcOptions_FWD_DEFINED__ */
+
+#ifndef __IGlobalOptions_FWD_DEFINED__
+#define __IGlobalOptions_FWD_DEFINED__
+typedef interface IGlobalOptions IGlobalOptions;
+
+#endif /* __IGlobalOptions_FWD_DEFINED__ */
+
+#ifndef __ISurrogate_FWD_DEFINED__
+#define __ISurrogate_FWD_DEFINED__
+typedef interface ISurrogate ISurrogate;
+
+#endif /* __ISurrogate_FWD_DEFINED__ */
+
+#ifndef __IGlobalInterfaceTable_FWD_DEFINED__
+#define __IGlobalInterfaceTable_FWD_DEFINED__
+typedef interface IGlobalInterfaceTable IGlobalInterfaceTable;
+
+#endif /* __IGlobalInterfaceTable_FWD_DEFINED__ */
+
+#ifndef __ISynchronize_FWD_DEFINED__
+#define __ISynchronize_FWD_DEFINED__
+typedef interface ISynchronize ISynchronize;
+
+#endif /* __ISynchronize_FWD_DEFINED__ */
+
+#ifndef __ISynchronizeHandle_FWD_DEFINED__
+#define __ISynchronizeHandle_FWD_DEFINED__
+typedef interface ISynchronizeHandle ISynchronizeHandle;
+
+#endif /* __ISynchronizeHandle_FWD_DEFINED__ */
+
+#ifndef __ISynchronizeEvent_FWD_DEFINED__
+#define __ISynchronizeEvent_FWD_DEFINED__
+typedef interface ISynchronizeEvent ISynchronizeEvent;
+
+#endif /* __ISynchronizeEvent_FWD_DEFINED__ */
+
+#ifndef __ISynchronizeContainer_FWD_DEFINED__
+#define __ISynchronizeContainer_FWD_DEFINED__
+typedef interface ISynchronizeContainer ISynchronizeContainer;
+
+#endif /* __ISynchronizeContainer_FWD_DEFINED__ */
+
+#ifndef __ISynchronizeMutex_FWD_DEFINED__
+#define __ISynchronizeMutex_FWD_DEFINED__
+typedef interface ISynchronizeMutex ISynchronizeMutex;
+
+#endif /* __ISynchronizeMutex_FWD_DEFINED__ */
+
+#ifndef __ICancelMethodCalls_FWD_DEFINED__
+#define __ICancelMethodCalls_FWD_DEFINED__
+typedef interface ICancelMethodCalls ICancelMethodCalls;
+
+#endif /* __ICancelMethodCalls_FWD_DEFINED__ */
+
+#ifndef __IAsyncManager_FWD_DEFINED__
+#define __IAsyncManager_FWD_DEFINED__
+typedef interface IAsyncManager IAsyncManager;
+
+#endif /* __IAsyncManager_FWD_DEFINED__ */
+
+#ifndef __ICallFactory_FWD_DEFINED__
+#define __ICallFactory_FWD_DEFINED__
+typedef interface ICallFactory ICallFactory;
+
+#endif /* __ICallFactory_FWD_DEFINED__ */
+
+#ifndef __IRpcHelper_FWD_DEFINED__
+#define __IRpcHelper_FWD_DEFINED__
+typedef interface IRpcHelper IRpcHelper;
+
+#endif /* __IRpcHelper_FWD_DEFINED__ */
+
+#ifndef __IReleaseMarshalBuffers_FWD_DEFINED__
+#define __IReleaseMarshalBuffers_FWD_DEFINED__
+typedef interface IReleaseMarshalBuffers IReleaseMarshalBuffers;
+
+#endif /* __IReleaseMarshalBuffers_FWD_DEFINED__ */
+
+#ifndef __IWaitMultiple_FWD_DEFINED__
+#define __IWaitMultiple_FWD_DEFINED__
+typedef interface IWaitMultiple IWaitMultiple;
+
+#endif /* __IWaitMultiple_FWD_DEFINED__ */
+
+#ifndef __IAddrTrackingControl_FWD_DEFINED__
+#define __IAddrTrackingControl_FWD_DEFINED__
+typedef interface IAddrTrackingControl IAddrTrackingControl;
+
+#endif /* __IAddrTrackingControl_FWD_DEFINED__ */
+
+#ifndef __IAddrExclusionControl_FWD_DEFINED__
+#define __IAddrExclusionControl_FWD_DEFINED__
+typedef interface IAddrExclusionControl IAddrExclusionControl;
+
+#endif /* __IAddrExclusionControl_FWD_DEFINED__ */
+
+#ifndef __IPipeByte_FWD_DEFINED__
+#define __IPipeByte_FWD_DEFINED__
+typedef interface IPipeByte IPipeByte;
+
+#endif /* __IPipeByte_FWD_DEFINED__ */
+
+#ifndef __AsyncIPipeByte_FWD_DEFINED__
+#define __AsyncIPipeByte_FWD_DEFINED__
+typedef interface AsyncIPipeByte AsyncIPipeByte;
+
+#endif /* __AsyncIPipeByte_FWD_DEFINED__ */
+
+#ifndef __IPipeLong_FWD_DEFINED__
+#define __IPipeLong_FWD_DEFINED__
+typedef interface IPipeLong IPipeLong;
+
+#endif /* __IPipeLong_FWD_DEFINED__ */
+
+#ifndef __AsyncIPipeLong_FWD_DEFINED__
+#define __AsyncIPipeLong_FWD_DEFINED__
+typedef interface AsyncIPipeLong AsyncIPipeLong;
+
+#endif /* __AsyncIPipeLong_FWD_DEFINED__ */
+
+#ifndef __IPipeDouble_FWD_DEFINED__
+#define __IPipeDouble_FWD_DEFINED__
+typedef interface IPipeDouble IPipeDouble;
+
+#endif /* __IPipeDouble_FWD_DEFINED__ */
+
+#ifndef __AsyncIPipeDouble_FWD_DEFINED__
+#define __AsyncIPipeDouble_FWD_DEFINED__
+typedef interface AsyncIPipeDouble AsyncIPipeDouble;
+
+#endif /* __AsyncIPipeDouble_FWD_DEFINED__ */
+
+#ifndef __IEnumContextProps_FWD_DEFINED__
+#define __IEnumContextProps_FWD_DEFINED__
+typedef interface IEnumContextProps IEnumContextProps;
+
+#endif /* __IEnumContextProps_FWD_DEFINED__ */
+
+#ifndef __IContext_FWD_DEFINED__
+#define __IContext_FWD_DEFINED__
+typedef interface IContext IContext;
+
+#endif /* __IContext_FWD_DEFINED__ */
+
+#ifndef __IObjContext_FWD_DEFINED__
+#define __IObjContext_FWD_DEFINED__
+typedef interface IObjContext IObjContext;
+
+#endif /* __IObjContext_FWD_DEFINED__ */
+
+#ifndef __IComThreadingInfo_FWD_DEFINED__
+#define __IComThreadingInfo_FWD_DEFINED__
+typedef interface IComThreadingInfo IComThreadingInfo;
+
+#endif /* __IComThreadingInfo_FWD_DEFINED__ */
+
+#ifndef __IProcessInitControl_FWD_DEFINED__
+#define __IProcessInitControl_FWD_DEFINED__
+typedef interface IProcessInitControl IProcessInitControl;
+
+#endif /* __IProcessInitControl_FWD_DEFINED__ */
+
+#ifndef __IFastRundown_FWD_DEFINED__
+#define __IFastRundown_FWD_DEFINED__
+typedef interface IFastRundown IFastRundown;
+
+#endif /* __IFastRundown_FWD_DEFINED__ */
+
+#ifndef __IMarshalingStream_FWD_DEFINED__
+#define __IMarshalingStream_FWD_DEFINED__
+typedef interface IMarshalingStream IMarshalingStream;
+
+#endif /* __IMarshalingStream_FWD_DEFINED__ */
+
+#ifndef __IAgileReference_FWD_DEFINED__
+#define __IAgileReference_FWD_DEFINED__
+typedef interface IAgileReference IAgileReference;
+
+#endif /* __IAgileReference_FWD_DEFINED__ */
+
+#ifndef __IMachineGlobalObjectTable_FWD_DEFINED__
+#define __IMachineGlobalObjectTable_FWD_DEFINED__
+typedef interface IMachineGlobalObjectTable IMachineGlobalObjectTable;
+
+#endif /* __IMachineGlobalObjectTable_FWD_DEFINED__ */
+
+#ifndef __ISupportAllowLowerTrustActivation_FWD_DEFINED__
+#define __ISupportAllowLowerTrustActivation_FWD_DEFINED__
+typedef interface ISupportAllowLowerTrustActivation ISupportAllowLowerTrustActivation;
+
+#endif /* __ISupportAllowLowerTrustActivation_FWD_DEFINED__ */
+
+#ifndef __IMallocSpy_FWD_DEFINED__
+#define __IMallocSpy_FWD_DEFINED__
+typedef interface IMallocSpy IMallocSpy;
+
+#endif /* __IMallocSpy_FWD_DEFINED__ */
+
+#ifndef __IBindCtx_FWD_DEFINED__
+#define __IBindCtx_FWD_DEFINED__
+typedef interface IBindCtx IBindCtx;
+
+#endif /* __IBindCtx_FWD_DEFINED__ */
+
+#ifndef __IEnumMoniker_FWD_DEFINED__
+#define __IEnumMoniker_FWD_DEFINED__
+typedef interface IEnumMoniker IEnumMoniker;
+
+#endif /* __IEnumMoniker_FWD_DEFINED__ */
+
+#ifndef __IRunnableObject_FWD_DEFINED__
+#define __IRunnableObject_FWD_DEFINED__
+typedef interface IRunnableObject IRunnableObject;
+
+#endif /* __IRunnableObject_FWD_DEFINED__ */
+
+#ifndef __IRunningObjectTable_FWD_DEFINED__
+#define __IRunningObjectTable_FWD_DEFINED__
+typedef interface IRunningObjectTable IRunningObjectTable;
+
+#endif /* __IRunningObjectTable_FWD_DEFINED__ */
+
+#ifndef __IPersist_FWD_DEFINED__
+#define __IPersist_FWD_DEFINED__
+typedef interface IPersist IPersist;
+
+#endif /* __IPersist_FWD_DEFINED__ */
+
+#ifndef __IPersistStream_FWD_DEFINED__
+#define __IPersistStream_FWD_DEFINED__
+typedef interface IPersistStream IPersistStream;
+
+#endif /* __IPersistStream_FWD_DEFINED__ */
+
+#ifndef __IMoniker_FWD_DEFINED__
+#define __IMoniker_FWD_DEFINED__
+typedef interface IMoniker IMoniker;
+
+#endif /* __IMoniker_FWD_DEFINED__ */
+
+#ifndef __IROTData_FWD_DEFINED__
+#define __IROTData_FWD_DEFINED__
+typedef interface IROTData IROTData;
+
+#endif /* __IROTData_FWD_DEFINED__ */
+
+#ifndef __IEnumSTATSTG_FWD_DEFINED__
+#define __IEnumSTATSTG_FWD_DEFINED__
+typedef interface IEnumSTATSTG IEnumSTATSTG;
+
+#endif /* __IEnumSTATSTG_FWD_DEFINED__ */
+
+#ifndef __IStorage_FWD_DEFINED__
+#define __IStorage_FWD_DEFINED__
+typedef interface IStorage IStorage;
+
+#endif /* __IStorage_FWD_DEFINED__ */
+
+#ifndef __IPersistFile_FWD_DEFINED__
+#define __IPersistFile_FWD_DEFINED__
+typedef interface IPersistFile IPersistFile;
+
+#endif /* __IPersistFile_FWD_DEFINED__ */
+
+#ifndef __IPersistStorage_FWD_DEFINED__
+#define __IPersistStorage_FWD_DEFINED__
+typedef interface IPersistStorage IPersistStorage;
+
+#endif /* __IPersistStorage_FWD_DEFINED__ */
+
+#ifndef __ILockBytes_FWD_DEFINED__
+#define __ILockBytes_FWD_DEFINED__
+typedef interface ILockBytes ILockBytes;
+
+#endif /* __ILockBytes_FWD_DEFINED__ */
+
+#ifndef __IEnumFORMATETC_FWD_DEFINED__
+#define __IEnumFORMATETC_FWD_DEFINED__
+typedef interface IEnumFORMATETC IEnumFORMATETC;
+
+#endif /* __IEnumFORMATETC_FWD_DEFINED__ */
+
+#ifndef __IEnumSTATDATA_FWD_DEFINED__
+#define __IEnumSTATDATA_FWD_DEFINED__
+typedef interface IEnumSTATDATA IEnumSTATDATA;
+
+#endif /* __IEnumSTATDATA_FWD_DEFINED__ */
+
+#ifndef __IRootStorage_FWD_DEFINED__
+#define __IRootStorage_FWD_DEFINED__
+typedef interface IRootStorage IRootStorage;
+
+#endif /* __IRootStorage_FWD_DEFINED__ */
+
+#ifndef __IAdviseSink_FWD_DEFINED__
+#define __IAdviseSink_FWD_DEFINED__
+typedef interface IAdviseSink IAdviseSink;
+
+#endif /* __IAdviseSink_FWD_DEFINED__ */
+
+#ifndef __AsyncIAdviseSink_FWD_DEFINED__
+#define __AsyncIAdviseSink_FWD_DEFINED__
+typedef interface AsyncIAdviseSink AsyncIAdviseSink;
+
+#endif /* __AsyncIAdviseSink_FWD_DEFINED__ */
+
+#ifndef __IAdviseSink2_FWD_DEFINED__
+#define __IAdviseSink2_FWD_DEFINED__
+typedef interface IAdviseSink2 IAdviseSink2;
+
+#endif /* __IAdviseSink2_FWD_DEFINED__ */
+
+#ifndef __AsyncIAdviseSink2_FWD_DEFINED__
+#define __AsyncIAdviseSink2_FWD_DEFINED__
+typedef interface AsyncIAdviseSink2 AsyncIAdviseSink2;
+
+#endif /* __AsyncIAdviseSink2_FWD_DEFINED__ */
+
+#ifndef __IDataObject_FWD_DEFINED__
+#define __IDataObject_FWD_DEFINED__
+typedef interface IDataObject IDataObject;
+
+#endif /* __IDataObject_FWD_DEFINED__ */
+
+#ifndef __IDataAdviseHolder_FWD_DEFINED__
+#define __IDataAdviseHolder_FWD_DEFINED__
+typedef interface IDataAdviseHolder IDataAdviseHolder;
+
+#endif /* __IDataAdviseHolder_FWD_DEFINED__ */
+
+#ifndef __IMessageFilter_FWD_DEFINED__
+#define __IMessageFilter_FWD_DEFINED__
+typedef interface IMessageFilter IMessageFilter;
+
+#endif /* __IMessageFilter_FWD_DEFINED__ */
+
+#ifndef __IClassActivator_FWD_DEFINED__
+#define __IClassActivator_FWD_DEFINED__
+typedef interface IClassActivator IClassActivator;
+
+#endif /* __IClassActivator_FWD_DEFINED__ */
+
+#ifndef __IFillLockBytes_FWD_DEFINED__
+#define __IFillLockBytes_FWD_DEFINED__
+typedef interface IFillLockBytes IFillLockBytes;
+
+#endif /* __IFillLockBytes_FWD_DEFINED__ */
+
+#ifndef __IProgressNotify_FWD_DEFINED__
+#define __IProgressNotify_FWD_DEFINED__
+typedef interface IProgressNotify IProgressNotify;
+
+#endif /* __IProgressNotify_FWD_DEFINED__ */
+
+#ifndef __ILayoutStorage_FWD_DEFINED__
+#define __ILayoutStorage_FWD_DEFINED__
+typedef interface ILayoutStorage ILayoutStorage;
+
+#endif /* __ILayoutStorage_FWD_DEFINED__ */
+
+#ifndef __IBlockingLock_FWD_DEFINED__
+#define __IBlockingLock_FWD_DEFINED__
+typedef interface IBlockingLock IBlockingLock;
+
+#endif /* __IBlockingLock_FWD_DEFINED__ */
+
+#ifndef __ITimeAndNoticeControl_FWD_DEFINED__
+#define __ITimeAndNoticeControl_FWD_DEFINED__
+typedef interface ITimeAndNoticeControl ITimeAndNoticeControl;
+
+#endif /* __ITimeAndNoticeControl_FWD_DEFINED__ */
+
+#ifndef __IOplockStorage_FWD_DEFINED__
+#define __IOplockStorage_FWD_DEFINED__
+typedef interface IOplockStorage IOplockStorage;
+
+#endif /* __IOplockStorage_FWD_DEFINED__ */
+
+#ifndef __IDirectWriterLock_FWD_DEFINED__
+#define __IDirectWriterLock_FWD_DEFINED__
+typedef interface IDirectWriterLock IDirectWriterLock;
+
+#endif /* __IDirectWriterLock_FWD_DEFINED__ */
+
+#ifndef __IUrlMon_FWD_DEFINED__
+#define __IUrlMon_FWD_DEFINED__
+typedef interface IUrlMon IUrlMon;
+
+#endif /* __IUrlMon_FWD_DEFINED__ */
+
+#ifndef __IForegroundTransfer_FWD_DEFINED__
+#define __IForegroundTransfer_FWD_DEFINED__
+typedef interface IForegroundTransfer IForegroundTransfer;
+
+#endif /* __IForegroundTransfer_FWD_DEFINED__ */
+
+#ifndef __IThumbnailExtractor_FWD_DEFINED__
+#define __IThumbnailExtractor_FWD_DEFINED__
+typedef interface IThumbnailExtractor IThumbnailExtractor;
+
+#endif /* __IThumbnailExtractor_FWD_DEFINED__ */
+
+#ifndef __IDummyHICONIncluder_FWD_DEFINED__
+#define __IDummyHICONIncluder_FWD_DEFINED__
+typedef interface IDummyHICONIncluder IDummyHICONIncluder;
+
+#endif /* __IDummyHICONIncluder_FWD_DEFINED__ */
+
+#ifndef __IProcessLock_FWD_DEFINED__
+#define __IProcessLock_FWD_DEFINED__
+typedef interface IProcessLock IProcessLock;
+
+#endif /* __IProcessLock_FWD_DEFINED__ */
+
+#ifndef __ISurrogateService_FWD_DEFINED__
+#define __ISurrogateService_FWD_DEFINED__
+typedef interface ISurrogateService ISurrogateService;
+
+#endif /* __ISurrogateService_FWD_DEFINED__ */
+
+#ifndef __IInitializeSpy_FWD_DEFINED__
+#define __IInitializeSpy_FWD_DEFINED__
+typedef interface IInitializeSpy IInitializeSpy;
+
+#endif /* __IInitializeSpy_FWD_DEFINED__ */
+
+#ifndef __IApartmentShutdown_FWD_DEFINED__
+#define __IApartmentShutdown_FWD_DEFINED__
+typedef interface IApartmentShutdown IApartmentShutdown;
+
+#endif /* __IApartmentShutdown_FWD_DEFINED__ */
+
 #define _COM_Outptr_
 #define __RPC__in
 #define __RPC__inout

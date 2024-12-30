@@ -1,6 +1,12 @@
 #ifndef __WINUSER_H_
 #define __WINUSER_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif //__cplusplus
+
+
 #ifndef WINVER
 #define WINVER 0x0600
 #endif
@@ -2096,5 +2102,10 @@ typedef BOOL(CALLBACK* DRAWSTATEPROC)(HDC hdc, LPARAM lData, WPARAM wData, int c
 #define DSS_RIGHT       0x8000
 
 #define CW_USEDEFAULT ((INT)0x80000000)
+
+
+#ifdef __cplusplus
+}
+#endif //__cplusplus
 
 #endif //__WINUSER_H_

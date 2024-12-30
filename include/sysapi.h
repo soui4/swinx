@@ -4,138 +4,139 @@
 #include <unistd.h>
 #include <malloc.h>
 
-typedef struct RTL_CRITICAL_SECTION
+#ifdef __cplusplus 
+extern "C"
 {
-    void *pMutex;
-} RTL_CRITICAL_SECTION;
+#endif //__cplusplus
 
-typedef RTL_CRITICAL_SECTION CRITICAL_SECTION;
-typedef CRITICAL_SECTION *PCRITICAL_SECTION;
-typedef CRITICAL_SECTION *LPCRITICAL_SECTION;
+    typedef struct RTL_CRITICAL_SECTION
+    {
+        void *pMutex;
+    } RTL_CRITICAL_SECTION;
 
-VOID WINAPI InitializeCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
+    typedef RTL_CRITICAL_SECTION CRITICAL_SECTION;
+    typedef CRITICAL_SECTION *PCRITICAL_SECTION;
+    typedef CRITICAL_SECTION *LPCRITICAL_SECTION;
 
-VOID WINAPI EnterCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
+    VOID WINAPI InitializeCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
 
-VOID WINAPI LeaveCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
+    VOID WINAPI EnterCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
 
-BOOL WINAPI TryEnterCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
+    VOID WINAPI LeaveCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
 
-VOID WINAPI DeleteCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
+    BOOL WINAPI TryEnterCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
 
-typedef struct _RTL_SRWLOCK
-{
-    PVOID Ptr;
-} RTL_SRWLOCK, *PRTL_SRWLOCK;
+    VOID WINAPI DeleteCriticalSection(LPCRITICAL_SECTION lpCriticalSection);
 
-typedef RTL_SRWLOCK SRWLOCK, *PSRWLOCK;
+    typedef struct _RTL_SRWLOCK
+    {
+        PVOID Ptr;
+    } RTL_SRWLOCK, *PRTL_SRWLOCK;
 
-VOID WINAPI InitializeSRWLock(PSRWLOCK SRWLock);
+    typedef RTL_SRWLOCK SRWLOCK, *PSRWLOCK;
 
-VOID WINAPI UninitializeSRWLock(PSRWLOCK SRWLock);
+    VOID WINAPI InitializeSRWLock(PSRWLOCK SRWLock);
 
-VOID WINAPI AcquireSRWLockExclusive(PSRWLOCK SRWLock);
+    VOID WINAPI UninitializeSRWLock(PSRWLOCK SRWLock);
 
-VOID WINAPI ReleaseSRWLockExclusive(PSRWLOCK SRWLock);
+    VOID WINAPI AcquireSRWLockExclusive(PSRWLOCK SRWLock);
 
-VOID WINAPI AcquireSRWLockShared(PSRWLOCK SRWLock);
+    VOID WINAPI ReleaseSRWLockExclusive(PSRWLOCK SRWLock);
 
-VOID WINAPI ReleaseSRWLockShared(PSRWLOCK SRWLock);
+    VOID WINAPI AcquireSRWLockShared(PSRWLOCK SRWLock);
 
-LONG WINAPI InterlockedDecrement(LONG*v);
+    VOID WINAPI ReleaseSRWLockShared(PSRWLOCK SRWLock);
 
-LONG WINAPI InterlockedIncrement(LONG*v);
+    LONG WINAPI InterlockedDecrement(LONG *v);
 
-void qsort_s(void *_Base, size_t _NumOfElements, size_t _SizeOfElements, int(__cdecl *_PtFuncCompare)(void *, const void *, const void *), void *_Context);
+    LONG WINAPI InterlockedIncrement(LONG *v);
 
-BOOL IIDFromString(LPCWSTR s, GUID *id);
+    void qsort_s(void *_Base, size_t _NumOfElements, size_t _SizeOfElements, int(__cdecl *_PtFuncCompare)(void *, const void *, const void *), void *_Context);
 
-void SetLastError(int e);
+    BOOL IIDFromString(LPCWSTR s, GUID *id);
 
-int GetLastError();
+    void SetLastError(int e);
 
-int MulDiv(int a, int b, int c);
+    int GetLastError();
 
-tid_t WINAPI GetCurrentThreadId();
+    int MulDiv(int a, int b, int c);
 
-int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *dst, int dstLen);
+    tid_t WINAPI GetCurrentThreadId();
 
-int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *dst, int dstLen, LPCSTR p1, BOOL *p2);
+    int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *dst, int dstLen);
+
+    int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *dst, int dstLen, LPCSTR p1, BOOL *p2);
 
 #define STIF_DEFAULT     0x00000000L
 #define STIF_SUPPORT_HEX 0x00000001L
-BOOL StrToInt64ExW(const wchar_t *str, DWORD flags, LONGLONG *ret);
-BOOL StrToIntExW(const wchar_t *str, DWORD flags, INT *ret);
+    BOOL StrToInt64ExW(const wchar_t *str, DWORD flags, LONGLONG *ret);
+    BOOL StrToIntExW(const wchar_t *str, DWORD flags, INT *ret);
 
-BOOL StrToInt64ExA(const char* str, DWORD flags, LONGLONG* ret);
-BOOL StrToIntExA(const char* str, DWORD flags, INT* ret);
+    BOOL StrToInt64ExA(const char *str, DWORD flags, LONGLONG *ret);
+    BOOL StrToIntExA(const char *str, DWORD flags, INT *ret);
 
 #ifdef UNICODE
 #define StrToInt64Ex StrToInt64ExW
-#define StrToIntEx StrToIntExW
+#define StrToIntEx   StrToIntExW
 #else
 #define StrToInt64Ex StrToInt64ExA
-#define StrToIntEx StrToIntExA
-#endif//UNICODE
+#define StrToIntEx   StrToIntExA
+#endif // UNICODE
 
+    void GetLocalTime(SYSTEMTIME *pSysTime);
+    void GetSystemTime(SYSTEMTIME *lpSystemTime);
 
-void GetLocalTime(SYSTEMTIME *pSysTime);
-void GetSystemTime(SYSTEMTIME *lpSystemTime);
+    time_t _mkgmtime(struct tm *_Tm);
+    int _localtime64_s(struct tm *ptm, const __time64_t *ptime);
 
-time_t _mkgmtime(struct tm *_Tm);
-int _localtime64_s(struct tm *ptm, const __time64_t *ptime);
-
-void PostThreadMessageA(uint64_t tid, UINT msg, WPARAM wp, LPARAM lp);
-void PostThreadMessageW(uint64_t tid, UINT msg, WPARAM wp, LPARAM lp);
+    void PostThreadMessageA(uint64_t tid, UINT msg, WPARAM wp, LPARAM lp);
+    void PostThreadMessageW(uint64_t tid, UINT msg, WPARAM wp, LPARAM lp);
 #ifdef UNICODE
 #define PostThreadMessage PostThreadMessageW
 #else
 #define PostThreadMessage PostThreadMessageA
-#endif//UNICODE
+#endif // UNICODE
 
-BOOL WaitMessage();
-BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
-BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg);
+    BOOL WaitMessage();
+    BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax);
+    BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg);
 
-BOOL TranslateMessage(LPMSG pMsg);
-BOOL DispatchMessage(LPMSG pMsg);
+    BOOL TranslateMessage(LPMSG pMsg);
+    BOOL DispatchMessage(LPMSG pMsg);
 
-int GetSystemScale();
-int GetSystemMetrics(int nIndex);
+    int GetSystemScale();
+    int GetSystemMetrics(int nIndex);
 
-HCURSOR SetCursor(HCURSOR hCursor);
-HCURSOR GetCursor(VOID);
-BOOL ShellExecute(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd);
+    HCURSOR SetCursor(HCURSOR hCursor);
+    HCURSOR GetCursor(VOID);
+    BOOL ShellExecute(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd);
 
-SHORT
-GetKeyState(int nVirtKey);
+    SHORT GetKeyState(int nVirtKey);
 
-BOOL RegisterDragDrop(HWND, IDropTarget *pDrapTarget);
+    BOOL CallMsgFilter(LPMSG lpMsg, int nCode);
 
-BOOL CallMsgFilter(LPMSG lpMsg, int nCode);
+    __time64_t _mktime64(const struct tm *ptime);
 
-__time64_t _mktime64(const struct tm *ptime);
+    __time64_t _time64(__time64_t *_Time);
 
-__time64_t _time64(__time64_t *_Time);
+    HCURSOR
+    LoadCursor(HINSTANCE hInstance, LPCSTR lpCursorName);
 
-HCURSOR
-LoadCursor(HINSTANCE hInstance, LPCSTR lpCursorName);
+    BOOL DestroyCursor(HCURSOR hCursor);
 
-BOOL DestroyCursor(HCURSOR hCursor);
+    BOOL WINAPI IsBadReadPtr(const void *ptr, size_t size);
+    BOOL WINAPI IsBadWritePtr(const void *ptr, size_t size);
 
-BOOL WINAPI IsBadReadPtr(const void *ptr, size_t size);
-BOOL WINAPI IsBadWritePtr(const void *ptr, size_t size);
+    BOOL WINAPI IsBadStringPtrA(LPCSTR lpsz, UINT_PTR ucchMax);
 
-BOOL WINAPI IsBadStringPtrA(LPCSTR lpsz, UINT_PTR ucchMax);
-
-BOOL WINAPI IsBadStringPtrW(LPCWSTR lpsz, UINT_PTR ucchMax);
+    BOOL WINAPI IsBadStringPtrW(LPCWSTR lpsz, UINT_PTR ucchMax);
 #ifdef UNICODE
 #define IsBadStringPtr IsBadStringPtrW
 #else
 #define IsBadStringPtr IsBadStringPtrA
 #endif // UNICODE
 
-FILE *_wfopen(const wchar_t *path, const wchar_t *mode);
+    FILE *_wfopen(const wchar_t *path, const wchar_t *mode);
 
 #define HEAP_NO_SERIALIZE             0x00000001
 #define HEAP_GROWABLE                 0x00000002
@@ -154,7 +155,6 @@ FILE *_wfopen(const wchar_t *path, const wchar_t *mode);
 #define HEAP_CREATE_SEGMENT_HEAP      0x00000100
 #define HEAP_CREATE_HARDENED          0x00000200
 
-
 #define GMEM_FIXED          0x0000
 #define GMEM_MOVEABLE       0x0002
 #define GMEM_NOCOMPACT      0x0010
@@ -171,8 +171,8 @@ FILE *_wfopen(const wchar_t *path, const wchar_t *mode);
 #define GMEM_LOCKCOUNT      0x00ff
 #define GMEM_INVALID_HANDLE 0x8000
 
-#define GHND                (GMEM_MOVEABLE | GMEM_ZEROINIT)
-#define GPTR                (GMEM_FIXED | GMEM_ZEROINIT)
+#define GHND (GMEM_MOVEABLE | GMEM_ZEROINIT)
+#define GPTR (GMEM_FIXED | GMEM_ZEROINIT)
 
 #define LMEM_FIXED          0
 #define LMEM_MOVEABLE       0x0002
@@ -188,124 +188,90 @@ FILE *_wfopen(const wchar_t *path, const wchar_t *mode);
 #define LPTR (LMEM_FIXED | LMEM_ZEROINIT)
 #define LHND (LMEM_MOVEABLE | LMEM_ZEROINIT)
 
-HANDLE WINAPI GetProcessHeap();
+    HANDLE WINAPI GetProcessHeap();
 
-HANDLE WINAPI HeapCreate(DWORD flOptions, size_t dwInitialSize, size_t dwMaximumSize);
+    HANDLE WINAPI HeapCreate(DWORD flOptions, size_t dwInitialSize, size_t dwMaximumSize);
 
-BOOL WINAPI HeapDestroy(HANDLE hHeap);
+    BOOL WINAPI HeapDestroy(HANDLE hHeap);
 
-BOOL WINAPI HeapLock(HANDLE hHeap);
+    BOOL WINAPI HeapLock(HANDLE hHeap);
 
-BOOL WINAPI HeapUnlock(HANDLE hHeap);
+    BOOL WINAPI HeapUnlock(HANDLE hHeap);
 
-LPVOID
-WINAPI
-HeapAlloc(HANDLE hHeap, DWORD dwFlags, size_t dwBytes);
+    LPVOID
+    WINAPI
+    HeapAlloc(HANDLE hHeap, DWORD dwFlags, size_t dwBytes);
 
-BOOL WINAPI HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem);
+    BOOL WINAPI HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem);
 
-LPVOID WINAPI HeapReAlloc(
-    HANDLE hHeap,
-    DWORD dwFlags,
-    LPVOID lpMem,
-    SIZE_T dwBytes
-);
+    LPVOID WINAPI HeapReAlloc(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBytes);
 
-SIZE_T WINAPI HeapSize(
-    HANDLE hHeap,
-    DWORD dwFlags,
-    LPCVOID lpMem
-);
+    SIZE_T WINAPI HeapSize(HANDLE hHeap, DWORD dwFlags, LPCVOID lpMem);
 
-BOOL WINAPI HeapValidate(
-    HANDLE hHeap,
-    DWORD dwFlags,
-    LPCVOID lpMem
-);
+    BOOL WINAPI HeapValidate(HANDLE hHeap, DWORD dwFlags, LPCVOID lpMem);
 
-BOOL WINAPI FlushInstructionCache(HANDLE hProcess, LPCVOID lpBaseAddress, size_t dwSize);
+    BOOL WINAPI FlushInstructionCache(HANDLE hProcess, LPCVOID lpBaseAddress, size_t dwSize);
 
-HGLOBAL WINAPI GlobalAlloc(UINT flags, SIZE_T size);
-HGLOBAL WINAPI GlobalReAlloc(
-    _In_          HGLOBAL hMem,
-    _In_          SIZE_T dwBytes,
-    _In_          UINT uFlags
-);
-HGLOBAL WINAPI GlobalFree(HLOCAL hmem);
-UINT WINAPI GlobalFlags(
-    _In_          HGLOBAL hMem
-);
-HLOCAL WINAPI GlobalHandle(
-    _In_          LPCVOID pMem
-);
+    HGLOBAL WINAPI GlobalAlloc(UINT flags, SIZE_T size);
+    HGLOBAL WINAPI GlobalReAlloc(_In_ HGLOBAL hMem, _In_ SIZE_T dwBytes, _In_ UINT uFlags);
+    HGLOBAL WINAPI GlobalFree(HLOCAL hmem);
+    UINT WINAPI GlobalFlags(_In_ HGLOBAL hMem);
+    HLOCAL WINAPI GlobalHandle(_In_ LPCVOID pMem);
 
-BOOL
-WINAPI
-GlobalUnlock(
-    _In_ HGLOBAL hMem
-);
+    BOOL WINAPI GlobalUnlock(_In_ HGLOBAL hMem);
 
-LPVOID
-WINAPI
-GlobalLock(
-    _In_ HGLOBAL hMem
-);
+    LPVOID
+    WINAPI
+    GlobalLock(_In_ HGLOBAL hMem);
 
-SIZE_T
-WINAPI
-GlobalSize(
-    _In_ HGLOBAL hMem
-);
+    SIZE_T
+    WINAPI
+    GlobalSize(_In_ HGLOBAL hMem);
 
+    UINT WINAPI LocalSize(HLOCAL hMem);
+    HLOCAL WINAPI LocalAlloc(UINT flags, SIZE_T size);
+    HLOCAL WINAPI LocalReAlloc(HLOCAL hmem, SIZE_T size, UINT flags);
+    HLOCAL WINAPI LocalFree(HLOCAL hmem);
+    LPVOID WINAPI LocalLock(HLOCAL hmem);
+    BOOL WINAPI LocalUnlock(HLOCAL hmem);
+    UINT WINAPI LocalFlags(_In_ HLOCAL hMem);
+    HLOCAL WINAPI LocalHandle(_In_ LPCVOID pMem);
 
-UINT WINAPI LocalSize(HLOCAL hMem);
-HLOCAL WINAPI LocalAlloc(UINT flags, SIZE_T size);
-HLOCAL WINAPI LocalReAlloc(HLOCAL hmem, SIZE_T size, UINT flags);
-HLOCAL WINAPI LocalFree(HLOCAL hmem);
-LPVOID WINAPI LocalLock(HLOCAL hmem);
-BOOL WINAPI LocalUnlock(HLOCAL hmem);
-UINT WINAPI LocalFlags(
-    _In_          HLOCAL hMem
-);
-HLOCAL WINAPI LocalHandle(
-    _In_          LPCVOID pMem
-);
+    HANDLE
+    WINAPI
+    GetCurrentProcess(VOID);
 
-HANDLE
-WINAPI
-GetCurrentProcess(VOID);
-
-DWORD WINAPI GetModuleFileNameA(HMODULE hModule, LPSTR lpFilename, DWORD nSize);
-DWORD WINAPI GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
+    DWORD WINAPI GetModuleFileNameA(HMODULE hModule, LPSTR lpFilename, DWORD nSize);
+    DWORD WINAPI GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
 
 #ifdef UNICODE
 #define GetModuleFileName GetModuleFileNameW
 #else
 #define GetModuleFileName GetModuleFileNameA
-#endif//UNICODE
+#endif // UNICODE
 
 #ifdef __x86_64__
-typedef INT_PTR(FAR WINAPI *FARPROC)();
-typedef INT_PTR(NEAR WINAPI *NEARPROC)();
-typedef INT_PTR(WINAPI *PROC)();
+    typedef INT_PTR(FAR WINAPI *FARPROC)();
+    typedef INT_PTR(NEAR WINAPI *NEARPROC)();
+    typedef INT_PTR(WINAPI *PROC)();
 #else
 typedef int(FAR WINAPI *FARPROC)();
 typedef int(NEAR WINAPI *NEARPROC)();
 typedef int(WINAPI *PROC)();
 #endif // __x86_64__
 
-inline HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
-{
-    return dlopen(lpFileName, RTLD_NOW);
-}
+    inline HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
+    {
+        return dlopen(lpFileName, RTLD_NOW);
+    }
 
-inline HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName)
-{
-    char szName[MAX_PATH];
-    if (0 == WideCharToMultiByte(CP_UTF8, 0, lpFileName, -1, szName, MAX_PATH, NULL, NULL))
-        return 0;
-    return LoadLibraryA(szName);
-}
+    inline HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName)
+    {
+        char szName[MAX_PATH];
+        if (0 == WideCharToMultiByte(CP_UTF8, 0, lpFileName, -1, szName, MAX_PATH, NULL, NULL))
+            return 0;
+        return LoadLibraryA(szName);
+    }
 
 #ifdef _UNICODE
 #define LoadLibrary LoadLibraryW
@@ -313,50 +279,50 @@ inline HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName)
 #define LoadLibrary LoadLibraryA
 #endif
 
-inline BOOL WINAPI FreeLibrary(HMODULE hModule)
-{
-    return dlclose(hModule);
-}
+    inline BOOL WINAPI FreeLibrary(HMODULE hModule)
+    {
+        return dlclose(hModule);
+    }
 
-inline FARPROC WINAPI GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
-{
-    return (FARPROC)dlsym(hModule, lpProcName);
-}
+    inline FARPROC WINAPI GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
+    {
+        return (FARPROC)dlsym(hModule, lpProcName);
+    }
 
-typedef struct _SECURITY_ATTRIBUTES
-{
-    DWORD nLength;
-    LPVOID lpSecurityDescriptor;
-    BOOL bInheritHandle;
-} SECURITY_ATTRIBUTES, *PSECURITY_ATTRIBUTES, *LPSECURITY_ATTRIBUTES;
+    typedef struct _SECURITY_ATTRIBUTES
+    {
+        DWORD nLength;
+        LPVOID lpSecurityDescriptor;
+        BOOL bInheritHandle;
+    } SECURITY_ATTRIBUTES, *PSECURITY_ATTRIBUTES, *LPSECURITY_ATTRIBUTES;
 
-HANDLE WINAPI CreateSemaphoreA(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCSTR name);
+    HANDLE WINAPI CreateSemaphoreA(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCSTR name);
 
-HANDLE WINAPI CreateSemaphoreW(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCWSTR lpName);
+    HANDLE WINAPI CreateSemaphoreW(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCWSTR lpName);
 
-HANDLE WINAPI OpenSemaphoreA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName);
+    HANDLE WINAPI OpenSemaphoreA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName);
 
-HANDLE WINAPI OpenSemaphoreW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName);
+    HANDLE WINAPI OpenSemaphoreW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName);
 
-BOOL WINAPI ReleaseSemaphore(HANDLE hSemaphore, LONG lReleaseCount, LPLONG lpPreviousCount);
+    BOOL WINAPI ReleaseSemaphore(HANDLE hSemaphore, LONG lReleaseCount, LPLONG lpPreviousCount);
 
-HANDLE WINAPI CreateEventA(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCSTR lpName);
+    HANDLE WINAPI CreateEventA(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCSTR lpName);
 
-HANDLE WINAPI CreateEventW(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCWSTR lpName);
+    HANDLE WINAPI CreateEventW(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCWSTR lpName);
 
-HANDLE WINAPI OpenEventA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName);
+    HANDLE WINAPI OpenEventA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName);
 
-HANDLE WINAPI OpenEventW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName);
+    HANDLE WINAPI OpenEventW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName);
 
-HANDLE WINAPI CreateMutexA(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCSTR lpName);
+    HANDLE WINAPI CreateMutexA(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCSTR lpName);
 
-HANDLE WINAPI CreateMutexW(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCWSTR lpName);
+    HANDLE WINAPI CreateMutexW(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCWSTR lpName);
 
-BOOL WINAPI ReleaseMutex(HANDLE hMutex);
+    BOOL WINAPI ReleaseMutex(HANDLE hMutex);
 
-HANDLE WINAPI OpenMutexA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName);
+    HANDLE WINAPI OpenMutexA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName);
 
-HANDLE WINAPI OpenMutexW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName);
+    HANDLE WINAPI OpenMutexW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName);
 
 #ifdef _UNICODE
 #define CreateEvent     CreateEventW
@@ -374,23 +340,23 @@ HANDLE WINAPI OpenMutexW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpN
 #define OpenMutex       OpenMutexA
 #endif
 
-BOOL WINAPI CloseHandle(HANDLE h);
+    BOOL WINAPI CloseHandle(HANDLE h);
 
-BOOL WINAPI ResetEvent(HANDLE hEvent);
+    BOOL WINAPI ResetEvent(HANDLE hEvent);
 
-BOOL WINAPI SetEvent(HANDLE hEvent);
+    BOOL WINAPI SetEvent(HANDLE hEvent);
 
-DWORD WINAPI WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds);
+    DWORD WINAPI WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds);
 
-DWORD WINAPI WaitForMultipleObjects(DWORD nCount, const HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds);
+    DWORD WINAPI WaitForMultipleObjects(DWORD nCount, const HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds);
 
-DWORD WINAPI MsgWaitForMultipleObjects(DWORD nCount, const HANDLE* pHandles, BOOL fWaitAll, DWORD dwMilliseconds, DWORD dwWakeMask);
+    DWORD WINAPI MsgWaitForMultipleObjects(DWORD nCount, const HANDLE *pHandles, BOOL fWaitAll, DWORD dwMilliseconds, DWORD dwWakeMask);
 
-VOID WINAPI Sleep(DWORD dwMilliseconds);
+    VOID WINAPI Sleep(DWORD dwMilliseconds);
 
-void WINAPI OutputDebugStringA(LPCSTR lpOutputString);
+    void WINAPI OutputDebugStringA(LPCSTR lpOutputString);
 
-void WINAPI OutputDebugStringW(LPCWSTR lpOutputString);
+    void WINAPI OutputDebugStringW(LPCWSTR lpOutputString);
 
 #ifdef _UNICODE
 #define OutputDebugString OutputDebugStringW
@@ -404,7 +370,7 @@ void WINAPI OutputDebugStringW(LPCWSTR lpOutputString);
 #define FillMemory(Destination, Length, Fill)    memset((Destination), (Fill), (Length))
 #define ZeroMemory(Destination, Length)          memset((Destination), 0, (Length))
 
-void WINAPI set_error(int e);
+    void WINAPI set_error(int e);
 
 #define SECTION_QUERY                0x0001
 #define SECTION_MAP_WRITE            0x0002
@@ -439,17 +405,17 @@ void WINAPI set_error(int e);
 #define PAGE_NOCACHE           0x200
 #define PAGE_WRITECOMBINE      0x400
 
-HANDLE WINAPI OpenFileMappingA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName);
+    HANDLE WINAPI OpenFileMappingA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName);
 
-HANDLE WINAPI OpenFileMappingW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName);
+    HANDLE WINAPI OpenFileMappingW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName);
 
-HANDLE WINAPI CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCSTR lpName);
+    HANDLE WINAPI CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCSTR lpName);
 
-HANDLE WINAPI CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCWSTR lpName);
+    HANDLE WINAPI CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCWSTR lpName);
 
-LPVOID WINAPI MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, size_t dwNumberOfBytesToMap);
+    LPVOID WINAPI MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, size_t dwNumberOfBytesToMap);
 
-BOOL WINAPI UnmapViewOfFile(LPCVOID lpBaseAddress);
+    BOOL WINAPI UnmapViewOfFile(LPCVOID lpBaseAddress);
 
 #ifdef UNICODE
 #define OpenFileMapping   OpenFileMappingW
@@ -459,32 +425,31 @@ BOOL WINAPI UnmapViewOfFile(LPCVOID lpBaseAddress);
 #define CreateFileMapping CreateFileMappingA
 #endif // UNICODE
 
-BOOL WINAPI GetKeyboardState(PBYTE lpKeyState);
+    BOOL WINAPI GetKeyboardState(PBYTE lpKeyState);
 
-SHORT WINAPI GetKeyState(int nVirtKey);
-SHORT WINAPI GetAsyncKeyState(int vKey);
+    SHORT WINAPI GetKeyState(int nVirtKey);
+    SHORT WINAPI GetAsyncKeyState(int vKey);
 
-UINT WINAPI MapVirtualKey(UINT uCode, UINT uMapType);
+    UINT WINAPI MapVirtualKey(UINT uCode, UINT uMapType);
 
-UINT WINAPI MapVirtualKeyEx(UINT uCode, UINT uMapType, HKL dwhkl);
+    UINT WINAPI MapVirtualKeyEx(UINT uCode, UINT uMapType, HKL dwhkl);
 
-LONG WINAPI CompareFileTime(const FILETIME* ft1, const FILETIME* ft2);
+    LONG WINAPI CompareFileTime(const FILETIME *ft1, const FILETIME *ft2);
 
-BOOL WINAPI SystemParametersInfoA(UINT action, UINT val, void* ptr, UINT winini);
-BOOL WINAPI SystemParametersInfoW(UINT action, UINT val, void* ptr, UINT winini);
+    BOOL WINAPI SystemParametersInfoA(UINT action, UINT val, void *ptr, UINT winini);
+    BOOL WINAPI SystemParametersInfoW(UINT action, UINT val, void *ptr, UINT winini);
 #ifdef UNICODE
 #define SystemParametersInfo SystemParametersInfoW
 #else
 #define SystemParametersInfo SystemParametersInfoA
-#endif//UNICODE
+#endif // UNICODE
 
-void WINAPI DebugBreak(void);
-VOID WINAPI DbgBreakPoint(VOID);
+    void WINAPI DebugBreak(void);
+    VOID WINAPI DbgBreakPoint(VOID);
 
-UINT WINAPI GetDoubleClickTime(VOID);
-BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER* lpFrequency);
-BOOL WINAPI QueryPerformanceCounter(LARGE_INTEGER* lpPerformanceCount);
-
+    UINT WINAPI GetDoubleClickTime(VOID);
+    BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER *lpFrequency);
+    BOOL WINAPI QueryPerformanceCounter(LARGE_INTEGER *lpPerformanceCount);
 
 #ifndef NOCLIPBOARD
 
@@ -493,155 +458,90 @@ BOOL WINAPI QueryPerformanceCounter(LARGE_INTEGER* lpPerformanceCount);
  */
 #define WINUSERAPI
 
-WINUSERAPI
-BOOL
-WINAPI
-OpenClipboard(
-    _In_opt_ HWND hWndNewOwner);
+    WINUSERAPI
+    BOOL WINAPI OpenClipboard(_In_opt_ HWND hWndNewOwner);
 
-WINUSERAPI
-BOOL
-WINAPI
-CloseClipboard(
-    VOID);
+    WINUSERAPI
+    BOOL WINAPI CloseClipboard(VOID);
 
+#if (WINVER >= 0x0500)
 
-#if(WINVER >= 0x0500)
-
-WINUSERAPI
-DWORD
-WINAPI
-GetClipboardSequenceNumber(
-    VOID);
+    WINUSERAPI
+    DWORD
+    WINAPI
+    GetClipboardSequenceNumber(VOID);
 
 #endif /* WINVER >= 0x0500 */
 
-WINUSERAPI
-HWND
-WINAPI
-GetClipboardOwner(
-    VOID);
+    WINUSERAPI
+    HWND WINAPI GetClipboardOwner(VOID);
 
-WINUSERAPI
-HWND
-WINAPI
-SetClipboardViewer(
-    _In_ HWND hWndNewViewer);
+    WINUSERAPI
+    HWND WINAPI SetClipboardViewer(_In_ HWND hWndNewViewer);
 
-WINUSERAPI
-HWND
-WINAPI
-GetClipboardViewer(
-    VOID);
+    WINUSERAPI
+    HWND WINAPI GetClipboardViewer(VOID);
 
-WINUSERAPI
-BOOL
-WINAPI
-ChangeClipboardChain(
-    _In_ HWND hWndRemove,
-    _In_ HWND hWndNewNext);
+    WINUSERAPI
+    BOOL WINAPI ChangeClipboardChain(_In_ HWND hWndRemove, _In_ HWND hWndNewNext);
 
-WINUSERAPI
-HANDLE
-WINAPI
-SetClipboardData(
-    _In_ UINT uFormat,
-    _In_opt_ HANDLE hMem);
+    WINUSERAPI
+    HANDLE
+    WINAPI
+    SetClipboardData(_In_ UINT uFormat, _In_opt_ HANDLE hMem);
 
-WINUSERAPI
-HANDLE
-WINAPI
-GetClipboardData(
-    _In_ UINT uFormat);
+    WINUSERAPI
+    HANDLE
+    WINAPI
+    GetClipboardData(_In_ UINT uFormat);
 
-WINUSERAPI
-UINT
-WINAPI
-RegisterClipboardFormatA(
-    _In_ LPCSTR lpszFormat);
-WINUSERAPI
-UINT
-WINAPI
-RegisterClipboardFormatW(
-    _In_ LPCWSTR lpszFormat);
+    WINUSERAPI
+    UINT WINAPI RegisterClipboardFormatA(_In_ LPCSTR lpszFormat);
+    WINUSERAPI
+    UINT WINAPI RegisterClipboardFormatW(_In_ LPCWSTR lpszFormat);
 #ifdef UNICODE
-#define RegisterClipboardFormat  RegisterClipboardFormatW
+#define RegisterClipboardFormat RegisterClipboardFormatW
 #else
-#define RegisterClipboardFormat  RegisterClipboardFormatA
+#define RegisterClipboardFormat RegisterClipboardFormatA
 #endif // !UNICODE
 
-WINUSERAPI
-int
-WINAPI
-CountClipboardFormats(
-    VOID);
+    WINUSERAPI
+    int WINAPI CountClipboardFormats(VOID);
 
-WINUSERAPI
-UINT
-WINAPI
-EnumClipboardFormats(
-    _In_ UINT format);
+    WINUSERAPI
+    UINT WINAPI EnumClipboardFormats(_In_ UINT format);
 
-WINUSERAPI
-int
-WINAPI
-GetClipboardFormatNameA(
-    _In_ UINT format,
-    _Out_writes_(cchMaxCount) LPSTR lpszFormatName,
-    _In_ int cchMaxCount);
-WINUSERAPI
-int
-WINAPI
-GetClipboardFormatNameW(
-    _In_ UINT format,
-    _Out_writes_(cchMaxCount) LPWSTR lpszFormatName,
-    _In_ int cchMaxCount);
+    WINUSERAPI
+    int WINAPI GetClipboardFormatNameA(_In_ UINT format, _Out_writes_(cchMaxCount) LPSTR lpszFormatName, _In_ int cchMaxCount);
+    WINUSERAPI
+    int WINAPI GetClipboardFormatNameW(_In_ UINT format, _Out_writes_(cchMaxCount) LPWSTR lpszFormatName, _In_ int cchMaxCount);
 #ifdef UNICODE
-#define GetClipboardFormatName  GetClipboardFormatNameW
+#define GetClipboardFormatName GetClipboardFormatNameW
 #else
-#define GetClipboardFormatName  GetClipboardFormatNameA
+#define GetClipboardFormatName GetClipboardFormatNameA
 #endif // !UNICODE
 
-WINUSERAPI
-BOOL
-WINAPI
-EmptyClipboard(
-    VOID);
+    WINUSERAPI
+    BOOL WINAPI EmptyClipboard(VOID);
 
-WINUSERAPI
-BOOL
-WINAPI
-IsClipboardFormatAvailable(
-    _In_ UINT format);
+    WINUSERAPI
+    BOOL WINAPI IsClipboardFormatAvailable(_In_ UINT format);
 
-WINUSERAPI
-int
-WINAPI
-GetPriorityClipboardFormat(
-    _In_reads_(cFormats) UINT* paFormatPriorityList,
-    _In_ int cFormats);
+    WINUSERAPI
+    int WINAPI GetPriorityClipboardFormat(_In_reads_(cFormats) UINT *paFormatPriorityList, _In_ int cFormats);
 
-WINUSERAPI
-HWND
-WINAPI
-GetOpenClipboardWindow(VOID);
-
+    WINUSERAPI
+    HWND WINAPI GetOpenClipboardWindow(VOID);
 
 #endif /* !NOCLIPBOARD */
 
-DWORD
-WINAPI
-GetTempPathA(
-    _In_ DWORD nBufferLength,
-    _Out_writes_to_opt_(nBufferLength, return +1) LPSTR lpBuffer
-);
+    DWORD
+    WINAPI
+    GetTempPathA(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return +1) LPSTR lpBuffer);
 
-DWORD
-WINAPI
-GetTempPathW(
-    _In_ DWORD nBufferLength,
-    _Out_writes_to_opt_(nBufferLength, return +1) LPWSTR lpBuffer
-);
+    DWORD
+    WINAPI
+    GetTempPathW(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return +1) LPWSTR lpBuffer);
 
 #ifdef UNICODE
 #define GetTempPath GetTempPathW
@@ -649,27 +549,27 @@ GetTempPathW(
 #define GetTempPath GetTempPathA
 #endif
 
-BOOL WINAPI IsValidCodePage(UINT CodePage);
+    BOOL WINAPI IsValidCodePage(UINT CodePage);
 
-UINT WINAPI GetKeyboardLayoutList(int nBuff,
-    HKL * lpList
-);
+    UINT WINAPI GetKeyboardLayoutList(int nBuff, HKL *lpList);
 
-HKL WINAPI ActivateKeyboardLayout(HKL hkl,
-    UINT Flags
-);
+    HKL WINAPI ActivateKeyboardLayout(HKL hkl, UINT Flags);
 
-UINT WINAPI GetACP(void);
+    UINT WINAPI GetACP(void);
 
-BOOL WINAPI IsDBCSLeadByte(BYTE  c);
+    BOOL WINAPI IsDBCSLeadByte(BYTE c);
 
-HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName);
-HMODULE WINAPI GetModuleHandleW(LPCWSTR lpModuleName);
+    HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName);
+    HMODULE WINAPI GetModuleHandleW(LPCWSTR lpModuleName);
 
 #ifdef UNICODE
 #define GetModuleHandle GetModuleHandleW
 #else
 #define GetModuleHandle GetModuleHandleA
-#endif//UNICODE
+#endif // UNICODE
+
+#ifdef __cplusplus
+}
+#endif //__cplusplus
 
 #endif//_SYSAPI_H_
