@@ -1122,8 +1122,7 @@ BOOL WINAPI QueryPerformanceCounter(LARGE_INTEGER* lpPerformanceCount) {
 //---------------------------------------------------
 UINT
 WINAPI
-RegisterClipboardFormatA(
-    _In_ LPCSTR lpszFormat) {
+RegisterClipboardFormatA( _In_ LPCSTR lpszFormat) {
     SConnection* conn = SConnMgr::instance()->getConnection();
     return conn->RegisterClipboardFormatA(lpszFormat);
 }
@@ -1313,4 +1312,45 @@ HMODULE WINAPI GetModuleHandleW(LPCWSTR lpModuleName) {
     std::string str;
     tostring(lpModuleName, -1, str);
     return GetModuleHandleA(str.c_str());
+}
+
+BOOL WINAPI SetEnvironmentVariableA(LPCSTR lpName, LPCSTR lpValue)
+{
+    return setenv(lpName, lpValue, 1);
+}
+
+BOOL WINAPI SetEnvironmentVariableW(LPCWSTR lpName, LPCWSTR lpValue)
+{
+    std::string name, value;
+    tostring(lpName, -1, name);
+    tostring(lpValue, -1, value);
+    return SetEnvironmentVariableA(name.c_str(), value.c_str());
+}
+
+DWORD WINAPI GetEnvironmentVariableA(LPCSTR lpName, LPSTR lpBuffer, DWORD nSize)
+{
+    const char *value = getenv(lpName);
+    if (!value)
+        return 0;
+    size_t len = strlen(value);
+    if (len >= nSize)
+        return len + 1;
+    strcpy(lpBuffer, value);
+    return len;
+}
+
+DWORD WINAPI GetEnvironmentVariableW(LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSize)
+{
+    std::string name;
+    tostring(lpName, -1, name);
+    const char *value = getenv(name.c_str());
+    if (!value)
+        return 0;
+    std::wstring wstr;
+    towstring(value, -1, wstr);
+    size_t len = wstr.length();
+    if (len >= nSize)
+        return len + 1;
+    wcscpy(lpBuffer, wstr.c_str());
+    return len;
 }

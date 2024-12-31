@@ -515,7 +515,12 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     pWnd->mConnection = conn;
     pWnd->state = WS_Normal;
     pWnd->dwStyle = cs->style & ~WS_VISIBLE; // remove visible
-    if(pWnd->dwStyle & (WS_SYSMENU| WS_MINIMIZEBOX| WS_MAXIMIZEBOX)){
+    if (pWnd->dwStyle & (WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX))
+    {
+        pWnd->dwStyle |= WS_CAPTION;
+    }
+    if (pWnd->dwStyle & WS_CAPTION)
+    {
         pWnd->dwStyle &=~WS_BORDER; //remove border
     }
     pWnd->dwExStyle = cs->dwExStyle;
@@ -534,6 +539,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     int depth = XCB_COPY_FROM_PARENT;
     if ((pWnd->dwExStyle & WS_EX_COMPOSITED) && !(pWnd->dwStyle & WS_CHILD) && conn->IsScreenComposited())
     {
+        pWnd->dwStyle &= ~WS_CAPTION;
         pWnd->visualId = conn->rgba_visual->visual_id;
         depth = 32;
     }
@@ -595,7 +601,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, hWnd, conn->atoms._NET_WM_PID, XCB_ATOM_CARDINAL, 32, 1, &pid);
     xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
 
-    setMotifWindowFlags(conn, hWnd, cs->style, cs->dwExStyle);
+    setMotifWindowFlags(conn, hWnd, pWnd->dwStyle, pWnd->dwExStyle);
     {
         /* Add XEMBED info; this operation doesn't initiate the embedding. */
         uint32_t data[] = { XEMBED_VERSION, XEMBED_MAPPED };
@@ -1003,6 +1009,8 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
 static BOOL ActiveWindow(HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return FALSE;
     if (wndObj->dwStyle & WS_CHILD)
     {
         do
@@ -1269,6 +1277,15 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			wndObj->bCaretVisible = !wndObj->bCaretVisible;
 			bSkipMsg = TRUE;
 		}
+        if (wp == SConnection::TM_FLASH)
+        {
+            KillTimer(hWnd, wp);
+            FLASHWINFO info = { sizeof(info), 0 };
+            info.hwnd = hWnd;
+            info.dwFlags = FLASHW_STOP;
+            FlashWindowEx(&info);
+            bSkipMsg = TRUE;
+        }
 		break;
 	}
 	case WM_MOVE:
@@ -2234,7 +2251,6 @@ BOOL KillTimer(HWND hWnd, UINT_PTR uIDEvent)
         SConnection *conn = SConnMgr::instance()->getConnection();
         return conn->KillTimer(hWnd, uIDEvent);
     }
-    return 0;
 }
 
 HWND GetFocus()
@@ -3853,8 +3869,17 @@ BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc,   LPARAM lParam
     return WndMgr::enumWindows(lpEnumFunc, lParam);
 }
 
+BOOL WINAPI FlashWindowEx(PFLASHWINFO pfwi)
+{
+    SConnection *pConn = SConnMgr::instance()->getConnection();
+    return pConn->FlashWindowEx(pfwi);
+}
+
 BOOL WINAPI FlashWindow(HWND hWnd, BOOL bInvert)
 {
-    //todo:hjx
-    return FALSE;
+    FLASHWINFO info = { sizeof(info), 0 };
+    info.dwFlags = FLASHW_TRAY;
+    info.dwTimeout = 200;
+    info.uCount = 5;
+    return FlashWindowEx(&info);
 }

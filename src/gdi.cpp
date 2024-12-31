@@ -1116,7 +1116,7 @@ BOOL AlphaBlend(HDC hdc, int x, int y, int wDst, int hDst, HDC hdcSrc, int x1, i
     cairo_scale(hdc->cairo, scale_x, scale_y);
 
     cairo_set_source_surface(hdc->cairo, src, -x1, -y1);
-    cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_ATOP);
+    cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_OVER);
     if (ftn.SourceConstantAlpha != 255)
         cairo_paint_with_alpha(hdc->cairo, ftn.SourceConstantAlpha * 1.0 / 255.0);
     else

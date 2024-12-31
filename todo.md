@@ -7,8 +7,14 @@ states: waiting, inprog, done
 |3 |make framework robust|hjx|done|
 |4 |support richedit|hjx|done|
 |5 |support translucent|hjx|done|
-|6 |support keyboard layout||almost done|
+|6 |support keyboard layout|hjx|almost done|
 |7 |support ime|hjx|waiting|
 |8 |support multi monitor||waiting|
-|9 |drag drop|hjx|waiting|
-|10 |mouse wheel||waiting|
+|9 |drag drop|hjx|done|
+|10 |mouse wheel|hjx|done|
+|11 |multi clipboard format|hjx|done|
+|12 |clipboard support large data|hjx|waiting|
+|13 |fix demo2 bug|hjx|waiting|
+|14 |utf32 error for wxdemo|hjx|waiting|
+
+

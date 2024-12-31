@@ -58,6 +58,7 @@ class SConnection {
     enum {
         TM_CARET = -100, //timer for caret blink
         TS_CARET = 500,//default caret blink elapse, 500ms
+        TM_FLASH = -101, //timer for flash window
 
         TM_HOVERDELAY = -50,
     };
@@ -146,6 +147,9 @@ class SConnection {
     HWND SetFocus(HWND hWnd);
 
     BOOL IsDropTarget(HWND hWnd);
+
+    BOOL FlashWindowEx(PFLASHWINFO info);
+    void changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom_t two);
   public:
       struct CaretInfo {
           HWND hOwner;
@@ -200,24 +204,8 @@ public:
       void EnableDragDrop(HWND hWnd, BOOL enable);
       void SendXdndStatus(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect);
       void SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect);
-      xcb_atom_t getXcbFmtAtom(UINT uFormat)
-      {
-          switch (uFormat) {
-          case CF_TEXT: return atoms.UTF8_STRING;
-          case CF_UNICODETEXT: return atoms.UTF8_STRING;
-          default:
-              if (uFormat > CF_MAX) {
-                  return uFormat - CF_MAX;
-              }
-          }
-          return 0;
-      }
-      uint32_t getClipFormat(xcb_atom_t atom) {
-          if (atom == atoms.UTF8_STRING)
-              return CF_TEXT;
-          else
-              return 0;//todo:hjx
-      }
+      xcb_atom_t clipFormat2Atom(UINT uFormat);
+      uint32_t atom2ClipFormat(xcb_atom_t atom);
       std::shared_ptr< std::vector<char>> readXdndSelection(uint32_t fmt);
   public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);

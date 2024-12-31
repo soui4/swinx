@@ -562,9 +562,19 @@ typedef int(WINAPI *PROC)();
     HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName);
     HMODULE WINAPI GetModuleHandleW(LPCWSTR lpModuleName);
 
+    BOOL WINAPI SetEnvironmentVariableA(LPCSTR lpName, LPCSTR lpValue);
+    BOOL WINAPI SetEnvironmentVariableW(LPCWSTR lpName, LPCWSTR lpValue);
+
+    DWORD WINAPI GetEnvironmentVariableA(LPCSTR lpName, LPSTR lpBuffer, DWORD nSize);
+    DWORD WINAPI GetEnvironmentVariableW(LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSize);
+
 #ifdef UNICODE
+#define SetEnvironmentVariable SetEnvironmentVariableW
+#define GetEnvironmentVariable GetEnvironmentVariableW
 #define GetModuleHandle GetModuleHandleW
 #else
+#define SetEnvironmentVariable SetEnvironmentVariableA
+#define GetEnvironmentVariable GetEnvironmentVariableA
 #define GetModuleHandle GetModuleHandleA
 #endif // UNICODE
 

@@ -415,6 +415,23 @@ extern "C"
 
     BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam );
 
+    typedef struct
+    {
+        UINT cbSize;
+        HWND hwnd;
+        DWORD dwFlags;
+        UINT uCount;
+        DWORD dwTimeout;
+    } FLASHWINFO, *PFLASHWINFO;
+
+    #define FLASHW_CAPTION      0x00000001
+    #define FLASHW_TRAY         0x00000002
+    #define FLASHW_ALL          0x00000003
+    #define FLASHW_STOP         0
+    #define FLASHW_TIMER        0x00000004
+    #define FLASHW_TIMERNOFG    0x0000000C
+
+    BOOL WINAPI FlashWindowEx(PFLASHWINFO pfwi);
     BOOL WINAPI FlashWindow(HWND hWnd, BOOL bInvert);
 #ifdef __cplusplus
 }

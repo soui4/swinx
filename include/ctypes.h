@@ -486,6 +486,9 @@ typedef union _ULARGE_INTEGER {
 //
 // For compilers that don't support nameless unions
 //
+#ifndef __cplusplus
+#define NONAMELESSUNION
+#endif//__cplusplus
 #ifndef DUMMYUNIONNAME
 #ifdef NONAMELESSUNION
 #define DUMMYUNIONNAME   u

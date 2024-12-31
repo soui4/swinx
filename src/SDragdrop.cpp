@@ -175,7 +175,7 @@ void SDragDrop::drag_enter(HWND target)
         FORMATETC fmtEtc;
         while (fmt->Next(1, &fmtEtc, NULL) == S_OK)
         {
-            types.push_back(conn->getXcbFmtAtom(fmtEtc.cfFormat));
+            types.push_back(conn->clipFormat2Atom(fmtEtc.cfFormat));
         }
         fmt->Release();
         if (types.size() > xdnd_max_type)

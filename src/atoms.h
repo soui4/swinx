@@ -8,6 +8,8 @@ class SAtoms {
     xcb_atom_t TEXT;
     xcb_atom_t UTF8_STRING;
     xcb_atom_t CARDINAL;
+    xcb_atom_t ATOM_CF_UNICODETEXT, ATOM_CF_HDROP, ATOM_CF_BITMAP, ATOM_CF_WAVE;
+
     xcb_atom_t _NET_WM_PID;
     xcb_atom_t WM_CLASS;
     xcb_atom_t WM_DELETE_WINDOW;
@@ -85,6 +87,10 @@ class SAtoms {
             "TEXT",
             "UTF8_STRING",
             "CARDINAL",
+            "ATOM_CF_UNICODETEXT",
+            "ATOM_CF_HDROP",
+            "ATOM_CF_BITMAP",
+            "ATOM_CF_WAVE",
             "_NET_WM_PID",
             "WM_CLASS",
             "WM_DELETE_WINDOW",

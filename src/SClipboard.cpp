@@ -319,7 +319,7 @@ xcb_atom_t SClipboard::sendTargetsSelection(IDataObject* d, xcb_window_t window,
         FORMATETC fmt;
         while (enumFmt->Next(1, &fmt, NULL) == S_OK) {
             if (fmt.tymed == TYMED_HGLOBAL) {
-                types.push_back(m_conn->getXcbFmtAtom(fmt.cfFormat));
+                types.push_back(m_conn->clipFormat2Atom(fmt.cfFormat));
             }
         }
         enumFmt->Release();
@@ -342,7 +342,7 @@ xcb_atom_t SClipboard::sendSelection(IDataObject* d, xcb_atom_t target, xcb_wind
     if (d->EnumFormatEtc(DATADIR_GET, &enumFmt) == S_OK) {
         FORMATETC fmt;
         while (enumFmt->Next(1, &fmt, NULL) == S_OK) {
-            if (fmt.tymed == TYMED_HGLOBAL && m_conn->getXcbFmtAtom(fmt.cfFormat) == target) {
+            if (fmt.tymed == TYMED_HGLOBAL && m_conn->clipFormat2Atom(fmt.cfFormat) == target) {
                 STGMEDIUM medium = { 0 };
                 d->GetData(&fmt, &medium);
                 hData = medium.hGlobal;
@@ -558,7 +558,7 @@ void SClipboard::setSelDataObject(IDataObject* pDo)
 
 bool SClipboard::hasFormat(UINT fmt)
 {
-    xcb_atom_t fmtAtom = m_conn->getXcbFmtAtom(fmt);
+    xcb_atom_t fmtAtom = m_conn->clipFormat2Atom(fmt);
     //fatch formats
     std::shared_ptr<std::vector<char>> data = getDataInFormat(m_conn->atoms.CLIPBOARD, m_conn->atoms.TARGETS);
     if (data) {
@@ -576,7 +576,7 @@ bool SClipboard::hasFormat(UINT fmt)
 
 HANDLE SClipboard::getClipboardData(UINT fmt)
 {
-    xcb_atom_t fmtAtom = m_conn->getXcbFmtAtom(fmt);
+    xcb_atom_t fmtAtom = m_conn->clipFormat2Atom(fmt);
     std::shared_ptr<std::vector<char>> buf = getDataInFormat(m_conn->atoms.CLIPBOARD, fmtAtom);
     if(!buf){
         return nullptr;

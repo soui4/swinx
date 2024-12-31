@@ -370,19 +370,27 @@ bool SConnection::event2Msg(bool bTimeout, UINT elapse, uint64_t ts)
     else if (!m_bBlockTimer)
     {
         std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+        std::list<TimerInfo> runProc;//build a temp list to avoid m_lstTimer got changed.
         for (auto &it : m_lstTimer)
         {
             if (it.fireRemain <= elapse)
             {
-                // fire timer event
-                Msg *pMsg = new Msg;
-                pMsg->hwnd = it.hWnd;
-                pMsg->message = WM_TIMER;
-                pMsg->wParam = it.id;
-                pMsg->lParam = (LPARAM)it.proc;
-                pMsg->time = ts;
-                GetCursorPos(&pMsg->pt);
-                m_msgQueue.push_back(pMsg);
+                if (it.hWnd == 0 && it.proc)
+                {
+                    runProc.push_back(it);
+                }
+                else
+                {
+                    // fire timer event
+                    Msg *pMsg = new Msg;
+                    pMsg->hwnd = it.hWnd;
+                    pMsg->message = WM_TIMER;
+                    pMsg->wParam = it.id;
+                    pMsg->lParam = (LPARAM)it.proc;
+                    pMsg->time = ts;
+                    GetCursorPos(&pMsg->pt);
+                    m_msgQueue.push_back(pMsg);
+                }
                 it.fireRemain = it.elapse;
                 bRet = true;
             }
@@ -390,6 +398,10 @@ bool SConnection::event2Msg(bool bTimeout, UINT elapse, uint64_t ts)
             {
                 it.fireRemain -= elapse;
             }
+        }
+        for (auto &it : runProc)
+        {
+            it.proc(0, WM_TIMER, it.id, ts); // call timer proc
         }
     }
     return bRet;
@@ -944,9 +956,49 @@ void SConnection::SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD 
         XCB_EVENT_MASK_NO_EVENT, (const char*)&response);
 }
 
+xcb_atom_t SConnection::clipFormat2Atom(UINT uFormat)
+{
+    switch (uFormat)
+    {
+    case CF_TEXT:
+        return atoms.UTF8_STRING;
+    case CF_UNICODETEXT:
+        return atoms.ATOM_CF_UNICODETEXT;
+    case CF_HDROP:
+        return atoms.ATOM_CF_HDROP;
+    case CF_BITMAP:
+        return atoms.ATOM_CF_BITMAP;
+    case CF_WAVE:
+        return atoms.ATOM_CF_WAVE;
+    default:
+        // for registered format
+        if (uFormat > CF_MAX)
+        {
+            return uFormat - CF_MAX;
+        }
+    }
+    return 0;
+}
+
+uint32_t SConnection::atom2ClipFormat(xcb_atom_t atom)
+{
+    if (atom == atoms.UTF8_STRING)
+        return CF_TEXT;
+    else if (atom == atoms.ATOM_CF_UNICODETEXT)
+        return CF_UNICODETEXT;
+    else if (atom == atoms.ATOM_CF_HDROP)
+        return CF_HDROP;
+    else if (atom == atoms.ATOM_CF_BITMAP)
+        return CF_BITMAP;
+    else if (atom == atoms.ATOM_CF_WAVE)
+        return CF_WAVE;
+    else
+        return CF_MAX + atom; // for registed format
+}
+
 std::shared_ptr<std::vector<char>> SConnection::readXdndSelection(uint32_t fmt)
 {
-    return m_clipboard->getDataInFormat(atoms.XdndSelection,getXcbFmtAtom(fmt));
+    return m_clipboard->getDataInFormat(atoms.XdndSelection,clipFormat2Atom(fmt));
 }
 
 void SConnection::BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -1037,7 +1089,7 @@ UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC p
         TimerInfo timer;
         timer.id = newId + 1;
         timer.fireRemain = uElapse;
-        timer.hWnd = hWnd;
+        timer.hWnd = 0;
         timer.proc = proc;
         timer.elapse = uElapse;
         m_lstTimer.push_back(timer);
@@ -1796,14 +1848,14 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                     xcb_atom_t* atoms = (xcb_atom_t*)xcb_get_property_value(reply);
                     pData->getTypeList().resize(length);
                     for (int i = 0; i < length; ++i)
-                        pData->getTypeList()[i]= getClipFormat(atoms[i]);
+                        pData->getTypeList()[i]= atom2ClipFormat(atoms[i]);
                 }
                 free(reply);
             }
             else {
                 for (int i = 2; i < 5; i++) {
                     if (e2->data.data32[i]) {
-                        uint32_t cf = getClipFormat(e2->data.data32[i]);
+                        uint32_t cf = atom2ClipFormat(e2->data.data32[i]);
                         if(cf)
                             pData->getTypeList().push_back(cf);
                     }
@@ -2218,4 +2270,43 @@ BOOL SConnection::IsDropTarget(HWND hWnd) {
     }
 //    SLOG_STMD() << "IsDropTarget for " << hWnd << " ret=" << ret;
     return ret;
+}
+
+VOID CALLBACK OnFlashWindowTimeout(HWND hWnd, UINT, UINT_PTR, DWORD)
+{
+
+}
+
+BOOL SConnection::FlashWindowEx(PFLASHWINFO info)
+{
+    if (info->dwFlags == FLASHW_STOP)
+    {//stop flash for the window
+        changeNetWmState(info->hwnd, false, atoms._NET_WM_STATE_DEMANDS_ATTENTION, 0);
+    }
+    else
+    {//start flash
+        changeNetWmState(info->hwnd, true, atoms._NET_WM_STATE_DEMANDS_ATTENTION, 0);
+        if (info->dwFlags != FLASHW_TIMER)
+        {//
+            SetTimer(info->hwnd, TM_FLASH, info->dwTimeout * info->uCount, OnFlashWindowTimeout);
+        }
+    }
+    return 0;
+}
+
+void SConnection::changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom_t two)
+{
+    xcb_client_message_event_t event;
+    event.response_type = XCB_CLIENT_MESSAGE;
+    event.format = 32;
+    event.sequence = 0;
+    event.window = hWnd;
+    event.type = atoms._NET_WM_STATE;
+    event.data.data32[0] = set ? 1 : 0;
+    event.data.data32[1] = one;
+    event.data.data32[2] = two;
+    event.data.data32[3] = 0;
+    event.data.data32[4] = 0;
+
+    xcb_send_event(connection, 0, screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
 }
