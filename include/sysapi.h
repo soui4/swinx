@@ -260,12 +260,12 @@ typedef int(NEAR WINAPI *NEARPROC)();
 typedef int(WINAPI *PROC)();
 #endif // __x86_64__
 
-    inline HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
+    static inline HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
     {
         return dlopen(lpFileName, RTLD_NOW);
     }
 
-    inline HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName)
+    static inline HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName)
     {
         char szName[MAX_PATH];
         if (0 == WideCharToMultiByte(CP_UTF8, 0, lpFileName, -1, szName, MAX_PATH, NULL, NULL))
@@ -279,12 +279,12 @@ typedef int(WINAPI *PROC)();
 #define LoadLibrary LoadLibraryA
 #endif
 
-    inline BOOL WINAPI FreeLibrary(HMODULE hModule)
+    static inline BOOL WINAPI FreeLibrary(HMODULE hModule)
     {
         return dlclose(hModule);
     }
 
-    inline FARPROC WINAPI GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
+    static inline FARPROC WINAPI GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
     {
         return (FARPROC)dlsym(hModule, lpProcName);
     }
