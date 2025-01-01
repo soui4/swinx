@@ -237,7 +237,8 @@ void GetLocalTime(SYSTEMTIME *pSysTime)
 
 void GetSystemTime(SYSTEMTIME *pSysTime)
 {
-    struct tm *now = localtime(nullptr);
+    time_t rawTime = time(NULL);
+    struct tm *now = localtime(&rawTime);
     pSysTime->wYear = now->tm_year;
     pSysTime->wMonth = now->tm_mon;
     pSysTime->wDayOfWeek = now->tm_wday;
@@ -248,13 +249,15 @@ void GetSystemTime(SYSTEMTIME *pSysTime)
     pSysTime->wMilliseconds = 0; // todo:hjx
 }
 
-time_t _mkgmtime(tm *_Tm)
+time_t _mkgmtime(struct tm *_Tm)
 {
+    //todo:hjx
     return 0;
 }
 
-int _localtime64_s(tm *ptm, const __time64_t *ptime)
+int _localtime64_s(struct tm *ptm, const __time64_t *ptime)
 {
+    *ptm = *localtime((time_t*)ptime);
     return 0;
 }
 
@@ -840,6 +843,9 @@ __time64_t _mktime64(const tm *ptime)
 
 __time64_t _time64(__time64_t *_Time)
 {
+    time_t rawtime=0;
+    time_t ret = time(&rawtime);
+    struct tm *timeinfo = localtime(&rawtime);
     return time((time_t *)_Time);
 }
 
