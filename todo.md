@@ -16,6 +16,9 @@ states: waiting, inprog, done
 |12 |clipboard support large data|hjx|waiting|
 |13 |fix demo2 bug|hjx|done|
 |14 |utf32 error for wxdemo|hjx|done|
+|15 |trayicon support|hjx|waiting|
+|16 |fix skia cn font bug|hjx|waiting|
+
 
 
 

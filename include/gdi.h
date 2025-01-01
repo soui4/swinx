@@ -1142,6 +1142,20 @@ typedef struct _ABCFLOAT {
 #define OUT_SCREEN_OUTLINE_PRECIS   9
 #define OUT_PS_ONLY_PRECIS          10
 
+#define CLIP_DEFAULT_PRECIS 0
+#define CLIP_CHARACTER_PRECIS 1
+#define CLIP_STROKE_PRECIS    2
+#define CLIP_MASK             0xf
+
+#define DEFAULT_QUALITY 0
+#define DRAFT_QUALITY   1
+#define PROOF_QUALITY   2
+#define NONANTIALIASED_QUALITY 3
+#define ANTIALIASED_QUALITY    4
+
+#define DEFAULT_PITCH 0
+#define FIXED_PITCH   1
+#define VARIABLE_PITCH 2
 
 UINT WINAPI RealizePalette(_In_ HDC hdc);
 HPALETTE WINAPI SelectPalette(_In_ HDC hdc, _In_ HPALETTE hPal, _In_ BOOL bForceBkgd);
