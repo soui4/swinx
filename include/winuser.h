@@ -441,8 +441,9 @@ typedef struct tagNCCALCSIZE_PARAMS
 
 #endif /* !NOKEYSTATES */
 
-#if (_WIN32_WINNT >= 0x0400)
 #ifndef NOTRACKMOUSEEVENT
+#if (_WIN32_WINNT >= 0x0400)
+
 
 #define TME_HOVER 0x00000001
 #define TME_LEAVE 0x00000002
@@ -469,10 +470,9 @@ BOOL WINAPI TrackMouseEvent(LPTRACKMOUSEEVENT lpEventTrack);
 
 #if (_WIN32_WINNT >= 0x0400)
 
-#endif /* !NOTRACKMOUSEEVENT */
 #endif /* _WIN32_WINNT >= 0x0400 */
 
-#endif /* !NOWINMESSAGES */
+#endif /* !NOTRACKMOUSEEVENT */
 
 #ifndef NOWINSTYLES
 
@@ -2108,4 +2108,5 @@ typedef BOOL(CALLBACK* DRAWSTATEPROC)(HDC hdc, LPARAM lData, WPARAM wData, int c
 }
 #endif //__cplusplus
 
+#endif // !NOWINSTYLES
 #endif //__WINUSER_H_
