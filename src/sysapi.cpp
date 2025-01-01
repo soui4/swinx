@@ -843,9 +843,6 @@ __time64_t _mktime64(const tm *ptime)
 
 __time64_t _time64(__time64_t *_Time)
 {
-    time_t rawtime=0;
-    time_t ret = time(&rawtime);
-    struct tm *timeinfo = localtime(&rawtime);
     return time((time_t *)_Time);
 }
 
