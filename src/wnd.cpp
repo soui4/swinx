@@ -424,7 +424,7 @@ static void RedrawNcRect(HWND hWnd, const RECT* lpRect) {
 BOOL InvalidateRect(HWND hWnd, const RECT* lpRect, BOOL bErase)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
+    if (!wndObj || wndObj->bDestroyed)
         return FALSE;
     if (wndObj->nSizing > 0)
         return TRUE;
@@ -735,7 +735,9 @@ BOOL WINAPI IsWindow(HWND hWnd)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (wndObj)
-        return TRUE;
+    {
+        return !wndObj->bDestroyed;
+    }
     SConnection *conn = SConnMgr::instance()->getConnection();
     xcb_get_geometry_cookie_t cookie = xcb_get_geometry(conn->connection, hWnd);
     xcb_get_geometry_reply_t *reply = xcb_get_geometry_reply(conn->connection, cookie, NULL);
@@ -2295,7 +2297,7 @@ int GetUpdateRgn(HWND hWnd,    // handle to window
 BOOL UpdateWindow(HWND hWnd)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
+    if (!wndObj || wndObj->bDestroyed)
         return FALSE;
     if (wndObj->nPainting)
         return FALSE;
