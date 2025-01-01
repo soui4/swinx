@@ -1165,6 +1165,8 @@ static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, cairo_surfac
 
     BOOL DrawBitmapEx(HDC hdc, LPCRECT pRcDest,HBITMAP bmp,LPCRECT pRcSrc,UINT expendMode, BYTE byAlpha/*=0xFF*/ )
     {
+        if (!bmp)
+            return FALSE;
         cairo_surface_t *src = (cairo_surface_t *)GetGdiObjPtr(bmp);
         int filterLevel = HIWORD(expendMode);
         expendMode = LOWORD(expendMode);

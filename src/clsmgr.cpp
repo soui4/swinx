@@ -14,17 +14,23 @@ void ClassMgr::builtin_register() {
     if(builtin_registed)
         return;
     builtin_registed=true;
-
-    WNDCLASSEXA clsInfo = { 0 };
-    clsInfo.cbSize = sizeof(clsInfo);
-    clsInfo.lpfnWndProc = DefWindowProc;
-    clsInfo.lpszClassName = CLS_WINDOW;
-    clsInfo.hbrBackground = CreateSolidBrush(RGB(255, 255, 255));
-    RegisterClassEx(&clsInfo);
-
-
+    {
+        WNDCLASSEXA clsInfo = { 0 };
+        clsInfo.cbSize = sizeof(clsInfo);
+        clsInfo.lpfnWndProc = DefWindowProc;
+        clsInfo.lpszClassName = CLS_WINDOW;
+        clsInfo.hbrBackground = CreateSolidBrush(GetSysColor(COLOR_WINDOW));
+        RegisterClassEx(&clsInfo);
+    }
+    {
+        WNDCLASSEXA clsInfo = { 0 };
+        clsInfo.cbSize = sizeof(clsInfo);
+        clsInfo.lpfnWndProc = DefWindowProc;
+        clsInfo.lpszClassName = TOOLTIPS_CLASS;
+        clsInfo.hbrBackground = CreateSolidBrush(GetSysColor(COLOR_INFOBK));
+        RegisterClassEx(&clsInfo);
+    }
     CNativeWnd::RegisterCls(WC_MENU);
-
     TRegisterClass<CStatic>(WC_STATIC);
     TRegisterClass<CButton>(WC_BUTTON);
 

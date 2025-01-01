@@ -2397,8 +2397,6 @@ typedef struct _RB_HITTESTINFO
 
 #ifndef NOTOOLTIPS
 
-#ifdef _WIN32
-
 #define TOOLTIPS_CLASSW         L"tooltips_class32"
 #define TOOLTIPS_CLASSA         "tooltips_class32"
 
@@ -2406,10 +2404,6 @@ typedef struct _RB_HITTESTINFO
 #define TOOLTIPS_CLASS          TOOLTIPS_CLASSW
 #else
 #define TOOLTIPS_CLASS          TOOLTIPS_CLASSA
-#endif
-
-#else
-#define TOOLTIPS_CLASS          "tooltips_class"
 #endif
 
 #if (_WIN32_IE >= 0x0300)
