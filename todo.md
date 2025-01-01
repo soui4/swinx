@@ -14,7 +14,8 @@ states: waiting, inprog, done
 |10 |mouse wheel|hjx|done|
 |11 |multi clipboard format|hjx|done|
 |12 |clipboard support large data|hjx|waiting|
-|13 |fix demo2 bug|hjx|waiting|
-|14 |utf32 error for wxdemo|hjx|waiting|
+|13 |fix demo2 bug|hjx|done|
+|14 |utf32 error for wxdemo|hjx|done|
+
 
 

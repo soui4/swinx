@@ -514,11 +514,8 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     }
     pWnd->mConnection = conn;
     pWnd->state = WS_Normal;
-    pWnd->dwStyle = cs->style & ~WS_VISIBLE; // remove visible
-    if (pWnd->dwStyle & (WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX))
-    {
-        pWnd->dwStyle |= WS_CAPTION;
-    }
+    pWnd->dwStyle = cs->style & (~WS_VISIBLE); // remove visible
+
     if (pWnd->dwStyle & WS_CAPTION)
     {
         pWnd->dwStyle &=~WS_BORDER; //remove border

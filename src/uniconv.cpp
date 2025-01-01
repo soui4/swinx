@@ -1,5 +1,7 @@
 #include "uniconv.h"
 #include "stdio.h"
+#include "log.h"
+#define kLogTag "uniconv"
 
 namespace swinx
 {
@@ -204,7 +206,7 @@ size_t UTF8FromUTF32(const uint32_t *uptr, unsigned int tlen, char *putf, unsign
             putf[k++] = static_cast<char>(0x80 | (uch & 0x3f));
         }
         else {
-            printf("invalid utf32 code=0x%08x", uch);
+            SLOG_FMTW("invalid utf32 code=0x%08x", uch);
         }
         i++;
     }
@@ -255,7 +257,7 @@ size_t UTF32toUTF8Length(const uint32_t* uptr, unsigned int tlen){
             len += 4;
         }
         else {
-            printf("invalid utf32 code=0x%08x", uch);
+            SLOG_FMTW("invalid utf32 code=0x%08x", uch);
         }
         i++;
     }

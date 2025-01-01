@@ -3,7 +3,7 @@
 
 #include <string>
 #include <sstream>
-
+#include <strapi.h>
 typedef void (*SWinxLogCallback)(const char* pLogStr, int level);
 
 namespace swinx
@@ -121,7 +121,7 @@ std::stringstream& operator <<(std::stringstream& dst, const wchar_t* src);
         else                                                                \
         {                                                                   \
             wchar_t logbuf[swinx::Log::MAX_LOGLEN] = { 0 };               \
-            int nLen = snwprintf(logbuf, swinx::Log::MAX_LOGLEN,         \
+            int nLen = _snwprintf(logbuf, swinx::Log::MAX_LOGLEN,         \
                 (const wchar_t *)logformat, ##__VA_ARGS__);                 \
             LOG_STM(tag, level) << logbuf;                                     \
         }                                                                   \
