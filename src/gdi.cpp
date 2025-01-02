@@ -2351,7 +2351,7 @@ void drawRoundRect(cairo_t *cr, double x, double y, double width, double height,
     cairo_close_path(cr);
 }
 
-BOOL RoundRect(HDC hdc, int left, int top, int right, int bottom, int radio_x, int radio_y)
+BOOL RoundRect(HDC hdc, int left, int top, int right, int bottom, int width, int height)
 {
     cairo_t *ctx = hdc->cairo;
     cairo_save(ctx);
@@ -2360,13 +2360,13 @@ BOOL RoundRect(HDC hdc, int left, int top, int right, int bottom, int radio_x, i
     if (ApplyBrush(ctx, hdc->brush, wid, hei))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
-        drawRoundRect(ctx, 0, 0, wid, hei, radio_x, radio_y);
+        drawRoundRect(ctx, 0, 0, wid, hei, width / 2, height/2);
         cairo_fill(ctx);
     }
     if (ApplyPen(ctx, hdc->pen))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
-        drawRoundRect(ctx, 0, 0, wid, hei, radio_x, radio_y);
+        drawRoundRect(ctx, 0, 0, wid, hei, width / 2, height / 2);
         cairo_stroke(ctx);
     }
     cairo_restore(ctx);
