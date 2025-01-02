@@ -745,8 +745,13 @@ int GetSystemScale(){
 int GetSystemMetrics(int nIndex)
 {
     int ret = 0;
+    SConnection *conn = SConnMgr::instance()->getConnection();
     switch (nIndex)
     {
+    case SM_CXSCREEN:
+        return conn->screen->width_in_pixels;
+    case SM_CYSCREEN:
+        return conn->screen->height_in_pixels;
     case SM_CXBORDER:
     case SM_CYBORDER:
     case SM_CXEDGE:
