@@ -47,7 +47,7 @@ size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxW
                 cairo_glyph_free(glyphs);
             }
         }
-        ret++;
+        ret+=len;
         p1 = next;
     }
     return ret;
