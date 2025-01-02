@@ -1128,8 +1128,7 @@ HWND SConnection::SetCapture(HWND hCapture)
     HWND ret = m_hWndCapture;
     if (hCapture == m_hWndCapture)
         return ret;
-    m_hWndCapture = hCapture;
-    xcb_grab_pointer(connection,
+    xcb_grab_pointer_cookie_t cookie = xcb_grab_pointer(connection,
                      1, // 这个标志位表示不使用对子窗口的事件
                      hCapture, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION,
                      XCB_GRAB_MODE_ASYNC, // 异步捕获
@@ -1138,7 +1137,19 @@ HWND SConnection::SetCapture(HWND hCapture)
                      XCB_NONE,        // 使用默认光标
                      XCB_CURRENT_TIME // 立即开始捕获
     );
+    xcb_grab_pointer_reply_t *reply = xcb_grab_pointer_reply(connection, cookie, NULL);
+    bool result = false;
+    if (reply)
+    {
+        result = reply->status == XCB_GRAB_STATUS_SUCCESS;
+        free(reply);
+    }
+    if (result)
+    {
+        m_hWndCapture = hCapture;
+    }
     xcb_flush(connection);
+    //SLOG_STMI() << "set capture:" << hCapture << " result="<<result;
     return ret;
 }
 
@@ -1146,6 +1157,7 @@ BOOL SConnection::ReleaseCapture()
 {
     if (!m_hWndCapture)
         return FALSE;
+    //SLOG_STMI() << "release capture, oldCapture=" << m_hWndCapture;
     m_hWndCapture = 0;
     xcb_ungrab_pointer(connection, XCB_CURRENT_TIME);
     xcb_flush(connection);
@@ -1966,6 +1978,10 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     {
         xcb_button_press_event_t *e2 = (xcb_button_press_event_t *)event;
         m_tsSelection = e2->time;
+        if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
+        {
+            SLOG_STMW() << "button press, but not capture window, e2->event=" << e2->event << " capture="<<m_hWndCapture;;
+        }
         if (e2->detail >= XCB_BUTTON_INDEX_1 && e2->detail <= XCB_BUTTON_INDEX_3)
         {
             pMsg = new Msg;
