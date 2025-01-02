@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <algorithm>
 #include <src/builtin_image.h>
+#include <list>
 
 class CMessageBox : public CNativeWnd {
 
@@ -29,42 +30,48 @@ class CMessageBox : public CNativeWnd {
     {
         m_retCode = IDCANCEL;
 
-        std::unordered_map<int, std::string> _ButtonInfo;
+        struct ButtonInfo
+        {
+            int id;
+            std::string text;
+        };
+        std::list<ButtonInfo> _ButtonInfo;
+        //std::unordered_map<int, std::string> _ButtonInfo;
 
         switch (uType & 0x0f)
         {
         case MB_ABORTRETRYIGNORE:
-            _ButtonInfo.insert({ IDABORT, u8"中止" });
-            _ButtonInfo.insert({ IDRETRY, u8"重试" });
-            _ButtonInfo.insert({ IDIGNORE, u8"忽略" });
+            _ButtonInfo.push_back({ IDABORT, u8"中止" });
+            _ButtonInfo.push_back({ IDRETRY, u8"重试" });
+            _ButtonInfo.push_back({ IDIGNORE, u8"忽略" });
             break;
         case MB_CANCELTRYCONTINUE:
-            _ButtonInfo.insert({ IDCANCEL, u8"取消" });
-            _ButtonInfo.insert({ IDTRYAGAIN, u8"重试" });
-            _ButtonInfo.insert({ IDCONTINUE, u8"继续" });
+            _ButtonInfo.push_back({ IDCANCEL, u8"取消" });
+            _ButtonInfo.push_back({ IDTRYAGAIN, u8"重试" });
+            _ButtonInfo.push_back({ IDCONTINUE, u8"继续" });
             break;
         case MB_OK:
-            _ButtonInfo.insert({ IDOK, u8"确定" });
+            _ButtonInfo.push_back({ IDOK, u8"确定" });
             break;
         case MB_OKCANCEL:
-            _ButtonInfo.insert({ IDOK, u8"确定" });
-            _ButtonInfo.insert({ IDCANCEL, u8"取消" });
+            _ButtonInfo.push_back({ IDOK, u8"确定" });
+            _ButtonInfo.push_back({ IDCANCEL, u8"取消" });
             break;
         case MB_RETRYCANCEL:
-            _ButtonInfo.insert({ IDTRYAGAIN, u8"重试" });
-            _ButtonInfo.insert({ IDCANCEL, u8"取消" });
+            _ButtonInfo.push_back({ IDTRYAGAIN, u8"重试" });
+            _ButtonInfo.push_back({ IDCANCEL, u8"取消" });
             break;
         case MB_YESNO:
-            _ButtonInfo.insert({ IDYES, u8"是" });
-            _ButtonInfo.insert({ IDNO, u8"否" });
+            _ButtonInfo.push_back({ IDYES, u8"是" });
+            _ButtonInfo.push_back({ IDNO, u8"否" });
             break;
         case MB_YESNOCANCEL:
-            _ButtonInfo.insert({ IDYES, u8"是" });
-            _ButtonInfo.insert({ IDNO, u8"否" });
-            _ButtonInfo.insert({ IDCANCEL, u8"取消" });
+            _ButtonInfo.push_back({ IDYES, u8"是" });
+            _ButtonInfo.push_back({ IDNO, u8"否" });
+            _ButtonInfo.push_back({ IDCANCEL, u8"取消" });
             break;
         default:
-            _ButtonInfo.insert({ IDOK, u8"确定" });
+            _ButtonInfo.push_back({ IDOK, u8"确定" });
             break;
         }
         switch (uType & 0xf0)
@@ -140,7 +147,7 @@ class CMessageBox : public CNativeWnd {
 
         for (const auto &item : _ButtonInfo)
         {
-            CreateWindowEx(0, WC_BUTTON, item.second.c_str(), WS_CHILD | WS_VISIBLE, startPos.x, startPos.y, 120, 36, m_hWnd, item.first, 0, 0);
+            CreateWindowEx(0, WC_BUTTON, item.text.c_str(), WS_CHILD | WS_VISIBLE, startPos.x, startPos.y, 120, 36, m_hWnd, item.id, 0, 0);
             startPos.x += 6 + 120;
         }
     }
