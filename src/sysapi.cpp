@@ -226,7 +226,7 @@ void GetLocalTime(SYSTEMTIME *pSysTime)
     gettimeofday(&tv, NULL);
     struct tm *now = localtime(&tv.tv_sec);
     pSysTime->wYear = now->tm_year+1900;
-    pSysTime->wMonth = now->tm_mon;
+    pSysTime->wMonth = now->tm_mon+1;
     pSysTime->wDayOfWeek = now->tm_wday;
     pSysTime->wDay = now->tm_mday;
     pSysTime->wHour = now->tm_hour;

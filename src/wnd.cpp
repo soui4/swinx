@@ -824,7 +824,6 @@ HWND SetCapture(HWND hWnd)
 BOOL ReleaseCapture()
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
-    //SLOG_FMTD("ReleaseCapture hWnd=%d",(int)conn->GetCapture());
     return conn->ReleaseCapture();
 }
 
@@ -1377,6 +1376,9 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 	}
 	else if (msg == WM_DESTROY)
 	{
+        if(GetCapture()==hWnd){
+            ReleaseCapture();
+        }
         //auto destroy all popup that owned by this
         EnumWindows(Enum4DestroyOwned, hWnd);
 		//auto destory all children
@@ -1735,10 +1737,12 @@ BOOL SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int x, int y, int cx, int cy,
     wndPos.cy = cy;
     wndPos.flags = uFlags;
     SendMessage(hWnd, WM_WINDOWPOSCHANGING, 0, (LPARAM)&wndPos);
-    if (wndPos.cx < 1)
-        wndPos.cx = 1;
-    if (wndPos.cy < 1)
-        wndPos.cy = 1;
+    if(0==(wndPos.flags & SWP_NOSIZE)){
+        if (wndPos.cx < 1)
+            wndPos.cx = 1;
+        if (wndPos.cy < 1)
+            wndPos.cy = 1;
+    }
     SendMessage(hWnd, WM_WINDOWPOSCHANGED, 0, (LPARAM)&wndPos);
     return TRUE;
 }
