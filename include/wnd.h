@@ -433,6 +433,9 @@ extern "C"
 
     BOOL WINAPI FlashWindowEx(PFLASHWINFO pfwi);
     BOOL WINAPI FlashWindow(HWND hWnd, BOOL bInvert);
+
+    BOOL WINAPI AnimateWindow(HWND hwnd, DWORD time, DWORD flags);
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus

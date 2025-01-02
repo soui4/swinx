@@ -3882,3 +3882,19 @@ BOOL WINAPI FlashWindow(HWND hWnd, BOOL bInvert)
     info.uCount = 5;
     return FlashWindowEx(&info);
 }
+
+
+/***********************************************************************
+ *           AnimateWindow (USER32.@)
+ */
+BOOL WINAPI AnimateWindow(HWND hwnd, DWORD time, DWORD flags)
+{
+    if (!IsWindow(hwnd) || (!(flags & AW_HIDE)) == IsWindowVisible(hwnd))
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    //todo: hjx 
+    ShowWindow(hwnd, (flags & AW_HIDE) ? SW_HIDE : ((flags & AW_ACTIVATE) ? SW_SHOW : SW_SHOWNA));
+    return TRUE;
+}
