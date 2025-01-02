@@ -1142,6 +1142,7 @@ HWND SConnection::SetCapture(HWND hCapture)
     if (reply)
     {
         result = reply->status == XCB_GRAB_STATUS_SUCCESS;
+        if(!result) SLOG_STMI() << "set capture: reply->status=" << reply->status;
         free(reply);
     }
     if (result)
@@ -1157,7 +1158,7 @@ BOOL SConnection::ReleaseCapture()
 {
     if (!m_hWndCapture)
         return FALSE;
-    //SLOG_STMI() << "release capture, oldCapture=" << m_hWndCapture;
+    SLOG_STMI() << "release capture, oldCapture=" << m_hWndCapture;
     m_hWndCapture = 0;
     xcb_ungrab_pointer(connection, XCB_CURRENT_TIME);
     xcb_flush(connection);
@@ -1978,16 +1979,17 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     {
         xcb_button_press_event_t *e2 = (xcb_button_press_event_t *)event;
         m_tsSelection = e2->time;
-        if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
-        {
-            SLOG_STMW() << "button press, but not capture window, e2->event=" << e2->event << " capture="<<m_hWndCapture;;
-        }
         if (e2->detail >= XCB_BUTTON_INDEX_1 && e2->detail <= XCB_BUTTON_INDEX_3)
         {
             pMsg = new Msg;
             pMsg->hwnd = e2->event;
             pMsg->pt.x = e2->event_x;
             pMsg->pt.y = e2->event_y;
+            if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
+            {
+                MapWindowPoints(e2->event,m_hWndCapture,&pMsg->pt,1);
+                pMsg->hwnd=m_hWndCapture;
+            }
             pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
             switch (e2->detail)
             {
@@ -2046,6 +2048,11 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg->hwnd = e2->event;
             pMsg->pt.x = e2->event_x;
             pMsg->pt.y = e2->event_y;
+            if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
+            {
+                MapWindowPoints(e2->event,m_hWndCapture,&pMsg->pt,1);
+                pMsg->hwnd=m_hWndCapture;
+            }
             pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
             uint8_t vk = 0;
             switch (e2->detail)
@@ -2076,6 +2083,11 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->message = WM_MOUSEMOVE;
         pMsg->pt.x = e2->event_x;
         pMsg->pt.y = e2->event_y;
+        if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
+        {
+            MapWindowPoints(e2->event,m_hWndCapture,&pMsg->pt,1);
+            pMsg->hwnd=m_hWndCapture;
+        }
         pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
         pMsg->wParam = ButtonState2Mask(e2->state);
         pMsg->time = e2->time;

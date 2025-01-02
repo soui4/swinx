@@ -3153,6 +3153,7 @@ BOOL ShowWindow(HWND hWnd, int nCmdShow)
         if (nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA && !(wndObj->dwStyle&WS_CHILD))
             SetActiveWindow(hWnd);
         InvalidateRect(hWnd, nullptr, TRUE);
+        wndObj->mConnection->sync();
     }
     else
     {

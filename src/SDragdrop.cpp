@@ -292,15 +292,11 @@ HRESULT SDragDrop::DoDragDrop(IDataObject* pDataObject, IDropSource* pDropSource
     trackerInfo.dragEnded = FALSE;
     trackerInfo.curTargetHWND = 0;
     trackerInfo.conn = conn;
-    if (!trackerInfo.CreateWindowA(0, CLS_WINDOW, "TrackerWindow", WS_POPUP, 0, 0, 1, 1, 0, 0, 0))
+    if (!trackerInfo.CreateWindowA(0, CLS_WINDOW, "TrackerWindow", WS_POPUP, -1, -1, 0, 0, 0, 0, 0))
         return E_OUTOFMEMORY;
 
     {
         conn->getClipboard()->setSelDataObject(pDataObject);
-        /*
-         * Capture the mouse input
-         */
-        HWND oldCapture = trackerInfo.SetCapture();
         SLOG_STMI() << "DoDragDrop start";
 
         msg.message = 0;
@@ -343,7 +339,6 @@ HRESULT SDragDrop::DoDragDrop(IDataObject* pDataObject, IDropSource* pDropSource
             }
         }
         conn->getClipboard()->setSelDataObject(NULL);
-        ::SetCapture(oldCapture);
         /* re-post the quit message to outer message loop */
         if (msg.message == WM_QUIT)
             PostQuitMessage(msg.wParam);
