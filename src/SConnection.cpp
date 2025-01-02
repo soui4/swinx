@@ -1158,7 +1158,7 @@ BOOL SConnection::ReleaseCapture()
 {
     if (!m_hWndCapture)
         return FALSE;
-    SLOG_STMI() << "release capture, oldCapture=" << m_hWndCapture;
+    //SLOG_STMI() << "release capture, oldCapture=" << m_hWndCapture;
     m_hWndCapture = 0;
     xcb_ungrab_pointer(connection, XCB_CURRENT_TIME);
     xcb_flush(connection);
