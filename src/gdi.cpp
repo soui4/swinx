@@ -2376,17 +2376,20 @@ BOOL RoundRect(HDC hdc, int left, int top, int right, int bottom, int width, int
 BOOL Polyline(HDC hdc, const POINT *apt, int cpt)
 {
     cairo_t *ctx = hdc->cairo;
+    if(cpt<2)
+        return FALSE;
     cairo_save(ctx);
     ApplyPen(ctx, hdc->pen);
     ApplyRop2(hdc->cairo, hdc->rop2);
 
-    for (int i = 0; i < cpt - 1; i++)
+    cairo_move_to(ctx, apt[0].x, apt[0].y);
+    for (int i = 1; i < cpt; i++)
     {
-        cairo_move_to(ctx, apt[i].x, apt[i].y);
-        cairo_line_to(ctx, apt[i + 1].x, apt[i + 1].y);
+        cairo_line_to(ctx, apt[i].x, apt[i].y);
     }
+    cairo_stroke(ctx);
     cairo_restore(ctx);
-    return 0;
+    return TRUE;
 }
 
 int FillRect(HDC hdc, const RECT *lprc, HBRUSH hbr)
