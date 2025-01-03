@@ -619,6 +619,8 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
         WndMgr::freeWindow(hWnd);
         hWnd = 0;
     }
+    //notify size
+    SendMessageA(hWnd,WM_SIZE,0,MAKELONG(cs->cx, cs->cy));
     if (clsInfo.hIconSm)
     {
         SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)clsInfo.hIconSm);

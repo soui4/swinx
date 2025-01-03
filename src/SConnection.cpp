@@ -2018,7 +2018,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         }
         else if (e2->detail == XCB_BUTTON_INDEX_4 || e2->detail == XCB_BUTTON_INDEX_5) {
             //mouse wheel event
-            SLOG_STMI() << "mouse wheel, dir = " << (e2->detail == XCB_BUTTON_INDEX_4 ? "up" : "down");
+            //SLOG_STMI() << "mouse wheel, dir = " << (e2->detail == XCB_BUTTON_INDEX_4 ? "up" : "down");
             pMsg = new Msg;
             pMsg->hwnd = e2->event;
             pMsg->message = WM_MOUSEWHEEL;
