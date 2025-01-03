@@ -241,14 +241,14 @@ void GetSystemTime(SYSTEMTIME *pSysTime)
     gettimeofday(&tvNow, 0);
 
     struct tm *now = localtime(&tvNow.tv_sec);
-    pSysTime->wYear = now->tm_year;
-    pSysTime->wMonth = now->tm_mon;
+    pSysTime->wYear = now->tm_year+1900;
+    pSysTime->wMonth = now->tm_mon+1;
     pSysTime->wDayOfWeek = now->tm_wday;
     pSysTime->wDay = now->tm_mday;
     pSysTime->wHour = now->tm_hour;
     pSysTime->wMinute = now->tm_min;
     pSysTime->wSecond = now->tm_sec;
-    pSysTime->wMilliseconds = tvNow.tv_usec*1000;
+    pSysTime->wMilliseconds = tvNow.tv_usec/1000;
 }
 
 time_t _mkgmtime(struct tm *_Tm)

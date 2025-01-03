@@ -265,6 +265,7 @@ public:
 
     std::list<TimerInfo> m_lstTimer;
     bool m_bBlockTimer;
+    uint64_t m_tsLastMsg=-1;
 
     HDC m_deskDC;
     HBITMAP m_deskBmp;

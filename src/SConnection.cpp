@@ -418,11 +418,11 @@ bool SConnection::waitMsg()
             timeOut = std::min(timeOut, it.fireRemain);
         }
     }
-    uint64_t ts1 = GetTickCount64();
     bool bTimeout = WaitForSingleObject(m_evtSync, timeOut) == WAIT_TIMEOUT;
-    uint64_t ts2 = GetTickCount64();
-    UINT elapse = ts2 - ts1;
-    return event2Msg(bTimeout, elapse, ts2);
+    uint64_t ts = GetTickCount64();
+    UINT elapse = m_tsLastMsg == -1 ? 0 : (ts - m_tsLastMsg);
+    m_tsLastMsg = ts;
+    return event2Msg(bTimeout, elapse, ts);
 }
 
 DWORD SConnection::GetMsgPos() const
