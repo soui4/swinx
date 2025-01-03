@@ -18,6 +18,7 @@ _SDC::_SDC(HWND _hwnd)
     , textAlign(TA_TOP|TA_LEFT|TA_UPDATECP)
     , rop2(R2_COPYPEN)
 {
+    ptOrigin.x = ptOrigin.y = 0;
     SLOG_STMD()<<"new sdc:"<<this;
 }
 

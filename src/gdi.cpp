@@ -2391,17 +2391,17 @@ BOOL Polyline(HDC hdc, const POINT *apt, int cpt)
 
 BOOL SetViewportOrgEx(HDC hdc, int x, int y, LPPOINT lppt)
 {
-    cairo_matrix_t mtx;
-    cairo_get_matrix(hdc->cairo, &mtx);
     if (lppt)
     {
-        lppt->x = (int)floor(mtx.x0);
-        lppt->y = (int)floor(mtx.y0);
+        lppt->x = hdc->ptOrigin.x;
+        lppt->y = hdc->ptOrigin.y;
     }
-
-    mtx.x0 = x;
-    mtx.y0 = y;
-
+    cairo_matrix_t mtx;
+    cairo_get_matrix(hdc->cairo, &mtx);
+    mtx.x0 += x - hdc->ptOrigin.x;
+    mtx.y0 += y - hdc->ptOrigin.y;
+    hdc->ptOrigin.x = x;
+    hdc->ptOrigin.y = y;
     cairo_set_matrix(hdc->cairo, &mtx);
     return TRUE;
 }
@@ -2410,10 +2410,8 @@ BOOL GetViewportOrgEx(HDC hdc, LPPOINT lpPoint)
 {
     if (!lpPoint)
         return FALSE;
-    cairo_matrix_t mtx;
-    cairo_get_matrix(hdc->cairo, &mtx);
-    lpPoint->x = (int)floor(mtx.x0);
-    lpPoint->y = (int)floor(mtx.y0);
+    lpPoint->x = hdc->ptOrigin.x;
+    lpPoint->y = hdc->ptOrigin.y;
     return TRUE;
 }
 
@@ -2636,30 +2634,50 @@ BOOL Arc(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4
     return TRUE;
 }
 
+static void convert_xform_to_cairo_matrix(const XFORM *xform, cairo_matrix_t &cairo_matrix)
+{
+    cairo_matrix.xx = xform->eM11;
+    cairo_matrix.xy = xform->eM21;
+    cairo_matrix.yx = xform->eM12;
+    cairo_matrix.yy = xform->eM22;
+    cairo_matrix.x0 = xform->eDx;
+    cairo_matrix.y0 = xform->eDy;
+}
+
+static void convert_cairo_matrix_to_xform(const cairo_matrix_t *cairo_matrix,XFORM &xform)
+{
+    xform.eM11 = cairo_matrix->xx;
+    xform.eM21 = cairo_matrix->xy;
+    xform.eM12 = cairo_matrix->yx;
+    xform.eM22 = cairo_matrix->yy;
+    xform.eDx = cairo_matrix->x0;
+    xform.eDy = cairo_matrix->y0;
+}
+
 BOOL GetWorldTransform(HDC hdc, LPXFORM lpxf)
 {
     cairo_matrix_t mtx;
     cairo_get_matrix(hdc->cairo, &mtx);
-    lpxf->eM11 = mtx.xx;
-    lpxf->eM12 = mtx.xy;
-    lpxf->eM21 = mtx.yx;
-    lpxf->eM22 = mtx.yy;
-    lpxf->eDx = mtx.x0;
-    lpxf->eDy = mtx.y0;
+    mtx.x0 -= hdc->ptOrigin.x;
+    mtx.y0 -= hdc->ptOrigin.y;
+    convert_cairo_matrix_to_xform(&mtx, *lpxf);
     return TRUE;
 }
 
 BOOL SetWorldTransform(HDC hdc, const XFORM *lpxf)
 {
     cairo_matrix_t mtx;
-    mtx.xx = lpxf->eM11;
-    mtx.xy = lpxf->eM12;
-    mtx.yx = lpxf->eM21;
-    mtx.yy = lpxf->eM22;
-    mtx.x0 = lpxf->eDx;
-    mtx.y0 = lpxf->eDy;
+    convert_xform_to_cairo_matrix(lpxf, mtx); // 传递指针
+    if (hdc->ptOrigin.x != 0 || hdc->ptOrigin.y != 0)
+    {
+        cairo_matrix_t preTrans, postTrans;
+        cairo_matrix_init_translate(&preTrans, -hdc->ptOrigin.x, -hdc->ptOrigin.y);
+        cairo_matrix_init_translate(&postTrans, hdc->ptOrigin.x, hdc->ptOrigin.y);
+        cairo_matrix_multiply(&mtx, &preTrans, &mtx);
+        cairo_matrix_multiply(&mtx, &mtx, &postTrans);
+    }
     cairo_set_matrix(hdc->cairo, &mtx);
-    return TRUE;
+    return TRUE; // 可能需要根据具体情况处理错误
 }
 
 int SetROP2(HDC hdc, int rop2)
