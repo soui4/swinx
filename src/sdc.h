@@ -8,6 +8,7 @@ typedef struct _SDC
 {
     HWND hwnd;
     cairo_t *cairo;
+    cairo_matrix_t mtx;
     POINT ptOrigin;
     HBITMAP bmp;
     COLORREF crText;

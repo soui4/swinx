@@ -2389,61 +2389,6 @@ BOOL Polyline(HDC hdc, const POINT *apt, int cpt)
     return 0;
 }
 
-BOOL SetViewportOrgEx(HDC hdc, int x, int y, LPPOINT lppt)
-{
-    if (lppt)
-    {
-        lppt->x = hdc->ptOrigin.x;
-        lppt->y = hdc->ptOrigin.y;
-    }
-    cairo_matrix_t mtx;
-    cairo_get_matrix(hdc->cairo, &mtx);
-    mtx.x0 += x - hdc->ptOrigin.x;
-    mtx.y0 += y - hdc->ptOrigin.y;
-    hdc->ptOrigin.x = x;
-    hdc->ptOrigin.y = y;
-    cairo_set_matrix(hdc->cairo, &mtx);
-    return TRUE;
-}
-
-BOOL GetViewportOrgEx(HDC hdc, LPPOINT lpPoint)
-{
-    if (!lpPoint)
-        return FALSE;
-    lpPoint->x = hdc->ptOrigin.x;
-    lpPoint->y = hdc->ptOrigin.y;
-    return TRUE;
-}
-
-BOOL OffsetViewportOrgEx(HDC hdc, int x, int y, LPPOINT lppt)
-{
-    cairo_matrix_t mtx;
-    cairo_get_matrix(hdc->cairo, &mtx);
-    if (lppt)
-    {
-        lppt->x = (int)floor(mtx.x0);
-        lppt->y = (int)floor(mtx.y0);
-    }
-    return SetViewportOrgEx(hdc, x + mtx.x0, y + mtx.y0, lppt);
-}
-
-BOOL WINAPI SetWindowOrgEx(HDC hdc,        // handle to device context
-    int X,          // new x-coordinate of window origin
-    int Y,          // new y-coordinate of window origin
-    LPPOINT lpPoint // original window origin
-) {
-    //todo:hjx
-    return SetViewportOrgEx(hdc, X, Y, lpPoint);
-}
-
-BOOL WINAPI SetWindowExtEx(HDC hdc,       // handle to device context
-    int nXExtent,  // new horizontal window extent
-    int nYExtent,  // new vertical window extent
-    LPSIZE lpSize  // original window extent
-) {
-    //todo:hjx
-    return FALSE;
-}
 int FillRect(HDC hdc, const RECT *lprc, HBRUSH hbr)
 {
     int ret = 0;
@@ -2654,30 +2599,95 @@ static void convert_cairo_matrix_to_xform(const cairo_matrix_t *cairo_matrix,XFO
     xform.eDy = cairo_matrix->y0;
 }
 
+static void update_transform(HDC hdc)
+{
+    if (hdc->ptOrigin.x==0 && hdc->ptOrigin.y==0)
+    {
+        cairo_set_matrix(hdc->cairo, &hdc->mtx);
+    }
+    else if (matrix_is_identity(&hdc->mtx))
+    {
+        cairo_matrix_t mtx;
+        cairo_matrix_init_translate(&mtx, hdc->ptOrigin.x, hdc->ptOrigin.y);
+        cairo_set_matrix(hdc->cairo, &mtx);
+    }
+    else
+    { // both origin and matrix are not identity, use mtxTrans *(preTrans*mtx*postTrans), mtxTrans equal to postTrans
+        cairo_matrix_t preTrans, postTrans;
+        cairo_matrix_init_translate(&preTrans, -hdc->ptOrigin.x, -hdc->ptOrigin.y);
+        cairo_matrix_init_translate(&postTrans, hdc->ptOrigin.x, hdc->ptOrigin.y);
+        //calc preTrans*mtx*postTrans
+        cairo_matrix_t mtx;
+        memcpy(&mtx, &hdc->mtx, sizeof(mtx));
+        cairo_matrix_multiply(&mtx, &preTrans, &mtx);
+        cairo_matrix_multiply(&mtx, &mtx, &postTrans);
+        //calc mtxTrans *(preTrans*mtx*postTrans)
+        cairo_matrix_multiply(&mtx, &postTrans, &mtx); // postTrans eqaul to mtxTrans
+        //apply the total matrix
+        cairo_set_matrix(hdc->cairo, &mtx);
+    }
+}
+
+BOOL SetViewportOrgEx(HDC hdc, int x, int y, LPPOINT lppt)
+{
+    if (lppt)
+    {
+        lppt->x = hdc->ptOrigin.x;
+        lppt->y = hdc->ptOrigin.y;
+    }
+    hdc->ptOrigin.x = x;
+    hdc->ptOrigin.y = y;
+    update_transform(hdc);
+    return TRUE;
+}
+
+BOOL GetViewportOrgEx(HDC hdc, LPPOINT lpPoint)
+{
+    if (!lpPoint)
+        return FALSE;
+    lpPoint->x = hdc->ptOrigin.x;
+    lpPoint->y = hdc->ptOrigin.y;
+    return TRUE;
+}
+
+BOOL OffsetViewportOrgEx(HDC hdc, int x, int y, LPPOINT lppt)
+{
+    x += hdc->ptOrigin.x;
+    y += hdc->ptOrigin.y;
+    return SetViewportOrgEx(hdc, x, y, lppt);
+}
+
+BOOL WINAPI SetWindowOrgEx(HDC hdc,        // handle to device context
+                           int X,          // new x-coordinate of window origin
+                           int Y,          // new y-coordinate of window origin
+                           LPPOINT lpPoint // original window origin
+)
+{
+    // todo:hjx
+    return SetViewportOrgEx(hdc, X, Y, lpPoint);
+}
+
+BOOL WINAPI SetWindowExtEx(HDC hdc,      // handle to device context
+                           int nXExtent, // new horizontal window extent
+                           int nYExtent, // new vertical window extent
+                           LPSIZE lpSize // original window extent
+)
+{
+    // todo:hjx
+    return FALSE;
+}
+
 BOOL GetWorldTransform(HDC hdc, LPXFORM lpxf)
 {
-    cairo_matrix_t mtx;
-    cairo_get_matrix(hdc->cairo, &mtx);
-    mtx.x0 -= hdc->ptOrigin.x;
-    mtx.y0 -= hdc->ptOrigin.y;
-    convert_cairo_matrix_to_xform(&mtx, *lpxf);
+    convert_cairo_matrix_to_xform(&hdc->mtx, *lpxf);
     return TRUE;
 }
 
 BOOL SetWorldTransform(HDC hdc, const XFORM *lpxf)
 {
-    cairo_matrix_t mtx;
-    convert_xform_to_cairo_matrix(lpxf, mtx); // 传递指针
-    if (hdc->ptOrigin.x != 0 || hdc->ptOrigin.y != 0)
-    {
-        cairo_matrix_t preTrans, postTrans;
-        cairo_matrix_init_translate(&preTrans, -hdc->ptOrigin.x, -hdc->ptOrigin.y);
-        cairo_matrix_init_translate(&postTrans, hdc->ptOrigin.x, hdc->ptOrigin.y);
-        cairo_matrix_multiply(&mtx, &preTrans, &mtx);
-        cairo_matrix_multiply(&mtx, &mtx, &postTrans);
-    }
-    cairo_set_matrix(hdc->cairo, &mtx);
-    return TRUE; // 可能需要根据具体情况处理错误
+    convert_xform_to_cairo_matrix(lpxf, hdc->mtx); // 传递指针
+    update_transform(hdc);
+    return TRUE; 
 }
 
 int SetROP2(HDC hdc, int rop2)
