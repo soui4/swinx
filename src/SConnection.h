@@ -239,6 +239,8 @@ public:
     xcb_cursor_t createXcbCursor(HCURSOR cursor);
     uint32_t netWmStates(HWND hWnd);
 
+    DWORD XdndAction2Effect(xcb_atom_t action);
+
     bool pushEvent(xcb_generic_event_t *e);
 
     static void *readProc(void *p);

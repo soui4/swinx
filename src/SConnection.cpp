@@ -1603,6 +1603,26 @@ uint32_t SConnection::netWmStates(HWND hWnd)
     return result;
 }
 
+DWORD SConnection::XdndAction2Effect(xcb_atom_t action)
+{
+    if (action == atoms.XdndActionMove)
+    {
+        return DROPEFFECT_MOVE;
+    }
+    else if (action == atoms.XdndActionCopy)
+    {
+        return  DROPEFFECT_COPY;
+    }
+    else if (action == atoms.XdndActionLink)
+    {
+        return  DROPEFFECT_LINK;
+    }
+    else
+    {
+        return DROPEFFECT_NONE;
+    }
+}
+
 bool SConnection::pushEvent(xcb_generic_event_t *event)
 {
     uint8_t event_code = event->response_type & 0x7f;
@@ -1906,7 +1926,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg2->message = UM_XDND_DRAG_OVER;
             pMsg2->hFrom = e2->data.data32[0];
             pMsg2->dwKeyState = e2->data.data32[1];
-            pMsg2->supported_actions = e2->data.data32[4];
+            pMsg2->supported_actions = XdndAction2Effect(e2->data.data32[4]) | DROPEFFECT_COPY; // only one action is transfered from source, combine copy operation.
             pMsg2->DragOverData::pt.x = GET_X_LPARAM(e2->data.data32[2]);
             pMsg2->DragOverData::pt.y = GET_Y_LPARAM(e2->data.data32[2]);
             pMsg = pMsg2;
@@ -1923,22 +1943,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg2->hwnd = e2->window;
             pMsg2->message = UM_XDND_DRAG_DROP;
             pMsg2->hFrom = e2->data.data32[0];
-            if (e2->data.data32[4] == atoms.XdndActionMove)
-            {
-                pMsg2->wParam = DROPEFFECT_MOVE;
-            }
-            else if (e2->data.data32[4] == atoms.XdndActionCopy)
-            {
-                pMsg2->wParam = DROPEFFECT_COPY;
-            }
-            else if (e2->data.data32[4] == atoms.XdndActionLink)
-            {
-                pMsg2->wParam = DROPEFFECT_LINK;
-            }
-            else
-            {
-                pMsg2->wParam = DROPEFFECT_NONE;
-            }
+            pMsg2->wParam = e2->data.data32[4];
             pMsg2->DragEnterData::pt.x = GET_X_LPARAM(e2->data.data32[2]);
             pMsg2->DragEnterData::pt.y = GET_Y_LPARAM(e2->data.data32[2]);
             pMsg = pMsg2;
@@ -1948,30 +1953,14 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg->hwnd = e2->window;
             pMsg->message = UM_XDND_FINISH;
             pMsg->wParam = e2->data.data32[1];//accept flag
-            uint32_t action = e2->data.data32[2];
-            if (action == XCB_NONE)
-                pMsg->lParam = DROPEFFECT_NONE;
-            else if (action == atoms.XdndActionLink)
-                pMsg->lParam = DROPEFFECT_LINK;
-            else if (action == atoms.XdndActionMove)
-                pMsg->lParam = DROPEFFECT_MOVE;
-            else
-                pMsg->lParam = DROPEFFECT_COPY;
+            pMsg->lParam = XdndAction2Effect(e2->data.data32[2]);
         }
         else if (e2->type == atoms.XdndStatus) {
             pMsg = new Msg;
             pMsg->hwnd = e2->window;
             pMsg->message = UM_XDND_STATUS;
             pMsg->wParam = e2->data.data32[1];//accept flag
-            uint32_t action = e2->data.data32[4];
-            if (action == XCB_NONE)
-                pMsg->lParam = DROPEFFECT_NONE;
-            else if (action == atoms.XdndActionLink)
-                pMsg->lParam = DROPEFFECT_LINK;
-            else if (action == atoms.XdndActionMove)
-                pMsg->lParam = DROPEFFECT_MOVE;
-            else
-                pMsg->lParam = DROPEFFECT_COPY;
+            pMsg->lParam = XdndAction2Effect(e2->data.data32[4]);
         }
     }
     break;

@@ -125,7 +125,7 @@ LRESULT SDragDrop::OnXdndFinish(UINT uMsg, WPARAM wp, LPARAM lp) {
         *pdwEffect = DROPEFFECT_NONE, returnValue = DRAGDROP_S_CANCEL;
     else
         *pdwEffect = lp, returnValue = DRAGDROP_S_DROP;
-    SLOG_STMI() << "OnXdndFinish, returnValue=" << returnValue;
+//    SLOG_STMI() << "OnXdndFinish, returnValue=" << returnValue;
     return 0;
 }
 
@@ -141,6 +141,18 @@ void SDragDrop::drag_leave(HWND target)
     xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char*)&leave);
 }
 
+static uint32_t getXdndAction(DWORD dwEffect,SConnection *conn)
+{
+    if (dwEffect & DROPEFFECT_MOVE)
+        return conn->atoms.XdndActionMove;
+    else if (dwEffect & DROPEFFECT_LINK)
+        return conn->atoms.XdndActionLink;
+    else if (dwEffect & DROPEFFECT_COPY)
+        return conn->atoms.XdndActionCopy;
+    else
+        return XCB_NONE;
+}
+
 void SDragDrop::drag_over(HWND target,int x,int y)
 {
     xcb_client_message_event_t position;
@@ -152,17 +164,8 @@ void SDragDrop::drag_over(HWND target,int x,int y)
     position.data.data32[0] = m_hWnd;
     position.data.data32[1] = dwKeyState; // reserved, we use it to transfer the key state.
     position.data.data32[2] = MAKELONG(x, y);
-    position.data.data32[3] = 0;//time
-    uint32_t action = 0;
-    if (dwOKEffect & DROPEFFECT_MOVE)
-        action = conn->atoms.XdndActionMove;
-    else if (dwOKEffect & DROPEFFECT_LINK)
-        action = conn->atoms.XdndActionLink;
-    else if (dwOKEffect & DROPEFFECT_COPY)
-        action = conn->atoms.XdndActionCopy;
-    else
-        action = XCB_NONE;
-    position.data.data32[4] = action;//suggested action.
+    position.data.data32[3] = XCB_CURRENT_TIME;//time
+    position.data.data32[4] = getXdndAction(dwOKEffect,conn);//suggested action.
     xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char*)&position);
 }
 
@@ -217,24 +220,15 @@ void SDragDrop::drag_drop(HWND target, DWORD dwEffect)
     drop.data.data32[1] = 0;
     drop.data.data32[2] = XCB_TIME_CURRENT_TIME;
     drop.data.data32[3] = 0;
-    uint32_t action = 0;
-    if (dwOKEffect & DROPEFFECT_MOVE)
-        action = conn->atoms.XdndActionMove;
-    else if (dwOKEffect & DROPEFFECT_LINK)
-        action = conn->atoms.XdndActionLink;
-    else if (dwOKEffect & DROPEFFECT_COPY)
-        action = conn->atoms.XdndActionCopy;
-    else
-        action = XCB_NONE;
-
-    drop.data.data32[4] = action;
+    drop.data.data32[4] = dwEffect;
     xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char*)&drop);
 }
 
 void SDragDrop::drag_end()
 {
-    if (this->returnValue == DRAGDROP_S_DROP) {
-        drag_drop(curTargetHWND, *pdwEffect);
+    if (this->returnValue == DRAGDROP_S_DROP && (*pdwEffect) != DROPEFFECT_NONE)
+    {
+        drag_drop(curTargetHWND, dwOKEffect);
     }
     else {
         trackingDone = TRUE;

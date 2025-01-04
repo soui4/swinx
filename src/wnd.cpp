@@ -1115,7 +1115,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             return 1;
         }
         SDataObjectProxy* dragData = (SDataObjectProxy*)wndObj->dragData;
-        DWORD grfKeyState = 0;//todo:hjx
+        DWORD grfKeyState = 0;//no key state is available here.
         wndObj->dropTarget->DragEnter(wndObj->dragData, grfKeyState, data->pt, &dragData->m_dwEffect);
         return 0;
     }
