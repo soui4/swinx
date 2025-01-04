@@ -520,16 +520,14 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     {
         pWnd->dwStyle &=~WS_BORDER; //remove border
     }
+    RECT rcInit = { cs->x, cs->y, cs->x + (int)cs->cx, cs->y + (int)cs->cy };
     pWnd->dwExStyle = cs->dwExStyle;
     pWnd->hInstance = module;
     pWnd->clsAtom = clsAtom;
     pWnd->iconSmall = pWnd->iconBig = nullptr;
     pWnd->parent = hParent;
     pWnd->winproc = clsInfo.lpfnWndProc;
-    pWnd->rc.left = cs->x;
-    pWnd->rc.top = cs->y;
-    pWnd->rc.right = cs->x + cs->cx;
-    pWnd->rc.bottom = cs->y + cs->cy;
+    pWnd->rc = rcInit;
     pWnd->showSbFlags |= (cs->style & WS_HSCROLL)?SB_HORZ:0;
     pWnd->showSbFlags |= (cs->style & WS_VSCROLL)?SB_VERT:0;
     pWnd->visualId = conn->screen->root_visual;
@@ -580,17 +578,6 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
         return 0;
     }
     xcb_change_window_attributes(conn->connection, hWnd, mask, values);
-
-    {
-        const uint32_t vals[2] = { (uint32_t)cs->x, (uint32_t)cs->y };
-        xcb_configure_window(conn->connection, hWnd, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, vals);
-    }
-    {
-        const uint32_t vals[2] = { cs->cx, cs->cy };
-        xcb_configure_window(conn->connection, hWnd, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, vals);
-    }
-    SetWindowPosHint(conn, hWnd, cs->x, cs->y, cs->cx, cs->cy);
-
     xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, hWnd, conn->atoms.WM_PROTOCOLS, XCB_ATOM_ATOM, 32, 1, &conn->atoms.WM_DELETE_WINDOW);
 
     // set the PID to let the WM kill the application if unresponsive
@@ -617,10 +604,12 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
         xcb_destroy_window(conn->connection, hWnd);
         xcb_flush(conn->connection);
         WndMgr::freeWindow(hWnd);
-        hWnd = 0;
+        return 0;
     }
-    //notify size
-    SendMessageA(hWnd,WM_SIZE,0,MAKELONG(cs->cx, cs->cy));
+    if (memcmp(&pWnd->rc,&rcInit,sizeof(RECT))==0)
+    {//notify init size and pos
+        SetWindowPos(hWnd, 0, cs->x, cs->y, cs->cx, cs->cy, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
     if (clsInfo.hIconSm)
     {
         SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)clsInfo.hIconSm);
@@ -1288,9 +1277,6 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         }
 		break;
 	}
-	case WM_MOVE:
-		OffsetRect(&wndObj->rc, GET_X_LPARAM(lp) - wndObj->rc.left, GET_Y_LPARAM(lp) - wndObj->rc.top);
-		break;
 	case WM_PAINT:
 	{
 		HDC hdc = GetDC(hWnd);
@@ -1331,7 +1317,10 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			break;
 		}
 		return 1;
-	case WM_SIZE:
+    case WM_MOVE:
+        OffsetRect(&wndObj->rc, GET_X_LPARAM(lp) - wndObj->rc.left, GET_Y_LPARAM(lp) - wndObj->rc.top);
+        break;
+    case WM_SIZE:
 		wp = wndObj->state;
 		SIZE sz = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
 		if (wndObj->bmp && (sz.cx != wndObj->rc.right - wndObj->rc.left || sz.cy != wndObj->rc.bottom - wndObj->rc.top))
@@ -1739,12 +1728,6 @@ BOOL SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int x, int y, int cx, int cy,
     wndPos.cy = cy;
     wndPos.flags = uFlags;
     SendMessage(hWnd, WM_WINDOWPOSCHANGING, 0, (LPARAM)&wndPos);
-    if(0==(wndPos.flags & SWP_NOSIZE)){
-        if (wndPos.cx < 1)
-            wndPos.cx = 1;
-        if (wndPos.cy < 1)
-            wndPos.cy = 1;
-    }
     SendMessage(hWnd, WM_WINDOWPOSCHANGED, 0, (LPARAM)&wndPos);
     return TRUE;
 }
@@ -3093,6 +3076,7 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     case WM_WINDOWPOSCHANGED:
     {
         WINDOWPOS &wndPos = *(WINDOWPOS *)lp;
+        RECT &rc = wndObj->rc;
         if (!(wndPos.flags & SWP_NOMOVE))
         {
             const int32_t coords[] = { static_cast<int32_t>(wndPos.x), static_cast<int32_t>(wndPos.y) };
@@ -3101,13 +3085,14 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         }
         if (!(wndPos.flags & SWP_NOSIZE))
         {
-            const uint32_t coords[] = { static_cast<uint32_t>(wndPos.cx), static_cast<uint32_t>(wndPos.cy) };
+            uint32_t coords[] = { static_cast<uint32_t>(wndPos.cx), static_cast<uint32_t>(wndPos.cy) };
+            coords[0] = std::max<uint32_t>(coords[0], 1);
+            coords[1] = std::max<uint32_t>(coords[1], 1);
             xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, coords);
             SendMessage(hWnd, WM_SIZE, 0, MAKELPARAM(wndPos.cx, wndPos.cy));
         }
         if ((wndPos.flags & (SWP_NOMOVE | SWP_NOSIZE)) != 0)
         {
-            RECT &rc = wndObj->rc;
             SetWindowPosHint(wndObj->mConnection, hWnd, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
         }
         int showCmd = -1;
@@ -3150,6 +3135,10 @@ BOOL ShowWindow(HWND hWnd, int nCmdShow)
         return TRUE;
     if (bNew)
     {
+        if (0==(wndObj->dwStyle&WS_CHILD))
+        { //show a popup window, auto release capture.
+            ReleaseCapture();
+        }
         xcb_map_window(wndObj->mConnection->connection, hWnd);
         wndObj->dwStyle |= WS_VISIBLE;
         if (nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA && !(wndObj->dwStyle&WS_CHILD))

@@ -23,6 +23,7 @@ _Window::_Window(size_t extraLen)
     , visualId(0)
     , dropTarget(NULL)
     , dragData(NULL)
+    , userdata(0)
 {
     invalid.hRgn = CreateRectRgn(0, 0, 0, 0);
     invalid.bErase = TRUE;
