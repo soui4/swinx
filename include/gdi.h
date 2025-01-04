@@ -729,7 +729,7 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
         LPSIZE lpSize  // original window extent
     );
     int WINAPI FillRect(HDC hDC, CONST RECT *lprc, HBRUSH hbr);
-
+    int WINAPI ClearRect(HDC hdc , const RECT *lprc, COLORREF cr);
     int WINAPI FrameRect(HDC hDC, CONST RECT *lprc, HBRUSH hbr);
 
     BOOL WINAPI InvertRect(HDC hDC, CONST RECT *lprc);

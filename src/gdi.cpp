@@ -2392,6 +2392,20 @@ BOOL Polyline(HDC hdc, const POINT *apt, int cpt)
     return TRUE;
 }
 
+
+int ClearRect(HDC hdc , const RECT *lprc, COLORREF cr){
+    cairo_save(hdc->cairo);
+    cairo_translate(hdc->cairo, lprc->left, lprc->top);
+    double wid = lprc->right - lprc->left, hei = lprc->bottom - lprc->top;
+    CairoColor cr2(cr);
+    cairo_set_source_rgba(hdc->cairo,cr2.r,cr2.g,cr2.b,cr2.a);
+    cairo_set_operator(hdc->cairo,CAIRO_OPERATOR_SOURCE);
+    cairo_rectangle(hdc->cairo, 0, 0, wid, hei);
+    cairo_fill(hdc->cairo);
+    cairo_restore(hdc->cairo);
+    return 1;
+}
+
 int FillRect(HDC hdc, const RECT *lprc, HBRUSH hbr)
 {
     int ret = 0;
