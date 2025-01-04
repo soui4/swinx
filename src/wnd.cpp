@@ -437,21 +437,24 @@ BOOL InvalidateRect(HWND hWnd, const RECT* lpRect, BOOL bErase)
     if (IsRectEmpty(lpRect))
         return FALSE;
     HRGN rgn = CreateRectRgnIndirect(lpRect);
+    BOOL isWaitingPaint = RgnComplexity(wndObj->invalid.hRgn) != NULLREGION;
     CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, rgn, RGN_OR);
     DeleteObject(rgn);
 
     wndObj->invalid.bErase = wndObj->invalid.bErase || bErase;
-    // 发送曝光事件
-    xcb_connection_t* connection = wndObj->mConnection->connection;
-    xcb_expose_event_t expose_event;
-    expose_event.response_type = XCB_EXPOSE;
-    expose_event.window = hWnd;
-    expose_event.x = 0;
-    expose_event.y = 0;
-    expose_event.width = 0;
-    expose_event.height = 0;
-    xcb_send_event(connection, false, hWnd, XCB_EVENT_MASK_EXPOSURE, (const char*)&expose_event);
-    xcb_flush(connection);
+    if(!isWaitingPaint){
+        // 发送曝光事件
+        xcb_connection_t* connection = wndObj->mConnection->connection;
+        xcb_expose_event_t expose_event;
+        expose_event.response_type = XCB_EXPOSE;
+        expose_event.window = hWnd;
+        expose_event.x = 0;
+        expose_event.y = 0;
+        expose_event.width = 0;
+        expose_event.height = 0;
+        xcb_send_event(connection, false, hWnd, XCB_EVENT_MASK_EXPOSURE, (const char*)&expose_event);
+        xcb_flush(connection);  
+    }
     return TRUE;
 }
 
