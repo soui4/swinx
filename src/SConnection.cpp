@@ -351,7 +351,7 @@ void SConnection::initializeXFixes()
     SLOG_STMI() << "hasXFixes()=" << hasXFixes();
 }
 
-bool SConnection::event2Msg(bool bTimeout, UINT elapse, uint64_t ts)
+bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
 {
     if (m_bQuit)
         return false;
@@ -367,20 +367,18 @@ bool SConnection::event2Msg(bool bTimeout, UINT elapse, uint64_t ts)
         bRet = !m_evtQueue.empty();
         m_evtQueue.clear();
     }
-    else if (!m_bBlockTimer)
+    if (!m_bBlockTimer)
     {
+        static const int kMaxDalayMsg = 5;//max delay ms for a timer.
         std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
-        std::list<TimerInfo> runProc;//build a temp list to avoid m_lstTimer got changed.
+        int msgQueueSize = (int)m_msgQueue.size();
+        int elapse2 = elapse - std::min(msgQueueSize,kMaxDalayMsg);
+        POINT pt;
+        GetCursorPos(&pt);
         for (auto &it : m_lstTimer)
         {
-            if (it.fireRemain <= elapse)
+            if (it.fireRemain <= elapse2)
             {
-                if (it.hWnd == 0 && it.proc)
-                {
-                    runProc.push_back(it);
-                }
-                else
-                {
                     // fire timer event
                     Msg *pMsg = new Msg;
                     pMsg->hwnd = it.hWnd;
@@ -388,9 +386,8 @@ bool SConnection::event2Msg(bool bTimeout, UINT elapse, uint64_t ts)
                     pMsg->wParam = it.id;
                     pMsg->lParam = (LPARAM)it.proc;
                     pMsg->time = ts;
-                    GetCursorPos(&pMsg->pt);
+                    pMsg->pt = pt;
                     m_msgQueue.push_back(pMsg);
-                }
                 it.fireRemain = it.elapse;
                 bRet = true;
             }
@@ -398,10 +395,6 @@ bool SConnection::event2Msg(bool bTimeout, UINT elapse, uint64_t ts)
             {
                 it.fireRemain -= elapse;
             }
-        }
-        for (auto &it : runProc)
-        {
-            it.proc(0, WM_TIMER, it.id, ts); // call timer proc
         }
     }
     return bRet;

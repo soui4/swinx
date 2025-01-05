@@ -235,7 +235,7 @@ public:
     int _waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, DWORD dwWaitMask);
     void readXResources();
     void initializeXFixes();
-    bool event2Msg(bool bTimeout, UINT elapse, uint64_t ts);
+    bool event2Msg(bool bTimeout, int elapse, uint64_t ts);
     xcb_cursor_t createXcbCursor(HCURSOR cursor);
     uint32_t netWmStates(HWND hWnd);
 
