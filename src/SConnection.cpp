@@ -372,7 +372,7 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
         static const int kMaxDalayMsg = 5;//max delay ms for a timer.
         std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
         int msgQueueSize = (int)m_msgQueue.size();
-        int elapse2 = elapse - std::min(msgQueueSize,kMaxDalayMsg);
+        int elapse2 = elapse + std::min(msgQueueSize,kMaxDalayMsg);
         POINT pt;
         GetCursorPos(&pt);
         for (auto &it : m_lstTimer)
