@@ -3113,7 +3113,7 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         if (showCmd != -1)
             ShowWindow(wndPos.hwnd, showCmd);
         xcb_flush(wndObj->mConnection->connection);
-        if ((!wndPos.flags & SWP_NOREDRAW))
+        if (!(wndPos.flags & SWP_NOREDRAW))
         {
             InvalidateRect(hWnd, nullptr, TRUE);
         }

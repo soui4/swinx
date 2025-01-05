@@ -380,14 +380,14 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
             if (it.fireRemain <= elapse2)
             {
                     // fire timer event
-                    Msg *pMsg = new Msg;
-                    pMsg->hwnd = it.hWnd;
-                    pMsg->message = WM_TIMER;
-                    pMsg->wParam = it.id;
-                    pMsg->lParam = (LPARAM)it.proc;
-                    pMsg->time = ts;
-                    pMsg->pt = pt;
-                    m_msgQueue.push_back(pMsg);
+                Msg *pMsg = new Msg;
+                pMsg->hwnd = it.hWnd;
+                pMsg->message = WM_TIMER;
+                pMsg->wParam = it.id;
+                pMsg->lParam = (LPARAM)it.proc;
+                pMsg->time = ts;
+                pMsg->pt = pt;
+                m_msgQueue.push_back(pMsg);
                 it.fireRemain = it.elapse;
                 bRet = true;
             }
