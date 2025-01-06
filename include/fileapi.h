@@ -189,6 +189,16 @@ extern "C"
 #define GetCurrentDirectory GetCurrentDirectoryA
 #endif // UNICODE
 
+    BOOL WINAPI CreateDirectoryA(LPCSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes);
+
+    BOOL WINAPI CreateDirectoryW(LPCWSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes);
+
+#ifdef UNICODE
+#define CreateDirectory CreateDirectoryW
+#else
+#define CreateDirectory CreateDirectoryA
+#endif // !UNICODE
+
     typedef struct _WIN32_FIND_DATAA
     {
         DWORD dwFileAttributes;
