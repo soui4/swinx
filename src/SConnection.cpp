@@ -162,10 +162,12 @@ SConnection::SConnection(int screenNum)
     : m_keyboard(nullptr)
     , m_hook_table(nullptr)
     , m_forceDpi(-1)
+    , connection(nullptr)
 {
     connection = xcb_connect(nullptr, &screenNum);
-    if (xcb_connection_has_error(connection) > 0)
+    if (int errCode = xcb_connection_has_error(connection) > 0)
     {
+        printf("XCB Error: %d\n", errCode);
         connection = NULL;
         return;
     }
