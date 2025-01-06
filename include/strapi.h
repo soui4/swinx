@@ -3,9 +3,10 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <wchar.h>
-#include <wctype.h>
+#include <wctype.h> 
 #include <ctypes.h>
 #include <errno.h>
+#include <tchar.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -70,44 +71,6 @@ extern "C"
 
 #define lstrcpynW wcsncpy
 #define lstrcpynA strncpy
-
-#ifdef _UNICODE
-#define lstrlen   lstrlenW
-#define lstrcpy   lstrcpyW
-#define _tcsncmp  wcsncmp
-#define _tcslen   wcslen
-#define _ttoi     wcstol
-#define _tcsdup   wcsdup
-#define _tcsicmp  _wcsicmp
-#define _tcsnicmp _wcsnicmp
-#define _tcscpy   wcscpy
-#define _tcstok   wcstok
-#define _tcsncpy  wcsncpy
-#define _tcsrchr  wcsrchr
-#define _tcsstr   wcsstr
-#define CharNext  CharNextW
-#define _stprintf wprintf
-#define lstrcpyn  lstrcpynW
-#define _tcstol   wcstol
-#else
-#define lstrlen   lstrlenA
-#define lstrcpy   lstrcpyA
-#define _tcsncmp  strncmp
-#define _tcslen   strlen
-#define _ttoi     atoi
-#define _tcsdup   strdup
-#define _tcsicmp  stricmp
-#define _tcsnicmp strnicmp
-#define _tcscpy   strcpy
-#define _tcstok   strtok
-#define _tcsncpy  strncpy
-#define _tcsrchr  strrchr
-#define _tcsstr   strstr
-#define CharNext  CharNextA
-#define _stprintf sprintf
-#define lstrcpyn  lstrcpynA
-#define _tcstol   strtol
-#endif
 
 #define CP_ACP        0  // default to ANSI code page
 #define CP_OEMCP      1  // default to OEM  code page

@@ -6,7 +6,7 @@
 #include <assert.h>
 #include "SConnection.h"
 #include "shellapi.h"
-#include "enumformatetc.h"
+
 
 UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(cch) LPSTR lpszFile, _In_ UINT cch) {
 	return 0;
@@ -65,12 +65,4 @@ BOOL WINAPI Shell_NotifyIconW(
 	if(0==WideCharToMultiByte(CP_UTF8,0,lpData->szInfoTitle,-1,dataA.szInfoTitle,64,nullptr,nullptr))
 		return FALSE;
 	return Shell_NotifyIconA(dwMessage,&dataA);
-}
-
-HRESULT  SHCreateStdEnumFmtEtc(UINT cfmt, const FORMATETC afmt[], IEnumFORMATETC **ppenumFormatEtc)
-{
-    *ppenumFormatEtc = new SEnumFormatEtc(cfmt, afmt);
-    if (!(*ppenumFormatEtc))
-        return E_OUTOFMEMORY;
-    return S_OK;
 }
