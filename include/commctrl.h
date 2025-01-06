@@ -13,10 +13,10 @@
 
 #ifndef _INC_COMMCTRL
 #define _INC_COMMCTRL
+#include <windows.h>
 
 #ifndef _HRESULT_DEFINED
 #define _HRESULT_DEFINED
-//typedef __success(return >= 0) long HRESULT;
 #endif // !_HRESULT_DEFINED
 
 #ifndef NOUSER

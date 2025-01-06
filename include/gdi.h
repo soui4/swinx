@@ -1201,6 +1201,8 @@ HDC WINAPI CreateICA(LPCSTR lpszDriver,       // driver name
     CONST void* lpdvmInit  // optional initialization data
 );
 
+BOOL WINAPI DrawEdge(HDC hdc, LPRECT rc, UINT edge, UINT flags);
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus
