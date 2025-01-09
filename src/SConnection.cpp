@@ -2078,6 +2078,20 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_MOTION_NOTIFY:
     {
         xcb_motion_notify_event_t *e2 = (xcb_motion_notify_event_t *)event;
+        //remove old mouse move
+        static const int16_t kMinPosDiff = 3;
+        WPARAM wp = ButtonState2Mask(e2->state);
+        std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+        for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++) {
+            if ((*it)->message == WM_MOUSEMOVE && (*it)->hwnd == e2->event && (*it)->wParam == wp)
+            {
+                int16_t diff = abs((*it)->pt.x-e2->event_x)+abs((*it)->pt.y-e2->event_y);
+                if(diff <= kMinPosDiff){
+                    m_msgQueue.erase(it);
+                    break;
+                }
+            }
+        }
         pMsg = new Msg;
         pMsg->hwnd = e2->event;
         pMsg->message = WM_MOUSEMOVE;
@@ -2089,7 +2103,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg->hwnd=m_hWndCapture;
         }
         pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
-        pMsg->wParam = ButtonState2Mask(e2->state);
+        pMsg->wParam = wp;
         pMsg->time = e2->time;
         break;
     }
