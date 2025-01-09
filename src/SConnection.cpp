@@ -735,7 +735,22 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         else
         {
             m_msgQueue.erase(it);
+            if(m_msgPeek->message == WM_PAINT)
+            {
+                static const uint64_t kFrameInterval = 15;//15 interval for 66 frame per second
+                if(m_tsLastPaint==-1 || (GetTickCount64()-m_msgPeek->time)>=kFrameInterval)
+                    m_tsLastPaint = m_msgPeek->time;
+                else
+                {
+                    m_msgPeek=nullptr;
+                    BOOL bRet = peekMsg(pMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
+                    m_msgQueue.push_back(msg);//insert paint message back.
+                    SetEvent(m_evtSync);
+                    return bRet;
+                }
+            }
             m_bMsgNeedFree = true;
+            
         }
         memcpy(pMsg, (MSG *)m_msgPeek, sizeof(MSG));
 
@@ -1715,6 +1730,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsgPaint->message = WM_PAINT;
         pMsgPaint->wParam = 0;
         pMsgPaint->lParam = (LPARAM)pMsgPaint->rgn;
+        pMsgPaint->time = GetTickCount64();
         pMsg = pMsgPaint;
         break;
     }
