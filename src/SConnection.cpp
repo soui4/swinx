@@ -1974,6 +1974,9 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_BUTTON_PRESS:
     {
         xcb_button_press_event_t *e2 = (xcb_button_press_event_t *)event;
+        if(!IsWindowEnabled(e2->event)){
+            break;
+        }
         m_tsSelection = e2->time;
         if (e2->detail >= XCB_BUTTON_INDEX_1 && e2->detail <= XCB_BUTTON_INDEX_3)
         {
@@ -1985,7 +1988,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             {
                 MapWindowPoints(e2->event,m_hWndCapture,&pMsg->pt,1);
                 pMsg->hwnd=m_hWndCapture;
-            }
+            } 
             pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
             switch (e2->detail)
             {
@@ -2038,6 +2041,9 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_BUTTON_RELEASE:
     {
         xcb_button_release_event_t *e2 = (xcb_button_release_event_t *)event;
+        if(!IsWindowEnabled(e2->event)){
+            break;
+        }
         if (e2->detail >= XCB_BUTTON_INDEX_1 && e2->detail <= XCB_BUTTON_INDEX_3)
         {
             pMsg = new Msg;
@@ -2074,6 +2080,9 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_MOTION_NOTIFY:
     {
         xcb_motion_notify_event_t *e2 = (xcb_motion_notify_event_t *)event;
+        if(!IsWindowEnabled(e2->event)){
+            break;
+        }
         //remove old mouse move
         static const int16_t kMinPosDiff = 3;
         WPARAM wp = ButtonState2Mask(e2->state);
