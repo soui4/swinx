@@ -1508,7 +1508,11 @@ HWND SConnection::GetForegroundWindow()
 
 BOOL SConnection::SetForegroundWindow(HWND hWnd)
 {
-    // todo:hjx
+    {
+        uint32_t values[] = { XCB_STACK_MODE_TOP_IF };
+        xcb_configure_window(connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
+        xcb_flush(connection);
+    }
     return SetActiveWindow(hWnd);
 }
 
@@ -1855,14 +1859,6 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         {
             pMsg = new Msg;
             pMsg->message = WM_SHOWWINDOW;
-            pMsg->hwnd = e2->window;
-            pMsg->wParam = e2->data.data32[0];
-            pMsg->lParam = 0;
-        }
-        else if (e2->type == atoms._NET_WM_STATE_DEMANDS_ATTENTION)
-        {
-            pMsg = new Msg;
-            pMsg->message = WM_ENABLE;
             pMsg->hwnd = e2->window;
             pMsg->wParam = e2->data.data32[0];
             pMsg->lParam = 0;

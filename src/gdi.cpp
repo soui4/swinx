@@ -1143,11 +1143,12 @@ static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, cairo_surfac
     cairo_scale(hdc->cairo, scale_x, scale_y);
 
     cairo_pattern_t * pattern = cairo_pattern_create_for_surface(src);
-    cairo_filter_t filter = CAIRO_FILTER_FAST;
+    cairo_filter_t filter;
     switch(filterLevel){
-        case FILTER_FAST: filter = CAIRO_FILTER_GOOD;break;
-        case FILTER_MIDIUM: filter = CAIRO_FILTER_BEST;break;
-        case FILTER_BEST: filter = CAIRO_FILTER_BILINEAR;break;
+        case FILTER_FAST: filter = CAIRO_FILTER_BEST ;break;
+        case FILTER_MIDIUM: filter = CAIRO_FILTER_GOOD ;break;
+        case FILTER_BEST: filter =  CAIRO_FILTER_BILINEAR ;break;
+        default :filter = CAIRO_FILTER_FAST;break;
     }
     cairo_pattern_set_filter(pattern,filter);
     cairo_matrix_t mtx;
