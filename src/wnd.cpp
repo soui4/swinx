@@ -3015,48 +3015,6 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     break;
     case WM_GETMINMAXINFO:
         return -1; // not handle
-    case WM_WINDOWPOSCHANGING:
-    {
-        WINDOWPOS *lpWndPos = (WINDOWPOS *)lp;
-        if (!(lpWndPos->flags & (SWP_NOSIZE | SWP_NOMOVE)))
-        {
-            MINMAXINFO info = { 0 };
-            if (0 == SendMessage(hWnd, WM_GETMINMAXINFO, 0, (LPARAM)&info))
-            {
-                if (lpWndPos->cx > info.ptMaxTrackSize.x)
-                    lpWndPos->cx = info.ptMaxTrackSize.x;
-                if (lpWndPos->cx < info.ptMinTrackSize.x)
-                    lpWndPos->cx = info.ptMinTrackSize.x;
-
-                if (lpWndPos->cy > info.ptMaxTrackSize.y)
-                    lpWndPos->cy = info.ptMaxTrackSize.y;
-                if (lpWndPos->cy < info.ptMinTrackSize.y)
-                    lpWndPos->cy = info.ptMinTrackSize.y;
-
-                if (lpWndPos->x > info.ptMaxPosition.x)
-                    lpWndPos->x = info.ptMaxPosition.x;
-                if (lpWndPos->y > info.ptMaxPosition.y)
-                    lpWndPos->y = info.ptMaxPosition.y;
-            }
-        }
-        if (!(lpWndPos->flags & SWP_NOZORDER))
-        {
-            if (lpWndPos->hwndInsertAfter == HWND_TOPMOST || lpWndPos->hwndInsertAfter == HWND_TOP)
-            {
-                uint32_t val[] = { XCB_STACK_MODE_ABOVE };
-                xcb_configure_window(wndObj->mConnection->connection, lpWndPos->hwnd, XCB_CONFIG_WINDOW_STACK_MODE, &val);
-                wndObj->dwExStyle |= WS_EX_TOPMOST;
-            }
-            else
-            {
-                uint32_t val[] = { (uint32_t)lpWndPos->hwndInsertAfter, XCB_STACK_MODE_ABOVE };
-                xcb_configure_window(wndObj->mConnection->connection, lpWndPos->hwnd, XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE, &val);
-                wndObj->dwExStyle &= ~WS_EX_TOPMOST;
-            }
-            xcb_flush(wndObj->mConnection->connection);
-        }
-    }
-    break;
     case WM_SYSCOMMAND:
     {
         WORD action = wp & 0xfff0;
@@ -3088,6 +3046,32 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     case WM_CLOSE:
         DestroyWindow(hWnd);
         break;
+    case WM_WINDOWPOSCHANGING:
+    {
+        WINDOWPOS *lpWndPos = (WINDOWPOS *)lp;
+        if (!(lpWndPos->flags & (SWP_NOSIZE | SWP_NOMOVE)))
+        {
+            MINMAXINFO info = { 0 };
+            if (0 == SendMessage(hWnd, WM_GETMINMAXINFO, 0, (LPARAM)&info))
+            {
+                if (lpWndPos->cx > info.ptMaxTrackSize.x)
+                    lpWndPos->cx = info.ptMaxTrackSize.x;
+                if (lpWndPos->cx < info.ptMinTrackSize.x)
+                    lpWndPos->cx = info.ptMinTrackSize.x;
+
+                if (lpWndPos->cy > info.ptMaxTrackSize.y)
+                    lpWndPos->cy = info.ptMaxTrackSize.y;
+                if (lpWndPos->cy < info.ptMinTrackSize.y)
+                    lpWndPos->cy = info.ptMinTrackSize.y;
+
+                if (lpWndPos->x > info.ptMaxPosition.x)
+                    lpWndPos->x = info.ptMaxPosition.x;
+                if (lpWndPos->y > info.ptMaxPosition.y)
+                    lpWndPos->y = info.ptMaxPosition.y;
+            }
+        }
+    }
+    break;
     case WM_WINDOWPOSCHANGED:
     {
         WINDOWPOS &wndPos = *(WINDOWPOS *)lp;
@@ -3110,6 +3094,32 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         {
             SetWindowPosHint(wndObj->mConnection, hWnd, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
         }
+        if (!(wndPos.flags & SWP_NOZORDER))
+        {
+            if (wndPos.hwndInsertAfter == HWND_TOPMOST || wndPos.hwndInsertAfter == HWND_TOP)
+            {
+                if (wndPos.hwndInsertAfter == HWND_TOPMOST)
+                {
+                    uint32_t val[] = { XCB_STACK_MODE_ABOVE };
+                    xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_STACK_MODE, &val);
+                    wndObj->dwExStyle |= WS_EX_TOPMOST;
+                }
+                else
+                {
+                    uint32_t val[] = { XCB_STACK_MODE_TOP_IF };
+                    xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_STACK_MODE, &val);
+                    wndObj->dwExStyle &= ~WS_EX_TOPMOST;
+                }
+            }
+            else
+            {
+                uint32_t val[] = { (uint32_t)wndPos.hwndInsertAfter, XCB_STACK_MODE_ABOVE };
+                xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE, &val);
+                wndObj->dwExStyle &= ~WS_EX_TOPMOST;
+            }
+            xcb_flush(wndObj->mConnection->connection);
+        }
+
         int showCmd = -1;
         if (wndPos.flags & SWP_SHOWWINDOW)
         {
