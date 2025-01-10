@@ -3382,7 +3382,7 @@ static HRGN BuildColorKeyRgn(HWND hWnd)
     COLORREF crKey = wndObj->crKey & mask;
     if (crKey != CR_INVALID)
     {
-        BITMAP bm;
+        BITMAP bm = {0};
         GetObject(wndObj->hdc->bmp, sizeof(bm), &bm);
         const uint32_t *bits = (const uint32_t *)bm.bmBits;
         std::vector<RECT> lstRc;

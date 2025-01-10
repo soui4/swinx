@@ -514,6 +514,8 @@ int GetObjectA(HGDIOBJ h, int c, LPVOID pv)
             BITMAP *bm = (BITMAP *)pv;
             cairo_surface_t *pixmap = (cairo_surface_t *)h->ptr;
             cairo_format_t fmt = cairo_image_surface_get_format(pixmap);
+            if(fmt == CAIRO_FORMAT_INVALID)
+                return 0;
             bm->bmWidth = cairo_image_surface_get_width(pixmap);
             bm->bmHeight = cairo_image_surface_get_height(pixmap);
             bm->bmPlanes = 1;
