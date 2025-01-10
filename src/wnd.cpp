@@ -621,6 +621,11 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     {
         SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)clsInfo.hIconSm);
     }
+    if (cs->dwExStyle & WS_EX_TOPMOST)
+    {
+        uint32_t values[] = { XCB_STACK_MODE_ABOVE };
+        xcb_configure_window(conn->connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
+    }
     if (isTransparent) 
     {
         SetWindowTransparent(hWnd, TRUE);
@@ -1751,6 +1756,11 @@ static void onStyleChange(HWND hWnd, WndObj& wndObj, DWORD newStyle) {
 
 static void onExStyleChange(HWND hWnd, WndObj& wndObj, DWORD newExStyle) {
     wndObj->dwExStyle = newExStyle;
+    if (newExStyle & WS_EX_TOPMOST)
+    {
+        uint32_t values[] = { XCB_STACK_MODE_ABOVE };
+        xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
+    }
 }
 
 static LONG_PTR GetWindowLongSize(HWND hWnd, int nIndex, uint32_t size)
@@ -3035,11 +3045,13 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
             {
                 uint32_t val[] = { XCB_STACK_MODE_ABOVE };
                 xcb_configure_window(wndObj->mConnection->connection, lpWndPos->hwnd, XCB_CONFIG_WINDOW_STACK_MODE, &val);
+                wndObj->dwExStyle |= WS_EX_TOPMOST;
             }
             else
             {
                 uint32_t val[] = { (uint32_t)lpWndPos->hwndInsertAfter, XCB_STACK_MODE_ABOVE };
                 xcb_configure_window(wndObj->mConnection->connection, lpWndPos->hwnd, XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE, &val);
+                wndObj->dwExStyle &= ~WS_EX_TOPMOST;
             }
             xcb_flush(wndObj->mConnection->connection);
         }
