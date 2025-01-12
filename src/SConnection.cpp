@@ -634,37 +634,20 @@ UINT SConnection::MapVirtualKey(UINT uCode, UINT uMapType) const
 
 BOOL SConnection::TranslateMessage(const MSG *pMsg)
 {
-    if (pMsg->message == WM_KEYDOWN && isprint(pMsg->wParam))
+    if (pMsg->message == WM_KEYDOWN || pMsg->message == WM_SYSKEYDOWN)
     {
-        if (pMsg->wParam >= VK_PRIOR && pMsg->wParam <= VK_HELP)
-            return FALSE;
-        //handle shortcut key
-        SHORT ctrlState = GetKeyState(VK_CONTROL);
-        if ((ctrlState & 0x8000) && (
-            pMsg->wParam=='A' 
-            || pMsg->wParam == 'S' 
-            || pMsg->wParam == 'D'
-            || pMsg->wParam == 'Z'
-            || pMsg->wParam == 'X'
-            || pMsg->wParam == 'C'
-            || pMsg->wParam == 'V')) {
-            return FALSE;
+        char c = m_keyboard->scanCodeToAscii(HIWORD(pMsg->lParam));
+        if(c!=0 && !GetKeyState(VK_CONTROL) && !GetKeyState(VK_MENU)){
+            std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+            Msg *msg = new Msg;
+            msg->message = pMsg->message == WM_KEYDOWN?WM_CHAR:WM_SYSCHAR;
+            msg->hwnd = pMsg->hwnd;
+            msg->wParam = c;
+            msg->lParam = pMsg->lParam;
+            GetCursorPos(&msg->pt);
+            m_msgQueue.push_back(msg);
+            return TRUE;
         }
-        std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
-        Msg *msg = new Msg;
-        msg->message = WM_CHAR;
-        msg->hwnd = pMsg->hwnd;
-        msg->wParam = pMsg->wParam;
-        msg->lParam = pMsg->lParam;
-
-        SHORT shiftState = GetKeyState(VK_SHIFT);
-        if (!(shiftState & 0x8000) && pMsg->wParam >= 'A' && pMsg->wParam <= 'Z')
-        {
-            msg->wParam += 0x20; // tolower
-        }
-        GetCursorPos(&msg->pt);
-        m_msgQueue.push_back(msg);
-        return TRUE;
     }
     return FALSE;
 }
@@ -1696,7 +1679,9 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->message = vk < VK_NUMLOCK ? WM_KEYDOWN : WM_SYSKEYDOWN;
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
-        pMsg->lParam = scanCode << 16 | m_keyboard->getRepeatCount();
+        uint32_t tst = (scanCode << 16);
+        int cn = m_keyboard->getRepeatCount();
+        pMsg->lParam = (scanCode << 16) | m_keyboard->getRepeatCount();
         //SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
         break;
     }
