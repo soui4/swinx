@@ -2289,7 +2289,7 @@ HGDIOBJ GetStockObject(int i)
     case DEFAULT_GUI_FONT:
     {
         static LOGFONT lf = { 0 };
-        strcpy(lf.lfFaceName, "Noto");
+        strcpy(lf.lfFaceName, "宋体");
         lf.lfHeight = 20;
         lf.lfWeight = 400;
         static _Handle font(OBJ_FONT, &lf, nullptr);
