@@ -1355,7 +1355,9 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			pt.y -= GetSystemMetrics(SM_CYBORDER);
 			lp2 = MAKELPARAM(pt.x, pt.y);
 		}
+        wndObj = WndObj(nullptr);//release lock
 		ret = proc(hWnd, msg, wp, lp2);
+        wndObj = WndMgr::fromHwnd(hWnd);//lock again
 		if (msg == WM_PAINT) {
 			if (wndObj->bCaretVisible) {
 				_DrawCaret(hWnd, wndObj);

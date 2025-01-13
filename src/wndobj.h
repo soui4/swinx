@@ -123,6 +123,7 @@ public:
 class WndObj {
     friend class WndMgr;
 public:
+    WndObj(_Window* pWnd);
     WndObj(const WndObj& src);
     ~WndObj();
 
@@ -143,7 +144,7 @@ public:
 
     void operator = (const WndObj& src);
 private:
-    WndObj(_Window* pWnd);
+
     _Window* wnd;
 };
 
