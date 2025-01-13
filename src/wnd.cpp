@@ -3177,6 +3177,17 @@ BOOL ShowWindow(HWND hWnd, int nCmdShow)
     {
         xcb_unmap_window(wndObj->mConnection->connection, hWnd);
         wndObj->dwStyle &= ~WS_VISIBLE;
+        if(!(wndObj->dwStyle & WS_CHILD)){
+            // send synthetic UnmapNotify event according to icccm 4.1.4
+            xcb_unmap_notify_event_t event;
+            event.response_type = XCB_UNMAP_NOTIFY;
+            event.event = wndObj->mConnection->screen->root;
+            event.window = hWnd;
+            event.from_configure = false;
+            xcb_send_event(wndObj->mConnection->connection, false, event.event,
+                                    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+        }
+
     }
     xcb_flush(wndObj->mConnection->connection);
     SendMessage(hWnd, WM_SHOWWINDOW, bNew, 0);
