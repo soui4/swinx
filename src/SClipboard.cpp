@@ -163,6 +163,120 @@ HRESULT SMimeData::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC** ppenumForma
     return E_NOTIMPL;
 }
 
+//---------------------------------------------------------------------------
+class INCRTransaction;
+typedef std::map<xcb_window_t,INCRTransaction*> TransactionMap;
+static __thread  TransactionMap *transactions = 0;
+static VOID CALLBACK OnClipboardTimeout(HWND hWnd, UINT msg, UINT_PTR timerId, DWORD ts);
+
+#define INCR_DEBUG  0
+class INCRTransaction
+{
+public:
+    INCRTransaction(SConnection *c, xcb_window_t w, xcb_atom_t p,
+                    std::shared_ptr<std::vector<char>> d, uint32_t inc, xcb_atom_t t, int to) :
+        conn(c), win(w), property(p), data(d), increment(inc),
+        target(t), timeout(to), offset(0)
+    {
+        const uint32_t values[] = { XCB_EVENT_MASK_PROPERTY_CHANGE };
+        xcb_change_window_attributes(conn->connection, win,
+                                     XCB_CW_EVENT_MASK, values);
+        if (!transactions) {
+#if INCR_DEBUG
+            SLOG_STMI()<<"INCRTransaction: creating the TransactionMap";
+#endif
+            transactions = new TransactionMap;
+            conn->getClipboard() ->setProcessIncr(true);
+        }
+        transactions->insert(std::make_pair(win, this));
+        abort_timer = SetTimer(0,0,timeout,OnClipboardTimeout);
+    }
+
+    ~INCRTransaction()
+    {
+        if (abort_timer)
+            KillTimer(0,abort_timer);
+        abort_timer = 0;
+        transactions->erase(win);
+        if (transactions->empty()) {
+#if INCR_DEBUG
+            SLOG_STMI()<<"INCRTransaction: no more INCR transactions left in the TransactionMap";
+#endif
+            delete transactions;
+            transactions = 0;
+            conn->getClipboard()->setProcessIncr(false);
+        }
+    }
+
+    void updateIncrProperty(xcb_property_notify_event_t *event, bool &accepted)
+    {
+        xcb_connection_t *c = conn->connection;
+        if (event->atom == property && event->state == XCB_PROPERTY_DELETE) {
+            accepted = true;
+            // restart the timer
+            if (abort_timer)
+                KillTimer(0,abort_timer);
+            abort_timer = SetTimer(0,0,timeout,OnClipboardTimeout);
+
+            uint32_t bytes_left = data->size() - offset;
+            if (bytes_left > 0) {
+                uint32_t bytes_to_send = std::min(increment, bytes_left);
+#if INCR_DEBUG
+                SLOG_FMTI("INCRTransaction: sending %d bytes, %d remaining (INCR transaction %p)",
+                       bytes_to_send, bytes_left - bytes_to_send, this);
+#endif
+                int dataSize = bytes_to_send;
+                xcb_change_property(c, XCB_PROP_MODE_REPLACE, win, property,
+                                    target, 8, dataSize, data->data() + offset);
+                offset += bytes_to_send;
+            } else {
+#if INCR_DEBUG
+                SLOG_FMTI("INCRTransaction: INCR transaction %p completed", this);
+#endif
+                xcb_change_property(c, XCB_PROP_MODE_REPLACE, win, property,
+                                    target, 8, 0, (const void *)0);
+                const uint32_t values[] = { XCB_EVENT_MASK_NO_EVENT };
+                xcb_change_window_attributes(conn->connection, win,
+                                             XCB_CW_EVENT_MASK, values);
+                // self destroy
+                delete this;
+            }
+        }
+    }
+
+    BOOL onTimer(UINT_PTR timerID)
+    {
+        if (timerID != abort_timer) 
+            return FALSE;
+        // this can happen when the X client we are sending data
+        // to decides to exit (normally or abnormally)
+#ifdef INCR_DEBUG
+        SLOG_STMI()<<"INCRTransaction: Timed out while sending data to "<<this;
+#endif
+        delete this;
+        return TRUE;
+    }
+
+private:
+    SConnection *conn;
+    xcb_window_t win;
+    xcb_atom_t property;
+    std::shared_ptr<std::vector<char>> data;
+    uint32_t increment;
+    xcb_atom_t target;
+    int timeout;
+    uint32_t offset;
+    UINT_PTR abort_timer;
+};
+
+static VOID CALLBACK OnClipboardTimeout(HWND hWnd, UINT msg, UINT_PTR timerId, DWORD ts)
+{
+    for(auto it:(*transactions)){
+        if(it.second->onTimer(timerId))
+            break;
+    }
+}
+//-------------------------------------------------------------------------
 
 SClipboard::SClipboard(SConnection* conn)
     :m_conn(conn)
@@ -171,6 +285,7 @@ SClipboard::SClipboard(SConnection* conn)
     ,m_bOpen(FALSE)
     ,m_ts(XCB_CURRENT_TIME)
     , m_doSel(NULL)
+    ,m_incr_active(FALSE)
 {
     m_doClip = new SMimeData();
     m_owner = xcb_generate_id(xcb_connection());
@@ -339,6 +454,7 @@ xcb_atom_t SClipboard::sendSelection(IDataObject* d, xcb_atom_t target, xcb_wind
     std::unique_lock<std::recursive_mutex> lock(m_mutex);
     IEnumFORMATETC* enumFmt;
     HGLOBAL hData = NULL;
+    int dataFormat = 0;
     if (d->EnumFormatEtc(DATADIR_GET, &enumFmt) == S_OK) {
         FORMATETC fmt;
         while (enumFmt->Next(1, &fmt, NULL) == S_OK) {
@@ -346,6 +462,7 @@ xcb_atom_t SClipboard::sendSelection(IDataObject* d, xcb_atom_t target, xcb_wind
                 STGMEDIUM medium = { 0 };
                 d->GetData(&fmt, &medium);
                 hData = medium.hGlobal;
+                dataFormat = fmt.cfFormat;
                 break;
             }
         }
@@ -357,22 +474,22 @@ xcb_atom_t SClipboard::sendSelection(IDataObject* d, xcb_atom_t target, xcb_wind
     xcb_atom_t atomFormat = target;
 	// don't allow INCR transfers when using MULTIPLE or to
    // Motif clients (since Motif doesn't support INCR)
-	static xcb_atom_t motif_clip_temporary = m_conn->atoms.CLIP_TEMPORARY;
-	bool allow_incr = property != motif_clip_temporary;
+	bool allow_incr = property != m_conn->atoms.CLIP_TEMPORARY;
 
 	// X_ChangeProperty protocol request is 24 bytes
 	const int increment = (xcb_get_maximum_request_length(xcb_connection()) * 4) - 24;
     size_t len = GlobalSize(hData);
-    //todo:hjx
 	if (false && len > increment && allow_incr) {
-	    long bytes = increment;
+	    uint32_t bytes = increment;
+        std::shared_ptr<std::vector<char>> data=std::make_shared<std::vector<char>>(bytes);
+        const char * src = (const char*)GlobalLock(hData);
+        memcpy(data->data(),src,bytes);
+        GlobalUnlock(hData);
+        GlobalFree(hData);
 	    xcb_change_property(xcb_connection(), XCB_PROP_MODE_REPLACE, window, property,
 	        m_conn->atoms.INCR, 32, 1, (const void*)&bytes);
-	    //new INCRTransaction(connection(), window, property, data, increment,
-	    //    atomFormat, dataFormat, clipboard_timeout);
-	    //return property;
-        GlobalFree(hData);
-        return XCB_NONE;
+	    new INCRTransaction(m_conn, window, property, data, increment, atomFormat, kIncrTimeout);
+	    return property;
 	}
 
 	// make sure we can perform the XChangeProperty in a single request
@@ -518,6 +635,18 @@ void SClipboard::handleSelectionClear(xcb_selection_clear_event_t *e)
     {
         m_doClip->clear();
         m_ts = XCB_CURRENT_TIME;
+    }
+}
+
+void SClipboard::incrTransactionPeeker(xcb_generic_event_t *ge, bool &accepted)
+{
+    uint response_type = ge->response_type & ~0x80;
+    if (response_type == XCB_PROPERTY_NOTIFY) {
+        xcb_property_notify_event_t *event = (xcb_property_notify_event_t *)ge;
+        auto it = transactions->find(event->window);
+        if (it != transactions->end()) {
+            it->second->updateIncrProperty(event, accepted);
+        }
     }
 }
 
@@ -768,10 +897,7 @@ xcb_generic_event_t* SClipboard::waitForClipboardEvent(xcb_window_t win, int typ
         m_conn->flush();
 
         // sleep 50 ms, so we don't use up CPU cycles all the time.
-        struct timeval usleep_tv;
-        usleep_tv.tv_sec = 0;
-        usleep_tv.tv_usec = 50000;
-        select(0, 0, 0, 0, &usleep_tv);
+        sleep(50000);
     } while (GetTickCount64()-ts1 < timeout);
 
     return 0;

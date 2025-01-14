@@ -363,7 +363,11 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
         std::unique_lock<std::mutex> lock(m_mutex4Evt);
         for (auto it : m_evtQueue)
         {
-            pushEvent(it);
+            bool accepted = false;
+            if (m_clipboard->processIncr())
+                m_clipboard->incrTransactionPeeker(it, accepted);
+            if (!accepted)
+                pushEvent(it);
             free(it);
         }
         bRet = !m_evtQueue.empty();

@@ -13,7 +13,7 @@ states: waiting, inprog, done
 |9 |drag drop|hjx|done|
 |10 |mouse wheel|hjx|done|
 |11 |multi clipboard format|hjx|done|
-|12 |clipboard support large data|hjx|waiting|
+|12 |clipboard support large data|hjx|done|
 |13 |fix demo2 bug|hjx|done|
 |14 |utf32 error for wxdemo|hjx|done|
 |15 |trayicon support|hjx|waiting|
