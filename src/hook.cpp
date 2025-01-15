@@ -4,6 +4,8 @@
 #include <assert.h>
 #include "hook.h"
 #include "SRwLock.hpp"
+#include "SConnection.h"
+#include "SClipboard.h"
 #include "debug.h"
 #define kLogTag "hook"
 
@@ -50,17 +52,17 @@ class HookMgr {
 
     HHOOK get_first_hook(INT id);
   private:
-    UINT get_ll_hook_timeout();
+    UINT get_hook_timeout();
 
     std::list<hook *> s_hooks[WH_MAXHOOK - WH_MINHOOK + 1];
     SRwLock s_mutex;
 }s_hookMgr;
 
  /***********************************************************************
- *		get_ll_hook_timeout
+ *		get_hook_timeout
  *
  */
-UINT HookMgr::get_ll_hook_timeout(void)
+UINT HookMgr::get_hook_timeout(void)
 {
     return 2000;
 }
@@ -135,15 +137,37 @@ LRESULT HookMgr::call_next_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lPar
     s_mutex.LockShared();
     auto it = std::find(s_hooks[hhk->id].begin(), s_hooks[hhk->id].end(), hhk);
     HOOKPROC proc = NULL;
+    tid_t tid = 0;
     if (it != s_hooks[hhk->id].end())
     {
         if (++it != s_hooks[hhk->id].end())
+        {
             proc = (*it)->proc;
+            tid = (*it)->tid;
+        }
     }
     s_mutex.UnlockShared();
     if (proc)
     {
-        ret = proc(nCode, wParam, lParam);
+        if (tid == GetCurrentThreadId())
+            ret = proc(nCode, wParam, lParam);
+        else
+        {
+            SConnection *conn = SConnMgr::instance()->getConnection(tid);
+            if (!conn)
+            {
+                return call_next_hook(hhk, nCode, wParam, lParam);
+            }
+            else
+            {
+                CallHookData data;
+                data.proc = proc;
+                data.code = nCode;
+                data.wp = wParam;
+                data.lp = lParam;
+                SendMessageTimeoutA(conn->getClipboard()->getClipboardOwner(), UM_CALLHOOK, 0, (LPARAM)&data, 0, get_hook_timeout(), &ret);
+            }
+        }
     }
     return ret;
 }

@@ -3884,6 +3884,17 @@ BOOL DispatchMessage(LPMSG pMsg)
 {
     if (!pMsg->hwnd)
         return FALSE;
+    if (pMsg->message == UM_CALLHOOK)
+    {//call hook proc for inter thread
+        SConnection *conn = SConnMgr::instance()->getConnection();
+        if (!conn)
+            return FALSE;
+        CallHookData *data = (CallHookData *)pMsg->lParam;
+        conn->BeforeProcMsg(pMsg->hwnd, pMsg->message, pMsg->wParam, pMsg->lParam);
+        LRESULT ret = data->proc(data->code,data->wp,data->lp);
+        conn->AfterProcMsg(pMsg->hwnd, pMsg->message, pMsg->wParam, pMsg->lParam, ret);
+        return TRUE;
+    }
     WNDPROC wndProc = (WNDPROC)GetWindowLongPtrA(pMsg->hwnd, GWLP_WNDPROC);
     if (!wndProc)
         return FALSE;

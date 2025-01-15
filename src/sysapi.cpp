@@ -725,7 +725,12 @@ DWORD MsgWaitForMultipleObjects(DWORD nCount, const HANDLE *pHandles, BOOL fWait
 BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->getMsg(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+    BOOL bRet = conn->getMsg(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+    if (bRet)
+    {
+        CallHook(WH_GETMESSAGE, HC_ACTION,1 ,(LPARAM)lpMsg);
+    }
+    return bRet;
 }
 
 BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
@@ -733,7 +738,12 @@ BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, 
     SConnection *conn = SConnMgr::instance()->getConnection();
     if (!conn)
         return FALSE;
-    return conn->peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    BOOL bRet = conn->peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    if (bRet)
+    {
+        CallHook(WH_GETMESSAGE, HC_ACTION, wRemoveMsg& PM_REMOVE, (LPARAM)pMsg);
+    }
+    return bRet;
 }
 
 int GetSystemScale(){
@@ -839,6 +849,8 @@ uint64_t GetTickCount64()
 
 BOOL CallMsgFilter(LPMSG lpMsg, int nCode)
 {
+    if (CallHook(WH_SYSMSGFILTER, nCode, 0, (LPARAM)lpMsg))
+        return TRUE;
     return CallHook(WH_MSGFILTER, nCode, 0, (LPARAM)lpMsg);
 }
 
@@ -849,7 +861,15 @@ __time64_t _mktime64(const tm *ptime)
 
 __time64_t _time64(__time64_t *_Time)
 {
+#ifdef __x86_64
     return time((time_t *)_Time);
+#else
+    time_t tmp = _Time?(*_Time):0;
+    time_t ret = time(&tmp);
+    if (_Time)
+        *_Time = tmp;
+    return ret;
+#endif//__x86_64
 }
 
 HCURSOR LoadCursor(HINSTANCE hInstance, LPCSTR lpCursorName)
