@@ -1068,9 +1068,9 @@ typedef struct tagMONITORINFO
 /* Hook values */
     enum
     {
-        WH_MIN = (-1),
-        WH_MSGFILTER = (-1),
-        WH_KEYBOARD=0,
+        WH_MIN = 0,
+        WH_MSGFILTER = 0,
+        WH_KEYBOARD,
         WH_GETMESSAGE,
         WH_CALLWNDPROC,
         WH_SYSMSGFILTER,

@@ -16,13 +16,13 @@ struct hook
     INT id;
     HOOKPROC proc;
     void *handle;
-    DWORD tid;
+    tid_t tid;
     BOOL unicode;
     char module[MAX_PATH];
 };
 
 
-static const char *const hook_names[WH_MAXHOOK - WH_MINHOOK + 1] = { "WH_MSGFILTER", "WH_KEYBOARD", "WH_GETMESSAGE", "WH_CALLWNDPROC", "WH_SYSMSGFILTER", "WH_MOUSE", "WH_CALLWNDPROCRET"};
+static const char *const hook_names[WH_MAXHOOK - WH_MINHOOK] = { "WH_MSGFILTER", "WH_KEYBOARD", "WH_GETMESSAGE", "WH_CALLWNDPROC", "WH_SYSMSGFILTER", "WH_MOUSE", "WH_CALLWNDPROCRET"};
 
 class HookMgr {
   public:
@@ -33,7 +33,7 @@ class HookMgr {
     ~HookMgr()
     {
         s_mutex.LockExclusive();
-        for (int i = 0; i < WH_MAXHOOK - WH_MINHOOK + 1; i++)
+        for (int i = 0; i < WH_MAXHOOK - WH_MINHOOK - 1; i++)
         {
             for (auto &it : s_hooks[i])
             {
@@ -44,13 +44,15 @@ class HookMgr {
         s_mutex.UnlockExclusive();
     }
 
-    HHOOK set_windows_hook(INT id, HOOKPROC proc, HINSTANCE inst, DWORD tid, BOOL unicode);
+    HHOOK set_windows_hook(INT id, HOOKPROC proc, HINSTANCE inst, tid_t tid, BOOL unicode);
 
     BOOL unhook(HHOOK hHook);
 
-    LRESULT call_next_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam);
+    LRESULT call_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam);
 
     HHOOK get_first_hook(INT id);
+
+    HHOOK get_next_hook(HHOOK hhk);
   private:
     UINT get_hook_timeout();
 
@@ -72,7 +74,7 @@ UINT HookMgr::get_hook_timeout(void)
  *
  * Implementation of SetWindowsHookExA and SetWindowsHookExW.
  */
-HHOOK HookMgr::set_windows_hook(INT id, HOOKPROC proc, HINSTANCE inst, DWORD tid, BOOL unicode)
+HHOOK HookMgr::set_windows_hook(INT id, HOOKPROC proc, HINSTANCE inst, tid_t tid, BOOL unicode)
 {
     char module[MAX_PATH];
     DWORD len;
@@ -98,7 +100,7 @@ HHOOK HookMgr::set_windows_hook(INT id, HOOKPROC proc, HINSTANCE inst, DWORD tid
     auto &lstHook = s_hooks[id];
     lstHook.push_front(info);
     s_mutex.UnlockExclusive();
-    TRACE("%s %p %x -> %p\n", hook_names[id - WH_MINHOOK], proc, tid, info);
+    SLOG_FMTI("%s %p %ld -> %p", hook_names[id - WH_MINHOOK], proc, tid, info);
     return info;
 }
 
@@ -130,38 +132,41 @@ HHOOK HookMgr::get_first_hook(INT id)
     return ret;
 }
 
-LRESULT HookMgr::call_next_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
-{
-    assert(hhk);
-    LRESULT ret = -1;
+HHOOK HookMgr::get_next_hook(HHOOK hhk){
+    if(!hhk)
+        return NULL;
+    HHOOK ret = NULL;
     s_mutex.LockShared();
     auto it = std::find(s_hooks[hhk->id].begin(), s_hooks[hhk->id].end(), hhk);
-    HOOKPROC proc = NULL;
-    tid_t tid = 0;
-    if (it != s_hooks[hhk->id].end())
-    {
-        if (++it != s_hooks[hhk->id].end())
-        {
-            proc = (*it)->proc;
-            tid = (*it)->tid;
-        }
-    }
+    if(it!= s_hooks[hhk->id].end()) 
+        it++;
+    ret = it==s_hooks[hhk->id].end()?nullptr:(*it);
     s_mutex.UnlockShared();
-    if (proc)
+    return ret;
+}
+
+LRESULT HookMgr::call_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
+{
+    if(!hhk)
+        return 0;
+    LRESULT ret = 0;
+    if (hhk->proc)
     {
-        if (tid == GetCurrentThreadId())
-            ret = proc(nCode, wParam, lParam);
+        tid_t tid = GetCurrentThreadId();
+        if (hhk->tid == tid)
+            ret = hhk->proc(nCode, wParam, lParam);
         else
         {
-            SConnection *conn = SConnMgr::instance()->getConnection(tid);
+            SConnection *conn = SConnMgr::instance()->getConnection(hhk->tid);
             if (!conn)
             {
-                return call_next_hook(hhk, nCode, wParam, lParam);
+                hhk = get_next_hook(hhk);
+                return call_hook(hhk, nCode, wParam, lParam);
             }
             else
             {
                 CallHookData data;
-                data.proc = proc;
+                data.proc = hhk->proc;
                 data.code = nCode;
                 data.wp = wParam;
                 data.lp = lParam;
@@ -192,7 +197,7 @@ HHOOK WINAPI SetWindowsHookW(INT id, HOOKPROC proc)
 /***********************************************************************
  *		SetWindowsHookExA (USER32.@)
  */
-HHOOK WINAPI SetWindowsHookExA(INT id, HOOKPROC proc, HINSTANCE inst, DWORD tid)
+HHOOK WINAPI SetWindowsHookExA(INT id, HOOKPROC proc, HINSTANCE inst, tid_t tid)
 {
     return s_hookMgr.set_windows_hook(id, proc, inst, tid, FALSE);
 }
@@ -200,7 +205,7 @@ HHOOK WINAPI SetWindowsHookExA(INT id, HOOKPROC proc, HINSTANCE inst, DWORD tid)
 /***********************************************************************
  *		SetWindowsHookExA (USER32.@)
  */
-HHOOK WINAPI SetWindowsHookExW(INT id, HOOKPROC proc, HINSTANCE inst, DWORD tid)
+HHOOK WINAPI SetWindowsHookExW(INT id, HOOKPROC proc, HINSTANCE inst, tid_t tid)
 {
     return s_hookMgr.set_windows_hook(id, proc, inst, tid, TRUE);
 }
@@ -212,14 +217,12 @@ BOOL WINAPI UnhookWindowsHookEx(HHOOK hhk)
 
 LRESULT WINAPI CallNextHookEx(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
 {
-    return s_hookMgr.call_next_hook(hhk,nCode,wParam,lParam);
+    hhk = s_hookMgr.get_next_hook(hhk);
+    return s_hookMgr.call_hook(hhk,nCode,wParam,lParam);
 }
 
 BOOL WINAPI CallHook(INT id, int nCode, WPARAM wParam, LPARAM lParam)
 {
-    HHOOK hHook = s_hookMgr.get_first_hook(id);
-    if (!hHook)
-        return FALSE;
-    CallNextHookEx(hHook, nCode, wParam, lParam);
-    return TRUE;
+    HHOOK hhk = s_hookMgr.get_first_hook(id);
+    return s_hookMgr.call_hook(hhk,nCode,wParam,lParam);
 }

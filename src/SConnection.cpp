@@ -772,6 +772,7 @@ void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp)
     pMsg->lParam = lp;
     GetCursorPos(&pMsg->pt);
     m_msgQueue.push_back(pMsg);
+    SetEvent(m_evtSync);
 }
 
 void SConnection::postMsg2(BOOL bWideChar,HWND hWnd, UINT message, WPARAM wp, LPARAM lp, MsgReply *reply)

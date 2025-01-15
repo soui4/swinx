@@ -3884,6 +3884,9 @@ BOOL DispatchMessage(LPMSG pMsg)
 {
     if (!pMsg->hwnd)
         return FALSE;
+    if(pMsg->message == WM_PAINT && !IsWindowVisible(pMsg->hwnd)){
+        return FALSE;
+    }
     if (pMsg->message == UM_CALLHOOK)
     {//call hook proc for inter thread
         SConnection *conn = SConnMgr::instance()->getConnection();

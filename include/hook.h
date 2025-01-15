@@ -13,9 +13,9 @@ extern "C"
 
     HHOOK WINAPI SetWindowsHookW(INT id, HOOKPROC proc);
 
-    HHOOK WINAPI SetWindowsHookExA(INT idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+    HHOOK WINAPI SetWindowsHookExA(INT idHook, HOOKPROC lpfn, HINSTANCE hmod, tid_t dwThreadId);
 
-    HHOOK WINAPI SetWindowsHookExW(INT idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+    HHOOK WINAPI SetWindowsHookExW(INT idHook, HOOKPROC lpfn, HINSTANCE hmod, tid_t dwThreadId);
 
     BOOL WINAPI UnhookWindowsHookEx(HHOOK hhk);
 
