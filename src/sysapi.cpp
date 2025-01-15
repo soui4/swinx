@@ -839,7 +839,7 @@ uint64_t GetTickCount64()
 
 BOOL CallMsgFilter(LPMSG lpMsg, int nCode)
 {
-    return 0;
+    return CallHook(WH_MSGFILTER, nCode, 0, (LPARAM)lpMsg);
 }
 
 __time64_t _mktime64(const tm *ptime)

@@ -13,16 +13,21 @@ extern "C"
 
     HHOOK WINAPI SetWindowsHookW(INT id, HOOKPROC proc);
 
-    HHOOK
-    WINAPI SetWindowsHookExA(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+    HHOOK WINAPI SetWindowsHookExA(INT idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
 
-    HHOOK
-    WINAPI SetWindowsHookExW(int idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
+    HHOOK WINAPI SetWindowsHookExW(INT idHook, HOOKPROC lpfn, HINSTANCE hmod, DWORD dwThreadId);
 
     BOOL WINAPI UnhookWindowsHookEx(HHOOK hhk);
 
-    LRESULT
-    WINAPI CallNextHookEx(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam);
+    LRESULT WINAPI CallNextHookEx(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam);
+    BOOL WINAPI CallHook(INT id, int nCode, WPARAM wParam, LPARAM lParam);
+#ifdef UNICODE
+#define SetWindowsHookEx SetWindowsHookExW
+#define SetWindowsHook   SetWindowsHookW
+#else
+#define SetWindowsHookEx SetWindowsHookExA
+#define SetWindowsHook   SetWindowsHookA
+#endif//UNICODE
 
 #ifdef __cplusplus
 }
