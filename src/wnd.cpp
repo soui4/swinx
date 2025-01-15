@@ -3394,6 +3394,8 @@ int ReleaseDC(HWND hWnd, HDC hdc)
 
 int MapWindowPoints(HWND hWndFrom, HWND hWndTo, LPPOINT lpPoint, UINT nCount)
 {
+    if (hWndFrom == hWndTo)
+        return 0;
     RECT rcFrom={0}, rcTo={0};
     if (hWndFrom && !GetWindowRect(hWndFrom, &rcFrom))
         return 0;
