@@ -41,7 +41,7 @@ class SMenuItem {
     // 禁用有两种情况，变灰+不变灰
     bool IsEnable() const;
 
-    void SetCheck(BOOL bCheck);
+    void SetSelect(BOOL bSel);
 
     void SetHotItem(bool bHot);
 
@@ -118,6 +118,7 @@ class CMenu : public CNativeWnd {
 
     virtual ~CMenu(void) noexcept override;
 
+    HMENU GetHMenu() const {return m_hWnd;}
   public:
     BOOL CreateMenu();
 
@@ -418,9 +419,9 @@ bool SMenuItem::IsEnable() const
     return (m_uMenuFlag & 0b11) == MF_ENABLED;
 }
 
-void SMenuItem::SetCheck(BOOL bCheck)
+void SMenuItem::SetSelect(BOOL bSel)
 {
-    m_uMenuFlag = bCheck ? (m_uMenuFlag | MF_MOUSESELECT) : (m_uMenuFlag & (~MF_MOUSESELECT));
+    m_uMenuFlag = bSel ? (m_uMenuFlag | MF_CHECKED) : (m_uMenuFlag & (~MF_CHECKED));
 }
 
 void SMenuItem::SetHotItem(bool bHot)
@@ -437,7 +438,7 @@ UINT SMenuItem::GetDrawState() const
         state |= ODS_CHECKED;
     if (m_uMenuFlag & MF_GRAYED)
         state |= ODS_GRAYED;
-    if (m_uMenuFlag & MF_MOUSESELECT)
+    if (m_uMenuFlag & MF_CHECKED)
         state |= ODS_SELECTED;
     return state;
 }
@@ -702,9 +703,19 @@ BOOL CMenu::GetMenuItemInfo(UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi)
 
         if (pItem)
         {
-            if (lpmi->fMask & MIIM_FTYPE)
+            if(lpmi->fMask & MIIM_FTYPE){
+                lpmi->fType = pItem->IsSeparator()?MF_SEPARATOR: MF_STRING;
+            }
+            if (lpmi->fMask & MIIM_STATE)
             {
-                lpmi->fType = pItem->m_uMenuFlag;
+                lpmi->fState = pItem->m_uMenuFlag;
+            }
+            if(lpmi->fMask & MIIM_SUBMENU){
+                CMenu *subMenu = pItem->GetSubMenu();
+                if(subMenu)
+                    lpmi->hSubMenu = subMenu->GetHMenu();
+                else
+                    lpmi->hSubMenu = 0;
             }
         }
     }
@@ -1061,7 +1072,7 @@ void CMenu::HideMenu(BOOL bUncheckParentItem)
     {
         SMenuItem *pItem = GetMenuItem(m_iSelItem);
         if (pItem)
-            pItem->SetCheck(false);
+            pItem->SetSelect(false);
         m_iSelItem = -1;
     }
     if (m_iHoverItem != -1)
@@ -1279,7 +1290,7 @@ BOOL CMenu::SelectItem(int iItem)
         return TRUE;
     if (SMenuItem *pItem = GetMenuItem(m_iSelItem))
     {
-        pItem->SetCheck(FALSE);
+        pItem->SetSelect(FALSE);
         InvalidateItem(m_iSelItem);
         if (pItem->GetSubMenu())
         {
@@ -1289,7 +1300,7 @@ BOOL CMenu::SelectItem(int iItem)
     m_iSelItem = iItem;
     if (SMenuItem *pItem = GetMenuItem(iItem))
     {
-        pItem->SetCheck(TRUE);
+        pItem->SetSelect(TRUE);
         InvalidateItem(iItem);
         if (pItem->GetSubMenu())
         {
@@ -1487,7 +1498,7 @@ BOOL CMenu::CheckMenuItem(UINT uPos, UINT uFlag)
     SMenuItem *pItemRef = FindItem(uPos, uFlag);
     if (!pItemRef)
         return FALSE;
-    pItemRef->SetCheck(uFlag & MF_CHECKED);
+    pItemRef->SetSelect(uFlag & MF_CHECKED);
     return TRUE;
 }
 
