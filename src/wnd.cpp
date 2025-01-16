@@ -856,7 +856,8 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
             continue;
         while (PeekMessage(&msg, hWnd, 0, 0, TRUE))
         {
-            CallMsgFilter(&msg, htCode == HTCAPTION ? MSGF_SIZE : MSGF_MOVE);
+            if(CallMsgFilter(&msg, htCode == HTCAPTION ? MSGF_SIZE : MSGF_MOVE))
+                continue;
             if (msg.message == WM_QUIT)
             {
                 SLOG_STMI() << "HandleNcTestCode,WM_QUIT";
@@ -1360,7 +1361,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         wndObj = WndObj(nullptr);//release lock
         if (msg >= WM_KEYFIRST && msg <= WM_KEYLAST)
         {//call keyboard hook
-            CallHook(WH_KEYBOARD,HC_ACTION,wp,lp);
+            bSkipMsg = CallHook(WH_KEYBOARD,HC_ACTION,wp,lp);
         }
         else if (msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST)
         {
@@ -1369,7 +1370,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             st.pt.x = GET_X_LPARAM(lp);
             st.pt.y = GET_Y_LPARAM(lp);
             st.wHitTestCode = htCode;
-            CallHook(WH_MOUSE, HC_ACTION, msg, (LPARAM)&st);
+            bSkipMsg = CallHook(WH_MOUSE, HC_ACTION, msg, (LPARAM)&st);
         }
         {
             CWPSTRUCT st;
@@ -1377,9 +1378,10 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             st.message = msg;
             st.wParam = wp;
             st.lParam = lp;
-            CallHook(WH_CALLWNDPROC, HC_ACTION, 0, (LPARAM)&st);
+            bSkipMsg = CallHook(WH_CALLWNDPROC, HC_ACTION, 0, (LPARAM)&st);
         }
-		ret = proc(hWnd, msg, wp, lp2);
+		if(!bSkipMsg) 
+            ret = proc(hWnd, msg, wp, lp2);
         {
             CWPRETSTRUCT st;
             st.hwnd = hWnd;
@@ -2628,7 +2630,8 @@ static LRESULT handleNcLbuttonDown(HWND hWnd,WPARAM wp,LPARAM lp){
         if(msg.message==WM_QUIT)
             break;
         PeekMessage(&msg,0,0,0,PM_REMOVE);
-        CallMsgFilter(&msg, MSGF_SCROLLBAR);
+        if(CallMsgFilter(&msg, MSGF_SCROLLBAR))
+            continue;
         if(msg.message == WM_LBUTTONUP){            
             pt = {GET_X_LPARAM(msg.lParam),GET_Y_LPARAM(msg.lParam)};
             break;

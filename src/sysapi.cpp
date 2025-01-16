@@ -728,7 +728,8 @@ BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
     BOOL bRet = conn->getMsg(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
     if (bRet)
     {
-        CallHook(WH_GETMESSAGE, HC_ACTION,1 ,(LPARAM)lpMsg);
+        if(CallHook(WH_GETMESSAGE, HC_ACTION,1 ,(LPARAM)lpMsg))
+            return GetMessage( lpMsg,  hWnd,  wMsgFilterMin,  wMsgFilterMax);
     }
     return bRet;
 }
@@ -741,7 +742,8 @@ BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, 
     BOOL bRet = conn->peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
     if (bRet)
     {
-        CallHook(WH_GETMESSAGE, HC_ACTION, wRemoveMsg& PM_REMOVE, (LPARAM)pMsg);
+        if(CallHook(WH_GETMESSAGE, HC_ACTION, wRemoveMsg& PM_REMOVE, (LPARAM)pMsg))
+            return PeekMessage(pMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
     }
     return bRet;
 }
