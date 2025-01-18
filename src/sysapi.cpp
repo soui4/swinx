@@ -1089,7 +1089,10 @@ void WINAPI set_error(int e)
 
 VOID WINAPI Sleep(DWORD dwMilliseconds)
 {
-    usleep(dwMilliseconds * 1000);
+    struct timeval usleep_tv;
+    usleep_tv.tv_sec = 0;
+    usleep_tv.tv_usec = dwMilliseconds*1000;
+    select(0, 0, 0, 0, &usleep_tv);
 }
 
 

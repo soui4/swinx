@@ -363,8 +363,14 @@ struct DragEnterMsg : Msg , DragEnterData {
     ~DragEnterMsg() {
     }
 };
-typedef struct DragEnterData DragDropData;
-typedef struct DragEnterMsg DragDropMsg;
+
+struct DragDropData : DragBase{};
+
+struct DragDropMsg : Msg, DragDropData{
+    DragDropMsg(){
+        lParam = (LPARAM)(DragDropData*)this;
+    }
+};
 
 struct DragOverData : DragBase {
     POINTL pt;

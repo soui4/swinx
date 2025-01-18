@@ -1122,20 +1122,21 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     {
         SLOG_STMI() << "UM_XDND_DRAG_LEAVE!";
 
-        if (!wndObj->dropTarget || !wndObj->dragData)
+        if (!wndObj->dropTarget)
         {
             SLOG_STMW() << "should not run into here!";
             return 1;
         }
         HRESULT hr = wndObj->dropTarget->DragLeave();
-        wndObj->dragData->Release();
-        wndObj->dragData = NULL;
-        SLOG_STMI() << "UM_XDND_DRAG_LEAVE! set dragData to null";
+        if(wndObj->dragData){
+            wndObj->dragData->Release();
+            wndObj->dragData = NULL;
+            SLOG_STMI() << "UM_XDND_DRAG_LEAVE! set dragData to null";
+        }
         return 0;
     }
     case UM_XDND_DRAG_OVER:
     {
-        //SLOG_STMI() << "UM_XDND_DRAG_OVER!";
         DragOverData* data = (DragOverData*)lp;
         if (!wndObj->dropTarget)
         {
@@ -1143,9 +1144,15 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             return 1;
         }
         SDataObjectProxy* dragData = (SDataObjectProxy*)wndObj->dragData;
-        dragData->m_dwKeyState = data->dwKeyState;
-        HRESULT hr = wndObj->dropTarget->DragOver(dragData->m_dwKeyState, data->pt, &dragData->m_dwEffect);
-        wndObj->mConnection->SendXdndStatus(hWnd,dragData->m_hSource, hr == S_OK, dragData->m_dwEffect);
+        if(dragData){
+            dragData->m_dwKeyState = data->dwKeyState;
+            dragData->m_ptOver = data->pt;
+            HRESULT hr = wndObj->dropTarget->DragOver(dragData->m_dwKeyState, data->pt, &dragData->m_dwEffect);
+            //SLOG_STMI()<<"UM_XDND_DRAG_OVER, hr="<<hr<<" effedt="<<dragData->m_dwEffect<<" accept="<<(hr==S_OK);
+            wndObj->mConnection->SendXdndStatus(hWnd,dragData->m_hSource, hr == S_OK, dragData->m_dwEffect);
+        }else{
+            SLOG_STME()<<"!!!!dragData is nullptr";
+        }
         return 0;
     }
     case UM_XDND_DRAG_DROP:
@@ -1158,8 +1165,8 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             return 1;
         }
         SDataObjectProxy* dragData =(SDataObjectProxy *) wndObj->dragData;
-        DWORD dwEffect = wp;
-        HRESULT hr = wndObj->dropTarget->Drop(wndObj->dragData, dragData->m_dwKeyState, data->pt, &dwEffect);
+        DWORD dwEffect = wp?wp:dragData->m_dwEffect;//if wp is valid, using wp alse using dragover effect.
+        HRESULT hr = wndObj->dropTarget->Drop(wndObj->dragData, dragData->m_dwKeyState, dragData->m_ptOver, &dwEffect);
         wndObj->mConnection->SendXdndFinish(hWnd, dragData->m_hSource, hr == S_OK, dwEffect);
         wndObj->dragData->Release();
         wndObj->dragData = NULL;

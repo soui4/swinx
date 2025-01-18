@@ -241,6 +241,8 @@ public:
 
     DWORD XdndAction2Effect(xcb_atom_t action);
 
+    xcb_atom_t XdndEffect2Action(DWORD dwEffect);
+
     bool pushEvent(xcb_generic_event_t *e);
 
     static void *readProc(void *p);

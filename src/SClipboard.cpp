@@ -897,7 +897,7 @@ xcb_generic_event_t* SClipboard::waitForClipboardEvent(xcb_window_t win, int typ
         m_conn->flush();
 
         // sleep 50 ms, so we don't use up CPU cycles all the time.
-        sleep(50000);
+        Sleep(50);
     } while (GetTickCount64()-ts1 < timeout);
 
     return 0;

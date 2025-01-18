@@ -7,15 +7,14 @@
 
 class SConnection;
 class SDataObjectProxy : public SUnkImpl<IDataObject>{
+    void initTypeList(const uint32_t data32[5]);
 public:
-    SDataObjectProxy(SConnection* conn, HWND hWnd);
+    SDataObjectProxy(SConnection* conn, HWND hWnd,const uint32_t data32[5]);
 
-    std::vector<uint32_t>& getTypeList() {
-        return m_lstTypes;
-    }
     HWND getSource() const {
         return m_hSource;
     }
+
 public:
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetData(
         /* [annotation][unique][in] */
@@ -93,6 +92,7 @@ public:
     xcb_timestamp_t m_targetTime;
     DWORD m_dwEffect;
     DWORD m_dwKeyState;
+    POINTL m_ptOver;
 };
 
 class SDragDrop : public CNativeWnd {

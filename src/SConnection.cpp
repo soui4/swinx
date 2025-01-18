@@ -913,17 +913,7 @@ void SConnection::SendXdndStatus(HWND hTarget,HWND hSource, BOOL accept, DWORD d
     response.data.data32[1] = accept?1:0; // flags
     response.data.data32[2] = 0; // x, y
     response.data.data32[3] = 0; // w, h
-    uint32_t action = 0;
-    switch (dwEffect) {
-    case DROPEFFECT_NONE: action = XCB_NONE;break;
-    case DROPEFFECT_MOVE: action = atoms.XdndActionMove; break;
-    case DROPEFFECT_LINK: action = atoms.XdndActionLink; break;
-    case DROPEFFECT_COPY: 
-    default:
-        action = atoms.XdndActionCopy; 
-        break;
-    }
-    response.data.data32[4] = action; // action
+    response.data.data32[4] = XdndEffect2Action(dwEffect); // action
     xcb_send_event(connection, false, hSource,
         XCB_EVENT_MASK_NO_EVENT, (const char*)&response);
 }
@@ -939,17 +929,7 @@ void SConnection::SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD 
     response.type = atoms.XdndFinished;
     response.data.data32[0] = hTarget;
     response.data.data32[1] = accept ? 1 : 0; // flags
-    uint32_t action = 0;
-    switch (dwEffect) {
-    case DROPEFFECT_NONE: action = XCB_NONE; break;
-    case DROPEFFECT_MOVE: action = atoms.XdndActionMove; break;
-    case DROPEFFECT_LINK: action = atoms.XdndActionLink; break;
-    case DROPEFFECT_COPY:
-    default:
-        action = atoms.XdndActionCopy;
-        break;
-    }
-    response.data.data32[2] = action; // action
+    response.data.data32[2] = XdndEffect2Action(dwEffect); // action
     xcb_send_event(connection, false, hSource,
         XCB_EVENT_MASK_NO_EVENT, (const char*)&response);
 }
@@ -959,15 +939,13 @@ xcb_atom_t SConnection::clipFormat2Atom(UINT uFormat)
     switch (uFormat)
     {
     case CF_TEXT:
-        return atoms.UTF8_STRING;
+        return atoms.CLIPF_UTF8;
     case CF_UNICODETEXT:
-        return atoms.ATOM_CF_UNICODETEXT;
-    case CF_HDROP:
-        return atoms.ATOM_CF_HDROP;
+        return atoms.CLIPF_UNICODETEXT;
     case CF_BITMAP:
-        return atoms.ATOM_CF_BITMAP;
+        return atoms.CLIPF_BITMAP;
     case CF_WAVE:
-        return atoms.ATOM_CF_WAVE;
+        return atoms.CLIPF_WAVE;
     default:
         // for registered format
         if (uFormat > CF_MAX)
@@ -980,15 +958,13 @@ xcb_atom_t SConnection::clipFormat2Atom(UINT uFormat)
 
 uint32_t SConnection::atom2ClipFormat(xcb_atom_t atom)
 {
-    if (atom == atoms.UTF8_STRING)
+    if (atom == atoms.CLIPF_UTF8)
         return CF_TEXT;
-    else if (atom == atoms.ATOM_CF_UNICODETEXT)
+    else if (atom == atoms.CLIPF_UNICODETEXT)
         return CF_UNICODETEXT;
-    else if (atom == atoms.ATOM_CF_HDROP)
-        return CF_HDROP;
-    else if (atom == atoms.ATOM_CF_BITMAP)
+    else if (atom == atoms.CLIPF_BITMAP)
         return CF_BITMAP;
-    else if (atom == atoms.ATOM_CF_WAVE)
+    else if (atom == atoms.CLIPF_WAVE)
         return CF_WAVE;
     else
         return CF_MAX + atom; // for registed format
@@ -1625,6 +1601,17 @@ DWORD SConnection::XdndAction2Effect(xcb_atom_t action)
     }
 }
 
+xcb_atom_t SConnection::XdndEffect2Action(DWORD dwEffect){
+    xcb_atom_t action = XCB_NONE;
+    if(dwEffect & DROPEFFECT_MOVE)
+        action = atoms.XdndActionMove;
+    else if(dwEffect & DROPEFFECT_LINK)
+        action = atoms.XdndActionCopy;
+    else if(dwEffect & DROPEFFECT_COPY)
+        action = atoms.XdndActionCopy;
+    return action;
+}
+
 bool SConnection::pushEvent(xcb_generic_event_t *event)
 {
     uint8_t event_code = event->response_type & 0x7f;
@@ -1864,33 +1851,8 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             int version = (int)(e2->data.data32[1] >> 24);
             if (version > SDragDrop::xdnd_version)
                 break;
-            SDataObjectProxy* pData = new SDataObjectProxy(this,pMsg2->hFrom);
-            if (e2->data.data32[1] & 1) {
-                xcb_get_property_cookie_t cookie = xcb_get_property(connection, false, pMsg2->hFrom,
-                    atoms.XdndTypelist, XCB_ATOM_ATOM,
-                    0, SDragDrop::xdnd_max_type);
-                xcb_get_property_reply_t* reply = xcb_get_property_reply(connection, cookie, 0);
-                if (reply && reply->type != XCB_NONE && reply->format == 32) {
-                    int length = xcb_get_property_value_length(reply) / 4;
-                    if (length > SDragDrop::xdnd_max_type)
-                        length = SDragDrop::xdnd_max_type;
-
-                    xcb_atom_t* atoms = (xcb_atom_t*)xcb_get_property_value(reply);
-                    pData->getTypeList().resize(length);
-                    for (int i = 0; i < length; ++i)
-                        pData->getTypeList()[i]= atom2ClipFormat(atoms[i]);
-                }
-                free(reply);
-            }
-            else {
-                for (int i = 2; i < 5; i++) {
-                    if (e2->data.data32[i]) {
-                        uint32_t cf = atom2ClipFormat(e2->data.data32[i]);
-                        if(cf)
-                            pData->getTypeList().push_back(cf);
-                    }
-                }
-            }
+            SDataObjectProxy* pData = new SDataObjectProxy(this,pMsg2->hFrom,e2->data.data32);
+            SLOG_STMI()<<"####drag enter, init dragData";
             wndObj->dragData = pData;
 
             POINT pt;
@@ -1924,8 +1886,8 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg2->hFrom = e2->data.data32[0];
             pMsg2->dwKeyState = e2->data.data32[1];
             pMsg2->supported_actions = XdndAction2Effect(e2->data.data32[4]) | DROPEFFECT_COPY; // only one action is transfered from source, combine copy operation.
-            pMsg2->DragOverData::pt.x = GET_X_LPARAM(e2->data.data32[2]);
-            pMsg2->DragOverData::pt.y = GET_Y_LPARAM(e2->data.data32[2]);
+            pMsg2->DragOverData::pt.x = HIWORD(e2->data.data32[2]);
+            pMsg2->DragOverData::pt.y = LOWORD(e2->data.data32[2]);
             pMsg = pMsg2;
         }
         else if (e2->type == atoms.XdndLeave) {
@@ -1941,8 +1903,6 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg2->message = UM_XDND_DRAG_DROP;
             pMsg2->hFrom = e2->data.data32[0];
             pMsg2->wParam = e2->data.data32[4];
-            pMsg2->DragEnterData::pt.x = GET_X_LPARAM(e2->data.data32[2]);
-            pMsg2->DragEnterData::pt.y = GET_Y_LPARAM(e2->data.data32[2]);
             pMsg = pMsg2;
         }
         else if (e2->type == atoms.XdndFinished) {
@@ -2090,14 +2050,13 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg = new Msg;
         pMsg->hwnd = e2->event;
         pMsg->message = WM_MOUSEMOVE;
-        pMsg->pt.x = e2->event_x;
-        pMsg->pt.y = e2->event_y;
+        POINT pt ={e2->event_x,e2->event_y};
         if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
         {
-            MapWindowPoints(e2->event,m_hWndCapture,&pMsg->pt,1);
+            MapWindowPoints(e2->event,m_hWndCapture,&pt,1);
             pMsg->hwnd=m_hWndCapture;
         }
-        pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
+        pMsg->lParam = MAKELPARAM(pt.x, pt.y);
         pMsg->wParam = wp;
         pMsg->time = e2->time;
         break;
