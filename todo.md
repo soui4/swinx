@@ -2,7 +2,7 @@
 states: waiting, inprog, done
 |index|function|responser|state|
 |:-|:-:|:-:|:-:|
-|1 |support hook|hjx|inprog|
+|1 |support hook|hjx|done|
 |2 |support keyboard api|hjx|done|
 |3 |make framework robust|hjx|done|
 |4 |support richedit|hjx|done|
@@ -18,7 +18,7 @@ states: waiting, inprog, done
 |14 |utf32 error for wxdemo|hjx|done|
 |15 |trayicon support|hjx|waiting|
 |16 |fix skia cn font bug|足迹™|done|
-|17 |file dragdrop||waiting|
+|17 |file dragdrop||done|
 
 
 
