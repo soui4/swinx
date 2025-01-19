@@ -709,8 +709,8 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         {
             // SetTimer with callback, call it now.
             TIMERPROC proc = (TIMERPROC)msg->lParam;
-            proc(msg->hwnd, WM_TIMER, msg->wParam, msg->time);
             m_msgQueue.erase(it);
+            proc(msg->hwnd, WM_TIMER, msg->wParam, msg->time);
             delete msg;
             return PeekMessage(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
         }
@@ -1073,17 +1073,33 @@ UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC p
 
 BOOL SConnection::KillTimer(HWND hWnd, UINT_PTR id)
 {
-
+    BOOL bRet = FALSE;
     std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
     for (auto it = m_lstTimer.begin(); it != m_lstTimer.end(); it++)
     {
         if (it->hWnd == hWnd && it->id == id)
         {
             m_lstTimer.erase(it);
-            return TRUE;
+            bRet = TRUE;
+            break;
         }
     }
-    return FALSE;
+
+    if(bRet){
+        //remove timer from message queue.
+        auto it = m_msgQueue.begin();
+        while (it != m_msgQueue.end())
+        {
+            auto it2 = it++;
+            Msg *msg = *it2;
+            if (msg->hwnd == hWnd && msg->message == WM_TIMER && msg->wParam == id)
+            {
+                m_msgQueue.erase(it2);
+                delete msg;
+            }
+        }
+    }
+    return bRet;
 }
 
 HDC SConnection::GetDC()
