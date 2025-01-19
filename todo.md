@@ -20,7 +20,7 @@ states: waiting, inprog, done
 |16 |fix skia cn font bug|足迹™|done|
 |17 |file dragdrop|hjx|done|
 |18 |fix skia performence problem||waiting|
-|19 |build lua_tinker for linux||waiting|
+|19 |build lua_tinker for linux|简单点好|waiting|
 |20 |build 7z resprovider for linux||waiting|
 
 
