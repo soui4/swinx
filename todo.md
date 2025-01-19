@@ -18,8 +18,9 @@ states: waiting, inprog, done
 |14 |utf32 error for wxdemo|hjx|done|
 |15 |trayicon support|hjx|waiting|
 |16 |fix skia cn font bug|足迹™|done|
-|17 |file dragdrop||done|
-
-
+|17 |file dragdrop|hjx|done|
+|18 |fix skia performence problem||waiting|
+|19 |build lua_tinker for linux||waiting|
+|20 |build 7z resprovider for linux||waiting|
 
 
