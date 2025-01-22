@@ -749,25 +749,45 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     BOOL WINAPI GetWorldTransform(HDC hdc, LPXFORM lpxf);
     BOOL WINAPI SetWorldTransform(HDC hdc, CONST XFORM *lpxf);
 
-#define R2_BLACK         1
-#define R2_NOTMERGEPEN   2
-#define R2_MASKNOTPEN    3
-#define R2_NOTCOPYPEN    4
-#define R2_MASKPENNOT    5
-#define R2_NOT           6
-#define R2_XORPEN        7
-#define R2_NOTMASKPEN    8
-#define R2_MASKPEN       9
-#define R2_NOTXORPEN    10
-#define R2_NOP          11
-#define R2_MERGENOTPEN  12
-#define R2_COPYPEN      13
-#define R2_MERGEPENNOT  14
-#define R2_MERGEPEN     15
-#define R2_WHITE        16
-#define R2_LAST         16
-    int WINAPI SetROP2(HDC hdc, int rop2);
+enum
+    {
+        R2_BLACK = 1,
+        R2_NOTMERGEPEN,
+        R2_MASKNOTPEN,
+        R2_NOTCOPYPEN,
+        R2_MASKPENNOT,
+        R2_NOT,
+        R2_XORPEN,
+        R2_NOTMASKPEN,
+        R2_MASKPEN,
+        R2_NOTXORPEN,
+        R2_NOP,
+        R2_MERGENOTPEN,
+        R2_COPYPEN,
+        R2_MERGEPENNOT,
+        R2_MERGEPEN,
+        R2_WHITE,
 
+        R2_EXT_CLEAR,
+        R2_EXT_SOURCE,
+        R2_EXT_OVER,
+        R2_EXT_IN,
+        R2_EXT_OUT,
+        R2_EXT_ATOP,
+        R2_EXT_DEST,
+        R2_EXT_DEST_OVER,
+        R2_EXT_DEST_IN,
+        R2_EXT_DEST_OUT,
+        R2_EXT_DEST_ATOP,
+        R2_EXT_XOR,
+        R2_EXT_ADD,
+        R2_EXT_SATURATE,
+
+        R2_LAST
+    };
+
+    int WINAPI SetROP2(HDC hdc, int rop2);
+    
     COLORREF WINAPI SetTextColor(HDC hdc, COLORREF color);
     COLORREF WINAPI GetTextColor(HDC hdc);
 

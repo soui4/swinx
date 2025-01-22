@@ -11,6 +11,7 @@
 
 #ifndef __SWNDMSGCRACK_H__
 #define __SWNDMSGCRACK_H__
+#include "misc.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Message map macro for cracked handlers
@@ -206,7 +207,7 @@
     if (uMsg == WM_MOVE)                                           \
     {                                                              \
         SetMsgHandled(TRUE);                                       \
-        func(POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func(CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                               \
         if (IsMsgHandled())                                        \
             return TRUE;                                           \
@@ -662,7 +663,7 @@
     if (uMsg == WM_NCHITTEST)                                                         \
     {                                                                                 \
         SetMsgHandled(TRUE);                                                          \
-        lResult = (LRESULT)func(POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        lResult = (LRESULT)func(CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         if (IsMsgHandled())                                                           \
             return TRUE;                                                              \
     }
@@ -703,7 +704,7 @@
     if (uMsg == WM_NCMOUSEMOVE)                                                  \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -714,7 +715,7 @@
     if (uMsg == WM_NCLBUTTONDOWN)                                                \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -725,7 +726,7 @@
     if (uMsg == WM_NCLBUTTONUP)                                                  \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -736,7 +737,7 @@
     if (uMsg == WM_NCLBUTTONDBLCLK)                                              \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -747,7 +748,7 @@
     if (uMsg == WM_NCRBUTTONDOWN)                                                \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -758,7 +759,7 @@
     if (uMsg == WM_NCRBUTTONUP)                                                  \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -769,7 +770,7 @@
     if (uMsg == WM_NCRBUTTONDBLCLK)                                              \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -780,7 +781,7 @@
     if (uMsg == WM_NCMBUTTONDOWN)                                                \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -791,7 +792,7 @@
     if (uMsg == WM_NCMBUTTONUP)                                                  \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -802,7 +803,7 @@
     if (uMsg == WM_NCMBUTTONDBLCLK)                                              \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -901,7 +902,7 @@
     if (uMsg == WM_SYSCOMMAND)                                                   \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1031,7 +1032,7 @@
     if (uMsg == WM_MOUSEMOVE)                                                    \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1052,7 +1053,7 @@
     if (uMsg == WM_LBUTTONDOWN)                                                \
     {                                                                          \
         SetMsgHandled(TRUE);                                                   \
-        func((UINT)wParam, POINT(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam))); \
+        func((UINT)wParam, CPoint(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam))); \
         lResult = 0;                                                           \
         if (IsMsgHandled())                                                    \
             return TRUE;                                                       \
@@ -1063,7 +1064,7 @@
     if (uMsg == WM_LBUTTONUP)                                                    \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1074,7 +1075,7 @@
     if (uMsg == WM_LBUTTONDBLCLK)                                                \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1085,7 +1086,7 @@
     if (uMsg == WM_RBUTTONDOWN)                                                  \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1096,7 +1097,7 @@
     if (uMsg == WM_RBUTTONUP)                                                    \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1107,7 +1108,7 @@
     if (uMsg == WM_RBUTTONDBLCLK)                                                \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1118,7 +1119,7 @@
     if (uMsg == WM_MBUTTONDOWN)                                                  \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1129,7 +1130,7 @@
     if (uMsg == WM_MBUTTONUP)                                                    \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1140,7 +1141,7 @@
     if (uMsg == WM_MBUTTONDBLCLK)                                                \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1240,7 +1241,7 @@
     if (uMsg == WM_CONTEXTMENU)                                                  \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((HWND)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((HWND)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1729,7 +1730,7 @@
     if (uMsg == WM_MOUSEHOVER)                                                   \
     {                                                                            \
         SetMsgHandled(TRUE);                                                     \
-        func((UINT)wParam, POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func((UINT)wParam, CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                             \
         if (IsMsgHandled())                                                      \
             return TRUE;                                                         \
@@ -1822,7 +1823,7 @@
     if (uMsg == WM_NCXBUTTONDOWN)                                                                                            \
     {                                                                                                                        \
         SetMsgHandled(TRUE);                                                                                                 \
-        func(GET_XBUTTON_WPARAM(wParam), GET_NCHITTEST_WPARAM(wParam), POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func(GET_XBUTTON_WPARAM(wParam), GET_NCHITTEST_WPARAM(wParam), CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                                                                         \
         if (IsMsgHandled())                                                                                                  \
             return TRUE;                                                                                                     \
@@ -1833,7 +1834,7 @@
     if (uMsg == WM_NCXBUTTONUP)                                                                                              \
     {                                                                                                                        \
         SetMsgHandled(TRUE);                                                                                                 \
-        func(GET_XBUTTON_WPARAM(wParam), GET_NCHITTEST_WPARAM(wParam), POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func(GET_XBUTTON_WPARAM(wParam), GET_NCHITTEST_WPARAM(wParam), CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                                                                         \
         if (IsMsgHandled())                                                                                                  \
             return TRUE;                                                                                                     \
@@ -1844,7 +1845,7 @@
     if (uMsg == WM_NCXBUTTONDBLCLK)                                                                                          \
     {                                                                                                                        \
         SetMsgHandled(TRUE);                                                                                                 \
-        func(GET_XBUTTON_WPARAM(wParam), GET_NCHITTEST_WPARAM(wParam), POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func(GET_XBUTTON_WPARAM(wParam), GET_NCHITTEST_WPARAM(wParam), CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                                                                         \
         if (IsMsgHandled())                                                                                                  \
             return TRUE;                                                                                                     \
@@ -1855,7 +1856,7 @@
     if (uMsg == WM_XBUTTONDOWN)                                                                                             \
     {                                                                                                                       \
         SetMsgHandled(TRUE);                                                                                                \
-        func(GET_XBUTTON_WPARAM(wParam), GET_KEYSTATE_WPARAM(wParam), POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func(GET_XBUTTON_WPARAM(wParam), GET_KEYSTATE_WPARAM(wParam), CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                                                                        \
         if (IsMsgHandled())                                                                                                 \
             return TRUE;                                                                                                    \
@@ -1866,7 +1867,7 @@
     if (uMsg == WM_XBUTTONUP)                                                                                               \
     {                                                                                                                       \
         SetMsgHandled(TRUE);                                                                                                \
-        func(GET_XBUTTON_WPARAM(wParam), GET_KEYSTATE_WPARAM(wParam), POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func(GET_XBUTTON_WPARAM(wParam), GET_KEYSTATE_WPARAM(wParam), CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                                                                        \
         if (IsMsgHandled())                                                                                                 \
             return TRUE;                                                                                                    \
@@ -1877,7 +1878,7 @@
     if (uMsg == WM_XBUTTONDBLCLK)                                                                                           \
     {                                                                                                                       \
         SetMsgHandled(TRUE);                                                                                                \
-        func(GET_XBUTTON_WPARAM(wParam), GET_KEYSTATE_WPARAM(wParam), POINT{ GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) }); \
+        func(GET_XBUTTON_WPARAM(wParam), GET_KEYSTATE_WPARAM(wParam), CPoint( GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) )); \
         lResult = 0;                                                                                                        \
         if (IsMsgHandled())                                                                                                 \
             return TRUE;                                                                                                    \

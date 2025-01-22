@@ -1067,7 +1067,7 @@ UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC p
         timer.proc = proc;
         timer.elapse = uElapse;
         m_lstTimer.push_back(timer);
-        return newId;
+        return timer.id;
     }
 }
 

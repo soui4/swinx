@@ -16,7 +16,7 @@ _SDC::_SDC(HWND _hwnd)
     , uGetFlags(0)
     , cairo(nullptr)
     , textAlign(TA_TOP|TA_LEFT|TA_UPDATECP)
-    , rop2(R2_COPYPEN)
+    , rop2(R2_EXT_OVER)
 {
     ptOrigin.x = ptOrigin.y = 0;
     cairo_matrix_init_identity(&mtx);

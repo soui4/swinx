@@ -81,6 +81,8 @@ class SAtoms {
 
     _NET_SYSTEM_TRAY_OPCODE,
     _NET_SYSTEM_TRAY_S0,
+    _NET_SYSTEM_TRAY_VISUAL,
+
     //use defined atom
     WM_WIN4XCB_IPC,
     SO_SELECTION,
@@ -93,8 +95,8 @@ class SAtoms {
             "UTF8_STRING",
             "CARDINAL",
 
-            "text/plain;charset=utf-8",//CLIPF_UTF8
-            "image/ppm",//CLIPF_BITMAP
+            "text/plain;charset=utf-8", // CLIPF_UTF8
+            "image/ppm",                // CLIPF_BITMAP
             "CLIPF_UNICODETEXT",
             "CLIPF_WAVE",
 
@@ -143,30 +145,31 @@ class SAtoms {
             "CLIP_TEMPORARY",
             "CLIPBOARD_MANAGER",
 
-        // Xdnd
-       "XdndEnter",
-       "XdndPosition",
-       "XdndStatus",
-       "XdndLeave",
-       "XdndDrop",
-       "XdndFinished",
-       "XdndTypeList",
-       "XdndActionList",
-       "XdndSelection",
-       "XdndAware",
-       "XdndProxy",
+            // Xdnd
+            "XdndEnter",
+            "XdndPosition",
+            "XdndStatus",
+            "XdndLeave",
+            "XdndDrop",
+            "XdndFinished",
+            "XdndTypeList",
+            "XdndActionList",
+            "XdndSelection",
+            "XdndAware",
+            "XdndProxy",
 
-       "XdndActionCopy",
-       "XdndActionLink",
-       "XdndActionMove",
-       "XdndActionPrivate",
+            "XdndActionCopy",
+            "XdndActionLink",
+            "XdndActionMove",
+            "XdndActionPrivate",
 
-       "_NET_SYSTEM_TRAY_OPCODE",
-        "_NET_SYSTEM_TRAY_S%d",
-            //use defined atom
+            "_NET_SYSTEM_TRAY_OPCODE",
+            "_NET_SYSTEM_TRAY_S%d",
+            "_NET_SYSTEM_TRAY_VISUAL",
+            // use defined atom
             "WM_WIN4XCB_IPC",
             "SO_SELECTION",
-            
+
             "WM_DISCONN",
         };
         atoms = sizeof(kAtomNames) / sizeof(kAtomNames[0]);
