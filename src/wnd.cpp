@@ -1351,8 +1351,10 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			RECT rc = wndObj->rc;
 			OffsetRect(&rc, -rc.left, -rc.top);
 			InvalidateRect(hWnd, &rc, TRUE);
-		}
-		wndObj->nSizing++;
+		}else{
+            bSkipMsg = TRUE;
+        }
+    	wndObj->nSizing++;
 		break;
 	}
 	wndObj->msgRecusiveCount++;
