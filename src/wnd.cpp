@@ -3126,7 +3126,7 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         RECT &rc = wndObj->rc;
         if (!(wndPos.flags & SWP_NOMOVE))
         {
-            const int32_t coords[] = { static_cast<int32_t>(wndPos.x), static_cast<int32_t>(wndPos.y) };
+            const uint32_t coords[] = { static_cast<uint32_t>(wndPos.x), static_cast<uint32_t>(wndPos.y) };
             xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, coords);
             SendMessage(hWnd, WM_MOVE, 0, MAKELPARAM(wndPos.x, wndPos.y));
         }
@@ -3149,20 +3149,20 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
                 if (wndPos.hwndInsertAfter == HWND_TOPMOST)
                 {
                     uint32_t val[] = { XCB_STACK_MODE_ABOVE };
-                    xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_STACK_MODE, &val);
+                    xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_STACK_MODE, val);
                     wndObj->dwExStyle |= WS_EX_TOPMOST;
                 }
                 else
                 {
                     uint32_t val[] = { XCB_STACK_MODE_TOP_IF };
-                    xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_STACK_MODE, &val);
+                    xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_STACK_MODE, val);
                     wndObj->dwExStyle &= ~WS_EX_TOPMOST;
                 }
             }
             else
             {
                 uint32_t val[] = { (uint32_t)wndPos.hwndInsertAfter, XCB_STACK_MODE_ABOVE };
-                xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE, &val);
+                xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE, val);
                 wndObj->dwExStyle &= ~WS_EX_TOPMOST;
             }
             xcb_flush(wndObj->mConnection->connection);

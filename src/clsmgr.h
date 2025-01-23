@@ -36,7 +36,7 @@ public:
     std::recursive_mutex cls_mutex;
     std::list<CLASS*> class_list;
     std::map<std::string, ATOM> atom_map;
-    std::atomic_uint32_t atom_start;
+    std::atomic<uint32_t> atom_start;
     bool     builtin_registed=false;
 };
 
