@@ -998,7 +998,6 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
             static LPCSTR prev_id = 0;
             if (cursorId != prev_id)
             {
-                printf("set cursor id=%d\n", (int)(UINT_PTR)cursorId);
                 prev_id = cursorId;
             }
             SetCursor(LoadCursor(wndObj->hInstance, cursorId));
@@ -1423,9 +1422,6 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 	}
 	else if (msg == WM_DESTROY)
 	{
-        if(GetCapture()==hWnd){
-            ReleaseCapture();
-        }
         //auto destroy all popup that owned by this
         EnumWindows(Enum4DestroyOwned, hWnd);
 		//auto destory all children
@@ -1434,9 +1430,8 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			DestroyWindow(hChild);
 			hChild = GetWindow(hWnd, GW_CHILDLAST);
 		}
-		if (wndObj->mConnection->GetCaretInfo()->hOwner == hWnd) {
-			DestroyCaret();
-		}
+        wndObj->mConnection->OnWindowDestroy(hWnd);
+		
 		CallWindowProcPriv(proc, hWnd, WM_NCDESTROY, 0, 0);
 	}
 	else if (msg == WM_NCDESTROY)
@@ -2138,12 +2133,17 @@ BOOL EnableWindow(HWND hWnd, BOOL bEnable)
         wndObj->dwStyle &= ~WS_DISABLED;
     else
         wndObj->dwStyle |= WS_DISABLED;
+    if(!bEnable){
+        //restore cursor to default cursor.
+    }
     return TRUE;
 }
 
 HWND SetActiveWindow(HWND hWnd)
 {
-    return ActiveWindow(hWnd, FALSE, 0, 0);
+    HWND hRet = GetActiveWindow();
+    ActiveWindow(hWnd, FALSE, 0, 0);
+    return hRet;
 }
 
 HWND GetParent(HWND hWnd)
@@ -3195,6 +3195,14 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         OnNcPaint(hWnd,wp,lp);
         break;
     }
+    case WM_MOUSEACTIVATE:
+    {
+        if(wndObj->dwExStyle&WS_EX_NOACTIVATE)
+            return MA_NOACTIVATE;
+        if(wndObj->dwStyle&WS_DISABLED)
+            return MA_NOACTIVATE;
+        return MA_ACTIVATE;
+    }
     }
     return 0;
 }
@@ -3216,7 +3224,11 @@ BOOL ShowWindow(HWND hWnd, int nCmdShow)
         }
         xcb_map_window(wndObj->mConnection->connection, hWnd);
         wndObj->dwStyle |= WS_VISIBLE;
-        if (nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA && !(wndObj->dwStyle&WS_CHILD))
+        if (nCmdShow != SW_SHOWNOACTIVATE 
+            && nCmdShow != SW_SHOWNA 
+            && !(wndObj->dwStyle&WS_CHILD)
+            && wndObj->mConnection->GetActiveWnd()==0
+            )
             SetActiveWindow(hWnd);
         InvalidateRect(hWnd, nullptr, TRUE);
         wndObj->mConnection->sync();

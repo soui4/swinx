@@ -231,7 +231,6 @@ SConnection::SConnection(int screenNum)
     m_hWndCapture = 0;
     m_hWndActive = 0;
     m_hFocus = 0;
-    m_hCursor = 0;
     m_bBlockTimer = false;
 
     m_deskDC = new _SDC(screen->root);
@@ -975,6 +974,20 @@ std::shared_ptr<std::vector<char>> SConnection::readXdndSelection(uint32_t fmt)
     return m_clipboard->getDataInFormat(atoms.XdndSelection,clipFormat2Atom(fmt));
 }
 
+void SConnection::OnWindowDestroy(HWND hWnd)
+{
+    if(GetCapture()==hWnd){
+        ReleaseCapture();
+    }
+    if (GetCaretInfo()->hOwner == hWnd) {
+		DestroyCaret();
+	}
+    if(m_hWndActive == hWnd){
+        m_hWndActive = 0;
+    }
+    m_wndCursor.erase(hWnd);
+}
+
 void SConnection::BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 {
     if (m_msgPeek && m_bMsgNeedFree && m_msgPeek->hwnd == hWnd && m_msgPeek->message == msg && m_msgPeek->wParam == wp && m_msgPeek->lParam == lp)
@@ -1243,20 +1256,40 @@ end:
 }
 
 HCURSOR SConnection::GetCursor() {
-    return m_hCursor;
+    HWND hWnd = GetActiveWnd();
+    auto it = m_wndCursor.find(hWnd);
+    if(it == m_wndCursor.end())
+        return 0;
+    return it->second;
 }
 
 HCURSOR SConnection::SetCursor(HCURSOR cursor)
 {
+    HWND hWnd = GetActiveWnd();
+    if(!hWnd)
+        return cursor;
+    auto it = m_wndCursor.find(hWnd);
+    HCURSOR ret = 0;
+    if(it != m_wndCursor.end()){
+        ret = it->second;
+    }else if(cursor == it->second)
+    {
+        return cursor;
+    }
+    SetWindowCursor(hWnd,cursor);
+    return ret;
+}
+
+xcb_cursor_t SConnection::getXcbCursor(HCURSOR cursor)
+{
     if (!cursor)
         cursor = ::LoadCursor(nullptr,IDC_ARROW);
     assert(cursor);
-    if (cursor == m_hCursor)
-        return cursor;
     xcb_cursor_t xcbCursor = 0;
-    if (m_sysCursor.find(cursor) != m_sysCursor.end())
+    auto it = m_sysCursor.find(cursor);
+    if ( it!= m_sysCursor.end())
     {
-        xcbCursor = m_sysCursor[cursor];
+        xcbCursor = it->second;
     }
     else
     {
@@ -1266,19 +1299,32 @@ HCURSOR SConnection::SetCursor(HCURSOR cursor)
             SLOG_STMW()<<"create xcb cursor failed!";
             return 0;
         }
+        m_sysCursor.insert(std::make_pair(cursor, xcbCursor));
     }
-    HCURSOR ret = m_hCursor;
-    uint32_t val[] = { xcbCursor };
-    xcb_change_window_attributes(connection, m_hWndActive ? m_hWndActive : screen->root, XCB_CW_CURSOR, val);
-    m_hCursor = cursor;
-    return ret;
+    return xcbCursor;
 }
 
+BOOL SConnection::SetWindowCursor(HWND hWnd, HCURSOR cursor)
+{
+    auto it = m_wndCursor.find(hWnd);
+    if(it != m_wndCursor.end() && it->second == cursor)
+        return TRUE;
+    xcb_cursor_t xcbCursor = getXcbCursor(cursor);
+    if(!xcbCursor)
+        return FALSE;
+    uint32_t val[] = { xcbCursor };
+    xcb_change_window_attributes(connection, hWnd, XCB_CW_CURSOR, val);
+    m_wndCursor[hWnd]=cursor;//update window cursor
+    //SLOG_STMI()<<"SetWindowCursor, hWnd="<<hWnd<<" cursor="<<cursor<<" xcb cursor="<<xcbCursor;
+    return TRUE;
+}
 
 BOOL SConnection::DestroyCursor(HCURSOR cursor)
 {
-    if(m_hCursor == cursor)
-        return FALSE;
+    for(auto &it:m_wndCursor){
+        if(it.second == cursor)
+            return FALSE;
+    }
     // look for sys cursor
     auto it = m_sysCursor.find(cursor);
     if (it == m_sysCursor.end())
@@ -1318,26 +1364,17 @@ static WPARAM ButtonState2Mask(uint16_t state)
 
 HWND SConnection::GetActiveWnd() const
 {
-    if (m_hWndActive)
-        return m_hWndActive;
-    xcb_get_input_focus_cookie_t cookie = xcb_get_input_focus(connection);
-    xcb_get_input_focus_reply_t *reply = xcb_get_input_focus_reply(connection, cookie, nullptr);
-    if (reply)
-    {
-        HWND ret = reply->focus;
-        free(reply);
-        return ret;
-    }
-    return screen->root;
+    return m_hWndActive;
 }
 
 BOOL SConnection::SetActiveWindow(HWND hWnd)
 {
-    if (hWnd == 0)
-        return false;
+    if(m_hWndActive == hWnd)
+        return TRUE;
     HWND ret = m_hWndActive;
     SetFocus(hWnd);
     m_hWndActive = hWnd;
+    //SLOG_STMI()<<"SetActiveWindow hwnd="<<hWnd;
     return TRUE;
 }
 
@@ -1488,12 +1525,10 @@ HWND SConnection::GetForegroundWindow()
 
 BOOL SConnection::SetForegroundWindow(HWND hWnd)
 {
-    {
         uint32_t values[] = { XCB_STACK_MODE_TOP_IF };
         xcb_configure_window(connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
         xcb_flush(connection);
-    }
-    return SetActiveWindow(hWnd);
+        return TRUE;
 }
 
 BOOL SConnection::SetWindowOpacity(HWND hWnd, BYTE byAlpha)
