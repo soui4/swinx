@@ -1038,10 +1038,10 @@ static BOOL ActiveWindow(HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
             HWND oldActive = wndObj->mConnection->GetActiveWnd();
             if (!wndObj->mConnection->SetActiveWindow(hWnd))
                 return FALSE;
-            PostMessage(hWnd, WM_ACTIVATE, bMouseActive ? WA_CLICKACTIVE : WA_ACTIVE, oldActive);
+            SendMessage(hWnd, WM_ACTIVATE, bMouseActive ? WA_CLICKACTIVE : WA_ACTIVE, oldActive);
             if (IsWindow(oldActive))
             {
-                PostMessage(oldActive, WM_ACTIVATE, WA_INACTIVE, hWnd);
+                SendMessage(oldActive, WM_ACTIVATE, WA_INACTIVE, hWnd);
             }
         }
         bRet = maRet == MA_ACTIVATEANDEAT || maRet == MA_NOACTIVATEANDEAT;

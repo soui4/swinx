@@ -1370,7 +1370,7 @@ HWND SConnection::GetActiveWnd() const
 BOOL SConnection::SetActiveWindow(HWND hWnd)
 {
     if(m_hWndActive == hWnd)
-        return TRUE;
+        return FALSE;
     HWND ret = m_hWndActive;
     SetFocus(hWnd);
     m_hWndActive = hWnd;
