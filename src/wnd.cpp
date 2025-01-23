@@ -1199,7 +1199,10 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 		POINT pt;
 		wndObj->mConnection->GetCursorPos(&pt);
 		int htCode = proc(hWnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
-		UpdateWindowCursor(wndObj, hWnd, htCode);
+        if (proc(hWnd, WM_SETCURSOR, hWnd, htCode) == 0)
+        {
+            UpdateWindowCursor(wndObj, hWnd, htCode);
+        }
 		if (htCode != wndObj->htCode) {
 			int oldHtCode = wndObj->htCode;
 			wndObj->htCode = htCode;
