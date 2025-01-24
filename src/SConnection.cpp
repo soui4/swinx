@@ -420,7 +420,8 @@ bool SConnection::waitMsg()
     uint64_t ts = GetTickCount64();
     UINT elapse = m_tsLastMsg == -1 ? 0 : (ts - m_tsLastMsg);
     m_tsLastMsg = ts;
-    return event2Msg(bTimeout, elapse, ts);
+    event2Msg(bTimeout, elapse, ts);
+    return !m_msgQueue.empty();
 }
 
 DWORD SConnection::GetMsgPos() const
