@@ -163,7 +163,7 @@ void SDragDrop::drag_over(HWND target,int x,int y)
     position.type = conn->atoms.XdndPosition;
     position.data.data32[0] = m_hWnd;
     position.data.data32[1] = dwKeyState; // reserved, we use it to transfer the key state.
-    position.data.data32[2] = MAKELONG(x, y);
+    position.data.data32[2] = MAKELONG(y, x);
     position.data.data32[3] = XCB_CURRENT_TIME;//time
     position.data.data32[4] = getXdndAction(dwOKEffect,conn);//suggested action.
     xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char*)&position);
@@ -196,7 +196,7 @@ void SDragDrop::drag_enter(HWND target)
     if (types.size() > 3) {
         enter.data.data32[1] |= 1;
         xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, m_hWnd,
-            conn->atoms.XdndTypelist,
+            conn->atoms.XdndTypeList,
             XCB_ATOM_ATOM, 32, types.size(), (const void*)types.data());
     }
     else {
@@ -349,11 +349,52 @@ HRESULT SDragDrop::DoDragDrop(IDataObject* pDataObject, IDropSource* pDropSource
 
 
 //-------------------------------------------------------
-SDataObjectProxy::SDataObjectProxy(SConnection* conn, HWND hWnd) :m_conn(conn), m_hSource(hWnd) {
+SDataObjectProxy::SDataObjectProxy(SConnection* conn, HWND hWnd, const uint32_t data32[5]) :m_conn(conn), m_hSource(hWnd) {
     m_targetTime = XCB_CURRENT_TIME;
     m_dwEffect = 0;
     m_dwKeyState = 0;
+    initTypeList(data32);
 }
+
+void SDataObjectProxy::initTypeList(const uint32_t data32[5]){
+        if (data32[1] & 1) {
+                xcb_get_property_cookie_t cookie = xcb_get_property(m_conn->connection, false, m_hSource,
+                    m_conn->atoms.XdndTypeList, XCB_ATOM_ATOM,
+                    0, SDragDrop::xdnd_max_type);
+                xcb_get_property_reply_t* reply = xcb_get_property_reply(m_conn->connection, cookie, 0);
+                if (reply && reply->type != XCB_NONE && reply->format == 32) {
+                    int length = xcb_get_property_value_length(reply) / 4;
+                    if (length > SDragDrop::xdnd_max_type)
+                        length = SDragDrop::xdnd_max_type;
+
+                    xcb_atom_t* atoms = (xcb_atom_t*)xcb_get_property_value(reply);
+                    m_lstTypes.resize(length);
+                    for (int i = 0; i < length; ++i)
+                    {
+                        xcb_get_atom_name_cookie_t cookie= xcb_get_atom_name(m_conn->connection,atoms[i]);
+                        xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(m_conn->connection,cookie,NULL);
+                        if(reply){
+                            SLOG_STMI()<<"atom "<<atoms[i]<<" name is "<< xcb_get_atom_name_name(reply);
+                            free(reply);
+                        }
+                        m_lstTypes[i]= m_conn->atom2ClipFormat(atoms[i]);
+                    }    
+                    SLOG_STMI()<<"dragenter and receive avaiable format count="<<length;
+                }else{
+                    SLOG_STMI()<<"dragenter but receive avaiable format count failed!!";
+                }
+                free(reply);
+            }
+            else {
+                for (int i = 2; i < 5; i++) {
+                    if (data32[i]) {
+                        uint32_t cf = m_conn->atom2ClipFormat(data32[i]);
+                        if(cf)
+                            m_lstTypes.push_back(cf);
+                    }
+                }
+            }
+    }
 
 HRESULT  SDataObjectProxy::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
     if (QueryGetData(pformatetcIn) != S_OK) {

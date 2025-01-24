@@ -213,6 +213,8 @@ int MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType)
     MSG msg;
     while (GetMessage(&msg, 0, 0, 0))
     {
+        if(CallMsgFilter(&msg, MSGF_MESSAGEBOX))
+            continue;
         if (msg.hwnd == hWnd)
         {
             if (msg.message >= WM_KEYFIRST && msg.message <= WM_KEYLAST)

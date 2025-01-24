@@ -77,6 +77,7 @@ public:
 class SClipboard : public ISelectionListener {
 	enum {
 		kWaitTimeout = 5000,
+		kIncrTimeout = 50000,
 	};
 public:
 	SClipboard(SConnection *conn);
@@ -92,9 +93,13 @@ public:
 	BOOL emptyClipboard();
 	IDataObject* getDataObject(BOOL bSel = FALSE);
 	void setSelDataObject(IDataObject* pDo);
+
+	void setProcessIncr(BOOL process) { m_incr_active = process; }
+    BOOL processIncr() { return m_incr_active; }
 public:
 	void handleSelectionRequest(xcb_selection_request_event_t* e);
 	void handleSelectionClear(xcb_selection_clear_event_t *e);
+    void incrTransactionPeeker(xcb_generic_event_t *ge, bool &accepted);
 
 	std::shared_ptr<std::vector<char>> getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom);
 	std::shared_ptr<std::vector<char>> getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property, xcb_timestamp_t time);
@@ -119,6 +124,8 @@ private:
 	std::recursive_mutex m_mutex;
 	SMimeData* m_doClip;
 	IDataObject* m_doSel;
+
+	BOOL m_incr_active;
 };
 
 #endif//_SCLIPBOARD_H_

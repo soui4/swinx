@@ -621,6 +621,11 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     {
         SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)clsInfo.hIconSm);
     }
+    if (cs->dwExStyle & WS_EX_TOPMOST)
+    {
+        uint32_t values[] = { XCB_STACK_MODE_ABOVE };
+        xcb_configure_window(conn->connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
+    }
     if (isTransparent) 
     {
         SetWindowTransparent(hWnd, TRUE);
@@ -851,6 +856,8 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
             continue;
         while (PeekMessage(&msg, hWnd, 0, 0, TRUE))
         {
+            if(CallMsgFilter(&msg, htCode == HTCAPTION ? MSGF_SIZE : MSGF_MOVE))
+                continue;
             if (msg.message == WM_QUIT)
             {
                 SLOG_STMI() << "HandleNcTestCode,WM_QUIT";
@@ -991,18 +998,14 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
             static LPCSTR prev_id = 0;
             if (cursorId != prev_id)
             {
-                printf("set cursor id=%d\n", (int)(UINT_PTR)cursorId);
                 prev_id = cursorId;
             }
             SetCursor(LoadCursor(wndObj->hInstance, cursorId));
     }
 }
 
-static BOOL ActiveWindow(HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
+static BOOL ActiveWindow(WndObj &wndObj,HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
 {
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return FALSE;
     if (wndObj->dwStyle & WS_CHILD)
     {
         do
@@ -1032,10 +1035,10 @@ static BOOL ActiveWindow(HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
             HWND oldActive = wndObj->mConnection->GetActiveWnd();
             if (!wndObj->mConnection->SetActiveWindow(hWnd))
                 return FALSE;
-            PostMessage(hWnd, WM_ACTIVATE, bMouseActive ? WA_CLICKACTIVE : WA_ACTIVE, oldActive);
+            SendMessage(hWnd, WM_ACTIVATE, bMouseActive ? WA_CLICKACTIVE : WA_ACTIVE, oldActive);
             if (IsWindow(oldActive))
             {
-                PostMessage(oldActive, WM_ACTIVATE, WA_INACTIVE, hWnd);
+                SendMessage(oldActive, WM_ACTIVATE, WA_INACTIVE, hWnd);
             }
         }
         bRet = maRet == MA_ACTIVATEANDEAT || maRet == MA_NOACTIVATEANDEAT;
@@ -1074,6 +1077,18 @@ static BOOL CALLBACK Enum4DestroyOwned(HWND hwnd, LPARAM lParam) {
         DestroyWindow(hwnd);
     }
     return TRUE;
+}
+
+static LRESULT CallWindowObjProc(WndObj &wndObj,WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
+{
+    assert(wndObj);
+    if (wndObj->bDestroyed)
+        return -1;
+    LRESULT ret = 0;
+    LONG cLock = wndObj->FreeLock();
+    ret = proc(hWnd, msg, wp, lp);
+    wndObj->RestoreLock(cLock);
+    return ret;
 }
 
 static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -1115,20 +1130,21 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     {
         SLOG_STMI() << "UM_XDND_DRAG_LEAVE!";
 
-        if (!wndObj->dropTarget || !wndObj->dragData)
+        if (!wndObj->dropTarget)
         {
             SLOG_STMW() << "should not run into here!";
             return 1;
         }
         HRESULT hr = wndObj->dropTarget->DragLeave();
-        wndObj->dragData->Release();
-        wndObj->dragData = NULL;
-        SLOG_STMI() << "UM_XDND_DRAG_LEAVE! set dragData to null";
+        if(wndObj->dragData){
+            wndObj->dragData->Release();
+            wndObj->dragData = NULL;
+            SLOG_STMI() << "UM_XDND_DRAG_LEAVE! set dragData to null";
+        }
         return 0;
     }
     case UM_XDND_DRAG_OVER:
     {
-        //SLOG_STMI() << "UM_XDND_DRAG_OVER!";
         DragOverData* data = (DragOverData*)lp;
         if (!wndObj->dropTarget)
         {
@@ -1136,9 +1152,15 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             return 1;
         }
         SDataObjectProxy* dragData = (SDataObjectProxy*)wndObj->dragData;
-        dragData->m_dwKeyState = data->dwKeyState;
-        HRESULT hr = wndObj->dropTarget->DragOver(dragData->m_dwKeyState, data->pt, &dragData->m_dwEffect);
-        wndObj->mConnection->SendXdndStatus(hWnd,dragData->m_hSource, hr == S_OK, dragData->m_dwEffect);
+        if(dragData){
+            dragData->m_dwKeyState = data->dwKeyState;
+            dragData->m_ptOver = data->pt;
+            HRESULT hr = wndObj->dropTarget->DragOver(dragData->m_dwKeyState, data->pt, &dragData->m_dwEffect);
+            //SLOG_STMI()<<"UM_XDND_DRAG_OVER, hr="<<hr<<" effedt="<<dragData->m_dwEffect<<" accept="<<(hr==S_OK);
+            wndObj->mConnection->SendXdndStatus(hWnd,dragData->m_hSource, hr == S_OK, dragData->m_dwEffect);
+        }else{
+            SLOG_STME()<<"!!!!dragData is nullptr";
+        }
         return 0;
     }
     case UM_XDND_DRAG_DROP:
@@ -1151,8 +1173,8 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             return 1;
         }
         SDataObjectProxy* dragData =(SDataObjectProxy *) wndObj->dragData;
-        DWORD dwEffect = wp;
-        HRESULT hr = wndObj->dropTarget->Drop(wndObj->dragData, dragData->m_dwKeyState, data->pt, &dwEffect);
+        DWORD dwEffect = wp?wp:dragData->m_dwEffect;//if wp is valid, using wp alse using dragover effect.
+        HRESULT hr = wndObj->dropTarget->Drop(wndObj->dragData, dragData->m_dwKeyState, dragData->m_ptOver, &dwEffect);
         wndObj->mConnection->SendXdndFinish(hWnd, dragData->m_hSource, hr == S_OK, dwEffect);
         wndObj->dragData->Release();
         wndObj->dragData = NULL;
@@ -1168,13 +1190,13 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 	case WM_MBUTTONDBLCLK:
 	case WM_RBUTTONDBLCLK:
 	{
-		bSkipMsg = ActiveWindow(hWnd, TRUE, msg, wndObj->htCode);
+		bSkipMsg = ActiveWindow(wndObj,hWnd, TRUE, msg, wndObj->htCode);
 		if (!bSkipMsg && GetCapture() != hWnd) {
 			POINT pt = { GET_X_LPARAM(lp),GET_Y_LPARAM(lp) };
 			RECT rcClient;
 			GetClientRect(hWnd, &rcClient);
 			if (!PtInRect(&rcClient, pt)) {
-				CallWindowProcPriv(proc, hWnd, msg + WM_NCLBUTTONDOWN - WM_LBUTTONDOWN, wp, lp);
+                CallWindowObjProc(wndObj,proc, hWnd, msg + WM_NCLBUTTONDOWN - WM_LBUTTONDOWN, wp, lp);
 				bSkipMsg = TRUE;
 			}
 		}
@@ -1185,21 +1207,24 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 		POINT pt;
 		wndObj->mConnection->GetCursorPos(&pt);
 		int htCode = proc(hWnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
-		UpdateWindowCursor(wndObj, hWnd, htCode);
+        if (proc(hWnd, WM_SETCURSOR, hWnd, htCode) == 0)
+        {
+            UpdateWindowCursor(wndObj, hWnd, htCode);
+        }
 		if (htCode != wndObj->htCode) {
 			int oldHtCode = wndObj->htCode;
 			wndObj->htCode = htCode;
 			if (htCode != HTCLIENT && oldHtCode == HTCLIENT) {
-				CallWindowProcPriv(proc, hWnd, WM_NCMOUSEHOVER, htCode, MAKELPARAM(pt.x, pt.y));
+                CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSEHOVER, htCode, MAKELPARAM(pt.x, pt.y));
 				bSkipMsg = TRUE;
 			}
 			if (htCode == HTCLIENT && oldHtCode != HTCLIENT) {
-				CallWindowProcPriv(proc, hWnd, WM_NCMOUSELEAVE, htCode, MAKELPARAM(pt.x, pt.y));
+                CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSELEAVE, htCode, MAKELPARAM(pt.x, pt.y));
 				bSkipMsg = TRUE;
 			}
 		}
 		else if (htCode != HTCLIENT) {
-			CallWindowProcPriv(proc, hWnd, WM_NCMOUSEMOVE, htCode, MAKELPARAM(pt.x, pt.y));
+            CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSEMOVE, htCode, MAKELPARAM(pt.x, pt.y));
 			bSkipMsg = TRUE;
 		}
 	}
@@ -1233,7 +1258,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 		if (wndObj->htCode != HTCLIENT) {
 			POINT pt;
 			wndObj->mConnection->GetCursorPos(&pt);
-			CallWindowProcPriv(proc, hWnd, WM_NCMOUSELEAVE, HTNOWHERE, MAKELPARAM(pt.x, pt.y));
+            CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSELEAVE, HTNOWHERE, MAKELPARAM(pt.x, pt.y));
 		}
 		wndObj->htCode = HTNOWHERE;
 		if (!wndObj->hoverInfo.uHoverState != HS_Leave)
@@ -1260,7 +1285,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			if (isHover && wndObj->hoverInfo.uHoverState == HS_HoverDelay)
 			{
 				ScreenToClient(hWnd, &ptCursor);
-				CallWindowProcPriv(proc, hWnd, WM_MOUSEHOVER, 0, MAKELPARAM(ptCursor.x, ptCursor.y)); // delay send mouse hover
+                CallWindowObjProc(wndObj, proc, hWnd, WM_MOUSEHOVER, 0, MAKELPARAM(ptCursor.x, ptCursor.y)); // delay send mouse hover
 			}
 			bSkipMsg = TRUE;
 		}
@@ -1298,7 +1323,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 		wndObj->nPainting++;
 		if (wndObj->invalid.bErase || lp != 0)
 		{
-			CallWindowProcPriv(proc, hWnd, WM_ERASEBKGND, (WPARAM)hdc, 0);
+            CallWindowObjProc(wndObj, proc, hWnd, WM_ERASEBKGND, (WPARAM)hdc, 0);
 			wndObj->invalid.bErase = FALSE;
 		}
 		ReleaseDC(hWnd, hdc);
@@ -1316,7 +1341,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 		case SIZE_RESTORED:
 			wndObj->state = WS_Normal;
 			lp = MAKELPARAM(wndObj->rc.right - wndObj->rc.left, wndObj->rc.bottom - wndObj->rc.top);
-			CallWindowProcPriv(proc, hWnd, WM_SIZE, 0, lp); // call size again
+            CallWindowObjProc(wndObj, proc, hWnd, WM_SIZE, 0, lp); // call size again
 			break;
 		}
 		return 1;
@@ -1334,8 +1359,10 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			RECT rc = wndObj->rc;
 			OffsetRect(&rc, -rc.left, -rc.top);
 			InvalidateRect(hWnd, &rc, TRUE);
-		}
-		wndObj->nSizing++;
+		}else{
+            bSkipMsg = TRUE;
+        }
+    	wndObj->nSizing++;
 		break;
 	}
 	wndObj->msgRecusiveCount++;
@@ -1350,7 +1377,39 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			pt.y -= GetSystemMetrics(SM_CYBORDER);
 			lp2 = MAKELPARAM(pt.x, pt.y);
 		}
-		ret = proc(hWnd, msg, wp, lp2);
+        UINT htCode = wndObj->htCode;
+        if (msg >= WM_KEYFIRST && msg <= WM_KEYLAST)
+        {//call keyboard hook
+            bSkipMsg = CallHook(WH_KEYBOARD,HC_ACTION,wp,lp);
+        }
+        else if (msg >= WM_MOUSEFIRST && msg <= WM_MOUSELAST)
+        {
+            MOUSEHOOKSTRUCT st;
+            st.hwnd = hWnd;
+            st.pt.x = GET_X_LPARAM(lp);
+            st.pt.y = GET_Y_LPARAM(lp);
+            st.wHitTestCode = htCode;
+            bSkipMsg = CallHook(WH_MOUSE, HC_ACTION, msg, (LPARAM)&st);
+        }
+        {
+            CWPSTRUCT st;
+            st.hwnd = hWnd;
+            st.message = msg;
+            st.wParam = wp;
+            st.lParam = lp;
+            bSkipMsg = CallHook(WH_CALLWNDPROC, HC_ACTION, 0, (LPARAM)&st);
+        }
+		if(!bSkipMsg) 
+            ret = CallWindowObjProc(wndObj,proc,hWnd, msg, wp, lp2);
+        {
+            CWPRETSTRUCT st;
+            st.hwnd = hWnd;
+            st.message = msg;
+            st.wParam = wp;
+            st.lParam = lp;
+            st.lResult = ret;
+            CallHook(WH_CALLWNDPROCRET, HC_ACTION, 0, (LPARAM)&st);
+        }
 		if (msg == WM_PAINT) {
 			if (wndObj->bCaretVisible) {
 				_DrawCaret(hWnd, wndObj);
@@ -1370,9 +1429,6 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 	}
 	else if (msg == WM_DESTROY)
 	{
-        if(GetCapture()==hWnd){
-            ReleaseCapture();
-        }
         //auto destroy all popup that owned by this
         EnumWindows(Enum4DestroyOwned, hWnd);
 		//auto destory all children
@@ -1381,19 +1437,12 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			DestroyWindow(hChild);
 			hChild = GetWindow(hWnd, GW_CHILDLAST);
 		}
-		if (wndObj->mConnection->GetCaretInfo()->hOwner == hWnd) {
-			DestroyCaret();
-		}
-		CallWindowProcPriv(proc, hWnd, WM_NCDESTROY, 0, 0);
-	}
-	else if (msg == WM_NCDESTROY)
-	{
-		wndObj->bDestroyed = TRUE;
-	}
+		CallWindowObjProc(wndObj, proc, hWnd, WM_NCDESTROY, 0, 0);
+        wndObj->bDestroyed = TRUE;
+    }
 	if (0 == --wndObj->msgRecusiveCount && wndObj->bDestroyed)
 	{
-		xcb_destroy_window(wndObj->mConnection->connection, hWnd);
-		xcb_flush(wndObj->mConnection->connection);
+        wndObj->mConnection->OnWindowDestroy(hWnd, wndObj.data());
 		WndMgr::freeWindow(hWnd);
 	}
 	return ret;
@@ -1630,7 +1679,7 @@ void PostQuitMessage(int nExitCode)
     PostThreadMessage(GetCurrentThreadId(), WM_QUIT, nExitCode, 0);
 }
 
-BOOL _SendMessageCallback(BOOL bWideChar, HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam, SENDASYNCPROC lpCallBack, ULONG_PTR dwData)
+static BOOL _SendMessageCallback(BOOL bWideChar, HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam, SENDASYNCPROC lpCallBack, ULONG_PTR dwData)
 {
     SConnection *connCur = SConnMgr::instance()->getConnection(GetCurrentThreadId());
     if (!connCur) // current thread must be a ui thread.
@@ -1751,6 +1800,11 @@ static void onStyleChange(HWND hWnd, WndObj& wndObj, DWORD newStyle) {
 
 static void onExStyleChange(HWND hWnd, WndObj& wndObj, DWORD newExStyle) {
     wndObj->dwExStyle = newExStyle;
+    if (newExStyle & WS_EX_TOPMOST)
+    {
+        uint32_t values[] = { XCB_STACK_MODE_ABOVE };
+        xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
+    }
 }
 
 static LONG_PTR GetWindowLongSize(HWND hWnd, int nIndex, uint32_t size)
@@ -2080,12 +2134,18 @@ BOOL EnableWindow(HWND hWnd, BOOL bEnable)
         wndObj->dwStyle &= ~WS_DISABLED;
     else
         wndObj->dwStyle |= WS_DISABLED;
+    if(!bEnable){
+        //restore cursor to default cursor.
+    }
     return TRUE;
 }
 
 HWND SetActiveWindow(HWND hWnd)
 {
-    return ActiveWindow(hWnd, FALSE, 0, 0);
+    HWND hRet = GetActiveWindow();
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    ActiveWindow(wndObj,hWnd, FALSE, 0, 0);
+    return hRet;
 }
 
 HWND GetParent(HWND hWnd)
@@ -2584,6 +2644,8 @@ static LRESULT handleNcLbuttonDown(HWND hWnd,WPARAM wp,LPARAM lp){
         if(msg.message==WM_QUIT)
             break;
         PeekMessage(&msg,0,0,0,PM_REMOVE);
+        if(CallMsgFilter(&msg, MSGF_SCROLLBAR))
+            continue;
         if(msg.message == WM_LBUTTONUP){            
             pt = {GET_X_LPARAM(msg.lParam),GET_Y_LPARAM(msg.lParam)};
             break;
@@ -3005,46 +3067,6 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     break;
     case WM_GETMINMAXINFO:
         return -1; // not handle
-    case WM_WINDOWPOSCHANGING:
-    {
-        WINDOWPOS *lpWndPos = (WINDOWPOS *)lp;
-        if (!(lpWndPos->flags & (SWP_NOSIZE | SWP_NOMOVE)))
-        {
-            MINMAXINFO info = { 0 };
-            if (0 == SendMessage(hWnd, WM_GETMINMAXINFO, 0, (LPARAM)&info))
-            {
-                if (lpWndPos->cx > info.ptMaxTrackSize.x)
-                    lpWndPos->cx = info.ptMaxTrackSize.x;
-                if (lpWndPos->cx < info.ptMinTrackSize.x)
-                    lpWndPos->cx = info.ptMinTrackSize.x;
-
-                if (lpWndPos->cy > info.ptMaxTrackSize.y)
-                    lpWndPos->cy = info.ptMaxTrackSize.y;
-                if (lpWndPos->cy < info.ptMinTrackSize.y)
-                    lpWndPos->cy = info.ptMinTrackSize.y;
-
-                if (lpWndPos->x > info.ptMaxPosition.x)
-                    lpWndPos->x = info.ptMaxPosition.x;
-                if (lpWndPos->y > info.ptMaxPosition.y)
-                    lpWndPos->y = info.ptMaxPosition.y;
-            }
-        }
-        if (!(lpWndPos->flags & SWP_NOZORDER))
-        {
-            if (lpWndPos->hwndInsertAfter == HWND_TOPMOST || lpWndPos->hwndInsertAfter == HWND_TOP)
-            {
-                uint32_t val[] = { XCB_STACK_MODE_ABOVE };
-                xcb_configure_window(wndObj->mConnection->connection, lpWndPos->hwnd, XCB_CONFIG_WINDOW_STACK_MODE, &val);
-            }
-            else
-            {
-                uint32_t val[] = { (uint32_t)lpWndPos->hwndInsertAfter, XCB_STACK_MODE_ABOVE };
-                xcb_configure_window(wndObj->mConnection->connection, lpWndPos->hwnd, XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE, &val);
-            }
-            xcb_flush(wndObj->mConnection->connection);
-        }
-    }
-    break;
     case WM_SYSCOMMAND:
     {
         WORD action = wp & 0xfff0;
@@ -3076,13 +3098,39 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     case WM_CLOSE:
         DestroyWindow(hWnd);
         break;
+    case WM_WINDOWPOSCHANGING:
+    {
+        WINDOWPOS *lpWndPos = (WINDOWPOS *)lp;
+        if (!(lpWndPos->flags & (SWP_NOSIZE | SWP_NOMOVE)))
+        {
+            MINMAXINFO info = { 0 };
+            if (0 == SendMessage(hWnd, WM_GETMINMAXINFO, 0, (LPARAM)&info))
+            {
+                if (lpWndPos->cx > info.ptMaxTrackSize.x)
+                    lpWndPos->cx = info.ptMaxTrackSize.x;
+                if (lpWndPos->cx < info.ptMinTrackSize.x)
+                    lpWndPos->cx = info.ptMinTrackSize.x;
+
+                if (lpWndPos->cy > info.ptMaxTrackSize.y)
+                    lpWndPos->cy = info.ptMaxTrackSize.y;
+                if (lpWndPos->cy < info.ptMinTrackSize.y)
+                    lpWndPos->cy = info.ptMinTrackSize.y;
+
+                if (lpWndPos->x > info.ptMaxPosition.x)
+                    lpWndPos->x = info.ptMaxPosition.x;
+                if (lpWndPos->y > info.ptMaxPosition.y)
+                    lpWndPos->y = info.ptMaxPosition.y;
+            }
+        }
+    }
+    break;
     case WM_WINDOWPOSCHANGED:
     {
         WINDOWPOS &wndPos = *(WINDOWPOS *)lp;
         RECT &rc = wndObj->rc;
         if (!(wndPos.flags & SWP_NOMOVE))
         {
-            const int32_t coords[] = { static_cast<int32_t>(wndPos.x), static_cast<int32_t>(wndPos.y) };
+            const uint32_t coords[] = { static_cast<uint32_t>(wndPos.x), static_cast<uint32_t>(wndPos.y) };
             xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, coords);
             SendMessage(hWnd, WM_MOVE, 0, MAKELPARAM(wndPos.x, wndPos.y));
         }
@@ -3098,6 +3146,32 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         {
             SetWindowPosHint(wndObj->mConnection, hWnd, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
         }
+        if (!(wndPos.flags & SWP_NOZORDER))
+        {
+            if (wndPos.hwndInsertAfter == HWND_TOPMOST || wndPos.hwndInsertAfter == HWND_TOP)
+            {
+                if (wndPos.hwndInsertAfter == HWND_TOPMOST)
+                {
+                    uint32_t val[] = { XCB_STACK_MODE_ABOVE };
+                    xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_STACK_MODE, val);
+                    wndObj->dwExStyle |= WS_EX_TOPMOST;
+                }
+                else
+                {
+                    uint32_t val[] = { XCB_STACK_MODE_TOP_IF };
+                    xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_STACK_MODE, val);
+                    wndObj->dwExStyle &= ~WS_EX_TOPMOST;
+                }
+            }
+            else
+            {
+                uint32_t val[] = { (uint32_t)wndPos.hwndInsertAfter, XCB_STACK_MODE_ABOVE };
+                xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE, val);
+                wndObj->dwExStyle &= ~WS_EX_TOPMOST;
+            }
+            xcb_flush(wndObj->mConnection->connection);
+        }
+
         int showCmd = -1;
         if (wndPos.flags & SWP_SHOWWINDOW)
         {
@@ -3123,6 +3197,14 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         OnNcPaint(hWnd,wp,lp);
         break;
     }
+    case WM_MOUSEACTIVATE:
+    {
+        if(wndObj->dwExStyle&WS_EX_NOACTIVATE)
+            return MA_NOACTIVATE;
+        if(wndObj->dwStyle&WS_DISABLED)
+            return MA_NOACTIVATE;
+        return MA_ACTIVATE;
+    }
     }
     return 0;
 }
@@ -3144,7 +3226,11 @@ BOOL ShowWindow(HWND hWnd, int nCmdShow)
         }
         xcb_map_window(wndObj->mConnection->connection, hWnd);
         wndObj->dwStyle |= WS_VISIBLE;
-        if (nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA && !(wndObj->dwStyle&WS_CHILD))
+        if (nCmdShow != SW_SHOWNOACTIVATE 
+            && nCmdShow != SW_SHOWNA 
+            && !(wndObj->dwStyle&WS_CHILD)
+            && wndObj->mConnection->GetActiveWnd()==0
+            )
             SetActiveWindow(hWnd);
         InvalidateRect(hWnd, nullptr, TRUE);
         wndObj->mConnection->sync();
@@ -3153,6 +3239,17 @@ BOOL ShowWindow(HWND hWnd, int nCmdShow)
     {
         xcb_unmap_window(wndObj->mConnection->connection, hWnd);
         wndObj->dwStyle &= ~WS_VISIBLE;
+        if(!(wndObj->dwStyle & WS_CHILD)){
+            // send synthetic UnmapNotify event according to icccm 4.1.4
+            xcb_unmap_notify_event_t event;
+            event.response_type = XCB_UNMAP_NOTIFY;
+            event.event = wndObj->mConnection->screen->root;
+            event.window = hWnd;
+            event.from_configure = false;
+            xcb_send_event(wndObj->mConnection->connection, false, event.event,
+                                    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+        }
+
     }
     xcb_flush(wndObj->mConnection->connection);
     SendMessage(hWnd, WM_SHOWWINDOW, bNew, 0);
@@ -3326,6 +3423,8 @@ int ReleaseDC(HWND hWnd, HDC hdc)
 
 int MapWindowPoints(HWND hWndFrom, HWND hWndTo, LPPOINT lpPoint, UINT nCount)
 {
+    if (hWndFrom == hWndTo)
+        return 0;
     RECT rcFrom={0}, rcTo={0};
     if (hWndFrom && !GetWindowRect(hWndFrom, &rcFrom))
         return 0;
@@ -3360,7 +3459,7 @@ static HRGN BuildColorKeyRgn(HWND hWnd)
     COLORREF crKey = wndObj->crKey & mask;
     if (crKey != CR_INVALID)
     {
-        BITMAP bm;
+        BITMAP bm = {0};
         GetObject(wndObj->hdc->bmp, sizeof(bm), &bm);
         const uint32_t *bits = (const uint32_t *)bm.bmBits;
         std::vector<RECT> lstRc;
@@ -3816,6 +3915,20 @@ BOOL DispatchMessage(LPMSG pMsg)
 {
     if (!pMsg->hwnd)
         return FALSE;
+    if(pMsg->message == WM_PAINT && !IsWindowVisible(pMsg->hwnd)){
+        return FALSE;
+    }
+    if (pMsg->message == UM_CALLHOOK)
+    {//call hook proc for inter thread
+        SConnection *conn = SConnMgr::instance()->getConnection();
+        if (!conn)
+            return FALSE;
+        CallHookData *data = (CallHookData *)pMsg->lParam;
+        conn->BeforeProcMsg(pMsg->hwnd, pMsg->message, pMsg->wParam, pMsg->lParam);
+        LRESULT ret = data->proc(data->code,data->wp,data->lp);
+        conn->AfterProcMsg(pMsg->hwnd, pMsg->message, pMsg->wParam, pMsg->lParam, ret);
+        return TRUE;
+    }
     WNDPROC wndProc = (WNDPROC)GetWindowLongPtrA(pMsg->hwnd, GWLP_WNDPROC);
     if (!wndProc)
         return FALSE;

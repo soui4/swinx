@@ -98,6 +98,7 @@ extern "C"
 #define Shell_NotifyIcon Shell_NotifyIconA
 #endif
 
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus

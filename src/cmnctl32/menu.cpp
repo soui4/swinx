@@ -38,15 +38,10 @@ class SMenuItem {
     WCHAR GetHotKey() const;
 
     void SetText(LPCSTR pszTitle);
-
-    /*void EnableItem(BOOL bEnable)
-    {
-        (m_itemState & 0b11);
-    }*/
     // 禁用有两种情况，变灰+不变灰
     bool IsEnable() const;
 
-    void SetCheck(BOOL bCheck);
+    void SetSelect(BOOL bSel);
 
     void SetHotItem(bool bHot);
 
@@ -123,6 +118,7 @@ class CMenu : public CNativeWnd {
 
     virtual ~CMenu(void) noexcept override;
 
+    HMENU GetHMenu() const {return m_hWnd;}
   public:
     BOOL CreateMenu();
 
@@ -201,6 +197,7 @@ class CMenu : public CNativeWnd {
         MSG_WM_PAINT(OnPaint)
         MSG_WM_MOUSELEAVE(OnMouseLeave)
         MSG_WM_LBUTTONUP(OnLButtonUp)
+        MSG_WM_KEYDOWN(OnKeyDown)
         MSG_WM_TIMER(OnTimer)
         CHAIN_MSG_MAP(CNativeWnd)
     END_MSG_MAP()
@@ -248,7 +245,7 @@ class SMenuRunData {
 
     BOOL IsMenuWnd(HWND hWnd)
     {
-        for (auto ite : m_lstMenuEx)
+        for (auto ite : m_lstMenu)
         {
             if (ite->m_hWnd == hWnd)
                 return TRUE;
@@ -256,28 +253,28 @@ class SMenuRunData {
         return FALSE;
     }
 
-    void PushMenuEx(CMenu *pMenu)
+    void PushMenu(CMenu *pMenu)
     {
-        m_lstMenuEx.push_back(pMenu);
+        m_lstMenu.push_back(pMenu);
     }
 
-    CMenu *GetMenuEx()
+    CMenu *GetMenu()
     {
-        if (m_lstMenuEx.empty())
+        if (m_lstMenu.empty())
             return 0;
-        return m_lstMenuEx.back();
+        return m_lstMenu.back();
     }
 
-    CMenu *PopMenuEx()
+    CMenu *PopMenu()
     {
-        CMenu *pMenuEx = m_lstMenuEx.back();
-        m_lstMenuEx.pop_back();
+        CMenu *pMenuEx = m_lstMenu.back();
+        m_lstMenu.pop_back();
         return pMenuEx;
     }
 
-    CMenu *SMenuExFromHwnd(HWND hWnd)
+    CMenu *SMenuFromHwnd(HWND hWnd)
     {
-        for (auto ite : m_lstMenuEx)
+        for (auto ite : m_lstMenu)
         {
             if (ite->m_hWnd == hWnd)
                 return ite;
@@ -292,11 +289,11 @@ class SMenuRunData {
 
     void ExitMenu(int nCmdID)
     {
-        for (auto ite : m_lstMenuEx)
+        for (auto ite : m_lstMenu)
         {
             ::ShowWindow(ite->m_hWnd, SW_HIDE);
         }
-        m_lstMenuEx.clear();
+        m_lstMenu.clear();
         m_bExit = TRUE;
         m_nCmdID = nCmdID;
     }
@@ -312,7 +309,7 @@ class SMenuRunData {
     }
 
   protected:
-    std::list<CMenu *> m_lstMenuEx;
+    std::list<CMenu *> m_lstMenu;
     LPTPMPARAMS m_prcRect = nullptr;
     BOOL m_bExit;
     int m_nCmdID;
@@ -326,18 +323,10 @@ static SMenuRunData *s_MenuData = nullptr;
 
 SMenuItem::~SMenuItem()
 {
-    /*if (m_pSubMenu)
-    {
-        delete m_pSubMenu;
-        m_pSubMenu = nullptr;
-    }*/
 }
 
 SMenuItem::SMenuItem(CMenu *pOwnerMenu)
     : m_pOwnerMenu(pOwnerMenu)
-    /*, m_iIcon(-1)
-    , m_bCheck(FALSE)
-    , m_bRadio(FALSE)*/
     , m_cHotKey(0)
 {
 }
@@ -430,9 +419,9 @@ bool SMenuItem::IsEnable() const
     return (m_uMenuFlag & 0b11) == MF_ENABLED;
 }
 
-void SMenuItem::SetCheck(BOOL bCheck)
+void SMenuItem::SetSelect(BOOL bSel)
 {
-    m_uMenuFlag = bCheck ? (m_uMenuFlag | MF_MOUSESELECT) : (m_uMenuFlag & (~MF_MOUSESELECT));
+    m_uMenuFlag = bSel ? (m_uMenuFlag | MF_CHECKED) : (m_uMenuFlag & (~MF_CHECKED));
 }
 
 void SMenuItem::SetHotItem(bool bHot)
@@ -449,7 +438,7 @@ UINT SMenuItem::GetDrawState() const
         state |= ODS_CHECKED;
     if (m_uMenuFlag & MF_GRAYED)
         state |= ODS_GRAYED;
-    if (m_uMenuFlag & MF_MOUSESELECT)
+    if (m_uMenuFlag & MF_CHECKED)
         state |= ODS_SELECTED;
     return state;
 }
@@ -487,8 +476,9 @@ int CMenu::GetNextMenuItem(int iItem, BOOL bForword)
             next = -1;
             break;
         }
-        if (m_lsMenuItem[next].m_uMenuFlag & MF_DISABLED == 0)
+        if ((m_lsMenuItem[next].m_uMenuFlag & MF_DISABLED) == 0)
             break;
+        next += change;
     }
     return next;
 }
@@ -713,9 +703,19 @@ BOOL CMenu::GetMenuItemInfo(UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi)
 
         if (pItem)
         {
-            if (lpmi->fMask & MIIM_FTYPE)
+            if(lpmi->fMask & MIIM_FTYPE){
+                lpmi->fType = pItem->IsSeparator()?MF_SEPARATOR: MF_STRING;
+            }
+            if (lpmi->fMask & MIIM_STATE)
             {
-                lpmi->fType = pItem->m_uMenuFlag;
+                lpmi->fState = pItem->m_uMenuFlag;
+            }
+            if(lpmi->fMask & MIIM_SUBMENU){
+                CMenu *subMenu = pItem->GetSubMenu();
+                if(subMenu)
+                    lpmi->hSubMenu = subMenu->GetHMenu();
+                else
+                    lpmi->hSubMenu = 0;
             }
         }
     }
@@ -1059,7 +1059,7 @@ void CMenu::ShowMenu(UINT uFlag, int x, int y)
     }
 
     SetWindowPos(m_hWnd, HWND_TOPMOST, rcMenu.left, rcMenu.top, szMenu.cx, szMenu.cy, SWP_SHOWWINDOW | SWP_NOACTIVATE);
-    s_MenuData->PushMenuEx(this);
+    s_MenuData->PushMenu(this);
 }
 
 void CMenu::HideMenu(BOOL bUncheckParentItem)
@@ -1072,7 +1072,7 @@ void CMenu::HideMenu(BOOL bUncheckParentItem)
     {
         SMenuItem *pItem = GetMenuItem(m_iSelItem);
         if (pItem)
-            pItem->SetCheck(false);
+            pItem->SetSelect(false);
         m_iSelItem = -1;
     }
     if (m_iHoverItem != -1)
@@ -1082,7 +1082,7 @@ void CMenu::HideMenu(BOOL bUncheckParentItem)
             pItem->SetHotItem(false);
         m_iHoverItem = -1;
     }
-    s_MenuData->PopMenuEx();
+    s_MenuData->PopMenu();
     if (m_pParent)
     {
         m_pParent->OnSubMenuHided(bUncheckParentItem);
@@ -1091,7 +1091,6 @@ void CMenu::HideMenu(BOOL bUncheckParentItem)
 
 void CMenu::HideSubMenu()
 {
-    printf("!!!hide sub menu %d\n", m_iSelItem);
     SMenuItem *pItem = GetMenuItem(m_iSelItem);
     if (pItem && pItem->GetSubMenu())
     {
@@ -1145,6 +1144,10 @@ void CMenu::RunMenu(HWND hRoot)
                 break;
             }
         }
+        else if(msg.message == WM_CANCELMODE){
+            s_MenuData->ExitMenu(0);
+            break;
+        }
         else if (msg.message == WM_LBUTTONDOWN || msg.message == WM_RBUTTONDOWN || msg.message == WM_NCLBUTTONDOWN || msg.message == WM_NCRBUTTONDOWN || msg.message == WM_LBUTTONDBLCLK)
         {
             // click on other window
@@ -1156,7 +1159,7 @@ void CMenu::RunMenu(HWND hRoot)
             // 同步为 windows自身菜单形为
             else
             {
-                CMenu *pMenu = s_MenuData->SMenuExFromHwnd(msg.hwnd);
+                CMenu *pMenu = s_MenuData->SMenuFromHwnd(msg.hwnd);
 
                 SMenuItem *pItem = pMenu->GetMenuItem(pMenu->m_iSelItem);
                 if (pItem)
@@ -1194,7 +1197,7 @@ void CMenu::RunMenu(HWND hRoot)
                 hCurMenu = msg.hwnd;
             }
 
-            CMenu *pMenu = s_MenuData->SMenuExFromHwnd(msg.hwnd);
+            CMenu *pMenu = s_MenuData->SMenuFromHwnd(msg.hwnd);
             if (!pMenu)
             {
                 hCurMenu = 0;
@@ -1206,7 +1209,7 @@ void CMenu::RunMenu(HWND hRoot)
 
         if (msg.message == WM_KEYDOWN || msg.message == WM_KEYUP || msg.message == WM_CHAR)
         { // 将键盘事件强制发送到最后一级菜单窗口，让菜单处理快速键
-            HWND menuWnd = s_MenuData->GetMenuEx()->m_hWnd;
+            HWND menuWnd = s_MenuData->GetMenu()->m_hWnd;
             ::SendMessage(menuWnd, msg.message, msg.wParam, msg.lParam);
         }
 
@@ -1287,7 +1290,7 @@ BOOL CMenu::SelectItem(int iItem)
         return TRUE;
     if (SMenuItem *pItem = GetMenuItem(m_iSelItem))
     {
-        pItem->SetCheck(FALSE);
+        pItem->SetSelect(FALSE);
         InvalidateItem(m_iSelItem);
         if (pItem->GetSubMenu())
         {
@@ -1297,7 +1300,7 @@ BOOL CMenu::SelectItem(int iItem)
     m_iSelItem = iItem;
     if (SMenuItem *pItem = GetMenuItem(iItem))
     {
-        pItem->SetCheck(TRUE);
+        pItem->SetSelect(TRUE);
         InvalidateItem(iItem);
         if (pItem->GetSubMenu())
         {
@@ -1310,23 +1313,6 @@ BOOL CMenu::SelectItem(int iItem)
 
 void CMenu::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 {
-    // WM_MENUCHAR
-    /*if (IsOwnerDraw())
-    {
-        if (s_MenuData)
-        {
-            if (::IsWindow(s_MenuData->GetOwner()))
-            {
-                LRESULT hr=        ::SendMessage(s_MenuData->GetOwner(), WM_MENUCHAR, MAKEWPARAM(nChar, nFlags), (LPARAM)m_hWnd);
-                if (hr != 0)
-                {
-                    DWORD id = LOWORD(hr);
-                    DWORD doit = HIWORD(hr);
-                }
-            }
-        }
-    }*/
-
     switch (nChar)
     {
     case VK_UP:
@@ -1352,10 +1338,6 @@ void CMenu::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
         break;
     case VK_RIGHT:
         PopupSubMenu(m_iSelItem, TRUE);
-        break;
-    case VK_RETURN:
-        // if (m_pCheckItem)
-        /*m_pCheckItem->FireCommand()*/;
         break;
     default:
         SetMsgHandled(FALSE);
@@ -1516,7 +1498,7 @@ BOOL CMenu::CheckMenuItem(UINT uPos, UINT uFlag)
     SMenuItem *pItemRef = FindItem(uPos, uFlag);
     if (!pItemRef)
         return FALSE;
-    pItemRef->SetCheck(uFlag & MF_CHECKED);
+    pItemRef->SetSelect(uFlag & MF_CHECKED);
     return TRUE;
 }
 

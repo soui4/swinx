@@ -162,10 +162,12 @@ SConnection::SConnection(int screenNum)
     : m_keyboard(nullptr)
     , m_hook_table(nullptr)
     , m_forceDpi(-1)
+    , connection(nullptr)
 {
     connection = xcb_connect(nullptr, &screenNum);
-    if (xcb_connection_has_error(connection) > 0)
+    if (int errCode = xcb_connection_has_error(connection) > 0)
     {
+        printf("XCB Error: %d\n", errCode);
         connection = NULL;
         return;
     }
@@ -229,7 +231,6 @@ SConnection::SConnection(int screenNum)
     m_hWndCapture = 0;
     m_hWndActive = 0;
     m_hFocus = 0;
-    m_hCursor = 0;
     m_bBlockTimer = false;
 
     m_deskDC = new _SDC(screen->root);
@@ -361,7 +362,11 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
         std::unique_lock<std::mutex> lock(m_mutex4Evt);
         for (auto it : m_evtQueue)
         {
-            pushEvent(it);
+            bool accepted = false;
+            if (m_clipboard->processIncr())
+                m_clipboard->incrTransactionPeeker(it, accepted);
+            if (!accepted)
+                pushEvent(it);
             free(it);
         }
         bRet = !m_evtQueue.empty();
@@ -632,37 +637,20 @@ UINT SConnection::MapVirtualKey(UINT uCode, UINT uMapType) const
 
 BOOL SConnection::TranslateMessage(const MSG *pMsg)
 {
-    if (pMsg->message == WM_KEYDOWN && isprint(pMsg->wParam))
+    if (pMsg->message == WM_KEYDOWN || pMsg->message == WM_SYSKEYDOWN)
     {
-        if (pMsg->wParam >= VK_PRIOR && pMsg->wParam <= VK_HELP)
-            return FALSE;
-        //handle shortcut key
-        SHORT ctrlState = GetKeyState(VK_CONTROL);
-        if ((ctrlState & 0x8000) && (
-            pMsg->wParam=='A' 
-            || pMsg->wParam == 'S' 
-            || pMsg->wParam == 'D'
-            || pMsg->wParam == 'Z'
-            || pMsg->wParam == 'X'
-            || pMsg->wParam == 'C'
-            || pMsg->wParam == 'V')) {
-            return FALSE;
+        char c = m_keyboard->scanCodeToAscii(HIWORD(pMsg->lParam));
+        if(c!=0 && !GetKeyState(VK_CONTROL) && !GetKeyState(VK_MENU)){
+            std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+            Msg *msg = new Msg;
+            msg->message = pMsg->message == WM_KEYDOWN?WM_CHAR:WM_SYSCHAR;
+            msg->hwnd = pMsg->hwnd;
+            msg->wParam = c;
+            msg->lParam = pMsg->lParam;
+            GetCursorPos(&msg->pt);
+            m_msgQueue.push_back(msg);
+            return TRUE;
         }
-        std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
-        Msg *msg = new Msg;
-        msg->message = WM_CHAR;
-        msg->hwnd = pMsg->hwnd;
-        msg->wParam = pMsg->wParam;
-        msg->lParam = pMsg->lParam;
-
-        SHORT shiftState = GetKeyState(VK_SHIFT);
-        if (!(shiftState & 0x8000) && pMsg->wParam >= 'A' && pMsg->wParam <= 'Z')
-        {
-            msg->wParam += 0x20; // tolower
-        }
-        GetCursorPos(&msg->pt);
-        m_msgQueue.push_back(msg);
-        return TRUE;
     }
     return FALSE;
 }
@@ -720,8 +708,8 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         {
             // SetTimer with callback, call it now.
             TIMERPROC proc = (TIMERPROC)msg->lParam;
-            proc(msg->hwnd, WM_TIMER, msg->wParam, msg->time);
             m_msgQueue.erase(it);
+            proc(msg->hwnd, WM_TIMER, msg->wParam, msg->time);
             delete msg;
             return PeekMessage(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
         }
@@ -733,7 +721,22 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         else
         {
             m_msgQueue.erase(it);
+            if(m_msgPeek->message == WM_PAINT)
+            {
+                static const uint64_t kFrameInterval = 15;//15 interval for 66 frame per second
+                if(m_tsLastPaint==-1 || (GetTickCount64()-m_msgPeek->time)>=kFrameInterval)
+                    m_tsLastPaint = m_msgPeek->time;
+                else
+                {
+                    m_msgPeek=nullptr;
+                    BOOL bRet = peekMsg(pMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
+                    m_msgQueue.push_back(msg);//insert paint message back.
+                    SetEvent(m_evtSync);
+                    return bRet;
+                }
+            }
             m_bMsgNeedFree = true;
+            
         }
         memcpy(pMsg, (MSG *)m_msgPeek, sizeof(MSG));
 
@@ -768,6 +771,7 @@ void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp)
     pMsg->lParam = lp;
     GetCursorPos(&pMsg->pt);
     m_msgQueue.push_back(pMsg);
+    SetEvent(m_evtSync);
 }
 
 void SConnection::postMsg2(BOOL bWideChar,HWND hWnd, UINT message, WPARAM wp, LPARAM lp, MsgReply *reply)
@@ -908,17 +912,7 @@ void SConnection::SendXdndStatus(HWND hTarget,HWND hSource, BOOL accept, DWORD d
     response.data.data32[1] = accept?1:0; // flags
     response.data.data32[2] = 0; // x, y
     response.data.data32[3] = 0; // w, h
-    uint32_t action = 0;
-    switch (dwEffect) {
-    case DROPEFFECT_NONE: action = XCB_NONE;break;
-    case DROPEFFECT_MOVE: action = atoms.XdndActionMove; break;
-    case DROPEFFECT_LINK: action = atoms.XdndActionLink; break;
-    case DROPEFFECT_COPY: 
-    default:
-        action = atoms.XdndActionCopy; 
-        break;
-    }
-    response.data.data32[4] = action; // action
+    response.data.data32[4] = XdndEffect2Action(dwEffect); // action
     xcb_send_event(connection, false, hSource,
         XCB_EVENT_MASK_NO_EVENT, (const char*)&response);
 }
@@ -934,17 +928,7 @@ void SConnection::SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD 
     response.type = atoms.XdndFinished;
     response.data.data32[0] = hTarget;
     response.data.data32[1] = accept ? 1 : 0; // flags
-    uint32_t action = 0;
-    switch (dwEffect) {
-    case DROPEFFECT_NONE: action = XCB_NONE; break;
-    case DROPEFFECT_MOVE: action = atoms.XdndActionMove; break;
-    case DROPEFFECT_LINK: action = atoms.XdndActionLink; break;
-    case DROPEFFECT_COPY:
-    default:
-        action = atoms.XdndActionCopy;
-        break;
-    }
-    response.data.data32[2] = action; // action
+    response.data.data32[2] = XdndEffect2Action(dwEffect); // action
     xcb_send_event(connection, false, hSource,
         XCB_EVENT_MASK_NO_EVENT, (const char*)&response);
 }
@@ -954,15 +938,13 @@ xcb_atom_t SConnection::clipFormat2Atom(UINT uFormat)
     switch (uFormat)
     {
     case CF_TEXT:
-        return atoms.UTF8_STRING;
+        return atoms.CLIPF_UTF8;
     case CF_UNICODETEXT:
-        return atoms.ATOM_CF_UNICODETEXT;
-    case CF_HDROP:
-        return atoms.ATOM_CF_HDROP;
+        return atoms.CLIPF_UNICODETEXT;
     case CF_BITMAP:
-        return atoms.ATOM_CF_BITMAP;
+        return atoms.CLIPF_BITMAP;
     case CF_WAVE:
-        return atoms.ATOM_CF_WAVE;
+        return atoms.CLIPF_WAVE;
     default:
         // for registered format
         if (uFormat > CF_MAX)
@@ -975,15 +957,13 @@ xcb_atom_t SConnection::clipFormat2Atom(UINT uFormat)
 
 uint32_t SConnection::atom2ClipFormat(xcb_atom_t atom)
 {
-    if (atom == atoms.UTF8_STRING)
+    if (atom == atoms.CLIPF_UTF8)
         return CF_TEXT;
-    else if (atom == atoms.ATOM_CF_UNICODETEXT)
+    else if (atom == atoms.CLIPF_UNICODETEXT)
         return CF_UNICODETEXT;
-    else if (atom == atoms.ATOM_CF_HDROP)
-        return CF_HDROP;
-    else if (atom == atoms.ATOM_CF_BITMAP)
+    else if (atom == atoms.CLIPF_BITMAP)
         return CF_BITMAP;
-    else if (atom == atoms.ATOM_CF_WAVE)
+    else if (atom == atoms.CLIPF_WAVE)
         return CF_WAVE;
     else
         return CF_MAX + atom; // for registed format
@@ -992,6 +972,26 @@ uint32_t SConnection::atom2ClipFormat(xcb_atom_t atom)
 std::shared_ptr<std::vector<char>> SConnection::readXdndSelection(uint32_t fmt)
 {
     return m_clipboard->getDataInFormat(atoms.XdndSelection,clipFormat2Atom(fmt));
+}
+
+void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
+{
+    if(GetCapture()==hWnd){
+        ReleaseCapture();
+    }
+    if (GetCaretInfo()->hOwner == hWnd) {
+		DestroyCaret();
+	}
+    if (hWnd == m_hFocus)
+    {
+        m_hFocus = 0;
+    }
+    if(m_hWndActive == hWnd){
+        m_hWndActive = 0;
+    }
+    m_wndCursor.erase(hWnd);
+    xcb_destroy_window(connection, hWnd);
+    xcb_flush(connection);
 }
 
 void SConnection::BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -1086,23 +1086,39 @@ UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC p
         timer.proc = proc;
         timer.elapse = uElapse;
         m_lstTimer.push_back(timer);
-        return newId;
+        return timer.id;
     }
 }
 
 BOOL SConnection::KillTimer(HWND hWnd, UINT_PTR id)
 {
-
+    BOOL bRet = FALSE;
     std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
     for (auto it = m_lstTimer.begin(); it != m_lstTimer.end(); it++)
     {
         if (it->hWnd == hWnd && it->id == id)
         {
             m_lstTimer.erase(it);
-            return TRUE;
+            bRet = TRUE;
+            break;
         }
     }
-    return FALSE;
+
+    if(bRet){
+        //remove timer from message queue.
+        auto it = m_msgQueue.begin();
+        while (it != m_msgQueue.end())
+        {
+            auto it2 = it++;
+            Msg *msg = *it2;
+            if (msg->hwnd == hWnd && msg->message == WM_TIMER && msg->wParam == id)
+            {
+                m_msgQueue.erase(it2);
+                delete msg;
+            }
+        }
+    }
+    return bRet;
 }
 
 HDC SConnection::GetDC()
@@ -1246,20 +1262,40 @@ end:
 }
 
 HCURSOR SConnection::GetCursor() {
-    return m_hCursor;
+    HWND hWnd = GetActiveWnd();
+    auto it = m_wndCursor.find(hWnd);
+    if(it == m_wndCursor.end())
+        return 0;
+    return it->second;
 }
 
 HCURSOR SConnection::SetCursor(HCURSOR cursor)
 {
+    HWND hWnd = GetActiveWnd();
+    if(!hWnd)
+        return cursor;
+    auto it = m_wndCursor.find(hWnd);
+    HCURSOR ret = 0;
+    if(it != m_wndCursor.end()){
+        ret = it->second;
+    }else if(cursor == it->second)
+    {
+        return cursor;
+    }
+    SetWindowCursor(hWnd,cursor);
+    return ret;
+}
+
+xcb_cursor_t SConnection::getXcbCursor(HCURSOR cursor)
+{
     if (!cursor)
         cursor = ::LoadCursor(nullptr,IDC_ARROW);
     assert(cursor);
-    if (cursor == m_hCursor)
-        return cursor;
     xcb_cursor_t xcbCursor = 0;
-    if (m_sysCursor.find(cursor) != m_sysCursor.end())
+    auto it = m_sysCursor.find(cursor);
+    if ( it!= m_sysCursor.end())
     {
-        xcbCursor = m_sysCursor[cursor];
+        xcbCursor = it->second;
     }
     else
     {
@@ -1269,19 +1305,32 @@ HCURSOR SConnection::SetCursor(HCURSOR cursor)
             SLOG_STMW()<<"create xcb cursor failed!";
             return 0;
         }
+        m_sysCursor.insert(std::make_pair(cursor, xcbCursor));
     }
-    HCURSOR ret = m_hCursor;
-    uint32_t val[] = { xcbCursor };
-    xcb_change_window_attributes(connection, m_hWndActive ? m_hWndActive : screen->root, XCB_CW_CURSOR, val);
-    m_hCursor = cursor;
-    return ret;
+    return xcbCursor;
 }
 
+BOOL SConnection::SetWindowCursor(HWND hWnd, HCURSOR cursor)
+{
+    auto it = m_wndCursor.find(hWnd);
+    if(it != m_wndCursor.end() && it->second == cursor)
+        return TRUE;
+    xcb_cursor_t xcbCursor = getXcbCursor(cursor);
+    if(!xcbCursor)
+        return FALSE;
+    uint32_t val[] = { xcbCursor };
+    xcb_change_window_attributes(connection, hWnd, XCB_CW_CURSOR, val);
+    m_wndCursor[hWnd]=cursor;//update window cursor
+    //SLOG_STMI()<<"SetWindowCursor, hWnd="<<hWnd<<" cursor="<<cursor<<" xcb cursor="<<xcbCursor;
+    return TRUE;
+}
 
 BOOL SConnection::DestroyCursor(HCURSOR cursor)
 {
-    if(m_hCursor == cursor)
-        return FALSE;
+    for(auto &it:m_wndCursor){
+        if(it.second == cursor)
+            return FALSE;
+    }
     // look for sys cursor
     auto it = m_sysCursor.find(cursor);
     if (it == m_sysCursor.end())
@@ -1321,26 +1370,17 @@ static WPARAM ButtonState2Mask(uint16_t state)
 
 HWND SConnection::GetActiveWnd() const
 {
-    if (m_hWndActive)
-        return m_hWndActive;
-    xcb_get_input_focus_cookie_t cookie = xcb_get_input_focus(connection);
-    xcb_get_input_focus_reply_t *reply = xcb_get_input_focus_reply(connection, cookie, nullptr);
-    if (reply)
-    {
-        HWND ret = reply->focus;
-        free(reply);
-        return ret;
-    }
-    return screen->root;
+    return m_hWndActive;
 }
 
 BOOL SConnection::SetActiveWindow(HWND hWnd)
 {
-    if (hWnd == 0)
-        return false;
+    if(m_hWndActive == hWnd)
+        return FALSE;
     HWND ret = m_hWndActive;
     SetFocus(hWnd);
     m_hWndActive = hWnd;
+    //SLOG_STMI()<<"SetActiveWindow hwnd="<<hWnd;
     return TRUE;
 }
 
@@ -1491,8 +1531,10 @@ HWND SConnection::GetForegroundWindow()
 
 BOOL SConnection::SetForegroundWindow(HWND hWnd)
 {
-    // todo:hjx
-    return SetActiveWindow(hWnd);
+        uint32_t values[] = { XCB_STACK_MODE_TOP_IF };
+        xcb_configure_window(connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
+        xcb_flush(connection);
+        return TRUE;
 }
 
 BOOL SConnection::SetWindowOpacity(HWND hWnd, BYTE byAlpha)
@@ -1616,6 +1658,17 @@ DWORD SConnection::XdndAction2Effect(xcb_atom_t action)
     }
 }
 
+xcb_atom_t SConnection::XdndEffect2Action(DWORD dwEffect){
+    xcb_atom_t action = XCB_NONE;
+    if(dwEffect & DROPEFFECT_MOVE)
+        action = atoms.XdndActionMove;
+    else if(dwEffect & DROPEFFECT_LINK)
+        action = atoms.XdndActionCopy;
+    else if(dwEffect & DROPEFFECT_COPY)
+        action = atoms.XdndActionCopy;
+    return action;
+}
+
 bool SConnection::pushEvent(xcb_generic_event_t *event)
 {
     uint8_t event_code = event->response_type & 0x7f;
@@ -1675,7 +1728,9 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->message = vk < VK_NUMLOCK ? WM_KEYDOWN : WM_SYSKEYDOWN;
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
-        pMsg->lParam = scanCode << 16 | m_keyboard->getRepeatCount();
+        uint32_t tst = (scanCode << 16);
+        int cn = m_keyboard->getRepeatCount();
+        pMsg->lParam = (scanCode << 16) | m_keyboard->getRepeatCount();
         //SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
         break;
     }
@@ -1713,6 +1768,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsgPaint->message = WM_PAINT;
         pMsgPaint->wParam = 0;
         pMsgPaint->lParam = (LPARAM)pMsgPaint->rgn;
+        pMsgPaint->time = GetTickCount64();
         pMsg = pMsgPaint;
         break;
     }
@@ -1841,14 +1897,6 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg->wParam = e2->data.data32[0];
             pMsg->lParam = 0;
         }
-        else if (e2->type == atoms._NET_WM_STATE_DEMANDS_ATTENTION)
-        {
-            pMsg = new Msg;
-            pMsg->message = WM_ENABLE;
-            pMsg->hwnd = e2->window;
-            pMsg->wParam = e2->data.data32[0];
-            pMsg->lParam = 0;
-        }
         else if (e2->type == atoms.XdndEnter) {
             WndObj wndObj = WndMgr::fromHwnd(e2->window);
             if (!wndObj)
@@ -1860,33 +1908,8 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             int version = (int)(e2->data.data32[1] >> 24);
             if (version > SDragDrop::xdnd_version)
                 break;
-            SDataObjectProxy* pData = new SDataObjectProxy(this,pMsg2->hFrom);
-            if (e2->data.data32[1] & 1) {
-                xcb_get_property_cookie_t cookie = xcb_get_property(connection, false, pMsg2->hFrom,
-                    atoms.XdndTypelist, XCB_ATOM_ATOM,
-                    0, SDragDrop::xdnd_max_type);
-                xcb_get_property_reply_t* reply = xcb_get_property_reply(connection, cookie, 0);
-                if (reply && reply->type != XCB_NONE && reply->format == 32) {
-                    int length = xcb_get_property_value_length(reply) / 4;
-                    if (length > SDragDrop::xdnd_max_type)
-                        length = SDragDrop::xdnd_max_type;
-
-                    xcb_atom_t* atoms = (xcb_atom_t*)xcb_get_property_value(reply);
-                    pData->getTypeList().resize(length);
-                    for (int i = 0; i < length; ++i)
-                        pData->getTypeList()[i]= atom2ClipFormat(atoms[i]);
-                }
-                free(reply);
-            }
-            else {
-                for (int i = 2; i < 5; i++) {
-                    if (e2->data.data32[i]) {
-                        uint32_t cf = atom2ClipFormat(e2->data.data32[i]);
-                        if(cf)
-                            pData->getTypeList().push_back(cf);
-                    }
-                }
-            }
+            SDataObjectProxy* pData = new SDataObjectProxy(this,pMsg2->hFrom,e2->data.data32);
+            SLOG_STMI()<<"####drag enter, init dragData";
             wndObj->dragData = pData;
 
             POINT pt;
@@ -1920,8 +1943,8 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg2->hFrom = e2->data.data32[0];
             pMsg2->dwKeyState = e2->data.data32[1];
             pMsg2->supported_actions = XdndAction2Effect(e2->data.data32[4]) | DROPEFFECT_COPY; // only one action is transfered from source, combine copy operation.
-            pMsg2->DragOverData::pt.x = GET_X_LPARAM(e2->data.data32[2]);
-            pMsg2->DragOverData::pt.y = GET_Y_LPARAM(e2->data.data32[2]);
+            pMsg2->DragOverData::pt.x = HIWORD(e2->data.data32[2]);
+            pMsg2->DragOverData::pt.y = LOWORD(e2->data.data32[2]);
             pMsg = pMsg2;
         }
         else if (e2->type == atoms.XdndLeave) {
@@ -1937,8 +1960,6 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg2->message = UM_XDND_DRAG_DROP;
             pMsg2->hFrom = e2->data.data32[0];
             pMsg2->wParam = e2->data.data32[4];
-            pMsg2->DragEnterData::pt.x = GET_X_LPARAM(e2->data.data32[2]);
-            pMsg2->DragEnterData::pt.y = GET_Y_LPARAM(e2->data.data32[2]);
             pMsg = pMsg2;
         }
         else if (e2->type == atoms.XdndFinished) {
@@ -1960,6 +1981,9 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_BUTTON_PRESS:
     {
         xcb_button_press_event_t *e2 = (xcb_button_press_event_t *)event;
+        if(!IsWindowEnabled(e2->event)){
+            break;
+        }
         m_tsSelection = e2->time;
         if (e2->detail >= XCB_BUTTON_INDEX_1 && e2->detail <= XCB_BUTTON_INDEX_3)
         {
@@ -1971,7 +1995,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             {
                 MapWindowPoints(e2->event,m_hWndCapture,&pMsg->pt,1);
                 pMsg->hwnd=m_hWndCapture;
-            }
+            } 
             pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
             switch (e2->detail)
             {
@@ -2024,6 +2048,9 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_BUTTON_RELEASE:
     {
         xcb_button_release_event_t *e2 = (xcb_button_release_event_t *)event;
+        if(!IsWindowEnabled(e2->event)){
+            break;
+        }
         if (e2->detail >= XCB_BUTTON_INDEX_1 && e2->detail <= XCB_BUTTON_INDEX_3)
         {
             pMsg = new Msg;
@@ -2060,18 +2087,34 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_MOTION_NOTIFY:
     {
         xcb_motion_notify_event_t *e2 = (xcb_motion_notify_event_t *)event;
+        if(!IsWindowEnabled(e2->event)){
+            break;
+        }
+        //remove old mouse move
+        static const int16_t kMinPosDiff = 3;
+        WPARAM wp = ButtonState2Mask(e2->state);
+        std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+        for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++) {
+            if ((*it)->message == WM_MOUSEMOVE && (*it)->hwnd == e2->event && (*it)->wParam == wp)
+            {
+                int16_t diff = abs((*it)->pt.x-e2->event_x)+abs((*it)->pt.y-e2->event_y);
+                if(diff <= kMinPosDiff){
+                    m_msgQueue.erase(it);
+                    break;
+                }
+            }
+        }
         pMsg = new Msg;
         pMsg->hwnd = e2->event;
         pMsg->message = WM_MOUSEMOVE;
-        pMsg->pt.x = e2->event_x;
-        pMsg->pt.y = e2->event_y;
+        POINT pt ={e2->event_x,e2->event_y};
         if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
         {
-            MapWindowPoints(e2->event,m_hWndCapture,&pMsg->pt,1);
+            MapWindowPoints(e2->event,m_hWndCapture,&pt,1);
             pMsg->hwnd=m_hWndCapture;
         }
-        pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
-        pMsg->wParam = ButtonState2Mask(e2->state);
+        pMsg->lParam = MAKELPARAM(pt.x, pt.y);
+        pMsg->wParam = wp;
         pMsg->time = e2->time;
         break;
     }

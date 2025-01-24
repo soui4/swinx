@@ -1025,37 +1025,6 @@ typedef struct tagMONITORINFO
 #define IDC_APPSTARTING MAKEINTRESOURCE(32650) /*not in win3.1 */
 #define IDC_HELP        MAKEINTRESOURCE(32651)
 
-#define WH_MIN             (-1)
-#define WH_MSGFILTER       (-1)
-#define WH_JOURNALRECORD   0
-#define WH_JOURNALPLAYBACK 1
-#define WH_KEYBOARD        2
-#define WH_GETMESSAGE      3
-#define WH_CALLWNDPROC     4
-#define WH_CBT             5
-#define WH_SYSMSGFILTER    6
-#define WH_MOUSE           7
-#if defined(_WIN32_WINDOWS)
-#define WH_HARDWARE 8
-#endif
-#define WH_DEBUG          9
-#define WH_SHELL          10
-#define WH_FOREGROUNDIDLE 11
-#if (WINVER >= 0x0400)
-#define WH_CALLWNDPROCRET 12
-#endif /* WINVER >= 0x0400 */
-
-#if (_WIN32_WINNT >= 0x0400)
-#define WH_KEYBOARD_LL 13
-#define WH_MOUSE_LL    14
-#define WH_MAX         14
-#else
-#define WH_MAX 12
-#endif // (_WIN32_WINNT >= 0x0400)
-
-#define WH_MINHOOK WH_MIN
-#define WH_MAXHOOK WH_MAX
-
 /*
  * EVENT DEFINITION
  */
@@ -1097,24 +1066,18 @@ typedef struct tagMONITORINFO
 #define MSGF_DDEMGR     0x8001
 
 /* Hook values */
-#define WH_MIN             (-1)
-#define WH_MSGFILTER       (-1)
-#define WH_JOURNALRECORD   0
-#define WH_JOURNALPLAYBACK 1
-#define WH_KEYBOARD        2
-#define WH_GETMESSAGE      3
-#define WH_CALLWNDPROC     4
-#define WH_CBT             5
-#define WH_SYSMSGFILTER    6
-#define WH_MOUSE           7
-#define WH_HARDWARE        8
-#define WH_DEBUG           9
-#define WH_SHELL           10
-#define WH_FOREGROUNDIDLE  11
-#define WH_CALLWNDPROCRET  12
-#define WH_KEYBOARD_LL     13
-#define WH_MOUSE_LL        14
-#define WH_MAX             14
+    enum
+    {
+        WH_MIN = 0,
+        WH_MSGFILTER = 0,
+        WH_KEYBOARD,
+        WH_GETMESSAGE,
+        WH_CALLWNDPROC,
+        WH_SYSMSGFILTER,
+        WH_MOUSE,
+        WH_CALLWNDPROCRET,
+        WH_MAX,
+    };
 
 #define WH_MINHOOK WH_MIN
 #define WH_MAXHOOK WH_MAX
@@ -1127,6 +1090,45 @@ typedef struct tagMONITORINFO
 #define HC_NOREM       HC_NOREMOVE
 #define HC_SYSMODALON  4
 #define HC_SYSMODALOFF 5
+
+
+
+    /* Mouse hook structure */
+typedef struct
+{
+    POINT pt;
+    HWND  hwnd;
+    UINT  wHitTestCode;
+    ULONG_PTR dwExtraInfo;
+} MOUSEHOOKSTRUCT, *PMOUSEHOOKSTRUCT, *LPMOUSEHOOKSTRUCT;
+
+typedef struct
+{
+    struct { /* MOUSEHOOKSTRUCT */
+        POINT pt;
+        HWND  hwnd;
+        UINT  wHitTestCode;
+        ULONG_PTR dwExtraInfo;
+    } DUMMYSTRUCTNAME;
+    DWORD mouseData;
+} MOUSEHOOKSTRUCTEX, *PMOUSEHOOKSTRUCTEX, *LPMOUSEHOOKSTRUCTEX;
+
+typedef struct
+{
+    LPARAM lParam;
+    WPARAM wParam;
+    UINT message;
+    HWND hwnd;
+} CWPSTRUCT, *PCWPSTRUCT, *LPCWPSTRUCT;
+
+typedef struct
+{
+    LRESULT lResult;
+    LPARAM lParam;
+    WPARAM wParam;
+    DWORD message;
+    HWND hwnd;
+} CWPRETSTRUCT, *PCWPRETSTRUCT, *LPCWPRETSTRUCT;
 
 #define MB_OK               0x00000000L
 #define MB_OKCANCEL         0x00000001L
@@ -1847,7 +1849,7 @@ typedef NMHDR FAR* LPNMHDR;
 #define CF_UNICODETEXT      13
 #define CF_ENHMETAFILE      14
 #if(WINVER >= 0x0400)
-#define CF_HDROP            15
+#define CF_HDROP            CF_TEXT 
 #define CF_LOCALE           16
 #endif /* WINVER >= 0x0400 */
 #if(WINVER >= 0x0500)

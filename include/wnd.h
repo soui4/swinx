@@ -235,7 +235,7 @@ extern "C"
 
     uint64_t GetTickCount64();
 
-    typedef VOID(CALLBACK *TIMERPROC)(HWND, UINT, UINT_PTR, DWORD);
+    typedef VOID(CALLBACK *TIMERPROC)(HWND hwnd, UINT msg, UINT_PTR timerId, DWORD ts);
 
     UINT_PTR
     SetTimer(HWND hWnd, UINT_PTR nIDEvent, UINT uElapse, TIMERPROC lpTimerFunc);

@@ -4,6 +4,8 @@
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "handle.h"
 #include "tostring.hpp"
 #include "debug.h"
@@ -561,6 +563,20 @@ DWORD WINAPI GetCurrentDirectoryW(
         return 0;
     memcpy(lpBuffer, wpath.c_str(), (wpath.length() + 1)*sizeof(wchar_t));
     return wpath.length() + 1;
+}
+
+BOOL CreateDirectoryA(LPCSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
+{
+    mode_t mode = 0755;
+    return mkdir(lpPathName, mode);
+}
+
+BOOL CreateDirectoryW(LPCWSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
+{
+    char szPath[MAX_PATH];
+    if (0 == WideCharToMultiByte(CP_UTF8, 0, lpPathName, -1, szPath, MAX_PATH, nullptr, nullptr))
+        return FALSE;
+    return CreateDirectoryA(szPath, lpSecurityAttributes);
 }
 
 /* info structure for FindFirstFile handle */

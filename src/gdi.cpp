@@ -373,19 +373,68 @@ static void ApplyRop2(cairo_t* cr, int rop2) {
     switch (rop2) {
     case R2_BLACK:
         cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+        cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
         break;
     case R2_WHITE: 
         cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+        cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
         break;
     case R2_NOT:
+    case DSTINVERT:
         cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
-        cairo_set_operator(cr, CAIRO_OPERATOR_DIFFERENCE);       
+        cairo_set_operator(cr, CAIRO_OPERATOR_DIFFERENCE);
         break;
     case R2_NOP:
         cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 0.0);
+        cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
         break;
     case R2_COPYPEN:
+    case SRCCOPY:
         //default, do nothing
+        cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
+        break;
+    case R2_EXT_OVER:
+        cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+        break;
+    case R2_EXT_IN:
+        cairo_set_operator(cr, CAIRO_OPERATOR_IN);
+        break;
+    case R2_EXT_OUT:
+        cairo_set_operator(cr, CAIRO_OPERATOR_OUT);
+        break;
+    case R2_EXT_ATOP:
+        cairo_set_operator(cr, CAIRO_OPERATOR_ATOP);
+        break;
+    case R2_EXT_DEST:
+        cairo_set_operator(cr, CAIRO_OPERATOR_DEST);
+        break;
+    case R2_EXT_DEST_OVER:
+        cairo_set_operator(cr, CAIRO_OPERATOR_DEST_OVER);
+        break;
+    case R2_EXT_DEST_IN:
+        cairo_set_operator(cr, CAIRO_OPERATOR_DEST_IN);
+        break;
+    case R2_EXT_DEST_OUT:
+        cairo_set_operator(cr, CAIRO_OPERATOR_DEST_OUT);
+        break;
+    case R2_EXT_DEST_ATOP:
+        cairo_set_operator(cr, CAIRO_OPERATOR_DEST_ATOP);
+        break;
+    case R2_EXT_XOR:
+        cairo_set_operator(cr, CAIRO_OPERATOR_XOR);
+        break;
+    case SRCAND:
+    case R2_EXT_ADD:
+        cairo_set_operator(cr, CAIRO_OPERATOR_ADD);
+        break;
+    case R2_EXT_SATURATE:
+        cairo_set_operator(cr, CAIRO_OPERATOR_SATURATE);
+        break;
+    case SRCINVERT:
+        cairo_set_operator(cr, CAIRO_OPERATOR_DIFFERENCE);
+        break;
+    case R2_EXT_CLEAR:
+        cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
         break;
     default:
         printf("not supported rop2: %d\n", rop2);
@@ -514,6 +563,8 @@ int GetObjectA(HGDIOBJ h, int c, LPVOID pv)
             BITMAP *bm = (BITMAP *)pv;
             cairo_surface_t *pixmap = (cairo_surface_t *)h->ptr;
             cairo_format_t fmt = cairo_image_surface_get_format(pixmap);
+            if(fmt == CAIRO_FORMAT_INVALID)
+                return 0;
             bm->bmWidth = cairo_image_surface_get_width(pixmap);
             bm->bmHeight = cairo_image_surface_get_height(pixmap);
             bm->bmPlanes = 1;
@@ -1116,7 +1167,8 @@ BOOL AlphaBlend(HDC hdc, int x, int y, int wDst, int hDst, HDC hdcSrc, int x1, i
     cairo_scale(hdc->cairo, scale_x, scale_y);
 
     cairo_set_source_surface(hdc->cairo, src, -x1, -y1);
-    cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_OVER);
+    ApplyRop2(hdc->cairo, hdc->rop2);
+    //cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_OVER);
     if (ftn.SourceConstantAlpha != 255)
         cairo_paint_with_alpha(hdc->cairo, ftn.SourceConstantAlpha * 1.0 / 255.0);
     else
@@ -1141,11 +1193,12 @@ static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, cairo_surfac
     cairo_scale(hdc->cairo, scale_x, scale_y);
 
     cairo_pattern_t * pattern = cairo_pattern_create_for_surface(src);
-    cairo_filter_t filter = CAIRO_FILTER_FAST;
+    cairo_filter_t filter;
     switch(filterLevel){
-        case FILTER_FAST: filter = CAIRO_FILTER_GOOD;break;
-        case FILTER_MIDIUM: filter = CAIRO_FILTER_BEST;break;
-        case FILTER_BEST: filter = CAIRO_FILTER_BILINEAR;break;
+        case FILTER_FAST: filter = CAIRO_FILTER_BEST ;break;
+        case FILTER_MIDIUM: filter = CAIRO_FILTER_GOOD ;break;
+        case FILTER_BEST: filter =  CAIRO_FILTER_BILINEAR ;break;
+        default :filter = CAIRO_FILTER_FAST;break;
     }
     cairo_pattern_set_filter(pattern,filter);
     cairo_matrix_t mtx;
@@ -1153,7 +1206,7 @@ static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, cairo_surfac
     cairo_pattern_set_matrix(pattern,&mtx);
     cairo_set_source(hdc->cairo, pattern);
     
-    cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_OVER);
+    ApplyRop2(hdc->cairo, hdc->rop2);
     if (ftn.SourceConstantAlpha != 255)
         cairo_paint_with_alpha(hdc->cairo, ftn.SourceConstantAlpha * 1.0 / 255.0);
     else
@@ -2286,7 +2339,7 @@ HGDIOBJ GetStockObject(int i)
     case DEFAULT_GUI_FONT:
     {
         static LOGFONT lf = { 0 };
-        strcpy(lf.lfFaceName, "Noto");
+        strcpy(lf.lfFaceName, "宋体");
         lf.lfHeight = 20;
         lf.lfWeight = 400;
         static _Handle font(OBJ_FONT, &lf, nullptr);
@@ -2898,8 +2951,7 @@ BOOL DrawIconEx(HDC hDC, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWi
         cxWidth = bm.bmWidth;
     if (cyWidth < 0)
         cyWidth = bm.bmHeight;
-    // DumpBmp(hIcon->hbmColor,"/home/flyhigh/snapshot/drawicon-src.png");
-    // DumpBmp(hDC->bmp,"/home/flyhigh/snapshot/drawicon-dst-before.png");
+
     HDC memdc = CreateCompatibleDC(hDC);
     HGDIOBJ oldBmp = SelectObject(memdc, hIcon->hbmColor);
     BLENDFUNCTION bf;
@@ -2908,7 +2960,6 @@ BOOL DrawIconEx(HDC hDC, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWi
     AlphaBlend(hDC, xLeft, yTop, cxWidth, cyWidth, memdc, 0, 0, bm.bmWidth, bm.bmHeight, bf);
     SelectObject(memdc, oldBmp);
     DeleteDC(memdc);
-    // DumpBmp(hDC->bmp,"/home/flyhigh/snapshot/drawicon-dst-after.png");
 
     return TRUE;
 }

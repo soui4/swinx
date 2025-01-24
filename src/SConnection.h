@@ -40,6 +40,8 @@ struct ISelectionListener {
 
 class SKeyboard;
 class SClipboard;
+class _Window;
+
 class SConnection {
     friend class SClipboard;
   public:
@@ -105,7 +107,6 @@ class SConnection {
     HWND SetCapture(HWND hCapture);
     BOOL ReleaseCapture();
     HWND GetCapture() const;
-
     HCURSOR SetCursor(HCURSOR cursor);
     HCURSOR GetCursor();
     //HCURSOR LoadCursor(LPCSTR pszName);
@@ -207,6 +208,7 @@ public:
       xcb_atom_t clipFormat2Atom(UINT uFormat);
       uint32_t atom2ClipFormat(xcb_atom_t atom);
       std::shared_ptr< std::vector<char>> readXdndSelection(uint32_t fmt);
+      void OnWindowDestroy(HWND hWnd,_Window *wnd);
   public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);
@@ -241,12 +243,16 @@ public:
 
     DWORD XdndAction2Effect(xcb_atom_t action);
 
+    xcb_atom_t XdndEffect2Action(DWORD dwEffect);
+
     bool pushEvent(xcb_generic_event_t *e);
 
     static void *readProc(void *p);
     void _readProc();
 
     void updateWorkArea();
+    xcb_cursor_t getXcbCursor(HCURSOR cursor);
+    BOOL SetWindowCursor(HWND hWnd,HCURSOR cursor);
   private:
     std::mutex m_mutex4Evt;
     std::list<xcb_generic_event_t *> m_evtQueue;
@@ -268,17 +274,16 @@ public:
     std::list<TimerInfo> m_lstTimer;
     bool m_bBlockTimer;
     uint64_t m_tsLastMsg=-1;
-
+    uint64_t m_tsLastPaint=-1;
     HDC m_deskDC;
     HBITMAP m_deskBmp;
 
     HWND m_hWndCapture;
-    HCURSOR m_hCursor;
 
     HWND m_hWndActive;
     HWND m_hFocus;
     std::map<HCURSOR, xcb_cursor_t> m_sysCursor;
-
+    std::map<HWND,HCURSOR>          m_wndCursor;
     SKeyboard *m_keyboard;
     SClipboard* m_clipboard;
     STrayIconMgr* m_trayIconMgr;

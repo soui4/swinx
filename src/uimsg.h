@@ -328,9 +328,18 @@ struct IpcMsg : Msg
     }
 };
 
+struct CallHookData
+{
+    HOOKPROC proc;
+    UINT code;
+    WPARAM wp;
+    LPARAM lp;
+};
+
 enum {
     UM_STATE = (WM_INTERNAL + 1),
     UM_MAPNOTIFY,
+    UM_CALLHOOK,
     UM_XDND_DRAG_ENTER=0x400,
     UM_XDND_DRAG_OVER,
     UM_XDND_DRAG_LEAVE,
@@ -354,8 +363,14 @@ struct DragEnterMsg : Msg , DragEnterData {
     ~DragEnterMsg() {
     }
 };
-typedef struct DragEnterData DragDropData;
-typedef struct DragEnterMsg DragDropMsg;
+
+struct DragDropData : DragBase{};
+
+struct DragDropMsg : Msg, DragDropData{
+    DragDropMsg(){
+        lParam = (LPARAM)(DragDropData*)this;
+    }
+};
 
 struct DragOverData : DragBase {
     POINTL pt;
