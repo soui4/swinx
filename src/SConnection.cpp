@@ -974,7 +974,7 @@ std::shared_ptr<std::vector<char>> SConnection::readXdndSelection(uint32_t fmt)
     return m_clipboard->getDataInFormat(atoms.XdndSelection,clipFormat2Atom(fmt));
 }
 
-void SConnection::OnWindowDestroy(HWND hWnd)
+void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
 {
     if(GetCapture()==hWnd){
         ReleaseCapture();
@@ -982,10 +982,16 @@ void SConnection::OnWindowDestroy(HWND hWnd)
     if (GetCaretInfo()->hOwner == hWnd) {
 		DestroyCaret();
 	}
+    if (hWnd == m_hFocus)
+    {
+        m_hFocus = 0;
+    }
     if(m_hWndActive == hWnd){
         m_hWndActive = 0;
     }
     m_wndCursor.erase(hWnd);
+    xcb_destroy_window(connection, hWnd);
+    xcb_flush(connection);
 }
 
 void SConnection::BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)

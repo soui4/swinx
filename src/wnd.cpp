@@ -1004,11 +1004,8 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
     }
 }
 
-static BOOL ActiveWindow(HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
+static BOOL ActiveWindow(WndObj &wndObj,HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
 {
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return FALSE;
     if (wndObj->dwStyle & WS_CHILD)
     {
         do
@@ -1080,6 +1077,18 @@ static BOOL CALLBACK Enum4DestroyOwned(HWND hwnd, LPARAM lParam) {
         DestroyWindow(hwnd);
     }
     return TRUE;
+}
+
+static LRESULT CallWindowObjProc(WndObj &wndObj,WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
+{
+    assert(wndObj);
+    if (wndObj->bDestroyed)
+        return -1;
+    LRESULT ret = 0;
+    LONG cLock = wndObj->FreeLock();
+    ret = proc(hWnd, msg, wp, lp);
+    wndObj->RestoreLock(cLock);
+    return ret;
 }
 
 static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -1181,13 +1190,13 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 	case WM_MBUTTONDBLCLK:
 	case WM_RBUTTONDBLCLK:
 	{
-		bSkipMsg = ActiveWindow(hWnd, TRUE, msg, wndObj->htCode);
+		bSkipMsg = ActiveWindow(wndObj,hWnd, TRUE, msg, wndObj->htCode);
 		if (!bSkipMsg && GetCapture() != hWnd) {
 			POINT pt = { GET_X_LPARAM(lp),GET_Y_LPARAM(lp) };
 			RECT rcClient;
 			GetClientRect(hWnd, &rcClient);
 			if (!PtInRect(&rcClient, pt)) {
-				CallWindowProcPriv(proc, hWnd, msg + WM_NCLBUTTONDOWN - WM_LBUTTONDOWN, wp, lp);
+                CallWindowObjProc(wndObj,proc, hWnd, msg + WM_NCLBUTTONDOWN - WM_LBUTTONDOWN, wp, lp);
 				bSkipMsg = TRUE;
 			}
 		}
@@ -1206,16 +1215,16 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			int oldHtCode = wndObj->htCode;
 			wndObj->htCode = htCode;
 			if (htCode != HTCLIENT && oldHtCode == HTCLIENT) {
-				CallWindowProcPriv(proc, hWnd, WM_NCMOUSEHOVER, htCode, MAKELPARAM(pt.x, pt.y));
+                CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSEHOVER, htCode, MAKELPARAM(pt.x, pt.y));
 				bSkipMsg = TRUE;
 			}
 			if (htCode == HTCLIENT && oldHtCode != HTCLIENT) {
-				CallWindowProcPriv(proc, hWnd, WM_NCMOUSELEAVE, htCode, MAKELPARAM(pt.x, pt.y));
+                CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSELEAVE, htCode, MAKELPARAM(pt.x, pt.y));
 				bSkipMsg = TRUE;
 			}
 		}
 		else if (htCode != HTCLIENT) {
-			CallWindowProcPriv(proc, hWnd, WM_NCMOUSEMOVE, htCode, MAKELPARAM(pt.x, pt.y));
+            CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSEMOVE, htCode, MAKELPARAM(pt.x, pt.y));
 			bSkipMsg = TRUE;
 		}
 	}
@@ -1249,7 +1258,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 		if (wndObj->htCode != HTCLIENT) {
 			POINT pt;
 			wndObj->mConnection->GetCursorPos(&pt);
-			CallWindowProcPriv(proc, hWnd, WM_NCMOUSELEAVE, HTNOWHERE, MAKELPARAM(pt.x, pt.y));
+            CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSELEAVE, HTNOWHERE, MAKELPARAM(pt.x, pt.y));
 		}
 		wndObj->htCode = HTNOWHERE;
 		if (!wndObj->hoverInfo.uHoverState != HS_Leave)
@@ -1276,7 +1285,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			if (isHover && wndObj->hoverInfo.uHoverState == HS_HoverDelay)
 			{
 				ScreenToClient(hWnd, &ptCursor);
-				CallWindowProcPriv(proc, hWnd, WM_MOUSEHOVER, 0, MAKELPARAM(ptCursor.x, ptCursor.y)); // delay send mouse hover
+                CallWindowObjProc(wndObj, proc, hWnd, WM_MOUSEHOVER, 0, MAKELPARAM(ptCursor.x, ptCursor.y)); // delay send mouse hover
 			}
 			bSkipMsg = TRUE;
 		}
@@ -1314,7 +1323,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 		wndObj->nPainting++;
 		if (wndObj->invalid.bErase || lp != 0)
 		{
-			CallWindowProcPriv(proc, hWnd, WM_ERASEBKGND, (WPARAM)hdc, 0);
+            CallWindowObjProc(wndObj, proc, hWnd, WM_ERASEBKGND, (WPARAM)hdc, 0);
 			wndObj->invalid.bErase = FALSE;
 		}
 		ReleaseDC(hWnd, hdc);
@@ -1332,7 +1341,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 		case SIZE_RESTORED:
 			wndObj->state = WS_Normal;
 			lp = MAKELPARAM(wndObj->rc.right - wndObj->rc.left, wndObj->rc.bottom - wndObj->rc.top);
-			CallWindowProcPriv(proc, hWnd, WM_SIZE, 0, lp); // call size again
+            CallWindowObjProc(wndObj, proc, hWnd, WM_SIZE, 0, lp); // call size again
 			break;
 		}
 		return 1;
@@ -1369,7 +1378,6 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			lp2 = MAKELPARAM(pt.x, pt.y);
 		}
         UINT htCode = wndObj->htCode;
-        wndObj = WndObj(nullptr);//release lock
         if (msg >= WM_KEYFIRST && msg <= WM_KEYLAST)
         {//call keyboard hook
             bSkipMsg = CallHook(WH_KEYBOARD,HC_ACTION,wp,lp);
@@ -1392,7 +1400,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             bSkipMsg = CallHook(WH_CALLWNDPROC, HC_ACTION, 0, (LPARAM)&st);
         }
 		if(!bSkipMsg) 
-            ret = proc(hWnd, msg, wp, lp2);
+            ret = CallWindowObjProc(wndObj,proc,hWnd, msg, wp, lp2);
         {
             CWPRETSTRUCT st;
             st.hwnd = hWnd;
@@ -1402,7 +1410,6 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             st.lResult = ret;
             CallHook(WH_CALLWNDPROCRET, HC_ACTION, 0, (LPARAM)&st);
         }
-        wndObj = WndMgr::fromHwnd(hWnd);//lock again
 		if (msg == WM_PAINT) {
 			if (wndObj->bCaretVisible) {
 				_DrawCaret(hWnd, wndObj);
@@ -1430,18 +1437,12 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			DestroyWindow(hChild);
 			hChild = GetWindow(hWnd, GW_CHILDLAST);
 		}
-        wndObj->mConnection->OnWindowDestroy(hWnd);
-		
-		CallWindowProcPriv(proc, hWnd, WM_NCDESTROY, 0, 0);
-	}
-	else if (msg == WM_NCDESTROY)
-	{
-		wndObj->bDestroyed = TRUE;
-	}
+		CallWindowObjProc(wndObj, proc, hWnd, WM_NCDESTROY, 0, 0);
+        wndObj->bDestroyed = TRUE;
+    }
 	if (0 == --wndObj->msgRecusiveCount && wndObj->bDestroyed)
 	{
-		xcb_destroy_window(wndObj->mConnection->connection, hWnd);
-		xcb_flush(wndObj->mConnection->connection);
+        wndObj->mConnection->OnWindowDestroy(hWnd, wndObj.data());
 		WndMgr::freeWindow(hWnd);
 	}
 	return ret;
@@ -1678,7 +1679,7 @@ void PostQuitMessage(int nExitCode)
     PostThreadMessage(GetCurrentThreadId(), WM_QUIT, nExitCode, 0);
 }
 
-BOOL _SendMessageCallback(BOOL bWideChar, HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam, SENDASYNCPROC lpCallBack, ULONG_PTR dwData)
+static BOOL _SendMessageCallback(BOOL bWideChar, HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam, SENDASYNCPROC lpCallBack, ULONG_PTR dwData)
 {
     SConnection *connCur = SConnMgr::instance()->getConnection(GetCurrentThreadId());
     if (!connCur) // current thread must be a ui thread.
@@ -2142,7 +2143,8 @@ BOOL EnableWindow(HWND hWnd, BOOL bEnable)
 HWND SetActiveWindow(HWND hWnd)
 {
     HWND hRet = GetActiveWindow();
-    ActiveWindow(hWnd, FALSE, 0, 0);
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    ActiveWindow(wndObj,hWnd, FALSE, 0, 0);
     return hRet;
 }
 

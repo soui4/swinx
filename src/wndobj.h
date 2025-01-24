@@ -45,10 +45,53 @@ struct ScrollBar : SCROLLINFO {
 #define DEF_HOVER_DELAY 5          // hover delay 5ms
 #define CR_INVALID      0x00ffffff // RGBA(255,255,255,0)
 
-class _Window
-{
+class CountMutex : public std::recursive_mutex {
+    LONG cLock;
+  public:
+    CountMutex()
+        : cLock(0)
+    {
+    }
+    virtual void Lock()
+    {
+        std::recursive_mutex::lock();
+        cLock++;
+    }
+    virtual void Unlock()
+    {
+        cLock--;
+        std::recursive_mutex::unlock();
+    }
+
+    LONG getLockCount() const
+    {
+        return cLock;
+    }
+
+    LONG FreeLock()
+    {
+        LONG ret = cLock;
+        while (cLock > 0)
+        {
+            std::recursive_mutex::unlock();
+            cLock--;
+        }
+        return ret;
+    }
+
+    void RestoreLock(LONG preLock)
+    {
+        while (cLock < preLock)
+        {
+            std::recursive_mutex::lock();
+            cLock++;
+        }
+    }
+};
+
+
+class _Window : public CountMutex {
 private:
-    std::recursive_mutex mutex;
     LONG cRef;
 public:
     UINT_PTR objOpaque;    
@@ -98,15 +141,6 @@ public:
     _Window(size_t extraLen);
     ~_Window();
 
-    void Lock() {
-        AddRef();
-        mutex.lock();
-    }
-
-    void Unlock() {
-        mutex.unlock();
-        Release();
-    }
     LONG AddRef() {
         return InterlockedIncrement(&cRef);
     }
@@ -118,14 +152,29 @@ public:
         }
         return ret;
     }
+
+    virtual void Lock()
+    {
+        CountMutex::Lock();
+        AddRef();
+    }
+    virtual void Unlock()
+    {
+        CountMutex::Unlock();
+        Release();
+    }
 };
 
 class WndObj {
     friend class WndMgr;
 public:
-    WndObj(_Window* pWnd);
     WndObj(const WndObj& src);
     ~WndObj();
+
+    _Window *data()
+    {
+        return wnd;
+    }
 
     _Window* operator->()
     {
@@ -144,6 +193,7 @@ public:
 
     void operator = (const WndObj& src);
 private:
+    WndObj(_Window *pWnd);
 
     _Window* wnd;
 };

@@ -40,6 +40,8 @@ struct ISelectionListener {
 
 class SKeyboard;
 class SClipboard;
+class _Window;
+
 class SConnection {
     friend class SClipboard;
   public:
@@ -206,7 +208,7 @@ public:
       xcb_atom_t clipFormat2Atom(UINT uFormat);
       uint32_t atom2ClipFormat(xcb_atom_t atom);
       std::shared_ptr< std::vector<char>> readXdndSelection(uint32_t fmt);
-      void OnWindowDestroy(HWND hWnd);
+      void OnWindowDestroy(HWND hWnd,_Window *wnd);
   public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);
