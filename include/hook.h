@@ -1,4 +1,4 @@
-#ifndef _HOOK_H_
+﻿#ifndef _HOOK_H_
 #define _HOOK_H_
 
 #ifdef __cplusplus
@@ -28,6 +28,14 @@ extern "C"
 #define SetWindowsHookEx SetWindowsHookExA
 #define SetWindowsHook   SetWindowsHookA
 #endif//UNICODE
+
+#ifdef UNICODE
+#define SetWindowsHook   SetWindowsHookW
+#define SetWindowsHookEx SetWindowsHookExW
+#else
+#define SetWindowsHook   SetWindowsHookA
+#define SetWindowsHookEx SetWindowsHookExA
+#endif // UNICODE
 
 #ifdef __cplusplus
 }
