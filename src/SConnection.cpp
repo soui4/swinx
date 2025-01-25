@@ -740,7 +740,8 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             
         }
         memcpy(pMsg, (MSG *)m_msgPeek, sizeof(MSG));
-
+        if (!m_msgQueue.empty())//wake up the next waitMsg.
+            SetEvent(m_evtSync);
         return TRUE;
     }
 
