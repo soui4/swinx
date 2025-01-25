@@ -209,6 +209,7 @@ public:
       uint32_t atom2ClipFormat(xcb_atom_t atom);
       std::shared_ptr< std::vector<char>> readXdndSelection(uint32_t fmt);
       void OnWindowDestroy(HWND hWnd,_Window *wnd);
+      void SetWindowVisible(HWND hWnd, _Window *wnd, BOOL bVisible, int nCmdShow);
   public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);
