@@ -725,7 +725,7 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             if(m_msgPeek->message == WM_PAINT)
             {
                 static const uint64_t kFrameInterval = 15;//15 interval for 66 frame per second
-                if(m_tsLastPaint==-1 || (GetTickCount64()-m_msgPeek->time)>=kFrameInterval)
+                if (m_msgQueue.empty() || m_tsLastPaint == -1 || (GetTickCount64() - m_msgPeek->time) >= kFrameInterval)
                     m_tsLastPaint = m_msgPeek->time;
                 else
                 {
