@@ -3218,40 +3218,7 @@ BOOL ShowWindow(HWND hWnd, int nCmdShow)
     BOOL bNew = nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNOACTIVATE || nCmdShow == SW_SHOWNORMAL || nCmdShow == SW_SHOWNA;
     if (bVisible == bNew)
         return TRUE;
-    if (bNew)
-    {
-        if (0==(wndObj->dwStyle&WS_CHILD))
-        { //show a popup window, auto release capture.
-            ReleaseCapture();
-        }
-        xcb_map_window(wndObj->mConnection->connection, hWnd);
-        wndObj->dwStyle |= WS_VISIBLE;
-        if (nCmdShow != SW_SHOWNOACTIVATE 
-            && nCmdShow != SW_SHOWNA 
-            && !(wndObj->dwStyle&WS_CHILD)
-            && wndObj->mConnection->GetActiveWnd()==0
-            )
-            SetActiveWindow(hWnd);
-        InvalidateRect(hWnd, nullptr, TRUE);
-        wndObj->mConnection->sync();
-    }
-    else
-    {
-        xcb_unmap_window(wndObj->mConnection->connection, hWnd);
-        wndObj->dwStyle &= ~WS_VISIBLE;
-        if(!(wndObj->dwStyle & WS_CHILD)){
-            // send synthetic UnmapNotify event according to icccm 4.1.4
-            xcb_unmap_notify_event_t event;
-            event.response_type = XCB_UNMAP_NOTIFY;
-            event.event = wndObj->mConnection->screen->root;
-            event.window = hWnd;
-            event.from_configure = false;
-            xcb_send_event(wndObj->mConnection->connection, false, event.event,
-                                    XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
-        }
-
-    }
-    xcb_flush(wndObj->mConnection->connection);
+    wndObj->mConnection->SetWindowVisible(hWnd, wndObj.data(), bNew,nCmdShow);
     SendMessage(hWnd, WM_SHOWWINDOW, bNew, 0);
     return TRUE;
 }

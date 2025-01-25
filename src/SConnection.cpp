@@ -996,6 +996,43 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
     xcb_flush(connection);
 }
 
+void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, int nCmdShow)
+{
+    if (bVisible)
+    {
+        if (0 == (wndObj->dwStyle & WS_CHILD))
+        { // show a popup window, auto release capture.
+            ReleaseCapture();
+        }
+        xcb_map_window(connection, hWnd);
+        wndObj->dwStyle |= WS_VISIBLE;
+        InvalidateRect(hWnd, nullptr, TRUE);
+        if (nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA && !(wndObj->dwStyle & WS_CHILD) && wndObj->mConnection->GetActiveWnd() == 0)
+            SetActiveWindow(hWnd);
+        sync();
+    }
+    else
+    {
+        xcb_unmap_window(connection, hWnd);
+        wndObj->dwStyle &= ~WS_VISIBLE;
+        if (!(wndObj->dwStyle & WS_CHILD))
+        {
+            // send synthetic UnmapNotify event according to icccm 4.1.4
+            xcb_unmap_notify_event_t event;
+            event.response_type = XCB_UNMAP_NOTIFY;
+            event.event = screen->root;
+            event.window = hWnd;
+            event.from_configure = false;
+            xcb_send_event(connection, false, event.event, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+        }
+        if (m_hWndActive == hWnd)
+        {
+            SetActiveWindow(0);
+        }
+    }
+    xcb_flush(connection);
+}
+
 void SConnection::BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 {
     if (m_msgPeek && m_bMsgNeedFree && m_msgPeek->hwnd == hWnd && m_msgPeek->message == msg && m_msgPeek->wParam == wp && m_msgPeek->lParam == lp)
