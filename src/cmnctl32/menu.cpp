@@ -41,7 +41,7 @@ class SMenuItem {
     // 禁用有两种情况，变灰+不变灰
     bool IsEnable() const;
 
-    void SetSelect(BOOL bSel);
+    void SetSelect(bool bSel);
 
     void SetHotItem(bool bHot);
 
@@ -118,7 +118,16 @@ class CMenu : public CNativeWnd {
 
     virtual ~CMenu(void) noexcept override;
 
-    HMENU GetHMenu() const {return m_hWnd;}
+    void SetParent(CMenu *pParent)
+    {
+        m_pParent = pParent;
+    }
+
+    HMENU GetHMenu() const
+    {
+        return m_hWnd;
+    }
+
   public:
     BOOL CreateMenu();
 
@@ -165,7 +174,7 @@ class CMenu : public CNativeWnd {
   public:
     static void EndMenu(int nCmdId = 0);
 
-    SMenuItem *GetParentItem();
+    CMenu *GetParentItem();
 
     CMenu *GetSubMenu(int nID, BOOL byCmdId);
 
@@ -217,12 +226,12 @@ class CMenu : public CNativeWnd {
 
     void SendInitPopupMenu2Owner(int idx);
 
-    SMenuItem *m_pParent;
     BOOL m_bMenuInitialized;
+
+    CMenu *m_pParent = nullptr;
 
     ULONG_PTR m_dwMenuData;
 };
-
 
 //--------------------------------------------------------------------------------
 template <typename type>
@@ -339,7 +348,7 @@ SIZE SMenuItem::GetItemSize(HDC hdc)
         {
             if (::IsWindow(s_MenuData->GetOwner()))
             {
-                MEASUREITEMSTRUCT measureItemStruct{ ODT_MENU, m_id, m_id, 0, 0, (ULONG_PTR)m_data };
+                MEASUREITEMSTRUCT measureItemStruct{ ODT_MENU, m_id, m_id, 0, 0,(ULONG_PTR) m_data };
 
                 ::SendMessage(s_MenuData->GetOwner(), WM_MEASUREITEM, m_id, (LPARAM)&measureItemStruct);
                 m_size.cx = measureItemStruct.itemWidth;
@@ -419,27 +428,26 @@ bool SMenuItem::IsEnable() const
     return (m_uMenuFlag & 0b11) == MF_ENABLED;
 }
 
-void SMenuItem::SetSelect(BOOL bSel)
+void SMenuItem::SetSelect(bool bSel)
 {
-    m_uMenuFlag = bSel ? (m_uMenuFlag | MF_CHECKED) : (m_uMenuFlag & (~MF_CHECKED));
+    m_uMenuFlag = bSel ? (m_uMenuFlag | MF_HILITE) : (m_uMenuFlag & (~MF_HILITE));
 }
 
 void SMenuItem::SetHotItem(bool bHot)
 {
-    m_uMenuFlag = bHot ? (m_uMenuFlag | MF_HILITE) : (m_uMenuFlag & (~MF_HILITE));
+    m_uMenuFlag=bHot ? (m_uMenuFlag | MF_HILITE) : (m_uMenuFlag & (~MF_HILITE));
 }
 
 UINT SMenuItem::GetDrawState() const
 {
     UINT state = 0;
+    
     if (m_uMenuFlag & MF_HILITE)
-        state |= ODS_HOTLIGHT;
+        state |= ODS_HOTLIGHT|ODS_SELECTED;
     if (m_uMenuFlag & MF_CHECKED)
         state |= ODS_CHECKED;
     if (m_uMenuFlag & MF_GRAYED)
         state |= ODS_GRAYED;
-    if (m_uMenuFlag & MF_CHECKED)
-        state |= ODS_SELECTED;
     return state;
 }
 
@@ -455,8 +463,7 @@ CMenu *SMenuItem::GetSubMenu()
 
 //////////////////////////////////////////////////////////////////////////
 CMenu::CMenu(SMenuItem *pParent)
-    : m_pParent(pParent)
-    , m_bMenuInitialized(FALSE)
+    : m_bMenuInitialized(FALSE)
 {
 }
 
@@ -508,7 +515,7 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
     {
         const SIZE &size = ite.m_size;
         RECT rc{ clentRc.left, drawY, clentRc.right, drawY + size.cy };
-
+        
         if (!ite.IsOwnerDraw())
         {
             const char *txt = ite.m_strTitle.c_str();
@@ -527,7 +534,7 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
 
             UINT state = ite.GetDrawState();
 
-            if (ite.IsEnable() && state & (ODS_HOTLIGHT | ODS_SELECTED))
+            if (ite.IsEnable() && state & (ODS_HOTLIGHT/* | ODS_SELECTED*/))
             {
                 RECT rcBk{ clentRc.left, drawY, clentRc.right, drawY + size.cy };
                 HBRUSH hbr = CreateSolidBrush(state & ODS_SELECTED ? RGB_MENU_SEL_BK : RGB_MENU_HOTLIGHT_BK);
@@ -632,20 +639,21 @@ BOOL CMenu::InsertMenu(UINT uPos, UINT uFlag, UINT_PTR uIDNewItem, LPCSTR lpNewI
         }
     }
 
-    SMenuItem item(this);
-    item.m_id = uIDNewItem;
+    auto iteItem = m_lsMenuItem.insert(ite, SMenuItem(this));
+    iteItem->m_id = uIDNewItem;
 
-    if (MF_BITMAP & uFlag || MF_OWNERDRAW & uFlag)
+    if (MF_BITMAP & uFlag || MF_OWNERDRAW & uFlag/**/)
     {
-        if (lpNewItem == nullptr)
-            return FALSE;
-        item.m_data = lpNewItem;
+        //此时lpNewItem为用户数据不需要管它是不是空，应该用户自己处理
+        //if (lpNewItem == nullptr)
+        //    return FALSE;
+        iteItem->m_data = lpNewItem;
     }
     else if (lpNewItem)
     {
-        item.m_strTitle = lpNewItem;
+        iteItem->m_strTitle = lpNewItem;
     }
-    item.SetMenuFlag(uFlag);
+    iteItem->SetMenuFlag(uFlag);
     if (uFlag & MF_POPUP)
     {
         if (!IsWindow(uIDNewItem))
@@ -653,10 +661,11 @@ BOOL CMenu::InsertMenu(UINT uPos, UINT uFlag, UINT_PTR uIDNewItem, LPCSTR lpNewI
         CMenu *pMenu = (CMenu *)GetWindowLongPtr(uIDNewItem, GWL_OPAQUE);
         if (pMenu)
         {
-            item.m_pSubMenu.reset(pMenu);
+            iteItem->m_pSubMenu.reset(pMenu);
+            iteItem->m_pSubMenu->SetParent(this);
         }
     }
-    m_lsMenuItem.insert(ite, item);
+
     return TRUE;
 }
 
@@ -684,6 +693,7 @@ BOOL CMenu::SetMenuItemInfo(UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi)
         {
             pItem->SetPopup(true);
             pItem->m_pSubMenu.reset((CMenu *)GetWindowLongPtr(lpmi->hSubMenu, GWL_OPAQUE));
+            pItem->m_pSubMenu.get()->SetParent(this);
         }
     }
     return FALSE;
@@ -703,16 +713,18 @@ BOOL CMenu::GetMenuItemInfo(UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi)
 
         if (pItem)
         {
-            if(lpmi->fMask & MIIM_FTYPE){
-                lpmi->fType = pItem->IsSeparator()?MF_SEPARATOR: MF_STRING;
+            if (lpmi->fMask & MIIM_FTYPE)
+            {
+                lpmi->fType = pItem->IsSeparator() ? MF_SEPARATOR : MF_STRING;
             }
             if (lpmi->fMask & MIIM_STATE)
             {
                 lpmi->fState = pItem->m_uMenuFlag;
             }
-            if(lpmi->fMask & MIIM_SUBMENU){
+            if (lpmi->fMask & MIIM_SUBMENU)
+            {
                 CMenu *subMenu = pItem->GetSubMenu();
-                if(subMenu)
+                if (subMenu)
                     lpmi->hSubMenu = subMenu->GetHMenu();
                 else
                     lpmi->hSubMenu = 0;
@@ -724,25 +736,6 @@ BOOL CMenu::GetMenuItemInfo(UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi)
 
 BOOL CMenu::EnableMenuItem(UINT uIDEnableItem, UINT uEnable)
 {
-    /*
-    * uEnable
-    值	含义
-MF_BYCOMMAND
-0x00000000L
-指示 uIDEnableItem 提供菜单项的标识符。 如果 MF_BYCOMMAND 和 MF_BYPOSITION 标志均未指定， 则MF_BYCOMMAND 标志为默认标志。
-MF_BYPOSITION
-0x00000400L
-指示 uIDEnableItem 提供菜单项的从零开始的相对位置。
-MF_DISABLED
-0x00000002L
-指示菜单项已禁用，但不灰显，因此无法选择它。
-MF_ENABLED
-0x00000000L
-指示菜单项已启用并从灰显状态还原，以便可以选择它。
-MF_GRAYED
-0x00000001L
-指示菜单项已禁用且灰显，因此无法选中。
-    */
     SMenuItem *item = FindItem(uIDEnableItem, uEnable);
     if (item)
     {
@@ -752,29 +745,6 @@ MF_GRAYED
     }
     return -1;
 }
-
-/*
-
-值	含义
-MIM_APPLYTOSUBMENUS
-0x80000000
-设置适用于菜单及其所有子菜单。 SetMenuInfo 使用此标志， GetMenuInfo 忽略此标志
-MIM_BACKGROUND
-0x00000002
-检索或设置 hbrBack 成员。
-MIM_HELPID
-0x00000004
-检索或设置 dwContextHelpID 成员。
-MIM_MAXHEIGHT
-0x00000001
-检索或设置 cyMax 成员。
-MIM_MENUDATA
-0x00000008
-检索或设置 dwMenuData 成员。
-MIM_STYLE
-0x00000010
-检索或设置 dwStyle 成员。
-*/
 
 BOOL CMenu::GetMenuInfo(LPMENUINFO lpMenuInfo)
 {
@@ -993,9 +963,8 @@ void CMenu::ShowMenu(UINT uFlag, int x, int y)
     {
         if (m_pParent)
         {
-            CMenu *pParent = m_pParent->GetOwnerMenu();
             RECT rcParent;
-            GetWindowRect(pParent->m_hWnd, &rcParent);
+            GetWindowRect(m_pParent->m_hWnd, &rcParent);
             if (rcMenu.right > rcMointor.right)
             {
                 x = x - szMenu.cx - (rcParent.right - rcParent.left) - subMenuOffset;
@@ -1144,7 +1113,8 @@ void CMenu::RunMenu(HWND hRoot)
                 break;
             }
         }
-        else if(msg.message == WM_CANCELMODE){
+        else if (msg.message == WM_CANCELMODE)
+        {
             s_MenuData->ExitMenu(0);
             break;
         }
@@ -1203,14 +1173,13 @@ void CMenu::RunMenu(HWND hRoot)
                 hCurMenu = 0;
             }
         }
-
         ::TranslateMessage(&msg);
         ::DispatchMessage(&msg);
 
-        if (msg.message == WM_KEYDOWN || msg.message == WM_KEYUP || msg.message == WM_CHAR)
+        CMenu *pMenu = s_MenuData->GetMenu();
+        if (pMenu && (msg.message == WM_KEYDOWN || msg.message == WM_KEYUP || msg.message == WM_CHAR))
         { // 将键盘事件强制发送到最后一级菜单窗口，让菜单处理快速键
-            HWND menuWnd = s_MenuData->GetMenu()->m_hWnd;
-            ::SendMessage(menuWnd, msg.message, msg.wParam, msg.lParam);
+            ::SendMessage(pMenu->m_hWnd, msg.message, msg.wParam, msg.lParam);
         }
 
         if (bMsgQuit)
@@ -1236,7 +1205,7 @@ void CMenu::OnTimer(UINT_PTR timeID)
 
 void CMenu::OnSubMenuHided(BOOL bUncheckItem)
 {
-    if (!bUncheckItem)
+    if (bUncheckItem)
     {
         InvalidateItem(m_iSelItem);
         m_iSelItem = -1;
@@ -1329,7 +1298,7 @@ void CMenu::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
     case VK_LEFT:
         if (m_pParent)
         {
-            HideMenu(TRUE);
+            HideMenu(FALSE);
         }
         else
         {
@@ -1415,7 +1384,7 @@ void CMenu::EndMenu(int nCmdId /*=0*/)
     ::PostMessage(s_MenuData->GetOwner(), WM_NULL, 0, 0);
 }
 
-SMenuItem *CMenu::GetParentItem()
+CMenu *CMenu::GetParentItem()
 {
     return m_pParent;
 }
@@ -1704,10 +1673,11 @@ BOOL WINAPI ModifyMenuA(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNe
     return FALSE;
 }
 
-BOOL WINAPI ModifyMenuW(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem){
+BOOL WINAPI ModifyMenuW(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem)
+{
     std::string str;
-    tostring(lpNewItem,-1,str);
-    return ModifyMenuA(hMenu,uPosition,uFlags,uIDNewItem,str.c_str());
+    tostring(lpNewItem, -1, str);
+    return ModifyMenuA(hMenu, uPosition, uFlags, uIDNewItem, str.c_str());
 }
 
 BOOL WINAPI RemoveMenu(HMENU hMenu, UINT uPosition, UINT uFlags)
@@ -1833,8 +1803,8 @@ BOOL WINAPI InsertMenuA(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNe
 BOOL WINAPI InsertMenuW(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem)
 {
     std::string str;
-    tostring(lpNewItem,-1,str);
-    return InsertMenuA(hMenu,uPosition,uFlags,uIDNewItem,str.c_str());
+    tostring(lpNewItem, -1, str);
+    return InsertMenuA(hMenu, uPosition, uFlags, uIDNewItem, str.c_str());
 }
 
 BOOL WINAPI SetMenuItemInfo(HMENU hMenu, UINT item, BOOL fByPosition, LPCMENUITEMINFO lpmi)
@@ -1873,7 +1843,6 @@ BOOL WINAPI InsertMenuItem(HMENU hMenu, UINT item, BOOL fByPosition, LPCMENUITEM
     return FALSE;
 }
 
-
 BOOL WINAPI AppendMenuA(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCSTR lpNewItem)
 {
     return InsertMenu(hMenu, -1, uFlags, uIDNewItem, lpNewItem);
@@ -1882,6 +1851,6 @@ BOOL WINAPI AppendMenuA(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCSTR lp
 BOOL WINAPI AppendMenuW(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem)
 {
     std::string str;
-    tostring(lpNewItem,-1,str);
+    tostring(lpNewItem, -1, str);
     return AppendMenuA(hMenu, uFlags, uIDNewItem, str.c_str());
 }
