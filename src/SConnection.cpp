@@ -420,7 +420,8 @@ bool SConnection::waitMsg()
     uint64_t ts = GetTickCount64();
     UINT elapse = m_tsLastMsg == -1 ? 0 : (ts - m_tsLastMsg);
     m_tsLastMsg = ts;
-    return event2Msg(bTimeout, elapse, ts);
+    event2Msg(bTimeout, elapse, ts);
+    return !m_msgQueue.empty();
 }
 
 DWORD SConnection::GetMsgPos() const
@@ -724,7 +725,7 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             if(m_msgPeek->message == WM_PAINT)
             {
                 static const uint64_t kFrameInterval = 15;//15 interval for 66 frame per second
-                if(m_tsLastPaint==-1 || (GetTickCount64()-m_msgPeek->time)>=kFrameInterval)
+                if (m_msgQueue.empty() || m_tsLastPaint == -1 || (GetTickCount64() - m_msgPeek->time) >= kFrameInterval)
                     m_tsLastPaint = m_msgPeek->time;
                 else
                 {
