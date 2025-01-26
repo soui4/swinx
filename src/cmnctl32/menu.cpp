@@ -7,6 +7,11 @@
 #include <list>
 #include "../tostring.hpp"
 #include "builtin_classname.h"
+#include <src/log.h>
+
+#ifndef kLogTag
+#define kLogTag "Menu test"
+#endif // !kLogTag
 
 #define DEFAULT_ITEM_HEIGHT    30
 #define DEFAULT_MIN_ITEM_WIDTH 100
@@ -264,7 +269,10 @@ class SMenuRunData {
 
     void PushMenu(CMenu *pMenu)
     {
+        SLOG_STMI() << u8"弹出菜单:" << pMenu;
+        SLOG_STMI() << u8"弹出菜单前数量:" << m_lstMenu.size();
         m_lstMenu.push_back(pMenu);
+        SLOG_STMI() << u8"弹出菜单后数量:" << m_lstMenu.size();
     }
 
     CMenu *GetMenu()
@@ -276,8 +284,14 @@ class SMenuRunData {
 
     CMenu *PopMenu()
     {
+        SLOG_STMI() << u8"关闭菜单:" << u8"关闭前菜单数量:" << m_lstMenu.size();
+        if (m_lstMenu.empty())
+            return 0;
         CMenu *pMenuEx = m_lstMenu.back();
         m_lstMenu.pop_back();
+        SLOG_STMI() << u8"关闭菜单:" << pMenuEx;
+        SLOG_STMI() << u8"--关闭后菜单数量:" << m_lstMenu.size();
+
         return pMenuEx;
     }
 
@@ -348,7 +362,7 @@ SIZE SMenuItem::GetItemSize(HDC hdc)
         {
             if (::IsWindow(s_MenuData->GetOwner()))
             {
-                MEASUREITEMSTRUCT measureItemStruct{ ODT_MENU, m_id, m_id, 0, 0,(ULONG_PTR) m_data };
+                MEASUREITEMSTRUCT measureItemStruct{ ODT_MENU, m_id, m_id, 0, 0, (ULONG_PTR)m_data };
 
                 ::SendMessage(s_MenuData->GetOwner(), WM_MEASUREITEM, m_id, (LPARAM)&measureItemStruct);
                 m_size.cx = measureItemStruct.itemWidth;
@@ -435,15 +449,15 @@ void SMenuItem::SetSelect(bool bSel)
 
 void SMenuItem::SetHotItem(bool bHot)
 {
-    m_uMenuFlag=bHot ? (m_uMenuFlag | MF_HILITE) : (m_uMenuFlag & (~MF_HILITE));
+    m_uMenuFlag = bHot ? (m_uMenuFlag | MF_HILITE) : (m_uMenuFlag & (~MF_HILITE));
 }
 
 UINT SMenuItem::GetDrawState() const
 {
     UINT state = 0;
-    
+
     if (m_uMenuFlag & MF_HILITE)
-        state |= ODS_HOTLIGHT|ODS_SELECTED;
+        state |= ODS_HOTLIGHT | ODS_SELECTED;
     if (m_uMenuFlag & MF_CHECKED)
         state |= ODS_CHECKED;
     if (m_uMenuFlag & MF_GRAYED)
@@ -515,7 +529,7 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
     {
         const SIZE &size = ite.m_size;
         RECT rc{ clentRc.left, drawY, clentRc.right, drawY + size.cy };
-        
+
         if (!ite.IsOwnerDraw())
         {
             const char *txt = ite.m_strTitle.c_str();
@@ -534,7 +548,7 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
 
             UINT state = ite.GetDrawState();
 
-            if (ite.IsEnable() && state & (ODS_HOTLIGHT/* | ODS_SELECTED*/))
+            if (ite.IsEnable() && state & (ODS_HOTLIGHT /* | ODS_SELECTED*/))
             {
                 RECT rcBk{ clentRc.left, drawY, clentRc.right, drawY + size.cy };
                 HBRUSH hbr = CreateSolidBrush(state & ODS_SELECTED ? RGB_MENU_SEL_BK : RGB_MENU_HOTLIGHT_BK);
@@ -642,11 +656,11 @@ BOOL CMenu::InsertMenu(UINT uPos, UINT uFlag, UINT_PTR uIDNewItem, LPCSTR lpNewI
     auto iteItem = m_lsMenuItem.insert(ite, SMenuItem(this));
     iteItem->m_id = uIDNewItem;
 
-    if (MF_BITMAP & uFlag || MF_OWNERDRAW & uFlag/**/)
+    if (MF_BITMAP & uFlag || MF_OWNERDRAW & uFlag /**/)
     {
-        //此时lpNewItem为用户数据不需要管它是不是空，应该用户自己处理
-        //if (lpNewItem == nullptr)
-        //    return FALSE;
+        // 此时lpNewItem为用户数据不需要管它是不是空，应该用户自己处理
+        // if (lpNewItem == nullptr)
+        //     return FALSE;
         iteItem->m_data = lpNewItem;
     }
     else if (lpNewItem)
@@ -1173,13 +1187,17 @@ void CMenu::RunMenu(HWND hRoot)
                 hCurMenu = 0;
             }
         }
-        ::TranslateMessage(&msg);
-        ::DispatchMessage(&msg);
 
         CMenu *pMenu = s_MenuData->GetMenu();
+        // 如果菜单处理了消息则不再交给窗口处理，否则可能会导致菜单递归显示。
         if (pMenu && (msg.message == WM_KEYDOWN || msg.message == WM_KEYUP || msg.message == WM_CHAR))
         { // 将键盘事件强制发送到最后一级菜单窗口，让菜单处理快速键
             ::SendMessage(pMenu->m_hWnd, msg.message, msg.wParam, msg.lParam);
+        }
+        else
+        {
+            ::TranslateMessage(&msg);
+            ::DispatchMessage(&msg);
         }
 
         if (bMsgQuit)
@@ -1218,7 +1236,7 @@ void CMenu::PopupSubMenu(int iItem, BOOL bCheckFirstItem)
     if (!pItem)
         return;
     CMenu *pSubMenu = pItem->GetSubMenu();
-    if (!pSubMenu)
+    if (!pSubMenu || IsWindowVisible(pSubMenu->m_hWnd))
         return;
     if (!pSubMenu->m_bMenuInitialized)
     {
@@ -1294,6 +1312,20 @@ void CMenu::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
         }
     }
     break;
+    case VK_RETURN:
+        if (m_iSelItem != -1)
+        {
+            CMenu *pSubMenu = m_lsMenuItem[m_iSelItem].GetSubMenu();
+            if (pSubMenu)
+            {
+                PopupSubMenu(m_iSelItem, TRUE);
+            }
+            else
+            {
+                CMenu::EndMenu(m_lsMenuItem[m_iSelItem].m_id);
+            }
+        }
+        break;
     case VK_ESCAPE:
     case VK_LEFT:
         if (m_pParent)
@@ -1306,6 +1338,7 @@ void CMenu::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
         }
         break;
     case VK_RIGHT:
+        KillTimer(m_hWnd, TIMERID_POPSUBMENU);
         PopupSubMenu(m_iSelItem, TRUE);
         break;
     default:
