@@ -269,10 +269,7 @@ class SMenuRunData {
 
     void PushMenu(CMenu *pMenu)
     {
-        SLOG_STMI() << u8"弹出菜单:" << pMenu;
-        SLOG_STMI() << u8"弹出菜单前数量:" << m_lstMenu.size();
         m_lstMenu.push_back(pMenu);
-        SLOG_STMI() << u8"弹出菜单后数量:" << m_lstMenu.size();
     }
 
     CMenu *GetMenu()
@@ -284,14 +281,10 @@ class SMenuRunData {
 
     CMenu *PopMenu()
     {
-        SLOG_STMI() << u8"关闭菜单:" << u8"关闭前菜单数量:" << m_lstMenu.size();
         if (m_lstMenu.empty())
             return 0;
         CMenu *pMenuEx = m_lstMenu.back();
         m_lstMenu.pop_back();
-        SLOG_STMI() << u8"关闭菜单:" << pMenuEx;
-        SLOG_STMI() << u8"--关闭后菜单数量:" << m_lstMenu.size();
-
         return pMenuEx;
     }
 
