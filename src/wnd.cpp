@@ -1334,16 +1334,18 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 		{
 		case SIZE_MINIMIZED:
 			wndObj->state = WS_Minimized;
+    		lp = 0;
 			break;
 		case SIZE_MAXIMIZED:
 			wndObj->state = WS_Maximized;
+            lp = MAKELPARAM(wndObj->rc.right - wndObj->rc.left, wndObj->rc.bottom - wndObj->rc.top);
 			break;
 		case SIZE_RESTORED:
 			wndObj->state = WS_Normal;
-			lp = MAKELPARAM(wndObj->rc.right - wndObj->rc.left, wndObj->rc.bottom - wndObj->rc.top);
-            CallWindowObjProc(wndObj, proc, hWnd, WM_SIZE, 0, lp); // call size again
+    		lp = MAKELPARAM(wndObj->rc.right - wndObj->rc.left, wndObj->rc.bottom - wndObj->rc.top);
 			break;
 		}
+        CallWindowObjProc(wndObj, proc, hWnd, WM_SIZE, wp, lp); // call size again
 		return 1;
     case WM_MOVE:
         OffsetRect(&wndObj->rc, GET_X_LPARAM(lp) - wndObj->rc.left, GET_Y_LPARAM(lp) - wndObj->rc.top);
