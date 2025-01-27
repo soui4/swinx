@@ -1033,6 +1033,20 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
     xcb_flush(connection);
 }
 
+void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
+{
+    if(!hParent)
+        return;
+    if (!(wndObj->dwStyle & WS_CHILD))
+    {
+        xcb_icccm_set_wm_transient_for(connection, hWnd, hParent);
+    }
+    else if(hParent){
+        xcb_reparent_window(connection, hWnd, hParent, 0, 0);
+    }
+    xcb_flush(connection);
+}
+
 void SConnection::BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 {
     if (m_msgPeek && m_bMsgNeedFree && m_msgPeek->hwnd == hWnd && m_msgPeek->message == msg && m_msgPeek->wParam == wp && m_msgPeek->lParam == lp)

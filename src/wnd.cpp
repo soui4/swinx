@@ -2158,14 +2158,9 @@ HWND GetParent(HWND hWnd)
 HWND SetParent(HWND hWnd, HWND hParent)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!(wndObj->dwStyle & WS_CHILD))
-    {
-        xcb_icccm_set_wm_transient_for(wndObj->mConnection->connection, hWnd, hParent);
-    }
-    else {
-        xcb_reparent_window(wndObj->mConnection->connection, hWnd, hParent, 0, 0);
-    }
-    xcb_flush(wndObj->mConnection->connection);
+    if(!wndObj)
+        return 0;
+    wndObj->mConnection->SetParent(hWnd, wndObj.data(),hParent);
     return (HWND)SetWindowLongPtrA(hWnd, GWLP_HWNDPARENT, hParent);
 }
 

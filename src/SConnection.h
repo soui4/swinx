@@ -210,6 +210,7 @@ public:
       std::shared_ptr< std::vector<char>> readXdndSelection(uint32_t fmt);
       void OnWindowDestroy(HWND hWnd,_Window *wnd);
       void SetWindowVisible(HWND hWnd, _Window *wnd, BOOL bVisible, int nCmdShow);
+      void SetParent(HWND hWnd, _Window *wnd,HWND parent);
   public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);
