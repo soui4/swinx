@@ -1035,8 +1035,21 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
 
 void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
 {
-    if(!hParent)
-        return;
+    if (!hParent)
+    {
+        xcb_get_input_focus_cookie_t cookie = xcb_get_input_focus(connection);
+        xcb_get_input_focus_reply_t *reply = xcb_get_input_focus_reply(connection, cookie, nullptr);
+        if (reply)
+        {
+            hParent = reply->focus;
+            free(reply);
+        }
+        else
+        {
+            hParent = screen->root;
+        }
+    }
+
     if (!(wndObj->dwStyle & WS_CHILD))
     {
         xcb_icccm_set_wm_transient_for(connection, hWnd, hParent);
