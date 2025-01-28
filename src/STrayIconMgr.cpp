@@ -19,10 +19,7 @@ void TrayWnd::OnPaint(HDC hdc)
     hdc = BeginPaint(m_hWnd, &ps);
     RECT rc;
     GetClientRect(m_hWnd, &rc);
-	HBRUSH br = CreateSolidBrush(RGB(255,255,255));
-    FillRect(hdc, &rc, br);
-	DeleteObject(br);
-
+    ClearRect(hdc, &rc, 0);
 	if(m_iconData->hIcon)
 		DrawIconEx(hdc,0,0,m_iconData->hIcon,rc.right,rc.bottom,0,0,0);
     EndPaint(m_hWnd, &ps);
@@ -65,7 +62,9 @@ BOOL STrayIconMgr::AddIcon(PNOTIFYICONDATAA lpData) {
 	memcpy(icon, lpData, sizeof(NOTIFYICONDATAA));
 	//create a tray window to contain image.
     icon->hTray = new TrayWnd(icon);
-    icon->hTray->CreateWindowA(0, CLS_WINDOW, "trayicon", WS_CHILD, 0, 0, 24, 24, m_pConn->screen->root, 0, 0);
+    BOOL argbTray = this->visualHasAlphaChannel();
+    icon->hTray->CreateWindowA(argbTray?WS_EX_COMPOSITED:0, CLS_WINDOW, "trayicon", WS_CHILD, 0, 0, 24, 24, m_pConn->screen->root, 0, 0);
+    xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, icon->hTray->m_hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(icon->szTip), icon->szTip);
 
 	xcb_client_message_event_t trayRequest;
 	trayRequest.response_type = XCB_CLIENT_MESSAGE;
@@ -91,24 +90,30 @@ BOOL STrayIconMgr::ModifyIcon(PNOTIFYICONDATAA lpData) {
 	auto it = findIcon(lpData);
 	if (it == m_lstTrays.end())
 		return FALSE;
+
+    TrayIconData *icon = *it;
 	if (lpData->uFlags & NIF_MESSAGE)
-		(*it)->uCallbackMessage = lpData->uCallbackMessage;
+		icon->uCallbackMessage = lpData->uCallbackMessage;
 	if (lpData->uFlags & NIF_ICON)
 	{
 		assert(lpData->hIcon);
-		(*it)->hIcon = lpData->hIcon;
-		if((*it)->hTray){
-			(*it)->hTray->Invalidate();
+		icon->hIcon = lpData->hIcon;
+		if(icon->hTray){
+			icon->hTray->Invalidate();
 		}
 	}
 	if (lpData->uFlags & NIF_TIP) {
-		strcpy_s((*it)->szTip, 128, lpData->szTip);
+        strcpy_s(icon->szTip, 128, lpData->szTip);
+        if (icon->hTray)
+        {
+            xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, icon->hTray->m_hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(icon->szTip), icon->szTip);
+        }
 	}
 	if (lpData->uFlags & NIF_INFO) {
-		strcpy_s((*it)->szInfo, 256, lpData->szInfo);
+		strcpy_s(icon->szInfo, 256, lpData->szInfo);
 	}
 	if (lpData->uFlags & NIF_GUID) {
-		memcpy(&(*it)->guidItem, &lpData->guidItem, sizeof(GUID));
+		memcpy(&icon->guidItem, &lpData->guidItem, sizeof(GUID));
 	}
 
 	return TRUE;
