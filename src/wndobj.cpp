@@ -24,6 +24,7 @@ _Window::_Window(size_t extraLen)
     , dropTarget(NULL)
     , dragData(NULL)
     , userdata(0)
+    , cmap(0)
 {
     invalid.hRgn = CreateRectRgn(0, 0, 0, 0);
     invalid.bErase = TRUE;
@@ -38,6 +39,7 @@ _Window::_Window(size_t extraLen)
 }
 
 _Window::~_Window() {
+    assert(cmap==0);
     if (dropTarget)
     {
         dropTarget->Release();

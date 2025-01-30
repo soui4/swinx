@@ -993,6 +993,8 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
     }
     m_wndCursor.erase(hWnd);
     xcb_destroy_window(connection, hWnd);
+    xcb_free_colormap(connection, wnd->cmap);
+    wnd->cmap=0;
     xcb_flush(connection);
 }
 

@@ -570,16 +570,18 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     }else if (!(cs->style & WS_CHILD) || !hParent)
         hParent = conn->screen->root;
     xcb_void_cookie_t cookie = xcb_create_window_checked(conn->connection, depth, hWnd, hParent, cs->x, cs->y, std::max(cs->cx, 1u), std::max(cs->cy, 1u), 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, pWnd->visualId, mask, values);
-    xcb_free_colormap(conn->connection, cmap);
+
 
     xcb_generic_error_t *err = xcb_request_check(conn->connection, cookie);
     if (err)
     {
         printf("xcb_create_window failed, errcode=%d\n", err->error_code);
         free(err);
+        xcb_free_colormap(conn->connection, cmap);
         delete pWnd;
         return 0;
     }
+
     xcb_change_window_attributes(conn->connection, hWnd, mask, values);
     xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, hWnd, conn->atoms.WM_PROTOCOLS, XCB_ATOM_ATOM, 32, 1, &conn->atoms.WM_DELETE_WINDOW);
 
@@ -605,10 +607,12 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     if (0 == SendMessage(hWnd, WM_NCCREATE, 0, (LPARAM)cs) || 0 != SendMessage(hWnd, WM_CREATE, 0, (LPARAM)cs))
     {
         xcb_destroy_window(conn->connection, hWnd);
+        xcb_free_colormap(conn->connection, cmap);
         xcb_flush(conn->connection);
         WndMgr::freeWindow(hWnd);
         return 0;
     }
+    pWnd->cmap = cmap;
     if (memcmp(&pWnd->rc,&rcInit,sizeof(RECT))==0)
     {//notify init size and pos
         SetWindowPos(hWnd, 0, cs->x, cs->y, cs->cx, cs->cy, SWP_NOZORDER | SWP_NOACTIVATE);

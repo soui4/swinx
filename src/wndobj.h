@@ -132,6 +132,7 @@ public:
     UINT helpContext;    /* Help context ID */
     UINT flags;          /* Misc. flags (see below) */
     xcb_visualid_t visualId;
+    xcb_colormap_t cmap;
     LPDROPTARGET   dropTarget;
     IDataObject* dragData;
     DWORD_PTR userdata;  /* User private data */
