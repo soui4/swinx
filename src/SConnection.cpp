@@ -219,6 +219,7 @@ SConnection::SConnection(int screenNum)
         xcb_get_selection_owner_reply_t* owner_reply = xcb_get_selection_owner_reply(connection, owner_cookie, NULL);
         m_bComposited =  owner_reply->owner!=0;
         free(owner_reply);
+        SLOG_STMI()<<"enable composite="<<m_bComposited;
     }
     m_tid = GetCurrentThreadId();
 
