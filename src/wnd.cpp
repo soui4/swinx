@@ -58,7 +58,7 @@ enum QX11EmbedInfoFlags
 
 enum
 {
-    fMap = 1 << 0,
+    kMapped = 1 << 0,
 };
 
 
@@ -67,7 +67,7 @@ enum SbPart{
 };
 
 enum {
-    TIMER_STARTAUTOSCROLL=50000,
+    TIMER_STARTAUTOSCROLL=-1000,
     TIMER_AUTOSCROLL,
 };
 enum {
@@ -97,8 +97,6 @@ static LONG_PTR get_win_data(const void *ptr, UINT size)
         return ret;
     }
 }
-
-static HRGN BuildColorKeyRgn(HWND hWnd);
 
 /* helper for set_window_long */
 static inline void set_win_data(void *ptr, LONG_PTR val, UINT size)
@@ -858,7 +856,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
         MSG msg;
         if (!WaitMessage())
             continue;
-        while (PeekMessage(&msg, hWnd, 0, 0, TRUE))
+        while (PeekMessage(&msg, 0, 0, 0, TRUE))
         {
             if(CallMsgFilter(&msg, htCode == HTCAPTION ? MSGF_SIZE : MSGF_MOVE))
                 continue;
@@ -1107,9 +1105,9 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 	{
 	case UM_MAPNOTIFY:
 		if (wp)
-			wndObj->flags |= fMap;
+			wndObj->flags |= kMapped;
 		else
-			wndObj->flags &= ~fMap;
+			wndObj->flags &= ~kMapped;
 		if (wp && wndObj->byAlpha != 0xff)
 		{
 			Sleep(50); // todo: fix it later.
@@ -1193,7 +1191,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 	case WM_LBUTTONDBLCLK:
 	case WM_MBUTTONDBLCLK:
 	case WM_RBUTTONDBLCLK:
-	{
+    {
 		bSkipMsg = ActiveWindow(wndObj,hWnd, TRUE, msg, wndObj->htCode);
 		if (!bSkipMsg && GetCapture() != hWnd) {
 			POINT pt = { GET_X_LPARAM(lp),GET_Y_LPARAM(lp) };
@@ -1231,6 +1229,9 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSEMOVE, htCode, MAKELPARAM(pt.x, pt.y));
 			bSkipMsg = TRUE;
 		}
+        if(!bSkipMsg && (wndObj->dwStyle & WS_DISABLED)){
+            bSkipMsg = TRUE;
+        }
 	}
 	break;
 	case WM_MOUSEHOVER:
@@ -2647,12 +2648,13 @@ static LRESULT handleNcLbuttonDown(HWND hWnd,WPARAM wp,LPARAM lp){
         PeekMessage(&msg,0,0,0,PM_REMOVE);
         if(CallMsgFilter(&msg, MSGF_SCROLLBAR))
             continue;
+
         if(msg.message == WM_LBUTTONUP){            
             pt = {GET_X_LPARAM(msg.lParam),GET_Y_LPARAM(msg.lParam)};
             break;
         }
         RECT rcInvalid {0,0,0,0};
-        if(msg.message == WM_TIMER){
+        if(msg.hwnd == hWnd && msg.message == WM_TIMER){
             if(msg.wParam == TIMER_STARTAUTOSCROLL){
                 KillTimer(hWnd,TIMER_STARTAUTOSCROLL);
                 SetTimer(hWnd,TIMER_AUTOSCROLL,SPAN_AUTOSCROLL,NULL);
@@ -2664,7 +2666,7 @@ static LRESULT handleNcLbuttonDown(HWND hWnd,WPARAM wp,LPARAM lp){
                 if(PtInRect(&rcPart,pt))
                     SendMessageA(hWnd,bVert?WM_VSCROLL:WM_HSCROLL,iPart,0);
             }
-        }else if(msg.message == WM_MOUSEMOVE){            
+        }else if(msg.hwnd == hWnd && msg.message == WM_MOUSEMOVE){            
             POINT pt = {GET_X_LPARAM(msg.lParam),GET_Y_LPARAM(msg.lParam)};
             
             int iHitTest = ScrollBarHitTest(bVert,sb,pRcAll,pt);
@@ -3378,13 +3380,6 @@ int ReleaseDC(HWND hWnd, HDC hdc)
     RestoreDC(hdc,-1);
     if(hdc->nSave > 0)
         return 1;
-    if (wndObj->crKey != CR_INVALID)
-    {
-        HRGN hRgn = BuildColorKeyRgn(hWnd);
-        SetWindowRgn(hWnd, hRgn, FALSE);
-        if (hRgn)
-            DeleteObject(hRgn);
-    }
     xcb_flush(wndObj->mConnection->connection);
     return 1;
 }
@@ -3417,77 +3412,23 @@ UINT GetDpiForWindow(HWND hWnd)
     return SConnMgr::instance()->getConnection()->GetDpi(TRUE);
 }
 
-static HRGN BuildColorKeyRgn(HWND hWnd)
-{
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return 0;
-    HRGN hRgn = nullptr;
-    static const COLORREF mask = 0x00ffffff;
-    COLORREF crKey = wndObj->crKey & mask;
-    if (crKey != CR_INVALID)
-    {
-        BITMAP bm = {0};
-        GetObject(wndObj->hdc->bmp, sizeof(bm), &bm);
-        const uint32_t *bits = (const uint32_t *)bm.bmBits;
-        std::vector<RECT> lstRc;
-        for (int y = 0; y < bm.bmHeight; y++, bits += bm.bmWidth)
-        {
-            int x = 0;
-            while (x < bm.bmWidth)
-            {
-                while (x < bm.bmWidth && (bits[x] & mask) == crKey)
-                    x++;
-                int start = x;
-                while (x < bm.bmWidth && (bits[x] & mask) != crKey)
-                    x++;
-                if (start != x)
-                {
-                    RECT rc = { start, y, x, y + 1 };
-                    lstRc.push_back(rc);
-                }
-            }
-        }
-        if (!lstRc.empty())
-        {
-            int len = sizeof(RGNDATAHEADER) + sizeof(RECT) * lstRc.size();
-            RGNDATA *pRgn = (RGNDATA *)malloc(len);
-            pRgn->rdh.nCount = lstRc.size();
-            pRgn->rdh.iType = RDH_RECTANGLES;
-            memcpy(pRgn->Buffer, lstRc.data(), sizeof(RECT) * lstRc.size());
-            hRgn = ExtCreateRegion(nullptr, len, pRgn);
-            free(pRgn);
-        }
-    }
-    return hRgn;
-}
-
 BOOL SetLayeredWindowAttributes(HWND hWnd, COLORREF crKey, BYTE byAlpha, DWORD dwFlags)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return FALSE;
-    if (wndObj->dwExStyle & WS_EX_LAYERED == 0)
+    if (wndObj->dwExStyle & WS_EX_LAYERED== 0)
         return FALSE;
+    if(dwFlags & LWA_COLORKEY){
+        return FALSE;
+    }
     if (dwFlags & LWA_ALPHA && byAlpha != wndObj->byAlpha)
     {
         wndObj->byAlpha = byAlpha;
-        if (wndObj->flags & fMap)
+        if (wndObj->flags & kMapped)
             wndObj->mConnection->SetWindowOpacity(hWnd, byAlpha);
     }
-    if (dwFlags & LWA_COLORKEY && wndObj->crKey != crKey)
-    {
-        wndObj->crKey = crKey;
-        if (crKey == CR_INVALID)
-            SetWindowRgn(hWnd, nullptr, FALSE);
-        else
-        {
-            HRGN hRgn = BuildColorKeyRgn(hWnd);
-            SetWindowRgn(hWnd, hRgn, FALSE);
-            if (hRgn)
-                DeleteObject(hRgn);
-        }
-    }
+
     return TRUE;
 }
 
