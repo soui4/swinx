@@ -2153,6 +2153,11 @@ BOOL EnableWindow(HWND hWnd, BOOL bEnable)
         wndObj->dwStyle |= WS_DISABLED;
     if(!bEnable){
         //restore cursor to default cursor.
+        WNDCLASSEXA clsInfo = { 0 };
+        GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCE(wndObj->clsAtom), &clsInfo);
+        if(clsInfo.hCursor){
+            wndObj->mConnection->SetWindowCursor(hWnd,clsInfo.hCursor);
+        }
     }
     return TRUE;
 }
