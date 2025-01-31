@@ -213,7 +213,7 @@ SConnection::SConnection(int screenNum)
     initializeXFixes();
     if (rgba_visual) {//get composited for screen
         char szAtom[50];
-        sprintf(szAtom, "_XSETTINGS_S%d", screenNum);
+        sprintf(szAtom, "_NET_WM_CM_S%d", screenNum);
         xcb_atom_t atom = SAtoms::internAtom(connection, FALSE, szAtom);        
         xcb_get_selection_owner_cookie_t owner_cookie = xcb_get_selection_owner(connection, atom);
         xcb_get_selection_owner_reply_t* owner_reply = xcb_get_selection_owner_reply(connection, owner_cookie, NULL);
