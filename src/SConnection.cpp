@@ -979,6 +979,7 @@ std::shared_ptr<std::vector<char>> SConnection::readXdndSelection(uint32_t fmt)
 
 void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
 {
+    KillWindowTimer(hWnd);
     if(GetCapture()==hWnd){
         ReleaseCapture();
     }
@@ -1040,17 +1041,10 @@ void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
 {
     if (!hParent)
     {
-        xcb_get_input_focus_cookie_t cookie = xcb_get_input_focus(connection);
-        xcb_get_input_focus_reply_t *reply = xcb_get_input_focus_reply(connection, cookie, nullptr);
-        if (reply)
-        {
-            hParent = reply->focus;
-            free(reply);
-        }
+        if(m_hWndActive)
+            hWnd = m_hWndActive;
         else
-        {
             hParent = screen->root;
-        }
     }
 
     if (!(wndObj->dwStyle & WS_CHILD))
@@ -1642,9 +1636,7 @@ BOOL SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn)
         }
         free(pData);
         xcb_shape_rectangles(connection, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING, XCB_CLIP_ORDERING_UNSORTED, hWnd, 0, 0, rects.size(), &rects[0]);
-    }
-    else
-    {
+    }else{
         xcb_shape_mask(connection, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING, hWnd, 0, 0, XCB_NONE);
     }
     return TRUE;
@@ -2050,9 +2042,6 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_BUTTON_PRESS:
     {
         xcb_button_press_event_t *e2 = (xcb_button_press_event_t *)event;
-        if(!IsWindowEnabled(e2->event)){
-            break;
-        }
         m_tsSelection = e2->time;
         if (e2->detail >= XCB_BUTTON_INDEX_1 && e2->detail <= XCB_BUTTON_INDEX_3)
         {
@@ -2112,14 +2101,15 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             int delta = e2->detail == XCB_BUTTON_INDEX_4 ? WHEEL_DELTA : -WHEEL_DELTA;
             pMsg->wParam = MAKEWPARAM(vkFlag,delta);
         }
+        if(pMsg && !IsWindowEnabled(pMsg->hwnd)){
+            delete pMsg;
+            pMsg = nullptr;
+        }
         break;
     }
     case XCB_BUTTON_RELEASE:
     {
         xcb_button_release_event_t *e2 = (xcb_button_release_event_t *)event;
-        if(!IsWindowEnabled(e2->event)){
-            break;
-        }
         if (e2->detail >= XCB_BUTTON_INDEX_1 && e2->detail <= XCB_BUTTON_INDEX_3)
         {
             pMsg = new Msg;
@@ -2151,14 +2141,15 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             m_keyboard->setKeyState(vk, 0);
             pMsg->wParam = ButtonState2Mask(e2->state);
         }
+        if(pMsg && !IsWindowEnabled(pMsg->hwnd)){
+            delete pMsg;
+            pMsg = nullptr;
+        }
         break;
     }
     case XCB_MOTION_NOTIFY:
     {
         xcb_motion_notify_event_t *e2 = (xcb_motion_notify_event_t *)event;
-        if(!IsWindowEnabled(e2->event)){
-            break;
-        }
         //remove old mouse move
         static const int16_t kMinPosDiff = 3;
         WPARAM wp = ButtonState2Mask(e2->state);
@@ -2179,12 +2170,14 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         POINT pt ={e2->event_x,e2->event_y};
         if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
         {
+            //SLOG_STMI()<<"remap mousemove to capture: capture="<<m_hWndCapture<<" event window="<<e2->event;
             MapWindowPoints(e2->event,m_hWndCapture,&pt,1);
             pMsg->hwnd=m_hWndCapture;
         }
         pMsg->lParam = MAKELPARAM(pt.x, pt.y);
         pMsg->wParam = wp;
         pMsg->time = e2->time;
+        //different from other mouse message, dispatch mousemove dispite whether the target window is disable or not. we need it to generate WM_SETCURSOR
         break;
     }
     case XCB_FOCUS_IN:

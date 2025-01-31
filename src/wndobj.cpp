@@ -131,7 +131,6 @@ BOOL WndMgr::freeWindow(HWND hWnd)
         return FALSE;
 
     _Window* wndObj = it->second;
-    wndObj->mConnection->KillWindowTimer(hWnd);
     map_wnd.erase(it);
 
     // delete wndObj and release resource of the window object
