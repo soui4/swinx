@@ -109,7 +109,7 @@ class SConnection {
     HWND GetCapture() const;
     HCURSOR SetCursor(HCURSOR cursor);
     HCURSOR GetCursor();
-    //HCURSOR LoadCursor(LPCSTR pszName);
+    BOOL SetWindowCursor(HWND hWnd,HCURSOR cursor);
     BOOL DestroyCursor(HCURSOR cursor);
 
     void SetTimerBlock(bool bBlock)
@@ -254,7 +254,6 @@ public:
 
     void updateWorkArea();
     xcb_cursor_t getXcbCursor(HCURSOR cursor);
-    BOOL SetWindowCursor(HWND hWnd,HCURSOR cursor);
   private:
     std::mutex m_mutex4Evt;
     std::list<xcb_generic_event_t *> m_evtQueue;

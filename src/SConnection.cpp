@@ -1918,20 +1918,28 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                 free(reply);
             }
         }
-        pMsg = new Msg;
-        pMsg->hwnd = e2->window;
-        pMsg->message = WM_MOVE;
-        pMsg->wParam = 0;
-        pMsg->lParam = MAKELPARAM(pos.x, pos.y);
-        GetCursorPos(&pMsg->pt);
-        m_msgQueue.push_back(pMsg);
-        pMsg = new Msg;
-        pMsg->hwnd = e2->window;
-        pMsg->message = WM_SIZE;
-        pMsg->wParam = 0;
-        pMsg->lParam = MAKELPARAM(e2->width, e2->height);
-        GetCursorPos(&pMsg->pt);
-        m_msgQueue.push_back(pMsg);
+        RECT rc;
+        GetWindowRect(e2->window, &rc);
+        if (rc.left != pos.x || rc.top != pos.y)
+        {
+            pMsg = new Msg;
+            pMsg->hwnd = e2->window;
+            pMsg->message = WM_MOVE;
+            pMsg->wParam = 0;
+            pMsg->lParam = MAKELPARAM(pos.x, pos.y);
+            GetCursorPos(&pMsg->pt);
+            m_msgQueue.push_back(pMsg);
+        }
+        if (rc.right - rc.left != e2->width || rc.bottom - rc.top != e2->height)
+        {
+            pMsg = new Msg;
+            pMsg->hwnd = e2->window;
+            pMsg->message = WM_SIZE;
+            pMsg->wParam = 0;
+            pMsg->lParam = MAKELPARAM(e2->width, e2->height);
+            GetCursorPos(&pMsg->pt);
+            m_msgQueue.push_back(pMsg);        
+        }
         pMsg = nullptr;
         break;
     }

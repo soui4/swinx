@@ -1264,8 +1264,7 @@ static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, cairo_surfac
         //首先保证九宫分割正常
         if(!(xSrc[0] <= xSrc[1] && xSrc[1] <= xSrc[2] && xSrc[2] <= xSrc[3])) return FALSE;
         if(!(ySrc[0] <= ySrc[1] && ySrc[1] <= ySrc[2] && ySrc[2] <= ySrc[3])) return FALSE;
-        if (xDest[1] > xDest[2]) return FALSE;
-        if (yDest[1] > yDest[2]) return FALSE;
+
         //调整目标位置
         int nDestWid=pRcDest->right-pRcDest->left;
         int nDestHei=pRcDest->bottom-pRcDest->top;
