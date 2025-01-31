@@ -1781,6 +1781,16 @@ BOOL SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int x, int y, int cx, int cy,
     WINDOWPOS wndPos;
     wndPos.hwnd = hWnd;
     wndPos.hwndInsertAfter = hWndInsertAfter;
+    if (uFlags & SWP_NOMOVE)
+    {
+        x = wndObj->rc.left;
+        y = wndObj->rc.top;
+    }
+    if (uFlags & SWP_NOSIZE)
+    {
+        cx = wndObj->rc.right - wndObj->rc.left;
+        cy = wndObj->rc.bottom - wndObj->rc.top;
+    }
     wndPos.x = x;
     wndPos.y = y;
     wndPos.cx = cx;
@@ -3133,16 +3143,22 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         RECT &rc = wndObj->rc;
         if (!(wndPos.flags & SWP_NOMOVE))
         {
-            const uint32_t coords[] = { static_cast<uint32_t>(wndPos.x), static_cast<uint32_t>(wndPos.y) };
-            xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, coords);
+            if((wndPos.x!=rc.left || wndPos.y!=rc.top))
+            {
+                const uint32_t coords[] = { static_cast<uint32_t>(wndPos.x), static_cast<uint32_t>(wndPos.y) };
+                xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, coords);
+            }
             SendMessage(hWnd, WM_MOVE, 0, MAKELPARAM(wndPos.x, wndPos.y));
         }
         if (!(wndPos.flags & SWP_NOSIZE))
         {
-            uint32_t coords[] = { static_cast<uint32_t>(wndPos.cx), static_cast<uint32_t>(wndPos.cy) };
-            coords[0] = std::max<uint32_t>(coords[0], 1);
-            coords[1] = std::max<uint32_t>(coords[1], 1);
-            xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, coords);
+            if((wndPos.cx != rc.right-rc.left || wndPos.cy!=rc.bottom-rc.top))
+            {
+                uint32_t coords[] = { static_cast<uint32_t>(wndPos.cx), static_cast<uint32_t>(wndPos.cy) };
+                coords[0] = std::max<uint32_t>(coords[0], 1);
+                coords[1] = std::max<uint32_t>(coords[1], 1);
+                xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, coords);
+            }
             SendMessage(hWnd, WM_SIZE, 0, MAKELPARAM(wndPos.cx, wndPos.cy));
         }
         if ((wndPos.flags & (SWP_NOMOVE | SWP_NOSIZE)) != 0)
