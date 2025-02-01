@@ -1253,6 +1253,9 @@ static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, cairo_surfac
         return TRUE;
     }
 
+    static BOOL IsRectNormal(const RECT *prc){
+        return prc->left<prc->right && prc->top < prc->bottom;
+    }
 
     BOOL DrawBitmap9Patch(HDC hdc, LPCRECT pRcDest,HBITMAP hBmp, LPCRECT pRcSrc,LPCRECT pRcSourMargin,UINT expendMode,BYTE byAlpha/*=0xFF*/ )
     {        
@@ -1320,6 +1323,9 @@ static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, cairo_surfac
                 if(xSrc[x] == xSrc[x+1]) continue;
                 RECT rcSrc = {xSrc[x],ySrc[y],xSrc[x+1],ySrc[y+1]};
                 RECT rcDest ={xDest[x],yDest[y],xDest[x+1],yDest[y+1]};
+                
+                if(!IsRectNormal(&rcSrc) || !IsRectNormal(&rcDest))
+                    continue;
                 DrawBitmapEx(hdc, &rcDest,hBmp,&rcSrc,mode[y][x],byAlpha);
             }
         }
