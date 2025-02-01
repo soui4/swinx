@@ -24,6 +24,7 @@ file(GLOB_RECURSE SRCS
     thirdparty/xcb-util-renderutil/*.c  
     thirdparty/xcb-util-keysyms/*.c
     thirdparty/xcb-util-wm/*.c 
+    thirdparty/xcb-util/*.c 
     thirdparty/libxcb/*.c 
     src/*.cpp
     src/cmnctl32/*.cpp
@@ -37,7 +38,7 @@ if (NOT ENABLE_SOUI_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
     target_link_libraries(
         swinx
-        libxcb xcb-util cairo uuid xkbcommon
+        libxcb  cairo uuid xkbcommon
     )
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS})
