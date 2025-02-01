@@ -113,7 +113,6 @@ HeapAlloc(HANDLE hHeap, DWORD dwFlags, size_t dwBytes)
     //for test, set the next memory to 0
     memset((char*)block.ptr + dwBytes, 0, block.allocSize - dwBytes);
     info->lstMem.push_back(block);
-    //printf("HeapAlloc ret=%p\n", block.ptr);
     return block.ptr;
 }
 
@@ -121,7 +120,6 @@ BOOL HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem)
 {
     if (!hHeap || hHeap->type != HEAP_OBJ)
         return FALSE;
-    //printf("HeapFree ptr=%p\n", lpMem);
 
     std::lock_guard<std::recursive_mutex> lock(hHeap->mutex);
     HeapInfo* info = (HeapInfo*)hHeap->ptr;
@@ -135,7 +133,7 @@ BOOL HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem)
             {
                 int ret = mprotect((char*)it->ptr - sizeof(HANDLE), it->flushLen + sizeof(HANDLE), PROT_WRITE | PROT_READ); // restore to write.
                 if (ret != 0) {
-                    TRACE("warn,mprotect ret %d\n", ret);
+                    SLOG_FMTI("warn,mprotect ret %d", ret);
                 }
             }
 
@@ -265,7 +263,7 @@ BOOL FlushInstructionCache(HANDLE hProcess, LPCVOID lpMem, size_t dwSize)
                 it->flushLen = dwMapSize - sizeof(HANDLE);
             }
             else {
-                printf("mprotect ret %d,error=%d\n", ret, errno);
+                SLOG_FMTW("mprotect ret %d,error=%d", ret, errno);
             }
             return ret == 0;
         }
