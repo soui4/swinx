@@ -19,7 +19,7 @@ BOOL WINAPI CloseHandle(HANDLE h)
         return FALSE;
     if (!h)
         return TRUE;
-    if (!h->cbFree) //for static handle (stockobject etc.), cbFree is null and should not been free.
+    if (!h->cbFree) // for static handle (stockobject etc.), cbFree is null and should not been free.
         return TRUE;
     h->mutex.lock();
     BOOL bFree = --h->nRef == 0;

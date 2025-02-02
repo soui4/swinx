@@ -1,9 +1,10 @@
-﻿#include "nativewnd.h"
+﻿#include "../nativewnd.h"
 #include "../tostring.hpp"
 #include "cmnctl32.h"
 #include <unordered_map>
 #include <algorithm>
 #include <src/builtin_image.h>
+#include <list>
 
 class CMessageBox : public CNativeWnd {
 
@@ -16,7 +17,7 @@ class CMessageBox : public CNativeWnd {
         HFONT hOldFont = (HFONT)SelectObject(hDc, hFont);
         //此处SOUI实现和windows API DrawText实现不一致
         RECT rc = { 0, 0, 0, 65535 };
-        rc.right = maxWid;        
+        rc.right = maxWid;
         DrawText(hDc, text, -1, &rc, DT_CALCRECT);
 
         SelectObject(hDc, hOldFont);
@@ -29,42 +30,48 @@ class CMessageBox : public CNativeWnd {
     {
         m_retCode = IDCANCEL;
 
-        std::unordered_map<int, std::string> _ButtonInfo;
+        struct ButtonInfo
+        {
+            int id;
+            std::string text;
+        };
+        std::list<ButtonInfo> _ButtonInfo;
+        // std::unordered_map<int, std::string> _ButtonInfo;
 
         switch (uType & 0x0f)
         {
         case MB_ABORTRETRYIGNORE:
-            _ButtonInfo.insert({ IDABORT, u8"中止" });
-            _ButtonInfo.insert({ IDRETRY, u8"重试" });
-            _ButtonInfo.insert({ IDIGNORE, u8"忽略" });
+            _ButtonInfo.push_back({ IDABORT, u8"中止" });
+            _ButtonInfo.push_back({ IDRETRY, u8"重试" });
+            _ButtonInfo.push_back({ IDIGNORE, u8"忽略" });
             break;
         case MB_CANCELTRYCONTINUE:
-            _ButtonInfo.insert({ IDCANCEL, u8"取消" });
-            _ButtonInfo.insert({ IDTRYAGAIN, u8"重试" });
-            _ButtonInfo.insert({ IDCONTINUE, u8"继续" });
+            _ButtonInfo.push_back({ IDCANCEL, u8"取消" });
+            _ButtonInfo.push_back({ IDTRYAGAIN, u8"重试" });
+            _ButtonInfo.push_back({ IDCONTINUE, u8"继续" });
             break;
         case MB_OK:
-            _ButtonInfo.insert({ IDOK, u8"确定" });
+            _ButtonInfo.push_back({ IDOK, u8"确定" });
             break;
         case MB_OKCANCEL:
-            _ButtonInfo.insert({ IDOK, u8"确定" });
-            _ButtonInfo.insert({ IDCANCEL, u8"取消" });
+            _ButtonInfo.push_back({ IDOK, u8"确定" });
+            _ButtonInfo.push_back({ IDCANCEL, u8"取消" });
             break;
         case MB_RETRYCANCEL:
-            _ButtonInfo.insert({ IDTRYAGAIN, u8"重试" });
-            _ButtonInfo.insert({ IDCANCEL, u8"取消" });
+            _ButtonInfo.push_back({ IDTRYAGAIN, u8"重试" });
+            _ButtonInfo.push_back({ IDCANCEL, u8"取消" });
             break;
         case MB_YESNO:
-            _ButtonInfo.insert({ IDYES, u8"是" });
-            _ButtonInfo.insert({ IDNO, u8"否" });
+            _ButtonInfo.push_back({ IDYES, u8"是" });
+            _ButtonInfo.push_back({ IDNO, u8"否" });
             break;
         case MB_YESNOCANCEL:
-            _ButtonInfo.insert({ IDYES, u8"是" });
-            _ButtonInfo.insert({ IDNO, u8"否" });
-            _ButtonInfo.insert({ IDCANCEL, u8"取消" });
+            _ButtonInfo.push_back({ IDYES, u8"是" });
+            _ButtonInfo.push_back({ IDNO, u8"否" });
+            _ButtonInfo.push_back({ IDCANCEL, u8"取消" });
             break;
         default:
-            _ButtonInfo.insert({ IDOK, u8"确定" });
+            _ButtonInfo.push_back({ IDOK, u8"确定" });
             break;
         }
         switch (uType & 0xf0)
@@ -94,7 +101,7 @@ class CMessageBox : public CNativeWnd {
         int nScreenWid = info.rcWork.right - info.rcWork.left;
         int nScreenHei = info.rcWork.bottom - info.rcWork.top;
         RECT rcText = CalcTextRect(lpText, nScreenWid);
-        int nContentWid = rcText.right - rcText.left; // 文字宽度
+        int nContentWid = rcText.right - rcText.left;         // 文字宽度
         nContentWid += ((m_iconIdx != -1) ? 49 : 0) + 6 + 20; // 图标宽度
 
         int wndWid = rcWnd.right - rcWnd.left;
@@ -140,7 +147,7 @@ class CMessageBox : public CNativeWnd {
 
         for (const auto &item : _ButtonInfo)
         {
-            CreateWindowEx(0, WC_BUTTON, item.second.c_str(), WS_CHILD | WS_VISIBLE, startPos.x, startPos.y, 120, 36, m_hWnd, item.first, 0, 0);
+            CreateWindowEx(0, WC_BUTTON, item.text.c_str(), WS_CHILD | WS_VISIBLE, startPos.x, startPos.y, 120, 36, m_hWnd, item.id, 0, 0);
             startPos.x += 6 + 120;
         }
     }
@@ -195,7 +202,7 @@ int MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType)
     dwStyle &= ~WS_MINIMIZEBOX; // 设置窗体取消最小化按钮
     dwStyle &= ~WS_MAXIMIZEBOX; // 设置窗体取消最大化按钮
 
-    msgBoxWnd.CreateWindow(WS_EX_TOPMOST, WC_NATIVE, lpCaption, dwStyle, 0, 0, 10, 10, 0, 0, 0);
+    msgBoxWnd.CreateWindowA(WS_EX_TOPMOST, CLS_WINDOW, lpCaption, dwStyle, 0, 0, 10, 10, 0, 0, 0);
     // ShowWindow(msgBoxWnd.m_hWnd,SW_HIDE);
     SetParent(msgBoxWnd.m_hWnd, hWnd);
     msgBoxWnd.InitMsgBox(lpText, uType);
@@ -206,6 +213,8 @@ int MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType)
     MSG msg;
     while (GetMessage(&msg, 0, 0, 0))
     {
+        if (CallMsgFilter(&msg, MSGF_MESSAGEBOX))
+            continue;
         if (msg.hwnd == hWnd)
         {
             if (msg.message >= WM_KEYFIRST && msg.message <= WM_KEYLAST)

@@ -10,8 +10,9 @@
 #include <memory>
 #include <vector>
 #include "SUnkImpl.h"
-
-class SConnection;
+#include "nativewnd.h"
+#include "uimsg.h"
+#include "SConnection.h"
 
 class FormatedData {
 public:
@@ -68,17 +69,15 @@ public:
 		IEnumSTATDATA** ppenumAdvise) {
 		return E_NOTIMPL;
 	}
-
-	void OnFinalRelease() override {}
-
 	IUNKNOWN_BEGIN(IDataObject)
 		IUNKNOWN_END()
 };
 
 
-class SClipboard : public SMimeData{
+class SClipboard {
 	enum {
 		kWaitTimeout = 5000,
+		kIncrTimeout = 50000,
 	};
 public:
 	SClipboard(SConnection *conn);
@@ -92,26 +91,27 @@ public:
 	BOOL closeClipboard();
 	xcb_window_t getClipboardOwner() const;
 	BOOL emptyClipboard();
+	IDataObject* getDataObject(BOOL bSel = FALSE);
+	void setSelDataObject(IDataObject* pDo);
 
+	void setProcessIncr(BOOL process) { m_incr_active = process; }
+    BOOL processIncr() { return m_incr_active; }
 public:
-	void handleSelectionRequest(xcb_selection_request_event_t* req);
-	void handleSelectionClearRequest(xcb_selection_clear_event_t* event);
+	void handleSelectionRequest(xcb_selection_request_event_t* e);
+	void handleSelectionClear(xcb_selection_clear_event_t *e);
+    void incrTransactionPeeker(xcb_generic_event_t *ge, bool &accepted);
 
-  protected:
-	  std::shared_ptr<std::vector<char>> getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom);
-	  std::shared_ptr<std::vector<char>> getSelection(xcb_atom_t selection, xcb_atom_t target, xcb_atom_t property, xcb_timestamp_t time);
+	std::shared_ptr<std::vector<char>> getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom);
+	std::shared_ptr<std::vector<char>> getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property, xcb_timestamp_t time);
+protected:
 	  
-	  xcb_generic_event_t* waitForClipboardEvent(xcb_window_t win, int type, int timeout, bool checkManager = false);
-	void clipboardReadIncrementalProperty(xcb_window_t win, xcb_atom_t property, int nbytes, bool nullterm, std::shared_ptr<std::vector<char>> buf);
+	xcb_generic_event_t* waitForClipboardEvent(xcb_window_t win, int type, int timeout, xcb_atom_t selAtom,bool checkManager = false);
+	void clipboardReadIncrementalProperty(xcb_window_t win, xcb_atom_t property, xcb_atom_t selection, int nbytes, bool nullterm, std::shared_ptr<std::vector<char>> buf);
 	bool clipboardReadProperty(xcb_window_t win, xcb_atom_t property, bool deleteProperty, std::vector<char>* buffer, int* size, xcb_atom_t* type, int* format);
-	xcb_atom_t sendTargetsSelection(SMimeData* d, xcb_window_t window, xcb_atom_t property);
-	xcb_atom_t sendSelection(SMimeData* d, xcb_atom_t target, xcb_window_t window, xcb_atom_t property);
+	xcb_atom_t sendTargetsSelection(IDataObject* d, xcb_window_t window, xcb_atom_t property);
+	xcb_atom_t sendSelection(IDataObject* d, xcb_atom_t target, xcb_window_t window, xcb_atom_t property);
 
 	xcb_connection_t* xcb_connection() const;
-
-
-	xcb_atom_t getXcbClipAtom(UINT uFormat);
-
 private:
 	SConnection* m_conn;
 	xcb_timestamp_t m_ts;
@@ -120,6 +120,12 @@ private:
 	xcb_window_t m_requestor;
 	xcb_window_t m_owner;
 	BOOL m_bOpen;
+
+	std::recursive_mutex m_mutex;
+	SMimeData* m_doClip;
+	IDataObject* m_doSel;
+
+	BOOL m_incr_active;
 };
 
 #endif//_SCLIPBOARD_H_

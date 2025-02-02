@@ -8,29 +8,30 @@
 #undef NULL
 #define NULL 0
 
-#define _I8_MIN     (-127 - 1)
-#define _I8_MAX       127
-#define _UI8_MAX      0xffU
+#define _I8_MIN  (-127 - 1)
+#define _I8_MAX  127
+#define _UI8_MAX 0xffU
 
-#define _I16_MIN    (-32767 - 1)
-#define _I16_MAX      32767
-#define _UI16_MAX     0xffffU
+#define _I16_MIN  (-32767 - 1)
+#define _I16_MAX  32767
+#define _UI16_MAX 0xffffU
 
-#define _I32_MIN    (-2147483647 - 1)
-#define _I32_MAX      2147483647
-#define _UI32_MAX     0xffffffffU
+#define _I32_MIN  (-2147483647 - 1)
+#define _I32_MAX  2147483647
+#define _UI32_MAX 0xffffffffU
 
-#define _I64_MIN    (-9223372036854775807L - 1)
-#define _I64_MAX      9223372036854775807L
-#define _UI64_MAX     0xffffffffffffffffU
-
+#define _I64_MIN  (-9223372036854775807L - 1)
+#define _I64_MAX  9223372036854775807L
+#define _UI64_MAX 0xffffffffffffffffU
 
 #define FAR
 #define NEAR
 #define CONST const
 
 #define _Outptr_
-#define _Out_writes_bytes_to_(p1,p2)
+#define _Out_writes_bytes_to_(p1, p2)
+#define _Out_writes_bytes_(p)
+#define _Out_writes_opt_(cch)
 #define _Out_opt_
 #define _In_reads_bytes_(x)
 #define _In_
@@ -45,8 +46,10 @@
 #define OUT
 #define __out_bcount_opt(x)
 #define _In_reads_bytes_opt_(x)
-#define _Out_writes_to_opt_(x,y)
+#define _Out_writes_to_opt_(x, y)
 #define __RPC__deref_opt_inout_opt
+
+#define __RPC__deref_out
 
 #ifndef _INTPTR_T
 #ifndef __intptr_t_defined
@@ -95,7 +98,7 @@ typedef LONG_PTR LPARAM;
 typedef uint16_t USHORT;
 typedef uint64_t ULONG64;
 typedef uint64_t UINT64;
-typedef int64_t  INT64;
+typedef int64_t INT64;
 typedef void VOID;
 typedef void *LPVOID;
 typedef void *PVOID;
@@ -120,8 +123,8 @@ typedef DWORD *LPDWORD;
 typedef void *LPVOID;
 typedef CONST void *LPCVOID;
 
-typedef WORD LCID;  //todo:hjx
-typedef DWORD HACCEL;//todo:hjx
+typedef WORD LCID;    // todo:hjx
+typedef DWORD HACCEL; // todo:hjx
 
 typedef int INT;
 typedef unsigned int UINT;
@@ -141,7 +144,6 @@ typedef struct _SYSTEMTIME
     WORD wMilliseconds;
 } SYSTEMTIME;
 
-
 #define RGB(r, g, b)     ((r) | (g) << 8 | (b) << 16) | (0xffu << 24)
 #define RGBA(r, g, b, a) ((r) | (g) << 8 | (b) << 16 | ((uint32_t)a) << 24)
 #define GetRValue(rgb)   (LOBYTE(rgb))
@@ -153,17 +155,16 @@ typedef int BOOL;
 #define FALSE 0
 #define TRUE  1
 
-
-#define MINCHAR       0x80
-#define MAXCHAR       0x7f
-#define MINSHORT      0x8000
-#define MAXSHORT      0x7fff
-#define MINLONG       0x80000000
-#define MAXLONG       0x7fffffff
-#define MAXBYTE       0xff
-#define MAXWORD       0xffff
-#define MAXDWORD      0xffffffff
-#define MAXLONGLONG   (((LONGLONG)0x7fffffff << 32) | 0xffffffff)
+#define MINCHAR     0x80
+#define MAXCHAR     0x7f
+#define MINSHORT    0x8000
+#define MAXSHORT    0x7fff
+#define MINLONG     0x80000000
+#define MAXLONG     0x7fffffff
+#define MAXBYTE     0xff
+#define MAXWORD     0xffff
+#define MAXDWORD    0xffffffff
+#define MAXLONGLONG (((LONGLONG)0x7fffffff << 32) | 0xffffffff)
 
 #define UNICODE_STRING_MAX_CHARS 32767
 
@@ -218,13 +219,13 @@ typedef struct _Handle *HANDLE;
 
 typedef HWND HMENU;
 
-#define ATOM     int
+#define ATOM int
 typedef HANDLE HMONITOR;
 
 typedef char *PSTR;
 typedef FAR char *LPSTR;
 typedef wchar_t *PWSTR;
-typedef wchar_t* PWCHAR;
+typedef wchar_t *PWCHAR;
 typedef FAR wchar_t *LPWSTR;
 typedef const char *LPCSTR;
 typedef const wchar_t *LPCWSTR, *PCWSTR;
@@ -235,19 +236,19 @@ typedef size_t SIZE_T;
 typedef USHORT LANGID;
 #endif // !_LANGID_DEFINED
 
-#ifdef  UNICODE                     
-#define __TEXT(quote) L##quote      
-#else   /* UNICODE */               
-#define __TEXT(quote) quote         
-#endif /* UNICODE */                
-#define TEXT(quote) __TEXT(quote)   
+#ifdef UNICODE
+#define __TEXT(quote) L##quote
+#else /* UNICODE */
+#define __TEXT(quote) quote
+#endif /* UNICODE */
+#define TEXT(quote) __TEXT(quote)
 
 #define __cdecl   //__attribute__((cdecl))
 #define __stdcall //__attribute__((stdcall))
-#define PASCAL      __stdcall
-#define WINAPI       __stdcall
-#define CALLBACK     __stdcall
-#define STDAPI       HRESULT __stdcall
+#define PASCAL         __stdcall
+#define WINAPI         __stdcall
+#define CALLBACK       __stdcall
+#define STDAPI         HRESULT __stdcall
 #define STDAPICALLTYPE __stdcall
 
 #define ARRAYSIZE(x) (sizeof((x)) / sizeof((x)[0]))
@@ -377,8 +378,9 @@ typedef struct _BLENDFUNCTION
 #define AD_COUNTERCLOCKWISE 1
 #define AD_CLOCKWISE        2
 
-typedef HANDLE              HGLOBAL;
-typedef HANDLE              HLOCAL;
+typedef HANDLE HGLOBAL;
+typedef HANDLE HLOCAL;
+typedef HANDLE HDROP;
 
 typedef struct _FILETIME
 {
@@ -388,13 +390,12 @@ typedef struct _FILETIME
 
 typedef wchar_t OLECHAR;
 typedef OLECHAR **SNB;
-typedef /* [string] */ OLECHAR* LPOLESTR;
-typedef /* [string] */ const OLECHAR* LPCOLESTR;
+typedef /* [string] */ OLECHAR *LPOLESTR;
+typedef /* [string] */ const OLECHAR *LPCOLESTR;
 #define OLESTR(str) L##str
 
-typedef /* [wire_marshal] */ OLECHAR* BSTR;
-typedef BSTR* LPBSTR;
-
+typedef /* [wire_marshal] */ OLECHAR *BSTR;
+typedef BSTR *LPBSTR;
 
 #define FILE_ATTRIBUTE_READONLY            0x00000001
 #define FILE_ATTRIBUTE_HIDDEN              0x00000002
@@ -476,17 +477,19 @@ typedef union _ULARGE_INTEGER {
     ULONGLONG QuadPart;
 } ULARGE_INTEGER, *PULARGE_INTEGER;
 
-
 //
 // For compilers that don't support nameless unions
 //
+#ifndef __cplusplus
+#define NONAMELESSUNION
+#endif //__cplusplus
 #ifndef DUMMYUNIONNAME
 #ifdef NONAMELESSUNION
-#define DUMMYUNIONNAME   u
-#define DUMMYUNIONNAME2  u2
-#define DUMMYUNIONNAME3  u3
-#define DUMMYUNIONNAME4  u4
-#define DUMMYUNIONNAME5  u5
+#define DUMMYUNIONNAME  u
+#define DUMMYUNIONNAME2 u2
+#define DUMMYUNIONNAME3 u3
+#define DUMMYUNIONNAME4 u4
+#define DUMMYUNIONNAME5 u5
 #else
 #define DUMMYUNIONNAME
 #define DUMMYUNIONNAME2
@@ -496,41 +499,37 @@ typedef union _ULARGE_INTEGER {
 #endif
 #endif // DUMMYUNIONNAME
 
-
 typedef enum tagDVASPECT
 {
     DVASPECT_CONTENT = 1,
     DVASPECT_THUMBNAIL = 2,
     DVASPECT_ICON = 4,
     DVASPECT_DOCPRINT = 8
-} 	DVASPECT;
+} DVASPECT;
 
-typedef
-enum tagSTGC
+typedef enum tagSTGC
 {
     STGC_DEFAULT = 0,
     STGC_OVERWRITE = 1,
     STGC_ONLYIFCURRENT = 2,
     STGC_DANGEROUSLYCOMMITMERELYTODISKCACHE = 4,
     STGC_CONSOLIDATE = 8
-} 	STGC;
+} STGC;
 
-typedef
-enum tagSTGMOVE
+typedef enum tagSTGMOVE
 {
     STGMOVE_MOVE = 0,
     STGMOVE_COPY = 1,
     STGMOVE_SHALLOWCOPY = 2
-} 	STGMOVE;
+} STGMOVE;
 
-typedef
-enum tagSTATFLAG
+typedef enum tagSTATFLAG
 {
     STATFLAG_DEFAULT = 0,
     STATFLAG_NONAME = 1,
     STATFLAG_NOOPEN = 2
-} 	STATFLAG;
+} STATFLAG;
 
-typedef /* [context_handle] */ void* HCONTEXT;
+typedef /* [context_handle] */ void *HCONTEXT;
 
 #endif //__PLATFORM_LINUX_

@@ -59,35 +59,41 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
     if (cp != CP_ACP && cp != CP_UTF8)
         return 0;
     if (len < 0)
-		len = strlen(src);
-#if (WCHAR_SIZE==2)
-	assert(sizeof(wchar_t) == 2);
-	//handle for utf16
+        len = strlen(src);
+#if (WCHAR_SIZE == 2)
+    assert(sizeof(wchar_t) == 2);
+    // handle for utf16
     int bufRequire = UTF16Length(src, len);
-    if (!dst) {
-		return bufRequire;
-	}
+    if (!dst)
+    {
+        return bufRequire;
+    }
     else if (bufRequire > dstLen)
     {
         SetLastError(ERROR_INSUFFICIENT_BUFFER);
         return 0;
     }
-	else {
-		return UTF16FromUTF8(src, len, (uint16_t*)dst, dstLen);
-}
+    else
+    {
+        return UTF16FromUTF8(src, len, (uint16_t *)dst, dstLen);
+    }
 #else
-	assert(sizeof(wchar_t) == 4);
-	//handle for utf32
+    assert(sizeof(wchar_t) == 4);
+    // handle for utf32
     int bufRequire = UTF32Length(src, len);
-    if (!dst) {
-		return bufRequire;
-    }if (bufRequire > dstLen) {
+    if (!dst)
+    {
+        return bufRequire;
+    }
+    if (bufRequire > dstLen)
+    {
         SetLastError(ERROR_INSUFFICIENT_BUFFER);
         return 0;
     }
-	else {
-		return UTF32FromUTF8(src, len, (uint32_t*)dst, dstLen);
-	}
+    else
+    {
+        return UTF32FromUTF8(src, len, (uint32_t *)dst, dstLen);
+    }
 #endif
 }
 
@@ -104,23 +110,25 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
     if (cp != CP_ACP && cp != CP_UTF8)
         return 0;
 
-#if (WCHAR_SIZE==2)
-	assert(sizeof(wchar_t) == 2);
-    int bufRequire = UTF16toUTF8Length((const uint16_t*)src, len);
-    if (!dst) {
-		return bufRequire;
+#if (WCHAR_SIZE == 2)
+    assert(sizeof(wchar_t) == 2);
+    int bufRequire = UTF16toUTF8Length((const uint16_t *)src, len);
+    if (!dst)
+    {
+        return bufRequire;
     }
     else if (bufRequire > dstLen)
     {
         SetLastError(ERROR_INSUFFICIENT_BUFFER);
         return 0;
     }
-	else {
-		return UTF8FromUTF16((const uint16_t*)src, len, dst, dstLen);
-	}
+    else
+    {
+        return UTF8FromUTF16((const uint16_t *)src, len, dst, dstLen);
+    }
 #else
-	assert(sizeof(wchar_t) == 4);
-    int bufRequire = UTF32toUTF8Length((const uint32_t*)src, len);
+    assert(sizeof(wchar_t) == 4);
+    int bufRequire = UTF32toUTF8Length((const uint32_t *)src, len);
     if (!dst)
         return bufRequire;
     else if (bufRequire > dstLen)
@@ -129,7 +137,7 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
         return 0;
     }
     else
-		return UTF8FromUTF32((const uint32_t*)src, len, dst, dstLen);
+        return UTF8FromUTF32((const uint32_t *)src, len, dst, dstLen);
 #endif
 }
 
@@ -205,13 +213,30 @@ BOOL StrToIntExW(const wchar_t *str, DWORD flags, INT *ret)
     return res;
 }
 
+BOOL StrToInt64ExA(const char *str, DWORD flags, LONGLONG *ret)
+{
+    std::wstring wstr;
+    towstring(str, -1, wstr);
+    return StrToInt64ExW(wstr.c_str(), flags, ret);
+}
+
+BOOL StrToIntExA(const char *str, DWORD flags, INT *ret)
+{
+    LONGLONG value;
+    BOOL res;
+    res = StrToInt64ExA(str, flags, &value);
+    if (res)
+        *ret = value;
+    return res;
+}
+
 void GetLocalTime(SYSTEMTIME *pSysTime)
 {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     struct tm *now = localtime(&tv.tv_sec);
-    pSysTime->wYear = now->tm_year;
-    pSysTime->wMonth = now->tm_mon;
+    pSysTime->wYear = now->tm_year + 1900;
+    pSysTime->wMonth = now->tm_mon + 1;
     pSysTime->wDayOfWeek = now->tm_wday;
     pSysTime->wDay = now->tm_mday;
     pSysTime->wHour = now->tm_hour;
@@ -222,24 +247,28 @@ void GetLocalTime(SYSTEMTIME *pSysTime)
 
 void GetSystemTime(SYSTEMTIME *pSysTime)
 {
-    struct tm *now = localtime(nullptr);
-    pSysTime->wYear = now->tm_year;
-    pSysTime->wMonth = now->tm_mon;
+    struct timeval tvNow;
+    gettimeofday(&tvNow, 0);
+
+    struct tm *now = localtime(&tvNow.tv_sec);
+    pSysTime->wYear = now->tm_year + 1900;
+    pSysTime->wMonth = now->tm_mon + 1;
     pSysTime->wDayOfWeek = now->tm_wday;
     pSysTime->wDay = now->tm_mday;
     pSysTime->wHour = now->tm_hour;
     pSysTime->wMinute = now->tm_min;
     pSysTime->wSecond = now->tm_sec;
-    pSysTime->wMilliseconds = 0; // todo:hjx
+    pSysTime->wMilliseconds = tvNow.tv_usec / 1000;
 }
 
-time_t _mkgmtime(tm *_Tm)
+time_t _mkgmtime(struct tm *_Tm)
 {
-    return 0;
+    return mktime(_Tm);
 }
 
-int _localtime64_s(tm *ptm, const __time64_t *ptime)
+int _localtime64_s(struct tm *ptm, const __time64_t *ptime)
 {
+    *ptm = *localtime((time_t *)ptime);
     return 0;
 }
 
@@ -360,7 +389,7 @@ LONG InterlockedDecrement(LONG *v)
     return __atomic_fetch_sub(v, 1, __ATOMIC_SEQ_CST) - 1;
 }
 
-LONG InterlockedIncrement(LONG*v)
+LONG InterlockedIncrement(LONG *v)
 {
     return __atomic_fetch_add(v, 1, __ATOMIC_SEQ_CST) + 1;
 }
@@ -706,7 +735,13 @@ DWORD MsgWaitForMultipleObjects(DWORD nCount, const HANDLE *pHandles, BOOL fWait
 BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->getMsg(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+    BOOL bRet = conn->getMsg(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+    if (bRet)
+    {
+        if (CallHook(WH_GETMESSAGE, HC_ACTION, 1, (LPARAM)lpMsg))
+            return GetMessage(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+    }
+    return bRet;
 }
 
 BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
@@ -714,19 +749,32 @@ BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, 
     SConnection *conn = SConnMgr::instance()->getConnection();
     if (!conn)
         return FALSE;
-    return conn->peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    BOOL bRet = conn->peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    if (bRet)
+    {
+        if (CallHook(WH_GETMESSAGE, HC_ACTION, wRemoveMsg & PM_REMOVE, (LPARAM)pMsg))
+            return PeekMessage(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    }
+    return bRet;
 }
 
-int GetSystemScale(){
-    //todo:hjx
-    return GetDpiForWindow(0)/96*100;
+int GetSystemScale()
+{
+    // todo:hjx
+    int dpi = GetDpiForWindow(0);
+    return dpi * 100 / 96;
 }
 
 int GetSystemMetrics(int nIndex)
 {
     int ret = 0;
+    SConnection *conn = SConnMgr::instance()->getConnection();
     switch (nIndex)
     {
+    case SM_CXSCREEN:
+        return conn->screen->width_in_pixels;
+    case SM_CYSCREEN:
+        return conn->screen->height_in_pixels;
     case SM_CXBORDER:
     case SM_CYBORDER:
     case SM_CXEDGE:
@@ -762,7 +810,7 @@ int GetSystemMetrics(int nIndex)
         printf("unknown index for GetSystemMetrics, index=%d\n", nIndex);
         break;
     }
-    return ret*GetSystemScale()/100;
+    return ret * GetSystemScale() / 100;
 }
 
 BOOL ShellExecute(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd)
@@ -772,7 +820,7 @@ BOOL ShellExecute(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParamet
 
 BOOL GetKeyboardState(PBYTE lpKeyState)
 {
-    SConnection* conn = SConnMgr::instance()->getConnection();
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->GetKeyboardState(lpKeyState);
 }
 
@@ -782,11 +830,11 @@ SHORT GetKeyState(int nVirtKey)
     return conn->GetKeyState(nVirtKey);
 }
 
-SHORT WINAPI GetAsyncKeyState(int vKey) {
-    SConnection* conn = SConnMgr::instance()->getConnection();
+SHORT WINAPI GetAsyncKeyState(int vKey)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->GetAsyncKeyState(vKey);
 }
-
 
 UINT MapVirtualKey(UINT uCode, UINT uMapType)
 {
@@ -796,7 +844,7 @@ UINT MapVirtualKey(UINT uCode, UINT uMapType)
 
 UINT MapVirtualKeyEx(UINT uCode, UINT uMapType, HKL dwhkl)
 {
-    //todo:hjx
+    // todo:hjx
     return MapVirtualKey(uCode, uMapType);
 }
 
@@ -812,14 +860,11 @@ uint64_t GetTickCount64()
     return (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 
-BOOL RegisterDragDrop(HWND, IDropTarget *pDrapTarget)
-{
-    return 0;
-}
-
 BOOL CallMsgFilter(LPMSG lpMsg, int nCode)
 {
-    return 0;
+    if (CallHook(WH_SYSMSGFILTER, nCode, 0, (LPARAM)lpMsg))
+        return TRUE;
+    return CallHook(WH_MSGFILTER, nCode, 0, (LPARAM)lpMsg);
 }
 
 __time64_t _mktime64(const tm *ptime)
@@ -829,19 +874,29 @@ __time64_t _mktime64(const tm *ptime)
 
 __time64_t _time64(__time64_t *_Time)
 {
+#ifdef __x86_64
     return time((time_t *)_Time);
+#else
+    time_t tmp = _Time ? (*_Time) : 0;
+    time_t ret = time(&tmp);
+    if (_Time)
+        *_Time = tmp;
+    return ret;
+#endif //__x86_64
 }
 
 HCURSOR LoadCursor(HINSTANCE hInstance, LPCSTR lpCursorName)
 {
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->LoadCursor(lpCursorName);
+    return CursorMgr::LoadCursor(lpCursorName);
 }
 
 BOOL DestroyCursor(HCURSOR hCursor)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->DestroyCursor(hCursor);
+    BOOL bRet = conn->DestroyCursor(hCursor);
+    if (!bRet)
+        return FALSE;
+    return CursorMgr::DestroyCursor(hCursor);
 }
 
 HCURSOR SetCursor(HCURSOR hCursor)
@@ -850,95 +905,105 @@ HCURSOR SetCursor(HCURSOR hCursor)
     return conn->SetCursor(hCursor);
 }
 
-HCURSOR GetCursor(VOID) {
-    SConnection* conn = SConnMgr::instance()->getConnection();
+HCURSOR GetCursor(VOID)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->GetCursor();
 }
 
-static __thread sigjmp_buf jump_buffer; 
+static __thread sigjmp_buf jump_buffer;
 
-static void sigsegv_handler(int sig) {
-//    printf("Caught signal %d\n", sig);
+static void sigsegv_handler(int sig)
+{
+    //    printf("Caught signal %d\n", sig);
     siglongjmp(jump_buffer, 1);
 }
 
-BOOL IsBadReadPtr(const void* ptr, size_t size)
+BOOL IsBadReadPtr(const void *ptr, size_t size)
 {
-	if (ptr == NULL || size == 0)
-	{
-		return 1; // Invalid pointer or size
-	}
-	// Set up signal handler
-	struct sigaction new_action, old_action;
-	new_action.sa_handler = sigsegv_handler;
-	sigemptyset(&new_action.sa_mask);
-	new_action.sa_flags = 0;
-	if (sigaction(SIGSEGV, &new_action, &old_action) == -1) {
-		perror("sigaction");
-		return FALSE;
-	}
-	BOOL bRet = FALSE;
-	if (sigsetjmp(jump_buffer, 1) == 0) {
-		volatile const char* p = (const char*)ptr;
-		char dummy __attribute__((unused));
-		UINT_PTR count = size;
-		size_t pageSize = sysconf(_SC_PAGESIZE);
-		while (count > pageSize)
-		{
-			dummy = *p;
-			p += pageSize;
-			count -= pageSize;
-		}
-		dummy = p[0];
-		dummy = p[count - 1];
-	}
-	else {
-		bRet = TRUE;
-	}
-	if (sigaction(SIGSEGV, &old_action, NULL) == -1) {
-		perror("sigaction");
-	}
-	return bRet; // Invalid pointer
+    if (ptr == NULL || size == 0)
+    {
+        return 1; // Invalid pointer or size
+    }
+    // Set up signal handler
+    struct sigaction new_action, old_action;
+    new_action.sa_handler = sigsegv_handler;
+    sigemptyset(&new_action.sa_mask);
+    new_action.sa_flags = 0;
+    if (sigaction(SIGSEGV, &new_action, &old_action) == -1)
+    {
+        perror("sigaction");
+        return FALSE;
+    }
+    BOOL bRet = FALSE;
+    if (sigsetjmp(jump_buffer, 1) == 0)
+    {
+        volatile const char *p = (const char *)ptr;
+        char dummy __attribute__((unused));
+        UINT_PTR count = size;
+        size_t pageSize = sysconf(_SC_PAGESIZE);
+        while (count > pageSize)
+        {
+            dummy = *p;
+            p += pageSize;
+            count -= pageSize;
+        }
+        dummy = p[0];
+        dummy = p[count - 1];
+    }
+    else
+    {
+        bRet = TRUE;
+    }
+    if (sigaction(SIGSEGV, &old_action, NULL) == -1)
+    {
+        perror("sigaction");
+    }
+    return bRet; // Invalid pointer
 }
 
-BOOL IsBadWritePtr(const void* ptr, size_t size)
+BOOL IsBadWritePtr(const void *ptr, size_t size)
 {
-	if (ptr == NULL || size == 0)
-	{
-		return 1; // Invalid pointer or size
-	}
-	struct sigaction new_action, old_action;
-	new_action.sa_handler = sigsegv_handler;
-	sigemptyset(&new_action.sa_mask);
-	new_action.sa_flags = 0;
-	if (sigaction(SIGSEGV, &new_action, &old_action) == -1) {
-		perror("sigaction");
-		return FALSE;
-	}
-	BOOL bRet = FALSE;
-	if (sigsetjmp(jump_buffer, 1) == 0) {
+    if (ptr == NULL || size == 0)
+    {
+        return 1; // Invalid pointer or size
+    }
+    struct sigaction new_action, old_action;
+    new_action.sa_handler = sigsegv_handler;
+    sigemptyset(&new_action.sa_mask);
+    new_action.sa_flags = 0;
+    if (sigaction(SIGSEGV, &new_action, &old_action) == -1)
+    {
+        perror("sigaction");
+        return FALSE;
+    }
+    BOOL bRet = FALSE;
+    if (sigsetjmp(jump_buffer, 1) == 0)
+    {
 
-		volatile char* p = (char*)ptr;
-		UINT_PTR count = size;
-		size_t pageSize = sysconf(_SC_PAGESIZE);
+        volatile char *p = (char *)ptr;
+        UINT_PTR count = size;
+        size_t pageSize = sysconf(_SC_PAGESIZE);
 
-		while (count > pageSize)
-		{
-			*p |= 0;
-			p += pageSize;
-			count -= pageSize;
-		}
-		p[0] |= 0;
-		p[count - 1] |= 0;
-	}
-	else {
-		bRet = TRUE;
-	}
-	if (sigaction(SIGSEGV, &old_action, NULL) == -1) {
-		perror("sigaction");
-	}
-    //printf("IsBadWritePtr %p,len=%d,ret=%d\n",ptr,(int)size,bRet);
-	return bRet; // Invalid pointer       
+        while (count > pageSize)
+        {
+            *p |= 0;
+            p += pageSize;
+            count -= pageSize;
+        }
+        p[0] |= 0;
+        p[count - 1] |= 0;
+    }
+    else
+    {
+        bRet = TRUE;
+    }
+    if (sigaction(SIGSEGV, &old_action, NULL) == -1)
+    {
+        perror("sigaction");
+    }
+    // printf("IsBadWritePtr %p,len=%d,ret=%d\n",ptr,(int)size,bRet);
+    return bRet; // Invalid pointer
 }
 
 BOOL WINAPI IsBadStringPtrA(LPCSTR lpsz, UINT_PTR ucchMax)
@@ -1017,7 +1082,8 @@ DWORD GetModuleFileNameA(HMODULE hModule, LPSTR lpFilename, DWORD nSize)
     }
 }
 
-DWORD WINAPI GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize) {
+DWORD WINAPI GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize)
+{
     char szName[MAX_PATH];
     if (GetModuleFileNameA(hModule, szName, MAX_PATH) == 0)
         return 0;
@@ -1046,26 +1112,33 @@ void WINAPI set_error(int e)
 
 VOID WINAPI Sleep(DWORD dwMilliseconds)
 {
-    usleep(dwMilliseconds * 1000);
+    struct timeval usleep_tv;
+    usleep_tv.tv_sec = 0;
+    usleep_tv.tv_usec = dwMilliseconds * 1000;
+    select(0, 0, 0, 0, &usleep_tv);
 }
 
-
-LONG CompareFileTime(const FILETIME* ft1, const FILETIME* ft2)
+LONG CompareFileTime(const FILETIME *ft1, const FILETIME *ft2)
 {
-    if (ft1->dwHighDateTime < ft2->dwHighDateTime) return -1;
-    if (ft1->dwHighDateTime > ft2->dwHighDateTime) return 1;
-    if (ft1->dwLowDateTime < ft2->dwLowDateTime) return -1;
-    if (ft1->dwLowDateTime > ft2->dwLowDateTime) return 1;
+    if (ft1->dwHighDateTime < ft2->dwHighDateTime)
+        return -1;
+    if (ft1->dwHighDateTime > ft2->dwHighDateTime)
+        return 1;
+    if (ft1->dwLowDateTime < ft2->dwLowDateTime)
+        return -1;
+    if (ft1->dwLowDateTime > ft2->dwLowDateTime)
+        return 1;
     return 0;
 }
 
-
-BOOL WINAPI SystemParametersInfoA(UINT action, UINT val, void* ptr, UINT winini) {
-    //todo:hjx
+BOOL WINAPI SystemParametersInfoA(UINT action, UINT val, void *ptr, UINT winini)
+{
+    // todo:hjx
     return FALSE;
 }
 
-BOOL WINAPI SystemParametersInfoW(UINT action, UINT val, void* ptr, UINT winini) {
+BOOL WINAPI SystemParametersInfoW(UINT action, UINT val, void *ptr, UINT winini)
+{
     return SystemParametersInfoA(action, val, ptr, winini);
 }
 
@@ -1074,133 +1147,126 @@ void WINAPI DebugBreak(void)
     DbgBreakPoint();
 }
 
-VOID WINAPI DbgBreakPoint(VOID) {
+VOID WINAPI DbgBreakPoint(VOID)
+{
     assert(0);
 }
 
-UINT WINAPI GetDoubleClickTime(VOID) {
+UINT WINAPI GetDoubleClickTime(VOID)
+{
     return SConnMgr::instance()->getConnection()->GetDoubleClickTime();
 }
 
 #define TICKSPERSEC 10000000
 
-BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER* lpFrequency) {
+BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER *lpFrequency)
+{
     lpFrequency->QuadPart = TICKSPERSEC;
     return TRUE;
 }
 
-#define SECS_1601_TO_1970  ((369 * 365 + 89) * (ULONGLONG)86400)
+#define SECS_1601_TO_1970 ((369 * 365 + 89) * (ULONGLONG)86400)
 
 static inline ULONGLONG ticks_from_time_t(time_t time)
 {
-    if (sizeof(time_t) == sizeof(int))  /* time_t may be signed */
+    if (sizeof(time_t) == sizeof(int)) /* time_t may be signed */
         return ((ULONGLONG)(ULONG)time + SECS_1601_TO_1970) * TICKSPERSEC;
     else
         return ((ULONGLONG)time + SECS_1601_TO_1970) * TICKSPERSEC;
 }
 
-BOOL WINAPI QueryPerformanceCounter(LARGE_INTEGER* lpPerformanceCount) {
+BOOL WINAPI QueryPerformanceCounter(LARGE_INTEGER *lpPerformanceCount)
+{
     struct timeval now;
     gettimeofday(&now, 0);
     lpPerformanceCount->QuadPart = ticks_from_time_t(now.tv_sec) + now.tv_usec * 10;
     return TRUE;
 }
 
-
 //---------------------------------------------------
-UINT
-WINAPI
-RegisterClipboardFormatA(
-    _In_ LPCSTR lpszFormat) {
-    SConnection* conn = SConnMgr::instance()->getConnection();
+UINT WINAPI RegisterClipboardFormatA(_In_ LPCSTR lpszFormat)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->RegisterClipboardFormatA(lpszFormat);
 }
 
-UINT
-WINAPI
-RegisterClipboardFormatW(
-    _In_ LPCWSTR lpszFormat) {
+UINT WINAPI RegisterClipboardFormatW(_In_ LPCWSTR lpszFormat)
+{
     std::string str;
     tostring(lpszFormat, -1, str);
     return RegisterClipboardFormatA(str.c_str());
 }
 
-
-BOOL
-WINAPI
-EmptyClipboard(VOID) {
-    SConnection* conn = SConnMgr::instance()->getConnection();
+BOOL WINAPI EmptyClipboard(VOID)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->EmptyClipboard();
 }
 
-BOOL
-WINAPI
-IsClipboardFormatAvailable(_In_ UINT format) {
-    SConnection* conn = SConnMgr::instance()->getConnection();
+BOOL WINAPI IsClipboardFormatAvailable(_In_ UINT format)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->IsClipboardFormatAvailable(format);
 }
 
-BOOL
-WINAPI
-OpenClipboard(_In_opt_ HWND hWndNewOwner) {
-    if(hWndNewOwner){
+BOOL WINAPI OpenClipboard(_In_opt_ HWND hWndNewOwner)
+{
+    if (hWndNewOwner)
+    {
         tid_t tid = GetWindowThreadProcessId(hWndNewOwner, NULL);
         if (tid != GetCurrentThreadId())
             return FALSE;
     }
-    SConnection* conn = SConnMgr::instance()->getConnection();
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->OpenClipboard(hWndNewOwner);
 }
 
-BOOL
-WINAPI
-CloseClipboard(VOID) {
-    SConnection* conn = SConnMgr::instance()->getConnection();
+BOOL WINAPI CloseClipboard(VOID)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->CloseClipboard();
 }
 
-HWND
-WINAPI
-GetClipboardOwner(VOID) {
-    SConnection* conn = SConnMgr::instance()->getConnection();
+HWND WINAPI GetClipboardOwner(VOID)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->GetClipboardOwner();
 }
 
 HANDLE
 WINAPI
-GetClipboardData(_In_ UINT uFormat) {
-    SConnection* conn = SConnMgr::instance()->getConnection();
+GetClipboardData(_In_ UINT uFormat)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->GetClipboardData(uFormat);
 }
 
-
 HANDLE
 WINAPI
-SetClipboardData(_In_ UINT uFormat,
-    _In_opt_ HANDLE hMem) {
-    SConnection* conn = SConnMgr::instance()->getConnection();
+SetClipboardData(_In_ UINT uFormat, _In_opt_ HANDLE hMem)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->SetClipboardData(uFormat, hMem);
 }
 
 //------------------------------------------------------------
-BOOL WINAPI MessageBeep(_In_ UINT uType) {
-    //todo:hjx
+BOOL WINAPI MessageBeep(_In_ UINT uType)
+{
+    // todo:hjx
     return FALSE;
 }
 
-
 DWORD
 WINAPI
-GetTempPathA(
-    _In_ DWORD nBufferLength,
-    _Out_writes_to_opt_(nBufferLength, return +1) LPSTR lpBuffer
-) {
+GetTempPathA(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return +1) LPSTR lpBuffer)
+{
     int len = strlen(lpBuffer);
     if (len + 7 > nBufferLength)
         return len + 7;
     strcpy(lpBuffer + len, "XXXXXX");
     int fd = mkstemp(lpBuffer);
-    if (fd != -1) {
+    if (fd != -1)
+    {
         close(fd);
         unlink(lpBuffer);
         return len + 7;
@@ -1211,10 +1277,8 @@ GetTempPathA(
 
 DWORD
 WINAPI
-GetTempPathW(
-    _In_ DWORD nBufferLength,
-    _Out_writes_to_opt_(nBufferLength, return +1) LPWSTR lpBuffer
-) {
+GetTempPathW(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return +1) LPWSTR lpBuffer)
+{
     char szPath[MAX_PATH];
     if (0 == WideCharToMultiByte(CP_UTF8, 0, lpBuffer, nBufferLength, szPath, MAX_PATH, NULL, NULL))
         return 0;
@@ -1222,34 +1286,133 @@ GetTempPathW(
     if (ret == 0)
         return 0;
     int len = MultiByteToWideChar(CP_UTF8, 0, szPath, ret, NULL, 0);
-    if (len > nBufferLength) {
+    if (len > nBufferLength)
+    {
         SetLastError(ERROR_INVALID_ACCESS);
         return 0;
     }
     return MultiByteToWideChar(CP_UTF8, 0, szPath, ret, lpBuffer, nBufferLength);
 }
 
-BOOL IsValidCodePage(UINT CodePage) {
-    //todo:hjx
+BOOL IsValidCodePage(UINT CodePage)
+{
+    // todo:hjx
     return TRUE;
 }
 
-UINT WINAPI GetKeyboardLayoutList(int nBuff,
-    HKL* lpList
-) {
+UINT WINAPI GetKeyboardLayoutList(int nBuff, HKL *lpList)
+{
     return 0;
 }
 
-HKL ActivateKeyboardLayout(HKL hkl,
-    UINT Flags
-) {
+HKL ActivateKeyboardLayout(HKL hkl, UINT Flags)
+{
     return 0;
 }
 
-UINT WINAPI GetACP(void) {
+UINT WINAPI GetACP(void)
+{
     return CP_UTF8;
 }
 
-BOOL WINAPI IsDBCSLeadByte(BYTE  c){
-    return UTF8CharLength(c)>1;
+BOOL WINAPI IsDBCSLeadByte(BYTE c)
+{
+    return UTF8CharLength(c) > 1;
+}
+
+// todo:hjx verify
+HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName)
+{
+    if (lpModuleName)
+    {
+        void *hMod = dlopen(lpModuleName, RTLD_LAZY);
+        if (hMod)
+            dlclose(hMod);
+        return (HMODULE)hMod;
+    }
+    else
+    {
+        char pathexe[MAX_PATH];
+        ssize_t len;
+        len = readlink("/proc/self/exe", pathexe, sizeof(pathexe) - 1);
+        if (len == -1)
+        {
+            perror("readlink");
+            return 0;
+        }
+        pathexe[len] = 0;
+        FILE *fp;
+        char path[1024];
+        char line[1024];
+        void *module_addr = NULL;
+        // 打开 /proc/self/maps 文件
+        fp = fopen("/proc/self/maps", "r");
+        if (fp == NULL)
+        {
+            perror("fopen");
+            return 0;
+        }
+
+        // 读取文件内容，查找包含当前进程可执行文件路径的行
+        while (fgets(line, sizeof(line), fp))
+        {
+            if (strstr(line, pathexe) != NULL)
+            {                                                  // 替换为你的可执行文件路径
+                sscanf(line, "%lx", (UINT_PTR *)&module_addr); // 从行中读取模块地址
+                break;
+            }
+        }
+        fclose(fp);
+        return (HMODULE)module_addr;
+    }
+}
+
+HMODULE WINAPI GetModuleHandleW(LPCWSTR lpModuleName)
+{
+    if (!lpModuleName)
+        return GetModuleHandleA(NULL);
+    std::string str;
+    tostring(lpModuleName, -1, str);
+    return GetModuleHandleA(str.c_str());
+}
+
+BOOL WINAPI SetEnvironmentVariableA(LPCSTR lpName, LPCSTR lpValue)
+{
+    return setenv(lpName, lpValue, 1);
+}
+
+BOOL WINAPI SetEnvironmentVariableW(LPCWSTR lpName, LPCWSTR lpValue)
+{
+    std::string name, value;
+    tostring(lpName, -1, name);
+    tostring(lpValue, -1, value);
+    return SetEnvironmentVariableA(name.c_str(), value.c_str());
+}
+
+DWORD WINAPI GetEnvironmentVariableA(LPCSTR lpName, LPSTR lpBuffer, DWORD nSize)
+{
+    const char *value = getenv(lpName);
+    if (!value)
+        return 0;
+    size_t len = strlen(value);
+    if (len >= nSize)
+        return len + 1;
+    strcpy(lpBuffer, value);
+    return len;
+}
+
+DWORD WINAPI GetEnvironmentVariableW(LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSize)
+{
+    std::string name;
+    tostring(lpName, -1, name);
+    const char *value = getenv(name.c_str());
+    if (!value)
+        return 0;
+    std::wstring wstr;
+    towstring(value, -1, wstr);
+    size_t len = wstr.length();
+    if (len >= nSize)
+        return len + 1;
+    wcscpy(lpBuffer, wstr.c_str());
+    return len;
 }

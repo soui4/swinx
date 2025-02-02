@@ -17,7 +17,7 @@ struct MemBlock
     size_t len;
     size_t flushLen;
     size_t allocSize;
-    void* ptr;
+    void *ptr;
     DWORD flags;
 };
 
@@ -40,15 +40,15 @@ HANDLE GetProcessHeap()
     return SConnMgr::instance()->getProcessHeap();
 }
 
-static void FreeHeapInfo(void* ptr)
+static void FreeHeapInfo(void *ptr)
 {
-    HeapInfo* info = (HeapInfo*)ptr;
+    HeapInfo *info = (HeapInfo *)ptr;
     for (auto it : info->lstMem)
     {
         if ((it.flags & HEAP_CREATE_ENABLE_EXECUTE) && (it.flushLen > 0))
-            mprotect((char*)it.ptr - sizeof(HANDLE), it.flushLen + sizeof(HANDLE), PROT_WRITE | PROT_READ); // restore to write.
+            mprotect((char *)it.ptr - sizeof(HANDLE), it.flushLen + sizeof(HANDLE), PROT_WRITE | PROT_READ); // restore to write.
 
-        free((char*)it.ptr - sizeof(HANDLE));
+        free((char *)it.ptr - sizeof(HANDLE));
     }
     delete info;
 }
@@ -66,14 +66,16 @@ BOOL WINAPI HeapDestroy(HANDLE hHeap)
     return CloseHandle(hHeap);
 }
 
-BOOL WINAPI HeapLock(HANDLE hHeap) {
+BOOL WINAPI HeapLock(HANDLE hHeap)
+{
     if (!hHeap || hHeap->type != HEAP_OBJ)
         return FALSE;
     hHeap->mutex.lock();
     return TRUE;
 }
 
-BOOL WINAPI HeapUnlock(HANDLE hHeap) {
+BOOL WINAPI HeapUnlock(HANDLE hHeap)
+{
     if (!hHeap || hHeap->type != HEAP_OBJ)
         return FALSE;
     hHeap->mutex.unlock();
@@ -85,8 +87,8 @@ HeapAlloc(HANDLE hHeap, DWORD dwFlags, size_t dwBytes)
 {
     if (!hHeap || hHeap->type != HEAP_OBJ)
         return nullptr;
-    std::lock_guard<std::recursive_mutex>(hHeap->mutex);
-    HeapInfo* info = (HeapInfo*)hHeap->ptr;
+    std::lock_guard<std::recursive_mutex> lock(hHeap->mutex);
+    HeapInfo *info = (HeapInfo *)hHeap->ptr;
     assert(info);
     MemBlock block;
     block.len = dwBytes;
@@ -97,7 +99,7 @@ HeapAlloc(HANDLE hHeap, DWORD dwFlags, size_t dwBytes)
     int pageSize = sysconf(_SC_PAGE_SIZE);
 
     size_t bufLen = (dwBytes + sizeof(HANDLE) + pageSize - 1) / pageSize * pageSize;
-    void* ptr = nullptr;
+    void *ptr = nullptr;
     int ret = posix_memalign(&ptr, pageSize, bufLen);
     if (ret != 0)
     {
@@ -105,15 +107,14 @@ HeapAlloc(HANDLE hHeap, DWORD dwFlags, size_t dwBytes)
     }
     memcpy(ptr, &hHeap, sizeof(HANDLE));
     block.allocSize = bufLen - sizeof(HANDLE);
-    block.ptr = (char*)ptr + sizeof(HANDLE);
+    block.ptr = (char *)ptr + sizeof(HANDLE);
     if (dwFlags & HEAP_ZERO_MEMORY)
     {
         memset(block.ptr, 0, dwBytes);
     }
-    //for test, set the next memory to 0
-    memset((char*)block.ptr + dwBytes, 0, block.allocSize - dwBytes);
+    // for test, set the next memory to 0
+    memset((char *)block.ptr + dwBytes, 0, block.allocSize - dwBytes);
     info->lstMem.push_back(block);
-    //printf("HeapAlloc ret=%p\n", block.ptr);
     return block.ptr;
 }
 
@@ -121,10 +122,9 @@ BOOL HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem)
 {
     if (!hHeap || hHeap->type != HEAP_OBJ)
         return FALSE;
-    //printf("HeapFree ptr=%p\n", lpMem);
 
-    std::lock_guard<std::recursive_mutex>(hHeap->mutex);
-    HeapInfo* info = (HeapInfo*)hHeap->ptr;
+    std::lock_guard<std::recursive_mutex> lock(hHeap->mutex);
+    HeapInfo *info = (HeapInfo *)hHeap->ptr;
     if (!info)
         return FALSE;
     for (auto it = info->lstMem.begin(); it != info->lstMem.end(); it++)
@@ -133,13 +133,14 @@ BOOL HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem)
         {
             if ((it->flags & HEAP_CREATE_ENABLE_EXECUTE) && (it->flushLen > 0))
             {
-                int ret = mprotect((char*)it->ptr - sizeof(HANDLE), it->flushLen + sizeof(HANDLE), PROT_WRITE | PROT_READ); // restore to write.
-                if (ret != 0) {
-                    TRACE("warn,mprotect ret %d\n", ret);
+                int ret = mprotect((char *)it->ptr - sizeof(HANDLE), it->flushLen + sizeof(HANDLE), PROT_WRITE | PROT_READ); // restore to write.
+                if (ret != 0)
+                {
+                    SLOG_FMTI("warn,mprotect ret %d", ret);
                 }
             }
 
-            free((char*)lpMem - sizeof(HANDLE));
+            free((char *)lpMem - sizeof(HANDLE));
             info->lstMem.erase(it);
             return TRUE;
         }
@@ -147,42 +148,40 @@ BOOL HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem)
     return FALSE;
 }
 
-LPVOID WINAPI HeapReAlloc(
-    HANDLE hHeap,
-    DWORD dwFlags,
-    LPVOID lpMem,
-    SIZE_T dwBytes
-) {
+LPVOID WINAPI HeapReAlloc(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBytes)
+{
     if (!hHeap || hHeap->type != HEAP_OBJ)
         return nullptr;
-    std::lock_guard<std::recursive_mutex>(hHeap->mutex);
-    HeapInfo* info = (HeapInfo*)hHeap->ptr;
+    std::lock_guard<std::recursive_mutex> lock(hHeap->mutex);
+    HeapInfo *info = (HeapInfo *)hHeap->ptr;
     if (!info)
         return FALSE;
     for (auto it = info->lstMem.begin(); it != info->lstMem.end(); it++)
     {
         if (it->ptr == lpMem)
         {
-            if (it->allocSize >= dwBytes) {
+            if (it->allocSize >= dwBytes)
+            {
                 if ((dwBytes > it->len) && (dwFlags & HEAP_ZERO_MEMORY))
                 {
-                    memset((char*)it->ptr + it->len, 0, dwBytes - it->len);
+                    memset((char *)it->ptr + it->len, 0, dwBytes - it->len);
                 }
                 it->len = dwBytes;
                 return it->ptr;
             }
-            else {
+            else
+            {
 
                 int pageSize = sysconf(_SC_PAGE_SIZE);
                 size_t bufLen = (dwBytes + sizeof(HANDLE) + pageSize - 1) / pageSize * pageSize;
-                void* ptr = nullptr;
+                void *ptr = nullptr;
                 int ret = posix_memalign(&ptr, pageSize, bufLen);
                 if (ret != 0)
                 {
                     return nullptr;
                 }
                 memcpy(ptr, &hHeap, sizeof(HANDLE));
-                ptr = (char*)ptr + sizeof(HANDLE);
+                ptr = (char *)ptr + sizeof(HANDLE);
                 if (dwFlags & HEAP_ZERO_MEMORY)
                 {
                     memset(ptr, 0, dwBytes);
@@ -190,10 +189,10 @@ LPVOID WINAPI HeapReAlloc(
                 memcpy(ptr, it->ptr, std::min(it->len, dwBytes));
                 if ((it->flags & HEAP_CREATE_ENABLE_EXECUTE) && (it->flushLen > 0))
                 {
-                    mprotect((char*)it->ptr - sizeof(HANDLE), it->flushLen + sizeof(HANDLE), PROT_WRITE | PROT_READ); // restore to write.
+                    mprotect((char *)it->ptr - sizeof(HANDLE), it->flushLen + sizeof(HANDLE), PROT_WRITE | PROT_READ); // restore to write.
                     it->flushLen = 0;
                 }
-                free((char*)it->ptr - sizeof(HANDLE));
+                free((char *)it->ptr - sizeof(HANDLE));
                 it->ptr = ptr;
                 it->len = dwBytes;
                 it->allocSize = bufLen - sizeof(HANDLE);
@@ -204,15 +203,12 @@ LPVOID WINAPI HeapReAlloc(
     return nullptr;
 }
 
-SIZE_T WINAPI HeapSize(
-    HANDLE hHeap,
-    DWORD dwFlags,
-    LPCVOID lpMem
-) {
+SIZE_T WINAPI HeapSize(HANDLE hHeap, DWORD dwFlags, LPCVOID lpMem)
+{
     if (!hHeap || hHeap->type != HEAP_OBJ)
         return 0;
-    std::lock_guard<std::recursive_mutex>(hHeap->mutex);
-    HeapInfo* info = (HeapInfo*)hHeap->ptr;
+    std::lock_guard<std::recursive_mutex> lock(hHeap->mutex);
+    HeapInfo *info = (HeapInfo *)hHeap->ptr;
     if (!info)
         return FALSE;
     for (auto it = info->lstMem.begin(); it != info->lstMem.end(); it++)
@@ -225,12 +221,9 @@ SIZE_T WINAPI HeapSize(
     return 0;
 }
 
-BOOL WINAPI HeapValidate(
-    HANDLE hHeap,
-    DWORD dwFlags,
-    LPCVOID lpMem
-) {
-    const char* pBuf = (const char*)lpMem;
+BOOL WINAPI HeapValidate(HANDLE hHeap, DWORD dwFlags, LPCVOID lpMem)
+{
+    const char *pBuf = (const char *)lpMem;
     pBuf -= sizeof(HANDLE);
     if (IsBadWritePtr(pBuf, sizeof(HANDLE)))
         return FALSE;
@@ -241,15 +234,15 @@ BOOL WINAPI HeapValidate(
 
 BOOL FlushInstructionCache(HANDLE hProcess, LPCVOID lpMem, size_t dwSize)
 {
-    const char* pBuf = (const char*)lpMem;
+    const char *pBuf = (const char *)lpMem;
     pBuf -= sizeof(HANDLE);
     if (IsBadWritePtr(pBuf, sizeof(HANDLE)))
         return FALSE;
     HANDLE hHeap;
     memcpy(&hHeap, pBuf, sizeof(HANDLE));
 
-    std::lock_guard<std::recursive_mutex>(hHeap->mutex);
-    HeapInfo* info = (HeapInfo*)hHeap->ptr;
+    std::lock_guard<std::recursive_mutex> lock(hHeap->mutex);
+    HeapInfo *info = (HeapInfo *)hHeap->ptr;
     if (!info)
         return FALSE;
     for (auto it = info->lstMem.begin(); it != info->lstMem.end(); it++)
@@ -260,12 +253,14 @@ BOOL FlushInstructionCache(HANDLE hProcess, LPCVOID lpMem, size_t dwSize)
                 return FALSE;
             int pageSize = sysconf(_SC_PAGE_SIZE);
             DWORD dwMapSize = (dwSize + sizeof(HANDLE) + pageSize - 1) / pageSize * pageSize;
-            int ret = mprotect((char*)lpMem - sizeof(HANDLE), dwMapSize, PROT_EXEC | PROT_READ | PROT_WRITE);
-            if (ret == 0) {
+            int ret = mprotect((char *)lpMem - sizeof(HANDLE), dwMapSize, PROT_EXEC | PROT_READ | PROT_WRITE);
+            if (ret == 0)
+            {
                 it->flushLen = dwMapSize - sizeof(HANDLE);
             }
-            else {
-                printf("mprotect ret %d,error=%d\n", ret, errno);
+            else
+            {
+                SLOG_FMTW("mprotect ret %d,error=%d", ret, errno);
             }
             return ret == 0;
         }
@@ -273,76 +268,74 @@ BOOL FlushInstructionCache(HANDLE hProcess, LPCVOID lpMem, size_t dwSize)
     return FALSE;
 }
 
-
 //-------------------------------------------------------------------
-#pragma pack(push,1)
+#pragma pack(push, 1)
 struct local_header
 {
-	WORD  magic;
-	void* ptr;
-	BYTE flags;
-	BYTE lock;
+    WORD magic;
+    void *ptr;
+    BYTE flags;
+    BYTE lock;
 };
 #pragma pack(pop)
 
-#define MAGIC_LOCAL_USED    0x5342
+#define MAGIC_LOCAL_USED 0x5342
 /* align the storage needed for the HLOCAL on an 8-byte boundary thus
  * LocalAlloc/LocalReAlloc'ing with LMEM_MOVEABLE of memory with
  * size = 8*k, where k=1,2,3,... allocs exactly the given size.
  * The Minolta DiMAGE Image Viewer heavily relies on this, corrupting
  * the output jpeg's > 1 MB if not */
-#define HLOCAL_STORAGE      (sizeof(HLOCAL) * 2)
+#define HLOCAL_STORAGE (sizeof(HLOCAL) * 2)
 
-static inline struct local_header* get_header(HLOCAL hmem)
+static inline struct local_header *get_header(HLOCAL hmem)
 {
-	return (struct local_header*)((char*)hmem - 2);
+    return (struct local_header *)((char *)hmem - 2);
 }
 
-static inline HLOCAL get_handle(struct local_header* header)
+static inline HLOCAL get_handle(struct local_header *header)
 {
-	return (HLOCAL)&header->ptr;
+    return (HLOCAL)&header->ptr;
 }
 
 static inline BOOL is_pointer(HLOCAL hmem)
 {
-	return !((ULONG_PTR)hmem & 2);
+    return !((ULONG_PTR)hmem & 2);
 }
-
 
 /***********************************************************************
  *           GlobalAlloc   (kernelbase.@)
  */
 HGLOBAL WINAPI GlobalAlloc(UINT flags, SIZE_T size)
 {
-	/* mask out obsolete flags */
-	flags &= ~(GMEM_NOCOMPACT | GMEM_NOT_BANKED | GMEM_NOTIFY);
+    /* mask out obsolete flags */
+    flags &= ~(GMEM_NOCOMPACT | GMEM_NOT_BANKED | GMEM_NOTIFY);
 
-	/* LocalAlloc allows a 0-size fixed block, but GlobalAlloc doesn't */
-	if (!(flags & GMEM_MOVEABLE) && !size) size = 1;
+    /* LocalAlloc allows a 0-size fixed block, but GlobalAlloc doesn't */
+    if (!(flags & GMEM_MOVEABLE) && !size)
+        size = 1;
 
-	return LocalAlloc(flags, size);
+    return LocalAlloc(flags, size);
 }
-
 
 /***********************************************************************
  *           GlobalFree   (kernelbase.@)
  */
 HGLOBAL WINAPI GlobalFree(HLOCAL hmem)
 {
-	return LocalFree(hmem);
+    return LocalFree(hmem);
 }
-
 
 /***********************************************************************
  *           LocalAlloc   (kernelbase.@)
  */
 HLOCAL WINAPI LocalAlloc(UINT flags, SIZE_T size)
 {
-    struct local_header* header;
+    struct local_header *header;
     DWORD heap_flags = 0;
-    void* ptr;
+    void *ptr;
 
-    if (flags & LMEM_ZEROINIT) heap_flags = HEAP_ZERO_MEMORY;
+    if (flags & LMEM_ZEROINIT)
+        heap_flags = HEAP_ZERO_MEMORY;
 
     if (!(flags & LMEM_MOVEABLE)) /* pointer */
     {
@@ -355,7 +348,8 @@ HLOCAL WINAPI LocalAlloc(UINT flags, SIZE_T size)
         SetLastError(ERROR_OUTOFMEMORY);
         return 0;
     }
-    if (!(header = (local_header*)HeapAlloc(GetProcessHeap(), 0, sizeof(*header)))) return 0;
+    if (!(header = (local_header *)HeapAlloc(GetProcessHeap(), 0, sizeof(*header))))
+        return 0;
 
     header->magic = MAGIC_LOCAL_USED;
     header->flags = flags >> 8;
@@ -368,80 +362,81 @@ HLOCAL WINAPI LocalAlloc(UINT flags, SIZE_T size)
             HeapFree(GetProcessHeap(), 0, header);
             return 0;
         }
-        *(HLOCAL*)ptr = get_handle(header);
-        header->ptr = (char*)ptr + HLOCAL_STORAGE;
+        *(HLOCAL *)ptr = get_handle(header);
+        header->ptr = (char *)ptr + HLOCAL_STORAGE;
     }
-    else header->ptr = NULL;
+    else
+        header->ptr = NULL;
 
     return get_handle(header);
 }
-
 
 /***********************************************************************
  *           LocalFree   (kernelbase.@)
  */
 HLOCAL WINAPI LocalFree(HLOCAL hmem)
 {
-    struct local_header* header;
+    struct local_header *header;
     HLOCAL ret;
 
     HeapLock(GetProcessHeap());
-        ret = 0;
-        if (is_pointer(hmem)) /* POINTER */
+    ret = 0;
+    if (is_pointer(hmem)) /* POINTER */
+    {
+        if (!HeapFree(GetProcessHeap(), HEAP_NO_SERIALIZE, hmem))
         {
-            if (!HeapFree(GetProcessHeap(), HEAP_NO_SERIALIZE, hmem))
-            {
-                SetLastError(ERROR_INVALID_HANDLE);
-                ret = hmem;
-            }
+            SetLastError(ERROR_INVALID_HANDLE);
+            ret = hmem;
         }
-        else  /* HANDLE */
+    }
+    else /* HANDLE */
+    {
+        header = get_header(hmem);
+        if (header->magic == MAGIC_LOCAL_USED)
         {
-            header = get_header(hmem);
-            if (header->magic == MAGIC_LOCAL_USED)
+            header->magic = 0xdead;
+            if (header->ptr)
             {
-                header->magic = 0xdead;
-                if (header->ptr)
-                {
-                    if (!HeapFree(GetProcessHeap(), HEAP_NO_SERIALIZE,
-                                   (char*)header->ptr - HLOCAL_STORAGE))
-                        ret = hmem;
-                }
-                if (!HeapFree(GetProcessHeap(), HEAP_NO_SERIALIZE, header)) ret = hmem;
+                if (!HeapFree(GetProcessHeap(), HEAP_NO_SERIALIZE, (char *)header->ptr - HLOCAL_STORAGE))
+                    ret = hmem;
             }
-            else
-            {
-                SetLastError(ERROR_INVALID_HANDLE);
+            if (!HeapFree(GetProcessHeap(), HEAP_NO_SERIALIZE, header))
                 ret = hmem;
-            }
         }
-        HeapUnlock(GetProcessHeap());
+        else
+        {
+            SetLastError(ERROR_INVALID_HANDLE);
+            ret = hmem;
+        }
+    }
+    HeapUnlock(GetProcessHeap());
     return ret;
 }
-
 
 /***********************************************************************
  *           LocalLock   (kernelbase.@)
  */
 LPVOID WINAPI LocalLock(HLOCAL hmem)
 {
-    void* ret = NULL;
+    void *ret = NULL;
 
     if (is_pointer(hmem))
     {
-        volatile char* p = (char*)hmem;
+        volatile char *p = (char *)hmem;
         *p |= 0;
         return hmem;
     }
 
     HeapLock(GetProcessHeap());
     {
-        struct local_header* header = get_header(hmem);
+        struct local_header *header = get_header(hmem);
         if (header->magic == MAGIC_LOCAL_USED)
         {
             ret = header->ptr;
-            if (!header->ptr) SetLastError(ERROR_DISCARDED);
-            else if (header->lock < LMEM_LOCKCOUNT) header->lock++;
+            if (!header->ptr)
+                SetLastError(ERROR_DISCARDED);
+            else if (header->lock < LMEM_LOCKCOUNT)
+                header->lock++;
         }
         else
         {
@@ -452,14 +447,13 @@ LPVOID WINAPI LocalLock(HLOCAL hmem)
     return ret;
 }
 
-
 /***********************************************************************
  *           LocalReAlloc   (kernelbase.@)
  */
 HLOCAL WINAPI LocalReAlloc(HLOCAL hmem, SIZE_T size, UINT flags)
 {
-    struct local_header* header;
-    void* ptr;
+    struct local_header *header;
+    void *ptr;
     HLOCAL ret = 0;
     DWORD heap_flags = (flags & LMEM_ZEROINIT) ? HEAP_ZERO_MEMORY : 0;
 
@@ -492,7 +486,8 @@ HLOCAL WINAPI LocalReAlloc(HLOCAL hmem, SIZE_T size, UINT flags)
             header->flags |= LMEM_DISCARDABLE >> 8;
             ret = hmem;
         }
-        else SetLastError(ERROR_INVALID_PARAMETER);
+        else
+            SetLastError(ERROR_INVALID_PARAMETER);
     }
     else
     {
@@ -504,12 +499,13 @@ HLOCAL WINAPI LocalReAlloc(HLOCAL hmem, SIZE_T size, UINT flags)
                 heap_flags |= HEAP_REALLOC_IN_PLACE_ONLY;
                 ret = (HLOCAL)HeapReAlloc(GetProcessHeap(), heap_flags, hmem, size);
             }
-            else {
+            else
+            {
                 ret = LocalAlloc(flags, size);
-                void* dst = LocalLock(ret);
-                void* src = (void*)hmem;
+                void *dst = LocalLock(ret);
+                void *src = (void *)hmem;
                 size_t sz_src = HeapSize(GetProcessHeap(), 0, src);
-                memcpy(dst, src, std::min(sz_src,size));
+                memcpy(dst, src, std::min(sz_src, size));
                 LocalUnlock(ret);
                 HeapFree(GetProcessHeap(), 0, src);
             }
@@ -524,11 +520,9 @@ HLOCAL WINAPI LocalReAlloc(HLOCAL hmem, SIZE_T size, UINT flags)
                 {
                     if (header->ptr)
                     {
-                        if ((ptr = HeapReAlloc(GetProcessHeap(), heap_flags,
-                            (char*)header->ptr - HLOCAL_STORAGE,
-                            size + HLOCAL_STORAGE)))
+                        if ((ptr = HeapReAlloc(GetProcessHeap(), heap_flags, (char *)header->ptr - HLOCAL_STORAGE, size + HLOCAL_STORAGE)))
                         {
-                            header->ptr = (char*)ptr + HLOCAL_STORAGE;
+                            header->ptr = (char *)ptr + HLOCAL_STORAGE;
                             ret = hmem;
                         }
                     }
@@ -536,13 +530,14 @@ HLOCAL WINAPI LocalReAlloc(HLOCAL hmem, SIZE_T size, UINT flags)
                     {
                         if ((ptr = HeapAlloc(GetProcessHeap(), heap_flags, size + HLOCAL_STORAGE)))
                         {
-                            *(HLOCAL*)ptr = hmem;
-                            header->ptr = (char*)ptr + HLOCAL_STORAGE;
+                            *(HLOCAL *)ptr = hmem;
+                            header->ptr = (char *)ptr + HLOCAL_STORAGE;
                             ret = hmem;
                         }
                     }
                 }
-                else SetLastError(ERROR_OUTOFMEMORY);
+                else
+                    SetLastError(ERROR_OUTOFMEMORY);
             }
             else
             {
@@ -550,19 +545,18 @@ HLOCAL WINAPI LocalReAlloc(HLOCAL hmem, SIZE_T size, UINT flags)
                 {
                     if (header->ptr)
                     {
-                        HeapFree(GetProcessHeap(), 0, (char*)header->ptr - HLOCAL_STORAGE);
+                        HeapFree(GetProcessHeap(), 0, (char *)header->ptr - HLOCAL_STORAGE);
                         header->ptr = NULL;
                     }
                     ret = hmem;
                 }
-                //else WARN("not freeing memory associated with locked handle\n");
+                // else WARN("not freeing memory associated with locked handle\n");
             }
         }
     }
     HeapUnlock(GetProcessHeap());
     return ret;
 }
-
 
 /***********************************************************************
  *           LocalUnlock   (kernelbase.@)
@@ -579,14 +573,15 @@ BOOL WINAPI LocalUnlock(HLOCAL hmem)
 
     HeapLock(GetProcessHeap());
     {
-        struct local_header* header = get_header(hmem);
+        struct local_header *header = get_header(hmem);
         if (header->magic == MAGIC_LOCAL_USED)
         {
             if (header->lock)
             {
                 header->lock--;
                 ret = (header->lock != 0);
-                if (!ret) SetLastError(NO_ERROR);
+                if (!ret)
+                    SetLastError(NO_ERROR);
             }
             else
             {
@@ -602,18 +597,21 @@ BOOL WINAPI LocalUnlock(HLOCAL hmem)
     return ret;
 }
 
-UINT WINAPI LocalSize(HLOCAL hMem) {
+UINT WINAPI LocalSize(HLOCAL hMem)
+{
     UINT ret = 0;
     HeapLock(GetProcessHeap());
-    if (is_pointer(hMem)) {
+    if (is_pointer(hMem))
+    {
         ret = HeapSize(GetProcessHeap(), 0, hMem);
     }
-    else{
-        struct local_header* header = get_header(hMem);
+    else
+    {
+        struct local_header *header = get_header(hMem);
         if (header->magic == MAGIC_LOCAL_USED)
         {
             if (header->ptr)
-                ret = HeapSize(GetProcessHeap(), 0, (char*)header->ptr - HLOCAL_STORAGE) - HLOCAL_STORAGE;
+                ret = HeapSize(GetProcessHeap(), 0, (char *)header->ptr - HLOCAL_STORAGE) - HLOCAL_STORAGE;
             else
                 ret = 0;
         }
@@ -626,11 +624,10 @@ UINT WINAPI LocalSize(HLOCAL hMem) {
     return ret;
 }
 
-UINT WINAPI LocalFlags(
-    _In_          HLOCAL hMem
-) {
+UINT WINAPI LocalFlags(_In_ HLOCAL hMem)
+{
     HeapLock(GetProcessHeap());
-    struct local_header* header = get_header(hMem);
+    struct local_header *header = get_header(hMem);
     UINT ret = header->flags;
     HeapUnlock(GetProcessHeap());
     return ret;
@@ -646,23 +643,26 @@ HLOCAL LocalHandle(LPCVOID pmem)
     }
 
     HeapUnlock(GetProcessHeap());
-    do{
+    do
+    {
         /* note that if pmem is a pointer to a block allocated by        */
         /* GlobalAlloc with GMEM_MOVEABLE then magic test in HeapValidate  */
         /* will fail.                                                      */
-        if (is_pointer((HLOCAL)pmem)) {
-            if (HeapValidate(GetProcessHeap(), HEAP_NO_SERIALIZE, pmem)) {
-                handle = (HLOCAL)pmem;/* valid fixed block */
+        if (is_pointer((HLOCAL)pmem))
+        {
+            if (HeapValidate(GetProcessHeap(), HEAP_NO_SERIALIZE, pmem))
+            {
+                handle = (HLOCAL)pmem; /* valid fixed block */
                 break;
             }
         }
-        if (IsBadReadPtr((char*)pmem - HLOCAL_STORAGE, HLOCAL_STORAGE))
+        if (IsBadReadPtr((char *)pmem - HLOCAL_STORAGE, HLOCAL_STORAGE))
         {
             SetLastError(ERROR_INVALID_HANDLE);
             break;
         }
-        handle = *(HLOCAL*)((char*)pmem - HLOCAL_STORAGE);
-        local_header* header = get_header(handle);
+        handle = *(HLOCAL *)((char *)pmem - HLOCAL_STORAGE);
+        local_header *header = get_header(handle);
         if (header->magic != MAGIC_LOCAL_USED)
         {
             handle = 0;
@@ -673,41 +673,32 @@ HLOCAL LocalHandle(LPCVOID pmem)
     return handle;
 }
 
-BOOL
-WINAPI
-GlobalUnlock(
-    _In_ HGLOBAL hMem
-) {
+BOOL WINAPI GlobalUnlock(_In_ HGLOBAL hMem)
+{
     return LocalUnlock(hMem);
 }
 
 LPVOID
 WINAPI
-GlobalLock(
-    _In_ HGLOBAL hMem
-) {
+GlobalLock(_In_ HGLOBAL hMem)
+{
     return LocalLock(hMem);
 }
 
 SIZE_T
 WINAPI
-GlobalSize(
-    _In_ HGLOBAL hMem
-) {
+GlobalSize(_In_ HGLOBAL hMem)
+{
     return LocalSize(hMem);
 }
 
-HGLOBAL WINAPI GlobalReAlloc(
-    _In_          HGLOBAL hMem,
-    _In_          SIZE_T dwBytes,
-    _In_          UINT uFlags
-) {
+HGLOBAL WINAPI GlobalReAlloc(_In_ HGLOBAL hMem, _In_ SIZE_T dwBytes, _In_ UINT uFlags)
+{
     return LocalReAlloc(hMem, dwBytes, uFlags);
 }
 
-UINT WINAPI GlobalFlags(
-    _In_          HGLOBAL hMem
-) {
+UINT WINAPI GlobalFlags(_In_ HGLOBAL hMem)
+{
     return LocalFlags(hMem);
 }
 

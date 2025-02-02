@@ -2,8 +2,14 @@
 #include <sys/stat.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <fnmatch.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include "handle.h"
 #include "tostring.hpp"
+#include "debug.h"
+#define kLogTag "file"
 
 struct _FileData
 {
@@ -65,7 +71,7 @@ HANDLE WINAPI CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwSha
 {
     char szPath[MAX_PATH];
     if (0 == WideCharToMultiByte(CP_UTF8, 0, lpFileName, -1, szPath, MAX_PATH, nullptr, nullptr))
-        return 0;
+        return INVALID_HANDLE_VALUE;
     return CreateFileA(szPath, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
 }
 
@@ -76,23 +82,21 @@ static _FileData *GetFD(HANDLE h)
     return nullptr;
 }
 
-BOOL WINAPI GetFileSizeEx(
-    HANDLE hFile,
-    PLARGE_INTEGER lpFileSize
-) {
-    _FileData* fd = GetFD(hFile);
-    if (!fd) return FALSE;
+BOOL WINAPI GetFileSizeEx(HANDLE hFile, PLARGE_INTEGER lpFileSize)
+{
+    _FileData *fd = GetFD(hFile);
+    if (!fd)
+        return FALSE;
     lpFileSize->QuadPart = lseek(fd->f, 0, SEEK_CUR);
     return TRUE;
 }
 
-DWORD WINAPI GetFileSize(
-    HANDLE hFile,
-    LPDWORD lpFileSizeHigh
-) {
+DWORD WINAPI GetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh)
+{
     LARGE_INTEGER sz;
     sz.QuadPart = 0;
-    if (GetFileSizeEx(hFile,&sz)) {
+    if (GetFileSizeEx(hFile, &sz))
+    {
         if (lpFileSizeHigh)
             *lpFileSizeHigh = sz.HighPart;
         return sz.LowPart;
@@ -100,23 +104,21 @@ DWORD WINAPI GetFileSize(
     return 0;
 }
 
-static void TimeSpec2FileTime(const struct timespec& ts, LPFILETIME fts) {
-    if (!fts) return;
+static void TimeSpec2FileTime(const struct timespec &ts, LPFILETIME fts)
+{
+    if (!fts)
+        return;
     uint64_t nsec = ts.tv_nsec;
     memcpy(fts, &nsec, sizeof(uint64_t));
 }
 
-BOOL WINAPI GetFileTime(
-    HANDLE hFile,
-    LPFILETIME lpCreationTime,
-    LPFILETIME lpLastAccessTime,
-    LPFILETIME lpLastWriteTime
-) {
-    if (_FileData* fd = GetFD(hFile))
+BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLastAccessTime, LPFILETIME lpLastWriteTime)
+{
+    if (_FileData *fd = GetFD(hFile))
     {
-        struct timespec st_atim;		/* Time of last access.  */
-        struct timespec st_mtim;		/* Time of last modification.  */
-        struct timespec st_ctim;		/* Time of last status change.  */
+        struct timespec st_atim; /* Time of last access.  */
+        struct timespec st_mtim; /* Time of last modification.  */
+        struct timespec st_ctim; /* Time of last status change.  */
 
         struct stat64 st;
         if (0 != fstat64(fd->f, &st))
@@ -126,7 +128,8 @@ BOOL WINAPI GetFileTime(
         TimeSpec2FileTime(st.st_atim, lpLastAccessTime);
         return TRUE;
     }
-    else {
+    else
+    {
         return FALSE;
     }
 }
@@ -508,12 +511,281 @@ DWORD GetFileAttributesW(LPCWSTR lpFileName)
     return GetFileAttributesA(str.c_str());
 }
 
-BOOL WINAPI DeleteFileA(LPCSTR lpFileName) {
+BOOL WINAPI DeleteFileA(LPCSTR lpFileName)
+{
     return unlink(lpFileName) == 0;
 }
 
-BOOL WINAPI DeleteFileW(LPCWSTR lpFileName) {
+BOOL WINAPI DeleteFileW(LPCWSTR lpFileName)
+{
     std::string str;
     tostring(lpFileName, -1, str);
     return DeleteFileA(str.c_str());
+}
+
+BOOL WINAPI SetCurrentDirectoryA(LPCSTR lpPathName)
+{
+    std::string strPath = lpPathName;
+    if (strPath[strPath.length() - 1] == '/')
+        strPath = strPath.substr(0, strPath.length() - 1);
+    return chdir(strPath.c_str()) == 0;
+}
+
+BOOL WINAPI SetCurrentDirectoryW(LPCWSTR lpPathName)
+{
+    std::string str;
+    tostring(lpPathName, -1, str);
+    return SetCurrentDirectoryA(str.c_str());
+}
+
+DWORD WINAPI GetCurrentDirectoryA(DWORD nBufferLength, LPSTR lpBuffer)
+{
+    char *ret = getcwd(lpBuffer, nBufferLength);
+    if (!ret)
+        return 0;
+    return strlen(ret);
+}
+
+DWORD WINAPI GetCurrentDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer)
+{
+    char cwd[PATH_MAX * 2];
+    if (GetCurrentDirectoryA(PATH_MAX * 2, cwd) == 0)
+        return 0;
+    std::wstring wpath;
+    towstring(cwd, -1, wpath);
+    if (!lpBuffer)
+        return wpath.length() + 1;
+    if (nBufferLength <= wpath.length())
+        return 0;
+    memcpy(lpBuffer, wpath.c_str(), (wpath.length() + 1) * sizeof(wchar_t));
+    return wpath.length() + 1;
+}
+
+BOOL CreateDirectoryA(LPCSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
+{
+    mode_t mode = 0755;
+    return mkdir(lpPathName, mode);
+}
+
+BOOL CreateDirectoryW(LPCWSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
+{
+    char szPath[MAX_PATH];
+    if (0 == WideCharToMultiByte(CP_UTF8, 0, lpPathName, -1, szPath, MAX_PATH, nullptr, nullptr))
+        return FALSE;
+    return CreateDirectoryA(szPath, lpSecurityAttributes);
+}
+
+/* info structure for FindFirstFile handle */
+typedef struct
+{
+    DWORD magic; /* magic number */
+    DIR *dir;    /* handle to directory */
+    char path[MAX_PATH];
+    char name[MAX_PATH];         /* NT path used to open the directory */
+    CRITICAL_SECTION cs;         /* crit section protecting this structure */
+    FINDEX_SEARCH_OPS search_op; /* Flags passed to FindFirst.  */
+    FINDEX_INFO_LEVELS level;    /* Level passed to FindFirst */
+    BOOL wildcard;               /* did the mask contain wildcard characters? */
+} FIND_FIRST_INFO;
+
+#define FIND_FIRST_MAGIC 0xc0ffee11
+
+static void file_name_AtoW(const char *name, wchar_t *buf, int len)
+{
+    MultiByteToWideChar(CP_UTF8, 0, name, -1, buf, len);
+}
+
+HANDLE
+WINAPI
+FindFirstFileA(_In_ LPCSTR lpFileName, _Out_ LPWIN32_FIND_DATAA lpFindFileData)
+{
+    return FindFirstFileExA(lpFileName, FindExInfoStandard, lpFindFileData, FindExSearchNameMatch, nullptr, 0);
+}
+
+HANDLE
+WINAPI
+FindFirstFileW(_In_ LPCWSTR lpFileName, _Out_ LPWIN32_FIND_DATAW lpFindFileData)
+{
+    std::string strName;
+    tostring(lpFileName, -1, strName);
+    WIN32_FIND_DATAA dataA;
+    HANDLE ret = FindFirstFileA(strName.c_str(), &dataA);
+    if (ret)
+    {
+        lpFindFileData->dwFileAttributes = dataA.dwFileAttributes;
+        lpFindFileData->ftCreationTime = dataA.ftCreationTime;
+        lpFindFileData->ftLastWriteTime = dataA.ftLastWriteTime;
+        lpFindFileData->ftLastAccessTime = dataA.ftLastAccessTime;
+        lpFindFileData->nFileSizeLow = dataA.nFileSizeLow;
+        lpFindFileData->nFileSizeHigh = dataA.nFileSizeHigh;
+        file_name_AtoW(dataA.cFileName, lpFindFileData->cFileName, MAX_PATH);
+        file_name_AtoW(dataA.cAlternateFileName, lpFindFileData->cAlternateFileName, 14);
+    }
+    return ret;
+}
+
+BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFindFileData)
+{
+    if (hFindFile == INVALID_HANDLE_VALUE)
+        return FALSE;
+
+    FIND_FIRST_INFO *info = (FIND_FIRST_INFO *)hFindFile;
+    if (info->magic != FIND_FIRST_MAGIC)
+        return FALSE;
+    BOOL bMatch = FALSE;
+    EnterCriticalSection(&info->cs);
+    for (;;)
+    {
+        struct dirent *entry = readdir(info->dir);
+        if (!entry)
+            break;
+
+        if (info->wildcard)
+            bMatch = 0 == fnmatch(info->name, entry->d_name, 0);
+        else if (info->level == 0)
+            bMatch = stricmp(info->name, entry->d_name) == 0;
+        if (!bMatch)
+            continue;
+        struct stat64 fileStat = { 0 };
+        std::stringstream path;
+        path << info->path << "/" << entry->d_name;
+        if (0 == stat64(path.str().c_str(), &fileStat))
+        {
+            if (S_ISREG(fileStat.st_mode))
+            {
+                lpFindFileData->dwFileAttributes = FILE_ATTRIBUTE_ARCHIVE | FILE_ATTRIBUTE_NORMAL;
+            }
+            else if (S_ISDIR(fileStat.st_mode))
+            {
+                lpFindFileData->dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
+            }
+            strcpy(lpFindFileData->cFileName, entry->d_name);
+            strcpy(lpFindFileData->cAlternateFileName, "");
+            TimeSpec2FileTime(fileStat.st_ctim, &lpFindFileData->ftCreationTime);
+            TimeSpec2FileTime(fileStat.st_mtim, &lpFindFileData->ftLastWriteTime);
+            TimeSpec2FileTime(fileStat.st_atim, &lpFindFileData->ftLastAccessTime);
+            lpFindFileData->nFileSizeLow = fileStat.st_size & 0xffffffff;
+            lpFindFileData->nFileSizeHigh = (fileStat.st_size & 0xffffffff00000000) >> 32;
+            break;
+        }
+    }
+    LeaveCriticalSection(&info->cs);
+    return bMatch;
+}
+
+BOOL WINAPI FindNextFileW(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAW lpFindFileData)
+{
+    WIN32_FIND_DATAA dataA;
+    BOOL ret = FindNextFileA(hFindFile, &dataA);
+    if (ret)
+    {
+        lpFindFileData->dwFileAttributes = dataA.dwFileAttributes;
+        lpFindFileData->ftCreationTime = dataA.ftCreationTime;
+        lpFindFileData->ftLastWriteTime = dataA.ftLastWriteTime;
+        lpFindFileData->ftLastAccessTime = dataA.ftLastAccessTime;
+        lpFindFileData->nFileSizeLow = dataA.nFileSizeLow;
+        lpFindFileData->nFileSizeHigh = dataA.nFileSizeHigh;
+        file_name_AtoW(dataA.cFileName, lpFindFileData->cFileName, MAX_PATH);
+        file_name_AtoW(dataA.cAlternateFileName, lpFindFileData->cAlternateFileName, 14);
+    }
+    return ret;
+}
+
+BOOL WINAPI FindClose(HANDLE hFindFile)
+{
+    if (hFindFile == INVALID_HANDLE_VALUE)
+        return FALSE;
+    FIND_FIRST_INFO *info = (FIND_FIRST_INFO *)hFindFile;
+    if (info->magic != FIND_FIRST_MAGIC)
+        return FALSE;
+    closedir(info->dir);
+    HeapFree(GetProcessHeap(), 0, info);
+    return TRUE;
+}
+
+/******************************************************************************
+ *	FindFirstFileExA   (kernelbase.@)
+ */
+HANDLE WINAPI FindFirstFileExW(const wchar_t *filename, FINDEX_INFO_LEVELS level, void *data, FINDEX_SEARCH_OPS search_op, void *filter, DWORD flags)
+{
+    std::string str;
+    tostring(filename, -1, str);
+
+    WIN32_FIND_DATAW *dataW = (WIN32_FIND_DATAW *)data;
+    WIN32_FIND_DATAA dataA;
+    HANDLE handle = FindFirstFileExA(str.c_str(), level, &dataA, search_op, filter, flags);
+    if (handle == INVALID_HANDLE_VALUE)
+        return handle;
+
+    dataW->dwFileAttributes = dataA.dwFileAttributes;
+    dataW->ftCreationTime = dataA.ftCreationTime;
+    dataW->ftLastAccessTime = dataA.ftLastAccessTime;
+    dataW->ftLastWriteTime = dataA.ftLastWriteTime;
+    dataW->nFileSizeHigh = dataA.nFileSizeHigh;
+    dataW->nFileSizeLow = dataA.nFileSizeLow;
+
+    file_name_AtoW(dataA.cFileName, dataW->cFileName, ARRAYSIZE(dataW->cFileName));
+    file_name_AtoW(dataA.cAlternateFileName, dataW->cAlternateFileName, ARRAYSIZE(dataW->cAlternateFileName));
+    return handle;
+}
+
+HANDLE WINAPI FindFirstFileExA(LPCSTR filename, FINDEX_INFO_LEVELS level, LPVOID data, FINDEX_SEARCH_OPS search_op, LPVOID filter, DWORD flags)
+{
+    if (!filename)
+        return INVALID_HANDLE_VALUE;
+    std::string strName(filename);
+    FIND_FIRST_INFO *info = NULL;
+    char *name = (char *)strrchr(strName.c_str(), '/');
+    if (!name || strlen(name) >= MAX_PATH + 2)
+    {
+        SLOG_FMTD("search_op not implemented 0x%08x\n", search_op);
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return INVALID_HANDLE_VALUE;
+    }
+    *name = 0;
+    name++;
+    DIR *dir = opendir(strName.c_str());
+    if (!dir)
+    {
+        SLOG_FMTD("search_op not implemented 0x%08x\n", search_op);
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    if (flags & ~FIND_FIRST_EX_LARGE_FETCH)
+    {
+        SLOG_FMTW("flags not implemented 0x%08x\n", flags);
+    }
+    if (search_op != FindExSearchNameMatch && search_op != FindExSearchLimitToDirectories)
+    {
+        SLOG_FMTW("search_op not implemented 0x%08x\n", search_op);
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return INVALID_HANDLE_VALUE;
+    }
+    if (level != FindExInfoStandard && level != FindExInfoBasic)
+    {
+        SLOG_FMTW("info level %d not implemented\n", level);
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    void *buf = HeapAlloc(GetProcessHeap(), 0, sizeof(FIND_FIRST_INFO));
+    if (!buf)
+    {
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        closedir(dir);
+        return INVALID_HANDLE_VALUE;
+    }
+    info = (FIND_FIRST_INFO *)buf;
+    InitializeCriticalSection(&info->cs);
+    info->magic = FIND_FIRST_MAGIC;
+    info->dir = dir;
+    info->search_op = search_op;
+    info->level = level;
+    info->wildcard = strpbrk(name, "*?") != NULL;
+    strcpy(info->path, strName.c_str());
+    strcpy(info->name, name);
+    HANDLE hFind = (HANDLE)info;
+    FindNextFileA(hFind, (LPWIN32_FIND_DATAA)data);
+    return hFind;
 }

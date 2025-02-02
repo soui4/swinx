@@ -20,20 +20,38 @@ _Window::_Window(size_t extraLen)
     , iconBig(0)
     , objOpaque(0)
     , htCode(HTNOWHERE)
+    , visualId(0)
+    , dropTarget(NULL)
+    , dragData(NULL)
+    , userdata(0)
+    , cmap(0)
 {
     invalid.hRgn = CreateRectRgn(0, 0, 0, 0);
     invalid.bErase = TRUE;
     hoverInfo.dwHoverTime = DEF_HOVER_DELAY;
     hoverInfo.dwFlags = 0;
     hoverInfo.uHoverState = HS_Leave;
-    if(cbWndExtra>0){
-        extra = (char*)calloc(cbWndExtra,1);
-    }else{
+    if (cbWndExtra > 0)
+    {
+        extra = (char *)calloc(cbWndExtra, 1);
+    }
+    else
+    {
         extra = nullptr;
     }
 }
 
-_Window::~_Window() {
+_Window::~_Window()
+{
+    assert(cmap == 0);
+    if (dropTarget)
+    {
+        dropTarget->Release();
+    }
+    if (dragData)
+    {
+        dragData->Release();
+    }
     if (hdc)
     {
         DeleteDC(hdc);
@@ -49,11 +67,12 @@ _Window::~_Window() {
         DeleteObject(invalid.hRgn);
         invalid.hRgn = NULL;
     }
-    if(extra) free(extra);
+    if (extra)
+        free(extra);
 }
 
 //---------------------------------------------------------------
-WndObj::WndObj(const WndObj& src)
+WndObj::WndObj(const WndObj &src)
 {
     wnd = src.wnd;
     if (wnd)
@@ -62,7 +81,7 @@ WndObj::WndObj(const WndObj& src)
     }
 }
 
-WndObj::WndObj(_Window* pWnd)
+WndObj::WndObj(_Window *pWnd)
     : wnd(pWnd)
 {
     if (wnd)
@@ -79,22 +98,25 @@ WndObj::~WndObj()
     }
 }
 
-void WndObj::operator = (const WndObj& src) {
-    if (wnd) {
+void WndObj::operator=(const WndObj &src)
+{
+    if (wnd)
+    {
         wnd->Unlock();
         wnd = nullptr;
     }
     wnd = src.wnd;
-    if (wnd) {
+    if (wnd)
+    {
         wnd->Lock();
     }
 }
 
 //---------------------------------------------------------
-static std::map<HWND, _Window*> map_wnd;
+static std::map<HWND, _Window *> map_wnd;
 static std::recursive_mutex mutex_wnd;
 
-static _Window* get_win_ptr(HWND hWnd)
+static _Window *get_win_ptr(HWND hWnd)
 {
     std::unique_lock<std::recursive_mutex> lock(mutex_wnd);
     auto it = map_wnd.find(hWnd);
@@ -106,7 +128,7 @@ static _Window* get_win_ptr(HWND hWnd)
 WndObj WndMgr::fromHwnd(HWND hWnd)
 {
     std::unique_lock<std::recursive_mutex> lock(mutex_wnd);
-    _Window* wnd = get_win_ptr(hWnd);
+    _Window *wnd = get_win_ptr(hWnd);
     return WndObj(wnd);
 }
 
@@ -117,21 +139,35 @@ BOOL WndMgr::freeWindow(HWND hWnd)
     if (it == map_wnd.end())
         return FALSE;
 
-    _Window* wndObj = it->second;
-    wndObj->mConnection->KillWindowTimer(hWnd);
+    _Window *wndObj = it->second;
     map_wnd.erase(it);
 
     // delete wndObj and release resource of the window object
-    SLOG_STMD()<<"freeWindow:"<<hWnd;
+    SLOG_STMD() << "freeWindow:" << hWnd;
     wndObj->Release();
     return TRUE;
 }
 
-BOOL WndMgr::insertWindow(HWND hWnd, _Window* pWnd) {
+BOOL WndMgr::insertWindow(HWND hWnd, _Window *pWnd)
+{
     std::unique_lock<std::recursive_mutex> lock(mutex_wnd);
-    SLOG_STMD()<<"insertWindow:"<<hWnd;
+    SLOG_STMD() << "insertWindow:" << hWnd;
     auto res = map_wnd.insert(std::make_pair(hWnd, pWnd));
     return res.second;
 }
 
-
+BOOL WndMgr::enumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam)
+{
+    std::unique_lock<std::recursive_mutex> lock(mutex_wnd);
+    auto map_copy(map_wnd);
+    for (auto &it : map_copy)
+    {
+        if (map_wnd.find(it.first) == map_wnd.end())
+            continue;
+        if (GetWindowLongA(it.first, GWL_STYLE) & WS_CHILD)
+            continue;
+        if (!lpEnumFunc(it.first, lParam))
+            return FALSE;
+    }
+    return TRUE;
+}

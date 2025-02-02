@@ -26,7 +26,6 @@ size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxW
     cairo_scaled_font_t *scaled_font = cairo_get_scaled_font(cr);
     cairo_glyph_t stack_glyphs[5];
     cairo_glyph_t *glyphs = stack_glyphs;
-    int num_glyphs = 1;
     size_t ret = 0;
     float wid = 0.f;
     const char *p1 = utf8;
@@ -35,6 +34,7 @@ size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxW
     {
         const char *next = (const char *)_mbsinc((const uint8_t *)p1);
         int len = next - p1;
+        int num_glyphs = 1;
         cairo_scaled_font_text_to_glyphs(scaled_font, 0, 0, p1, len, &glyphs, &num_glyphs, NULL, NULL, NULL);
         if (num_glyphs)
         {
@@ -47,7 +47,7 @@ size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxW
                 cairo_glyph_free(glyphs);
             }
         }
-        ret++;
+        ret += len;
         p1 = next;
     }
     return ret;
@@ -122,7 +122,7 @@ int cairo_text_extents2(cairo_t *cr, const char *utf8, int len, cairo_text_exten
     return num_glyphs;
 }
 
-int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_extents_t *extents,int *pndx)
+int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_extents_t *extents, int *pndx)
 {
     cairo_glyph_t stack_glyphs[CAIRO_STACK_ARRAY_LENGTH(cairo_glyph_t)];
     cairo_scaled_font_t *scaled_font = cairo_get_scaled_font(cr);
@@ -136,10 +136,11 @@ int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_ex
     cairo_scaled_font_text_to_glyphs(scaled_font, 0, 0, utf8, len, &glyphs, &num_glyphs, NULL, NULL, NULL);
     if (num_glyphs)
     {
-        for (int i = 0; i < num_glyphs-1; i++) {
-            pndx[i] = glyphs[i+1].x;
+        for (int i = 0; i < num_glyphs - 1; i++)
+        {
+            pndx[i] = glyphs[i + 1].x;
         }
-        cairo_glyph_t  *last_glyph = glyphs + num_glyphs - 1;
+        cairo_glyph_t *last_glyph = glyphs + num_glyphs - 1;
         cairo_glyph_extents(cr, last_glyph, 1, extents);
         extents->x_advance += last_glyph->x;
         pndx[num_glyphs - 1] = extents->x_advance;

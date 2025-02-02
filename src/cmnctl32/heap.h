@@ -25,17 +25,17 @@
 #include <windows.h>
 #define __WINE_ALLOC_SIZE(x)
 
-static inline void * __WINE_ALLOC_SIZE(1) heap_alloc(SIZE_T len)
+static inline void *__WINE_ALLOC_SIZE(1) heap_alloc(SIZE_T len)
 {
     return HeapAlloc(GetProcessHeap(), 0, len);
 }
 
-static inline void * __WINE_ALLOC_SIZE(1) heap_alloc_zero(SIZE_T len)
+static inline void *__WINE_ALLOC_SIZE(1) heap_alloc_zero(SIZE_T len)
 {
     return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, len);
 }
 
-static inline void * __WINE_ALLOC_SIZE(2) heap_realloc(void *mem, SIZE_T len)
+static inline void *__WINE_ALLOC_SIZE(2) heap_realloc(void *mem, SIZE_T len)
 {
     if (!mem)
         return HeapAlloc(GetProcessHeap(), 0, len);
@@ -56,4 +56,4 @@ static inline void *heap_calloc(SIZE_T count, SIZE_T size)
     return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, len);
 }
 
-#endif  /* __WINE_WINE_HEAP_H */
+#endif /* __WINE_WINE_HEAP_H */

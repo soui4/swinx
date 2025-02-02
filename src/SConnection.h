@@ -10,11 +10,14 @@
 #include <thread>
 #include <atomic>
 #include <condition_variable>
+#include <memory>
+#include <vector>
 #include "sdc.h"
 #include "SRwLock.hpp"
 #include "uimsg.h"
 #include "atoms.h"
-#include "SClipboard.h"
+#include "STrayIconMgr.h"
+#include "cursormgr.h"
 
 struct TimerInfo
 {
@@ -30,7 +33,11 @@ struct hook_table;
 struct IEventChecker {
     virtual bool checkEvent(xcb_generic_event_t* e) const = 0;
 };
+
 class SKeyboard;
+class SClipboard;
+class _Window;
+
 class SConnection {
     friend class SClipboard;
   public:
@@ -49,6 +56,7 @@ class SConnection {
     enum {
         TM_CARET = -100, //timer for caret blink
         TS_CARET = 500,//default caret blink elapse, 500ms
+        TM_FLASH = -101, //timer for flash window
 
         TM_HOVERDELAY = -50,
     };
@@ -58,11 +66,11 @@ class SConnection {
 
   public:
     struct hook_table *m_hook_table;
-    xcb_connection_t *connection;
-    xcb_screen_t *screen;
-    xcb_visualid_t rgba_visual;
-    const xcb_setup_t *m_setup;
-    int  m_forceDpi;
+    xcb_connection_t *connection = nullptr;
+    xcb_screen_t *screen = nullptr;
+    const xcb_setup_t *m_setup = nullptr;
+    xcb_visualtype_t * rgba_visual=nullptr;
+    int  m_forceDpi=false;
     SAtoms atoms;
   public:
     SHORT GetKeyState(int vk);
@@ -95,10 +103,9 @@ class SConnection {
     HWND SetCapture(HWND hCapture);
     BOOL ReleaseCapture();
     HWND GetCapture() const;
-
     HCURSOR SetCursor(HCURSOR cursor);
     HCURSOR GetCursor();
-    HCURSOR LoadCursor(LPCSTR pszName);
+    BOOL SetWindowCursor(HWND hWnd,HCURSOR cursor);
     BOOL DestroyCursor(HCURSOR cursor);
 
     void SetTimerBlock(bool bBlock)
@@ -135,6 +142,11 @@ class SConnection {
         return m_hFocus;
     }
     HWND SetFocus(HWND hWnd);
+
+    BOOL IsDropTarget(HWND hWnd);
+
+    BOOL FlashWindowEx(PFLASHWINFO info);
+    void changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom_t two);
   public:
       struct CaretInfo {
           HWND hOwner;
@@ -158,6 +170,8 @@ class SConnection {
     UINT GetCaretBlinkTime() const {
         return m_caretBlinkTime;
     }
+
+    void GetWorkArea(RECT* prc);
 public:
     SClipboard* getClipboard() {
         return m_clipboard;
@@ -179,6 +193,19 @@ public:
 
     UINT RegisterClipboardFormatA(LPCSTR pszName);
   public:
+      bool hasXFixes() const { return xfixes_first_event > 0; }
+      STrayIconMgr* GetTrayIconMgr() { return m_trayIconMgr; }
+
+      void EnableDragDrop(HWND hWnd, BOOL enable);
+      void SendXdndStatus(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect);
+      void SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect);
+      xcb_atom_t clipFormat2Atom(UINT uFormat);
+      uint32_t atom2ClipFormat(xcb_atom_t atom);
+      std::shared_ptr< std::vector<char>> readXdndSelection(uint32_t fmt);
+      void OnWindowDestroy(HWND hWnd,_Window *wnd);
+      void SetWindowVisible(HWND hWnd, _Window *wnd, BOOL bVisible, int nCmdShow);
+      void SetParent(HWND hWnd, _Window *wnd,HWND parent);
+  public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);
 
@@ -198,19 +225,29 @@ public:
         xcb_generic_event_t* checkEvent(int type);
 
         xcb_generic_event_t* checkEvent(IEventChecker* checker);
+
+        BOOL IsScreenComposited() const {
+            return m_bComposited;
+        }
   private:
     int _waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, DWORD dwWaitMask);
     void readXResources();
-    bool event2Msg(bool bTimeout, UINT elapse, uint64_t ts);
+    void initializeXFixes();
+    bool event2Msg(bool bTimeout, int elapse, uint64_t ts);
     xcb_cursor_t createXcbCursor(HCURSOR cursor);
     uint32_t netWmStates(HWND hWnd);
+
+    DWORD XdndAction2Effect(xcb_atom_t action);
+
+    xcb_atom_t XdndEffect2Action(DWORD dwEffect);
 
     bool pushEvent(xcb_generic_event_t *e);
 
     static void *readProc(void *p);
     void _readProc();
 
-
+    void updateWorkArea();
+    xcb_cursor_t getXcbCursor(HCURSOR cursor);
   private:
     std::mutex m_mutex4Evt;
     std::list<xcb_generic_event_t *> m_evtQueue;
@@ -218,8 +255,8 @@ public:
     mutable std::recursive_mutex m_mutex4Msg;
     std::list<Msg *> m_msgQueue;
     xcb_timestamp_t m_tsSelection;
-    xcb_timestamp_t m_tsPrevPress;    
-    xcb_timestamp_t m_tsDoubleSpan;
+    xcb_timestamp_t m_tsPrevPress=-1;    
+    xcb_timestamp_t m_tsDoubleSpan = 400;
 
     std::list<Msg *> m_msgStack; // msg stack that are handling
     std::list<CbTask *> m_lstCallbackTask;
@@ -231,20 +268,20 @@ public:
 
     std::list<TimerInfo> m_lstTimer;
     bool m_bBlockTimer;
-
+    uint64_t m_tsLastMsg=-1;
+    uint64_t m_tsLastPaint=-1;
     HDC m_deskDC;
     HBITMAP m_deskBmp;
 
     HWND m_hWndCapture;
-    HCURSOR m_hCursor;
 
     HWND m_hWndActive;
     HWND m_hFocus;
     std::map<HCURSOR, xcb_cursor_t> m_sysCursor;
-    std::map<WORD, HCURSOR> m_stdCursor;
-
+    std::map<HWND,HCURSOR>          m_wndCursor;
     SKeyboard *m_keyboard;
     SClipboard* m_clipboard;
+    STrayIconMgr* m_trayIconMgr;
 
     HANDLE m_evtSync;
     tid_t m_tid;
@@ -252,11 +289,13 @@ public:
 
     CaretInfo m_caretInfo;
     UINT m_caretBlinkTime = TS_CARET;
-    SHORT m_mouseKeyState[4] = { 0 };
+    BOOL m_bComposited = FALSE;
+    RECT m_rcWorkArea = { 0 };
+    uint32_t xfixes_first_event = 0;
 };
 
 class SConnMgr {
-    Sync::SRwLock m_rwLock;
+    swinx::SRwLock m_rwLock;
     std::map<pthread_t, SConnection *> m_conns;
     HANDLE m_hHeap;
 

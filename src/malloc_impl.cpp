@@ -1,40 +1,46 @@
 #include <windows.h>
 #include <objbase.h>
 
-class CMalloc : public IMalloc
-{
+class CMalloc : public IMalloc {
     LONG nRef;
-public:
-    CMalloc() :nRef(1) {}
 
-    ~CMalloc() {}
+  public:
+    CMalloc()
+        : nRef(1)
+    {
+    }
 
-public:
-    STDMETHOD_(HRESULT, QueryInterface)(THIS_ REFGUID riid, void** ppvObject) override;
+    ~CMalloc()
+    {
+    }
+
+  public:
+    STDMETHOD_(HRESULT, QueryInterface)(THIS_ REFGUID riid, void **ppvObject) override;
     STDMETHOD_(ULONG, AddRef)(THIS) override;
     STDMETHOD_(ULONG, Release)(THIS) override;
-public:
-    virtual void* STDMETHODCALLTYPE Alloc(
-        /* [annotation][in] */
-        _In_  SIZE_T cb) override;
 
-    virtual void* STDMETHODCALLTYPE Realloc(
+  public:
+    virtual void *STDMETHODCALLTYPE Alloc(
         /* [annotation][in] */
-        _In_opt_  void* pv,
+        _In_ SIZE_T cb) override;
+
+    virtual void *STDMETHODCALLTYPE Realloc(
         /* [annotation][in] */
-        _In_  SIZE_T cb) override;
+        _In_opt_ void *pv,
+        /* [annotation][in] */
+        _In_ SIZE_T cb) override;
 
     virtual void STDMETHODCALLTYPE Free(
         /* [annotation][in] */
-        _In_opt_  void* pv) override;
+        _In_opt_ void *pv) override;
 
     virtual SIZE_T STDMETHODCALLTYPE GetSize(
         /* [annotation][in] */
-        _In_opt_ _Post_writable_byte_size_(return)  void* pv) override;
+        _In_opt_ _Post_writable_byte_size_(return ) void *pv) override;
 
     virtual int STDMETHODCALLTYPE DidAlloc(
         /* [annotation][in] */
-        _In_opt_  void* pv) override;
+        _In_opt_ void *pv) override;
 
     virtual void STDMETHODCALLTYPE HeapMinimize(void) override;
 };
@@ -58,25 +64,27 @@ public:
  */
 struct allocator
 {
-    IMalloc * IMalloc_iface;
-    IMallocSpy* spy;
+    IMalloc *IMalloc_iface;
+    IMallocSpy *spy;
     DWORD spyed_allocations;
     BOOL spy_release_pending; /* CoRevokeMallocSpy called with spyed allocations left */
-    void** blocks;
+    void **blocks;
     DWORD blocks_length;
 };
 
 static CMalloc sys_malloc;
-static struct allocator allocator = {&sys_malloc,0};
+static struct allocator allocator = { &sys_malloc, 0 };
 
 static CRITICAL_SECTION allocspy_cs;
 
 static BOOL mallocspy_grow(DWORD length)
 {
-    void** blocks;
+    void **blocks;
 
-    if (!allocator.blocks) blocks = (void**)LocalAlloc(LMEM_ZEROINIT, length * sizeof(void*));
-    else blocks = (void**)LocalReAlloc((HLOCAL)allocator.blocks, length * sizeof(void*), LMEM_ZEROINIT | LMEM_MOVEABLE);
+    if (!allocator.blocks)
+        blocks = (void **)LocalAlloc(LMEM_ZEROINIT, length * sizeof(void *));
+    else
+        blocks = (void **)LocalReAlloc((HLOCAL)allocator.blocks, length * sizeof(void *), LMEM_ZEROINIT | LMEM_MOVEABLE);
     if (blocks)
     {
         allocator.blocks = blocks;
@@ -86,9 +94,9 @@ static BOOL mallocspy_grow(DWORD length)
     return blocks != NULL;
 }
 
-static void mallocspy_add_mem(void* mem)
+static void mallocspy_add_mem(void *mem)
 {
-    void** current;
+    void **current;
 
     if (!mem || (!allocator.blocks_length && !mallocspy_grow(0x1000)))
         return;
@@ -111,9 +119,9 @@ static void mallocspy_add_mem(void* mem)
     allocator.spyed_allocations++;
 }
 
-static void** mallocspy_is_allocation_spyed(const void* mem)
+static void **mallocspy_is_allocation_spyed(const void *mem)
 {
-    void** current = allocator.blocks;
+    void **current = allocator.blocks;
 
     while (*current != mem)
     {
@@ -125,9 +133,9 @@ static void** mallocspy_is_allocation_spyed(const void* mem)
     return current;
 }
 
-static BOOL mallocspy_remove_spyed_memory(const void* mem)
+static BOOL mallocspy_remove_spyed_memory(const void *mem)
 {
-    void** current;
+    void **current;
 
     if (!allocator.blocks_length)
         return FALSE;
@@ -140,8 +148,7 @@ static BOOL mallocspy_remove_spyed_memory(const void* mem)
     return TRUE;
 }
 
-
-HRESULT CMalloc::QueryInterface(REFIID riid, void** obj)
+HRESULT CMalloc::QueryInterface(REFIID riid, void **obj)
 {
     if (IsEqualIID(IID_IUnknown, riid) || IsEqualIID(IID_IMalloc, riid))
     {
@@ -160,15 +167,16 @@ ULONG CMalloc::AddRef()
 ULONG CMalloc::Release()
 {
     long ret = InterlockedDecrement(&nRef);
-    if (ret == 0) {
+    if (ret == 0)
+    {
         delete this;
     }
     return ret;
 }
 
-void* CMalloc::Alloc(SIZE_T cb)
+void *CMalloc::Alloc(SIZE_T cb)
 {
-    void* addr;
+    void *addr;
 
     if (allocator.spy)
     {
@@ -196,13 +204,13 @@ void* CMalloc::Alloc(SIZE_T cb)
     return addr;
 }
 
-void* CMalloc::Realloc(void* pv, SIZE_T cb)
+void *CMalloc::Realloc(void *pv, SIZE_T cb)
 {
-    void* addr;
+    void *addr;
 
     if (allocator.spy)
     {
-        void* real_mem;
+        void *real_mem;
         BOOL spyed;
 
         EnterCriticalSection(&allocspy_cs);
@@ -229,8 +237,10 @@ void* CMalloc::Realloc(void* pv, SIZE_T cb)
         pv = real_mem;
     }
 
-    if (!pv) addr = HeapAlloc(GetProcessHeap(), 0, cb);
-    else if (cb) addr = HeapReAlloc(GetProcessHeap(), 0, pv, cb);
+    if (!pv)
+        addr = HeapAlloc(GetProcessHeap(), 0, cb);
+    else if (cb)
+        addr = HeapReAlloc(GetProcessHeap(), 0, pv, cb);
     else
     {
         HeapFree(GetProcessHeap(), 0, pv);
@@ -247,7 +257,7 @@ void* CMalloc::Realloc(void* pv, SIZE_T cb)
     return addr;
 }
 
-void CMalloc::Free(void* mem)
+void CMalloc::Free(void *mem)
 {
     BOOL spyed_block = FALSE, spy_active = FALSE;
 
@@ -286,7 +296,7 @@ void CMalloc::Free(void* mem)
  *      win95:  size allocated (4 byte boundaries)
  *      win2k:  size originally requested !!! (allocated on 8 byte boundaries)
  */
-SIZE_T CMalloc::GetSize(void* mem)
+SIZE_T CMalloc::GetSize(void *mem)
 {
     BOOL spyed_block = FALSE, spy_active = FALSE;
     SIZE_T size;
@@ -299,7 +309,7 @@ SIZE_T CMalloc::GetSize(void* mem)
         EnterCriticalSection(&allocspy_cs);
         spyed_block = !!mallocspy_is_allocation_spyed(mem);
         spy_active = TRUE;
-        mem = allocator.spy->PreGetSize( mem, spyed_block);
+        mem = allocator.spy->PreGetSize(mem, spyed_block);
     }
 
     size = HeapSize(GetProcessHeap(), 0, mem);
@@ -313,7 +323,7 @@ SIZE_T CMalloc::GetSize(void* mem)
     return size;
 }
 
-INT CMalloc::DidAlloc(void* mem)
+INT CMalloc::DidAlloc(void *mem)
 {
     BOOL spyed_block = FALSE, spy_active = FALSE;
     int did_alloc;
@@ -326,7 +336,7 @@ INT CMalloc::DidAlloc(void* mem)
         EnterCriticalSection(&allocspy_cs);
         spyed_block = !!mallocspy_is_allocation_spyed(mem);
         spy_active = TRUE;
-        mem = allocator.spy->PreDidAlloc( mem, spyed_block);
+        mem = allocator.spy->PreDidAlloc(mem, spyed_block);
     }
 
     did_alloc = HeapValidate(GetProcessHeap(), 0, mem);
@@ -361,7 +371,7 @@ void CMalloc::HeapMinimize()
 /******************************************************************************
  *                CoGetMalloc        (combase.@)
  */
-HRESULT WINAPI CoGetMalloc(DWORD context, IMalloc** imalloc)
+HRESULT WINAPI CoGetMalloc(DWORD context, IMalloc **imalloc)
 {
     if (context != MEMCTX_TASK)
     {
@@ -377,7 +387,7 @@ HRESULT WINAPI CoGetMalloc(DWORD context, IMalloc** imalloc)
 /***********************************************************************
  *           CoTaskMemAlloc         (combase.@)
  */
-void* WINAPI CoTaskMemAlloc(SIZE_T size)
+void *WINAPI CoTaskMemAlloc(SIZE_T size)
 {
     return allocator.IMalloc_iface->Alloc(size);
 }
@@ -385,7 +395,7 @@ void* WINAPI CoTaskMemAlloc(SIZE_T size)
 /***********************************************************************
  *           CoTaskMemFree          (combase.@)
  */
-void WINAPI CoTaskMemFree(void* ptr)
+void WINAPI CoTaskMemFree(void *ptr)
 {
     allocator.IMalloc_iface->Free(ptr);
 }
@@ -393,7 +403,7 @@ void WINAPI CoTaskMemFree(void* ptr)
 /***********************************************************************
  *           CoTaskMemRealloc        (combase.@)
  */
-void* WINAPI CoTaskMemRealloc(void* ptr, SIZE_T size)
+void *WINAPI CoTaskMemRealloc(void *ptr, SIZE_T size)
 {
     return allocator.IMalloc_iface->Realloc(ptr, size);
 }
@@ -401,17 +411,18 @@ void* WINAPI CoTaskMemRealloc(void* ptr, SIZE_T size)
 /***********************************************************************
  *           CoRegisterMallocSpy        (combase.@)
  */
-HRESULT WINAPI CoRegisterMallocSpy(IMallocSpy* spy)
+HRESULT WINAPI CoRegisterMallocSpy(IMallocSpy *spy)
 {
     HRESULT hr = E_INVALIDARG;
 
-    if (!spy) return E_INVALIDARG;
+    if (!spy)
+        return E_INVALIDARG;
 
     EnterCriticalSection(&allocspy_cs);
 
     if (allocator.spy)
         hr = CO_E_OBJISREG;
-    else if (SUCCEEDED(spy->QueryInterface(IID_IMallocSpy, (void**)&spy)))
+    else if (SUCCEEDED(spy->QueryInterface(IID_IMallocSpy, (void **)&spy)))
     {
         allocator.spy = spy;
         hr = S_OK;

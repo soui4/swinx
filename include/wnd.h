@@ -20,41 +20,19 @@ extern "C"
     HWND WINAPI CreateWindowExA(DWORD exStyle, LPCSTR className, LPCSTR windowName, DWORD style, INT x, INT y, INT width, INT height, HWND parent, HMENU menu, HINSTANCE instance, LPVOID data);
     HWND WINAPI CreateWindowExW(DWORD exStyle, LPCWSTR className, LPCWSTR windowName, DWORD style, INT x, INT y, INT width, INT height, HWND parent, HMENU menu, HINSTANCE instance, LPVOID data);
 
-    HWND WINAPI CreateWindowA(LPCSTR lpClassName,
-        LPCSTR lpWindowName,
-        DWORD dwStyle,
-        int x,
-        int y,
-        int nWidth,
-        int nHeight,
-        HWND hWndParent,
-        HMENU hMenu,
-        HINSTANCE hInstance,
-        LPVOID lpParam
-    );
-    HWND WINAPI CreateWindowW(LPCWSTR lpClassName,
-        LPCWSTR lpWindowName,
-        DWORD dwStyle,
-        int x,
-        int y,
-        int nWidth,
-        int nHeight,
-        HWND hWndParent,
-        HMENU hMenu,
-        HINSTANCE hInstance,
-        LPVOID lpParam
-    );
+    HWND WINAPI CreateWindowA(LPCSTR lpClassName, LPCSTR lpWindowName, DWORD dwStyle, int x, int y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
+    HWND WINAPI CreateWindowW(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwStyle, int x, int y, int nWidth, int nHeight, HWND hWndParent, HMENU hMenu, HINSTANCE hInstance, LPVOID lpParam);
     int WINAPI GetClassNameA(HWND hWnd, LPSTR lpClassName, int nMaxCount);
     int WINAPI GetClassNameW(HWND hWnd, LPWSTR lpClassName, int nMaxCount);
 
 #ifdef UNICODE
-#define CreateWindow CreateWindowW
+#define CreateWindow   CreateWindowW
 #define CreateWindowEx CreateWindowExW
-#define GetClassName GetClassNameW
+#define GetClassName   GetClassNameW
 #else
-#define CreateWindow CreateWindowA
+#define CreateWindow   CreateWindowA
 #define CreateWindowEx CreateWindowExA
-#define GetClassName GetClassNameA
+#define GetClassName   GetClassNameA
 #endif // UNICODE
 
     BOOL WINAPI DestroyWindow(HWND hWnd);
@@ -82,18 +60,18 @@ extern "C"
     int WINAPI MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType);
     int WINAPI MessageBoxW(HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType);
 #ifdef UNICODE
-#define PostMessage PostMessageW
-#define SendMessage SendMessageW
-#define SendMessageTimeout SendMessageTimeoutW
+#define PostMessage         PostMessageW
+#define SendMessage         SendMessageW
+#define SendMessageTimeout  SendMessageTimeoutW
 #define SendMessageCallback SendMessageCallbackW
-#define MessageBox MessageBoxW
+#define MessageBox          MessageBoxW
 #else
-#define PostMessage PostMessageA
-#define SendMessage SendMessageA
-#define SendMessageTimeout SendMessageTimeoutA
+#define PostMessage         PostMessageA
+#define SendMessage         SendMessageA
+#define SendMessageTimeout  SendMessageTimeoutA
 #define SendMessageCallback SendMessageCallbackW
-#define MessageBox MessageBoxA
-#endif//UNICODE
+#define MessageBox          MessageBoxA
+#endif // UNICODE
     tid_t WINAPI GetWindowThreadProcessId(HWND hWnd, LPDWORD lpdwProcessId);
 
     BOOL WINAPI SetForegroundWindow(HWND hWnd);
@@ -115,88 +93,67 @@ extern "C"
     LONG_PTR SetWindowLongPtrW(HWND hWnd, int nIndex, LONG_PTR data);
 
 #ifdef UNICODE
-#define GetWindowLong GetWindowLongW
-#define SetWindowLong SetWindowLongW
+#define GetWindowLong    GetWindowLongW
+#define SetWindowLong    SetWindowLongW
 #define GetWindowLongPtr GetWindowLongPtrW
 #define SetWindowLongPtr SetWindowLongPtrW
 #else
-#define GetWindowLong GetWindowLongA
-#define SetWindowLong SetWindowLongA
+#define GetWindowLong    GetWindowLongA
+#define SetWindowLong    SetWindowLongA
 #define GetWindowLongPtr GetWindowLongPtrA
 #define SetWindowLongPtr SetWindowLongPtrA
-#endif//UNICODE
-
-
-    DWORD
-        WINAPI
-        GetClassLongA(
-            _In_ HWND hWnd,
-            _In_ int nIndex);
+#endif // UNICODE
 
     DWORD
-        WINAPI
-        GetClassLongW(
-            _In_ HWND hWnd,
-            _In_ int nIndex);
+    WINAPI
+    GetClassLongA(_In_ HWND hWnd, _In_ int nIndex);
+
+    DWORD
+    WINAPI
+    GetClassLongW(_In_ HWND hWnd, _In_ int nIndex);
 #ifdef UNICODE
-#define GetClassLong  GetClassLongW
+#define GetClassLong GetClassLongW
 #else
-#define GetClassLong  GetClassLongA
+#define GetClassLong GetClassLongA
 #endif // !UNICODE
 
     DWORD
-        WINAPI
-        SetClassLongA(
-            _In_ HWND hWnd,
-            _In_ int nIndex,
-            _In_ LONG dwNewLong);
+    WINAPI
+    SetClassLongA(_In_ HWND hWnd, _In_ int nIndex, _In_ LONG dwNewLong);
 
     DWORD
-        WINAPI
-        SetClassLongW(
-            _In_ HWND hWnd,
-            _In_ int nIndex,
-            _In_ LONG dwNewLong);
+    WINAPI
+    SetClassLongW(_In_ HWND hWnd, _In_ int nIndex, _In_ LONG dwNewLong);
 #ifdef UNICODE
-#define SetClassLong  SetClassLongW
+#define SetClassLong SetClassLongW
 #else
-#define SetClassLong  SetClassLongA
+#define SetClassLong SetClassLongA
 #endif // !UNICODE
 
     ULONG_PTR
-        WINAPI
-        GetClassLongPtrA(
-            _In_ HWND hWnd,
-            _In_ int nIndex);
+    WINAPI
+    GetClassLongPtrA(_In_ HWND hWnd, _In_ int nIndex);
 
     ULONG_PTR
-        WINAPI
-        GetClassLongPtrW(
-            _In_ HWND hWnd,
-            _In_ int nIndex);
+    WINAPI
+    GetClassLongPtrW(_In_ HWND hWnd, _In_ int nIndex);
 #ifdef UNICODE
-#define GetClassLongPtr  GetClassLongPtrW
+#define GetClassLongPtr GetClassLongPtrW
 #else
-#define GetClassLongPtr  GetClassLongPtrA
+#define GetClassLongPtr GetClassLongPtrA
 #endif // !UNICODE
 
     ULONG_PTR
-        WINAPI
-        SetClassLongPtrA(
-            _In_ HWND hWnd,
-            _In_ int nIndex,
-            _In_ LONG_PTR dwNewLong);
+    WINAPI
+    SetClassLongPtrA(_In_ HWND hWnd, _In_ int nIndex, _In_ LONG_PTR dwNewLong);
 
     ULONG_PTR
-        WINAPI
-        SetClassLongPtrW(
-            _In_ HWND hWnd,
-            _In_ int nIndex,
-            _In_ LONG_PTR dwNewLong);
+    WINAPI
+    SetClassLongPtrW(_In_ HWND hWnd, _In_ int nIndex, _In_ LONG_PTR dwNewLong);
 #ifdef UNICODE
-#define SetClassLongPtr  SetClassLongPtrW
+#define SetClassLongPtr SetClassLongPtrW
 #else
-#define SetClassLongPtr  SetClassLongPtrA
+#define SetClassLongPtr SetClassLongPtrA
 #endif // !UNICODE
 
     BOOL CreateCaret(HWND hWnd, HBITMAP hBitmap, int nWidth, int nHeight);
@@ -211,8 +168,8 @@ extern "C"
 
     BOOL GetCaretPos(LPPOINT lpPoint);
 
-    void SetCaretBlinkTime(UINT  blinkTime);
-    UINT  GetCaretBlinkTime();
+    void SetCaretBlinkTime(UINT blinkTime);
+    UINT GetCaretBlinkTime();
 
     HWND GetActiveWindow();
 
@@ -235,7 +192,7 @@ extern "C"
 
     uint64_t GetTickCount64();
 
-    typedef VOID(CALLBACK *TIMERPROC)(HWND, UINT, UINT_PTR, DWORD);
+    typedef VOID(CALLBACK *TIMERPROC)(HWND hwnd, UINT msg, UINT_PTR timerId, DWORD ts);
 
     UINT_PTR
     SetTimer(HWND hWnd, UINT_PTR nIDEvent, UINT uElapse, TIMERPROC lpTimerFunc);
@@ -256,9 +213,9 @@ extern "C"
     HDC BeginPaint(HWND hWnd, PAINTSTRUCT *ps);
     BOOL EndPaint(HWND hWnd, const PAINTSTRUCT *ps);
 
-    int GetUpdateRgn(HWND hWnd,    // handle to window
-        HRGN hRgn,    // handle to region  
-        BOOL bErase   // erase state
+    int GetUpdateRgn(HWND hWnd,  // handle to window
+                     HRGN hRgn,  // handle to region
+                     BOOL bErase // erase state
     );
     BOOL UpdateWindow(HWND hWnd);
 
@@ -288,27 +245,27 @@ extern "C"
     BOOL SetWindowTextW(HWND hWnd, LPCWSTR lpszString);
 #ifdef UNICODE
 #define GetWindowTextLength GetWindowTextLengthW
-#define GetWindowText GetWindowTextW
-#define SetWindowText SetWindowTextW
+#define GetWindowText       GetWindowTextW
+#define SetWindowText       SetWindowTextW
 #else
 #define GetWindowTextLength GetWindowTextLengthA
-#define GetWindowText GetWindowTextA
-#define SetWindowText SetWindowTextA
-#endif//UNICODE
+#define GetWindowText       GetWindowTextA
+#define SetWindowText       SetWindowTextA
+#endif // UNICODE
 
     HDC GetDC(HWND hWnd);
 
-    #define DCX_WINDOW 0x0001
-    #define DCX_LOCKWINDOWUPDATE 0x0002
-    #define DCX_CACHE 0x0004
-    #define DCX_OP_MASK  0xffff
-    #define DCX_INTERSECTRGN 0x10000
-    #define DCX_EXCLUDERGN 0x20000
-    #define DCX_RGN_MASK 0xf0000
+#define DCX_WINDOW           0x0001
+#define DCX_LOCKWINDOWUPDATE 0x0002
+#define DCX_CACHE            0x0004
+#define DCX_OP_MASK          0xffff
+#define DCX_INTERSECTRGN     0x10000
+#define DCX_EXCLUDERGN       0x20000
+#define DCX_RGN_MASK         0xf0000
 
-    HDC GetDCEx(HWND  hWnd,HRGN  hrgnClip,DWORD flags);
+    HDC GetDCEx(HWND hWnd, HRGN hrgnClip, DWORD flags);
     HDC GetWindowDC(HWND hWnd);
-    
+
     int ReleaseDC(HWND hWnd, HDC hdc);
 
     int MapWindowPoints(HWND hWndFrom, HWND hWndTo, LPPOINT lpPoint, UINT nCount);
@@ -336,49 +293,21 @@ extern "C"
 #define SB_VERT 2
 #define SB_BOTH (SB_HORZ | SB_VERT)
 
-    BOOL WINAPI EnableScrollBar(HWND hWnd,
-        UINT wSBflags,
-        UINT wArrows
-    );
+    BOOL WINAPI EnableScrollBar(HWND hWnd, UINT wSBflags, UINT wArrows);
 
-    BOOL WINAPI ShowScrollBar(HWND hWnd,
-        int wBar,
-        BOOL bShow
-    );
+    BOOL WINAPI ShowScrollBar(HWND hWnd, int wBar, BOOL bShow);
 
-    int WINAPI SetScrollInfo(HWND hwnd,
-        int fnBar,
-        LPCSCROLLINFO lpsi,
-        BOOL fRedraw
-    );
+    int WINAPI SetScrollInfo(HWND hwnd, int fnBar, LPCSCROLLINFO lpsi, BOOL fRedraw);
 
-    BOOL WINAPI GetScrollInfo(HWND hwnd,
-        int fnBar,
-        LPSCROLLINFO lpsi
-    );
+    BOOL WINAPI GetScrollInfo(HWND hwnd, int fnBar, LPSCROLLINFO lpsi);
 
-    int WINAPI GetScrollPos(HWND hWnd,
-        int nBar
-    );
+    int WINAPI GetScrollPos(HWND hWnd, int nBar);
 
-    int WINAPI SetScrollPos(HWND hWnd,
-        int nBar,
-        int nPos,
-        BOOL bRedraw
-    );
+    int WINAPI SetScrollPos(HWND hWnd, int nBar, int nPos, BOOL bRedraw);
 
-    BOOL WINAPI GetScrollRange(HWND hWnd,
-        int nBar,
-        LPINT lpMinPos,
-        LPINT lpMaxPos
-    );
+    BOOL WINAPI GetScrollRange(HWND hWnd, int nBar, LPINT lpMinPos, LPINT lpMaxPos);
 
-    BOOL WINAPI SetScrollRange(HWND hWnd,
-        int nBar,
-        int nMinPos,
-        int nMaxPos,
-        BOOL bRedraw
-    );
+    BOOL WINAPI SetScrollRange(HWND hWnd, int nBar, int nMinPos, int nMaxPos, BOOL bRedraw);
 
     BOOL WINAPI AdjustWindowRectEx(LPRECT rect, DWORD style, BOOL menu, DWORD exStyle);
 
@@ -389,27 +318,45 @@ extern "C"
 
     BOOL WINAPI IsChild(HWND hWndParent, HWND hWnd);
 
-    HWND WINAPI GetDlgItem(_In_opt_ HWND hDlg,_In_ int nIDDlgItem);
+    HWND WINAPI GetDlgItem(_In_opt_ HWND hDlg, _In_ int nIDDlgItem);
 
-    int WINAPI ScrollWindowEx(HWND hWnd,
-        int dx,
-        int dy,
-        const RECT* prcScroll,
-        const RECT* prcClip,
-        HRGN hrgnUpdate,
-        LPRECT prcUpdate,
-        UINT flags
-    );
+    int WINAPI ScrollWindowEx(HWND hWnd, int dx, int dy, const RECT *prcScroll, const RECT *prcClip, HRGN hrgnUpdate, LPRECT prcUpdate, UINT flags);
 
-	UINT WINAPI	RegisterWindowMessageA(_In_ LPCSTR lpString);
-    UINT WINAPI	RegisterWindowMessageW(_In_ LPCWSTR lpString);
+    UINT WINAPI RegisterWindowMessageA(_In_ LPCSTR lpString);
+    UINT WINAPI RegisterWindowMessageW(_In_ LPCWSTR lpString);
 #ifdef UNICODE
-#define RegisterWindowMessage  RegisterWindowMessageW
+#define RegisterWindowMessage RegisterWindowMessageW
 #else
-#define RegisterWindowMessage  RegisterWindowMessageA
+#define RegisterWindowMessage RegisterWindowMessageA
 #endif // !UNICODE
 
     BOOL WINAPI IsWindowUnicode(HWND hWnd);
+
+    typedef BOOL(CALLBACK *WNDENUMPROC)(HWND hwnd, LPARAM lParam);
+
+    BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam);
+
+    typedef struct
+    {
+        UINT cbSize;
+        HWND hwnd;
+        DWORD dwFlags;
+        UINT uCount;
+        DWORD dwTimeout;
+    } FLASHWINFO, *PFLASHWINFO;
+
+#define FLASHW_CAPTION   0x00000001
+#define FLASHW_TRAY      0x00000002
+#define FLASHW_ALL       0x00000003
+#define FLASHW_STOP      0
+#define FLASHW_TIMER     0x00000004
+#define FLASHW_TIMERNOFG 0x0000000C
+
+    BOOL WINAPI FlashWindowEx(PFLASHWINFO pfwi);
+    BOOL WINAPI FlashWindow(HWND hWnd, BOOL bInvert);
+
+    BOOL WINAPI AnimateWindow(HWND hwnd, DWORD time, DWORD flags);
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus

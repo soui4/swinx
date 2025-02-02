@@ -1,6 +1,11 @@
 #ifndef __WINUSER_H_
 #define __WINUSER_H_
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif //__cplusplus
+
 #ifndef WINVER
 #define WINVER 0x0600
 #endif
@@ -8,11 +13,11 @@
 #define _WIN32_WINNT 0x0600
 #endif
 
-#define VER_PLATFORM_WIN32s             0
-#define VER_PLATFORM_WIN32_WINDOWS      1
-#define VER_PLATFORM_WIN32_NT           2
+#define VER_PLATFORM_WIN32s        0
+#define VER_PLATFORM_WIN32_WINDOWS 1
+#define VER_PLATFORM_WIN32_NT      2
 
-typedef LRESULT(CALLBACK *WNDPROC)(HWND, UINT, WPARAM, LPARAM);
+    typedef LRESULT(CALLBACK *WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 
 /*
  * ShowWindow() Commands
@@ -33,9 +38,9 @@ typedef LRESULT(CALLBACK *WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define SW_FORCEMINIMIZE   11
 #define SW_MAX             11
 
-/*
- * Window Messages
- */
+    /*
+     * Window Messages
+     */
 
 #define WM_NULL    0x0000
 #define WM_CREATE  0x0001
@@ -69,7 +74,7 @@ typedef LRESULT(CALLBACK *WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define WM_SHOWWINDOW      0x0018
 #define WM_CTLCOLOR        0x0019 /* Added from windowsx.h */
 #define WM_WININICHANGE    0x001A
-#define WM_SETTINGCHANGE       WM_WININICHANGE
+#define WM_SETTINGCHANGE   WM_WININICHANGE
 
 #define WM_ACTIVATEAPP   0x001C
 #define WM_FONTCHANGE    0x001D
@@ -79,19 +84,19 @@ typedef LRESULT(CALLBACK *WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 #define WM_CHILDACTIVATE 0x0022
 
 #define WM_GETMINMAXINFO 0x0024
-#define WM_NEXTDLGCTL                   0x0028
+#define WM_NEXTDLGCTL    0x0028
 
-/*
- * Struct pointed to by WM_GETMINMAXINFO lParam
- */
-typedef struct tagMINMAXINFO
-{
-    POINT ptReserved;
-    POINT ptMaxSize;
-    POINT ptMaxPosition;
-    POINT ptMinTrackSize;
-    POINT ptMaxTrackSize;
-} MINMAXINFO, *PMINMAXINFO, *LPMINMAXINFO;
+    /*
+     * Struct pointed to by WM_GETMINMAXINFO lParam
+     */
+    typedef struct tagMINMAXINFO
+    {
+        POINT ptReserved;
+        POINT ptMaxSize;
+        POINT ptMaxPosition;
+        POINT ptMinTrackSize;
+        POINT ptMaxTrackSize;
+    } MINMAXINFO, *PMINMAXINFO, *LPMINMAXINFO;
 
 #define WM_DRAWITEM          0x002B
 #define WM_MEASUREITEM       0x002C
@@ -120,23 +125,23 @@ typedef struct tagMINMAXINFO
 
 #define WM_COPYDATA 0x004A
 
-/*
- * lParam of WM_COPYDATA message points to...
- */
-typedef struct tagCOPYDATASTRUCT
-{
-    ULONG_PTR dwData;
-    DWORD cbData;
-    PVOID lpData;
-} COPYDATASTRUCT, *PCOPYDATASTRUCT;
+    /*
+     * lParam of WM_COPYDATA message points to...
+     */
+    typedef struct tagCOPYDATASTRUCT
+    {
+        ULONG_PTR dwData;
+        DWORD cbData;
+        PVOID lpData;
+    } COPYDATASTRUCT, *PCOPYDATASTRUCT;
 
-#define WM_NOTIFY                       0x004E
-#define WM_INPUTLANGCHANGEREQUEST       0x0050
-#define WM_INPUTLANGCHANGE              0x0051
-#define WM_TCARD                        0x0052
-#define WM_HELP                         0x0053
-#define WM_USERCHANGED                  0x0054
-#define WM_NOTIFYFORMAT                 0x0055
+#define WM_NOTIFY                 0x004E
+#define WM_INPUTLANGCHANGEREQUEST 0x0050
+#define WM_INPUTLANGCHANGE        0x0051
+#define WM_TCARD                  0x0052
+#define WM_HELP                   0x0053
+#define WM_USERCHANGED            0x0054
+#define WM_NOTIFYFORMAT           0x0055
 
 #define WM_CONTEXTMENU   0x007B
 #define WM_STYLECHANGING 0x007C
@@ -212,14 +217,14 @@ typedef struct tagCOPYDATASTRUCT
 
 #define WM_MOUSELAST 0x020E
 
-#define WM_CTLCOLORMSGBOX               0x0132
-#define WM_CTLCOLOREDIT                 0x0133
-#define WM_CTLCOLORLISTBOX              0x0134
-#define WM_CTLCOLORBTN                  0x0135
-#define WM_CTLCOLORDLG                  0x0136
-#define WM_CTLCOLORSCROLLBAR            0x0137
-#define WM_CTLCOLORSTATIC               0x0138
-#define MN_GETHMENU                     0x01E1
+#define WM_CTLCOLORMSGBOX    0x0132
+#define WM_CTLCOLOREDIT      0x0133
+#define WM_CTLCOLORLISTBOX   0x0134
+#define WM_CTLCOLORBTN       0x0135
+#define WM_CTLCOLORDLG       0x0136
+#define WM_CTLCOLORSCROLLBAR 0x0137
+#define WM_CTLCOLORSTATIC    0x0138
+#define MN_GETHMENU          0x01E1
 
 /* Value for rolling one detent */
 #define WHEEL_DELTA                    120
@@ -279,9 +284,10 @@ typedef struct tagCOPYDATASTRUCT
 #define WM_PRINT       0x0317
 #define WM_PRINTCLIENT 0x0318
 
-#define WM_MSG_W2A     0x0330 //
-#define WM_INTERNAL 0x0350 // internal message
-#define WM_APP 0x8000
+#define WM_MSG_W2A   0x0330 //
+#define WM_INTERNAL  0x0350 // internal message
+#define WM_REG_FIRST 0x2000 // registered message start
+#define WM_APP       0x8000
 
 #define QS_KEY            0x0001                                                        //队列中WM_KEYUP、WM_KEYDOWN、WM_SYSKEYUP或WM_SYSKEYDOWN消息。
 #define QS_MOUSEMOVE      0x0002                                                        // 	队列中WM_MOUSEMOVE消息。
@@ -382,28 +388,28 @@ typedef struct tagCOPYDATASTRUCT
 #define SIZEZOOMSHOW   SIZE_MAXSHOW
 #define SIZEZOOMHIDE   SIZE_MAXHIDE
 
-/*
- * WM_WINDOWPOSCHANGING/CHANGED struct pointed to by lParam
- */
-typedef struct tagWINDOWPOS
-{
-    HWND hwnd;
-    HWND hwndInsertAfter;
-    int x;
-    int y;
-    int cx;
-    int cy;
-    UINT flags;
-} WINDOWPOS, *LPWINDOWPOS, *PWINDOWPOS;
+    /*
+     * WM_WINDOWPOSCHANGING/CHANGED struct pointed to by lParam
+     */
+    typedef struct tagWINDOWPOS
+    {
+        HWND hwnd;
+        HWND hwndInsertAfter;
+        int x;
+        int y;
+        int cx;
+        int cy;
+        UINT flags;
+    } WINDOWPOS, *LPWINDOWPOS, *PWINDOWPOS;
 
-/*
- * WM_NCCALCSIZE parameter structure
- */
-typedef struct tagNCCALCSIZE_PARAMS
-{
-    RECT rgrc[3];
-    PWINDOWPOS lppos;
-} NCCALCSIZE_PARAMS, *LPNCCALCSIZE_PARAMS;
+    /*
+     * WM_NCCALCSIZE parameter structure
+     */
+    typedef struct tagNCCALCSIZE_PARAMS
+    {
+        RECT rgrc[3];
+        PWINDOWPOS lppos;
+    } NCCALCSIZE_PARAMS, *LPNCCALCSIZE_PARAMS;
 
 /*
  * WM_NCCALCSIZE "window valid rect" return values
@@ -434,8 +440,8 @@ typedef struct tagNCCALCSIZE_PARAMS
 
 #endif /* !NOKEYSTATES */
 
-#if (_WIN32_WINNT >= 0x0400)
 #ifndef NOTRACKMOUSEEVENT
+#if (_WIN32_WINNT >= 0x0400)
 
 #define TME_HOVER 0x00000001
 #define TME_LEAVE 0x00000002
@@ -449,23 +455,22 @@ typedef struct tagNCCALCSIZE_PARAMS
 #endif /* _WIN32_WINNT >= 0x0400 */
 
 #if (_WIN32_WINNT >= 0x0400)
-typedef struct tagTRACKMOUSEEVENT
-{
-    DWORD cbSize;
-    DWORD dwFlags;
-    HWND hwndTrack;
-    DWORD dwHoverTime;
-} TRACKMOUSEEVENT, *LPTRACKMOUSEEVENT;
+    typedef struct tagTRACKMOUSEEVENT
+    {
+        DWORD cbSize;
+        DWORD dwFlags;
+        HWND hwndTrack;
+        DWORD dwHoverTime;
+    } TRACKMOUSEEVENT, *LPTRACKMOUSEEVENT;
 
-BOOL WINAPI TrackMouseEvent(LPTRACKMOUSEEVENT lpEventTrack);
+    BOOL WINAPI TrackMouseEvent(LPTRACKMOUSEEVENT lpEventTrack);
 #endif /* _WIN32_WINNT >= 0x0400 */
 
 #if (_WIN32_WINNT >= 0x0400)
 
-#endif /* !NOTRACKMOUSEEVENT */
 #endif /* _WIN32_WINNT >= 0x0400 */
 
-#endif /* !NOWINMESSAGES */
+#endif /* !NOTRACKMOUSEEVENT */
 
 #ifndef NOWINSTYLES
 
@@ -543,8 +548,8 @@ BOOL WINAPI TrackMouseEvent(LPTRACKMOUSEEVENT lpEventTrack);
 #endif /* WINVER >= 0x0400 */
 
 #if (_WIN32_WINNT >= 0x0500)
-#define WS_EX_LAYERED 0x00080000
-
+#define WS_EX_LAYERED    0x00080000
+#define WS_EX_COMPOSITED 0x02000000L
 #endif /* _WIN32_WINNT >= 0x0500 */
 
 #if (WINVER >= 0x0500)
@@ -552,9 +557,6 @@ BOOL WINAPI TrackMouseEvent(LPTRACKMOUSEEVENT lpEventTrack);
 #define WS_EX_LAYOUTRTL       0x00400000L // Right to left mirroring
 #endif                                    /* WINVER >= 0x0500 */
 
-#if (_WIN32_WINNT >= 0x0501)
-#define WS_EX_COMPOSITED 0x02000000L
-#endif /* _WIN32_WINNT >= 0x0501 */
 #if (_WIN32_WINNT >= 0x0500)
 #define WS_EX_NOACTIVATE 0x08000000L
 #endif /* _WIN32_WINNT >= 0x0500 */
@@ -579,22 +581,22 @@ BOOL WINAPI TrackMouseEvent(LPTRACKMOUSEEVENT lpEventTrack);
 #define CS_DROPSHADOW 0x00020000
 #endif /* _WIN32_WINNT >= 0x0501 */
 
-//-----------------------------------------------------------------
-typedef struct tagCREATESTRUCT
-{
-    LPVOID lpCreateParams;
-    HINSTANCE hInstance;
-    HMENU hMenu;
-    HWND hwndParent;
-    uint32_t cy;
-    uint32_t cx;
-    int y;
-    int x;
-    LONG style;
-    LPCSTR lpszName;
-    LPCSTR lpszClass;
-    DWORD dwExStyle;
-} CREATESTRUCT, *LPCREATESTRUCT;
+    //-----------------------------------------------------------------
+    typedef struct tagCREATESTRUCT
+    {
+        LPVOID lpCreateParams;
+        HINSTANCE hInstance;
+        HMENU hMenu;
+        HWND hwndParent;
+        uint32_t cy;
+        uint32_t cx;
+        int y;
+        int x;
+        LONG style;
+        LPCSTR lpszName;
+        LPCSTR lpszClass;
+        DWORD dwExStyle;
+    } CREATESTRUCT, *LPCREATESTRUCT;
 
 #define OCM__BASE   (WM_USER + 0x1c00)
 #define OCM_COMMAND (OCM__BASE + WM_COMMAND)
@@ -668,11 +670,11 @@ typedef struct tagCREATESTRUCT
 #define SM_PENWINDOWS        41
 #define SM_DBCSENABLED       42
 #define SM_CMOUSEBUTTONS     43
-#define SM_CXEDGE	      45
-#define SM_CYEDGE	      46
+#define SM_CXEDGE            45
+#define SM_CYEDGE            46
 
-#define SM_CXDRAG               68
-#define SM_CYDRAG               69
+#define SM_CXDRAG 68
+#define SM_CYDRAG 69
 
 #define DT_TOP                  0x00000000
 #define DT_LEFT                 0x00000000
@@ -707,16 +709,16 @@ typedef struct tagCREATESTRUCT
 #define VK_CANCEL  0x03
 #define VK_MBUTTON 0x04 /* NOT contiguous with L & RBUTTON */
 
-/*
- * 0x07 : unassigned
- */
+    /*
+     * 0x07 : unassigned
+     */
 
 #define VK_BACK 0x08
 #define VK_TAB  0x09
 
-/*
- * 0x0A - 0x0B : reserved
- */
+    /*
+     * 0x0A - 0x0B : reserved
+     */
 
 #define VK_CLEAR  0x0C
 #define VK_RETURN 0x0D
@@ -759,19 +761,19 @@ typedef struct tagCREATESTRUCT
 #define VK_DELETE   0x2E
 #define VK_HELP     0x2F
 
-/*
- * VK_0 - VK_9 are the same as ASCII '0' - '9' (0x30 - 0x39)
- * 0x40 : unassigned
- * VK_A - VK_Z are the same as ASCII 'A' - 'Z' (0x41 - 0x5A)
- */
+    /*
+     * VK_0 - VK_9 are the same as ASCII '0' - '9' (0x30 - 0x39)
+     * 0x40 : unassigned
+     * VK_A - VK_Z are the same as ASCII 'A' - 'Z' (0x41 - 0x5A)
+     */
 
 #define VK_LWIN 0x5B
 #define VK_RWIN 0x5C
 #define VK_APPS 0x5D
 
-/*
- * 0x5E : reserved
- */
+    /*
+     * 0x5E : reserved
+     */
 
 #define VK_SLEEP 0x5F
 
@@ -816,9 +818,9 @@ typedef struct tagCREATESTRUCT
 #define VK_F23       0x86
 #define VK_F24       0x87
 
-/*
- * 0x88 - 0x8F : unassigned
- */
+    /*
+     * 0x88 - 0x8F : unassigned
+     */
 
 #define VK_NUMLOCK 0x90
 #define VK_SCROLL  0x91
@@ -853,9 +855,9 @@ typedef struct tagCREATESTRUCT
 #define VK_LMENU    0xA4
 #define VK_RMENU    0xA5
 
-/*
- * 0xB8 - 0xB9 : reserved
- */
+    /*
+     * 0xB8 - 0xB9 : reserved
+     */
 
 #define VK_OEM_1      0xBA // ';:' for US
 #define VK_OEM_PLUS   0xBB // '+' any country
@@ -865,13 +867,13 @@ typedef struct tagCREATESTRUCT
 #define VK_OEM_2      0xBF // '/?' for US
 #define VK_OEM_3      0xC0 // '`~' for US
 
-/*
- * 0xC1 - 0xD7 : reserved
- */
+    /*
+     * 0xC1 - 0xD7 : reserved
+     */
 
-/*
- * 0xD8 - 0xDA : unassigned
- */
+    /*
+     * 0xD8 - 0xDA : unassigned
+     */
 
 #define VK_OEM_4 0xDB //  '[{' for US
 #define VK_OEM_5 0xDC //  '\|' for US
@@ -879,23 +881,23 @@ typedef struct tagCREATESTRUCT
 #define VK_OEM_7 0xDE //  ''"' for US
 #define VK_OEM_8 0xDF
 
- /*
-  * 0xE0 : reserved
-  */
+    /*
+     * 0xE0 : reserved
+     */
 
-  /*
-   * Various extended or enhanced keyboards
-   */
-#define VK_OEM_AX         0xE1  //  'AX' key on Japanese AX kbd
-#define VK_OEM_102        0xE2  //  "<>" or "\|" on RT 102-key kbd.
-#define VK_ICO_HELP       0xE3  //  Help key on ICO
-#define VK_ICO_00         0xE4  //  00 key on ICO
+    /*
+     * Various extended or enhanced keyboards
+     */
+#define VK_OEM_AX   0xE1 //  'AX' key on Japanese AX kbd
+#define VK_OEM_102  0xE2 //  "<>" or "\|" on RT 102-key kbd.
+#define VK_ICO_HELP 0xE3 //  Help key on ICO
+#define VK_ICO_00   0xE4 //  00 key on ICO
 
-#if(WINVER >= 0x0400)
-#define VK_PROCESSKEY     0xE5
+#if (WINVER >= 0x0400)
+#define VK_PROCESSKEY 0xE5
 #endif /* WINVER >= 0x0400 */
 
-#define VK_ICO_CLEAR      0xE6
+#define VK_ICO_CLEAR 0xE6
 
 /*
  * 0xE0 : reserved
@@ -945,21 +947,21 @@ typedef struct tagCREATESTRUCT
 #define MONITOR_DEFAULTTOPRIMARY 0x00000001
 #define MONITOR_DEFAULTTONEAREST 0x00000002
 
-typedef struct tagMONITORINFO
-{
-    DWORD cbSize;
-    RECT rcMonitor;
-    RECT rcWork;
-    DWORD dwFlags;
-} MONITORINFO, *LPMONITORINFO;
+    typedef struct tagMONITORINFO
+    {
+        DWORD cbSize;
+        RECT rcMonitor;
+        RECT rcWork;
+        DWORD dwFlags;
+    } MONITORINFO, *LPMONITORINFO;
 
-#define HWND_DESKTOP   ((HWND)0) 
+#define HWND_DESKTOP   ((HWND)0)
 #define HWND_TOP       ((HWND)0)
 #define HWND_BOTTOM    ((HWND)1)
 #define HWND_TOPMOST   ((HWND)-1)
 #define HWND_NOTOPMOST ((HWND)-2)
 #define HWND_MESSAGE   ((HWND)-3)
-#define HWND_BROADCAST  ((HWND)-4)
+#define HWND_BROADCAST ((HWND)-4)
 
 #define SWP_NOSIZE         0x0001
 #define SWP_NOMOVE         0x0002
@@ -976,28 +978,35 @@ typedef struct tagMONITORINFO
 #define SWP_DRAWFRAME    SWP_FRAMECHANGED
 #define SWP_NOREPOSITION SWP_NOOWNERZORDER
 
-#define POINTSTOPOINT(pt, pts)                          \
-        { (pt).x = (LONG)(SHORT)LOWORD(*(LONG*)&pts);   \
-          (pt).y = (LONG)(SHORT)HIWORD(*(LONG*)&pts); }
+#define POINTSTOPOINT(pt, pts)                       \
+    {                                                \
+        (pt).x = (LONG)(SHORT)LOWORD(*(LONG *)&pts); \
+        (pt).y = (LONG)(SHORT)HIWORD(*(LONG *)&pts); \
+    }
 
-#define POINTTOPOINTS(pt)      (MAKELONG((short)((pt).x), (short)((pt).y)))
-#define MAKEWPARAM(l, h) ((WPARAM)(DWORD)MAKELONG(l, h))
-#define MAKELPARAM(l, h) ((LPARAM)(DWORD)MAKELONG(l, h))
+#define POINTTOPOINTS(pt) (MAKELONG((short)((pt).x), (short)((pt).y)))
+#define MAKEWPARAM(l, h)  ((WPARAM)(DWORD)MAKELONG(l, h))
+#define MAKELPARAM(l, h)  ((LPARAM)(DWORD)MAKELONG(l, h))
 
 #define LWA_COLORKEY 0x00000001
 #define LWA_ALPHA    0x00000002
 
-#define IS_INTRESOURCE(_r) ((((ULONG_PTR)(_r)) >> 16) == 0)
+#define IS_INTRESOURCE(_r)  ((((ULONG_PTR)(_r)) >> 16) == 0)
 #define MAKEINTRESOURCEA(x) ((LPSTR)(ULONG_PTR)(WORD((x))))
 #define MAKEINTRESOURCEW(x) ((LPWSTR)(ULONG_PTR)(WORD((x))))
 #ifdef UNICODE
 #define MAKEINTRESOURCE MAKEINTRESOURCEW
 #else
 #define MAKEINTRESOURCE MAKEINTRESOURCEA
-#endif//UNICODE
+#endif // UNICODE
 
-#define MAKEINTATOM(i)  (LPTSTR)((ULONG_PTR)((WORD)(i)))
-#define INVALID_ATOM ((ATOM)0)
+#define MAKEINTATOM(i) (LPTSTR)((ULONG_PTR)((WORD)(i)))
+#define INVALID_ATOM   ((ATOM)0)
+
+#define IDC_NODROP MAKEINTRESOURCE(1)
+#define IDC_MOVE   MAKEINTRESOURCE(2)
+#define IDC_COPY   MAKEINTRESOURCE(3)
+#define IDC_LINK   MAKEINTRESOURCE(4)
 
 #define IDC_ARROW       MAKEINTRESOURCE(32512)
 #define IDC_IBEAM       MAKEINTRESOURCE(32513)
@@ -1015,37 +1024,6 @@ typedef struct tagMONITORINFO
 #define IDC_HAND        MAKEINTRESOURCE(32649)
 #define IDC_APPSTARTING MAKEINTRESOURCE(32650) /*not in win3.1 */
 #define IDC_HELP        MAKEINTRESOURCE(32651)
-
-#define WH_MIN             (-1)
-#define WH_MSGFILTER       (-1)
-#define WH_JOURNALRECORD   0
-#define WH_JOURNALPLAYBACK 1
-#define WH_KEYBOARD        2
-#define WH_GETMESSAGE      3
-#define WH_CALLWNDPROC     4
-#define WH_CBT             5
-#define WH_SYSMSGFILTER    6
-#define WH_MOUSE           7
-#if defined(_WIN32_WINDOWS)
-#define WH_HARDWARE 8
-#endif
-#define WH_DEBUG          9
-#define WH_SHELL          10
-#define WH_FOREGROUNDIDLE 11
-#if (WINVER >= 0x0400)
-#define WH_CALLWNDPROCRET 12
-#endif /* WINVER >= 0x0400 */
-
-#if (_WIN32_WINNT >= 0x0400)
-#define WH_KEYBOARD_LL 13
-#define WH_MOUSE_LL    14
-#define WH_MAX         14
-#else
-#define WH_MAX 12
-#endif // (_WIN32_WINNT >= 0x0400)
-
-#define WH_MINHOOK WH_MIN
-#define WH_MAXHOOK WH_MAX
 
 /*
  * EVENT DEFINITION
@@ -1087,25 +1065,19 @@ typedef struct tagMONITORINFO
 #define MSGF_USER       0x1000
 #define MSGF_DDEMGR     0x8001
 
-/* Hook values */
-#define WH_MIN             (-1)
-#define WH_MSGFILTER       (-1)
-#define WH_JOURNALRECORD   0
-#define WH_JOURNALPLAYBACK 1
-#define WH_KEYBOARD        2
-#define WH_GETMESSAGE      3
-#define WH_CALLWNDPROC     4
-#define WH_CBT             5
-#define WH_SYSMSGFILTER    6
-#define WH_MOUSE           7
-#define WH_HARDWARE        8
-#define WH_DEBUG           9
-#define WH_SHELL           10
-#define WH_FOREGROUNDIDLE  11
-#define WH_CALLWNDPROCRET  12
-#define WH_KEYBOARD_LL     13
-#define WH_MOUSE_LL        14
-#define WH_MAX             14
+    /* Hook values */
+    enum
+    {
+        WH_MIN = 0,
+        WH_MSGFILTER = 0,
+        WH_KEYBOARD,
+        WH_GETMESSAGE,
+        WH_CALLWNDPROC,
+        WH_SYSMSGFILTER,
+        WH_MOUSE,
+        WH_CALLWNDPROCRET,
+        WH_MAX,
+    };
 
 #define WH_MINHOOK WH_MIN
 #define WH_MAXHOOK WH_MAX
@@ -1118,6 +1090,44 @@ typedef struct tagMONITORINFO
 #define HC_NOREM       HC_NOREMOVE
 #define HC_SYSMODALON  4
 #define HC_SYSMODALOFF 5
+
+    /* Mouse hook structure */
+    typedef struct
+    {
+        POINT pt;
+        HWND hwnd;
+        UINT wHitTestCode;
+        ULONG_PTR dwExtraInfo;
+    } MOUSEHOOKSTRUCT, *PMOUSEHOOKSTRUCT, *LPMOUSEHOOKSTRUCT;
+
+    typedef struct
+    {
+        struct
+        { /* MOUSEHOOKSTRUCT */
+            POINT pt;
+            HWND hwnd;
+            UINT wHitTestCode;
+            ULONG_PTR dwExtraInfo;
+        } DUMMYSTRUCTNAME;
+        DWORD mouseData;
+    } MOUSEHOOKSTRUCTEX, *PMOUSEHOOKSTRUCTEX, *LPMOUSEHOOKSTRUCTEX;
+
+    typedef struct
+    {
+        LPARAM lParam;
+        WPARAM wParam;
+        UINT message;
+        HWND hwnd;
+    } CWPSTRUCT, *PCWPSTRUCT, *LPCWPSTRUCT;
+
+    typedef struct
+    {
+        LRESULT lResult;
+        LPARAM lParam;
+        WPARAM wParam;
+        DWORD message;
+        HWND hwnd;
+    } CWPRETSTRUCT, *PCWPRETSTRUCT, *LPCWPRETSTRUCT;
 
 #define MB_OK               0x00000000L
 #define MB_OKCANCEL         0x00000001L
@@ -1141,22 +1151,21 @@ typedef struct tagMONITORINFO
 #define MB_ICONINFORMATION MB_ICONASTERISK
 #define MB_ICONSTOP        MB_ICONHAND
 
-#define MB_APPLMODAL                0x00000000L
-#define MB_SYSTEMMODAL              0x00001000L
-#define MB_TASKMODAL                0x00002000L
-#if(WINVER >= 0x0400)
-#define MB_HELP                     0x00004000L // Help Button
-#endif /* WINVER >= 0x0400 */
+#define MB_APPLMODAL   0x00000000L
+#define MB_SYSTEMMODAL 0x00001000L
+#define MB_TASKMODAL   0x00002000L
+#if (WINVER >= 0x0400)
+#define MB_HELP 0x00004000L // Help Button
+#endif                      /* WINVER >= 0x0400 */
 
-#define MB_NOFOCUS                  0x00008000L
-#define MB_SETFOREGROUND            0x00010000L
-#define MB_DEFAULT_DESKTOP_ONLY     0x00020000L
+#define MB_NOFOCUS              0x00008000L
+#define MB_SETFOREGROUND        0x00010000L
+#define MB_DEFAULT_DESKTOP_ONLY 0x00020000L
 
-#if(WINVER >= 0x0400)
-#define MB_TOPMOST                  0x00040000L
-#define MB_RIGHT                    0x00080000L
-#define MB_RTLREADING               0x00100000L
-
+#if (WINVER >= 0x0400)
+#define MB_TOPMOST    0x00040000L
+#define MB_RIGHT      0x00080000L
+#define MB_RTLREADING 0x00100000L
 
 #endif /* WINVER >= 0x0400 */
 
@@ -1181,48 +1190,47 @@ typedef struct tagMONITORINFO
 #define GWLP_USERDATA   GWL_USERDATA
 #define GWLP_ID         GWL_ID
 
-
 #define EVENT_OBJECT_FOCUS           0x8005 // hwnd + ID + idChild is focused item
 #define EVENT_OBJECT_SELECTION       0x8006 // hwnd + ID + idChild is selected item (if only one), or idChild is OBJID_WINDOW if complex
 #define EVENT_OBJECT_SELECTIONADD    0x8007 // hwnd + ID + idChild is item added
 #define EVENT_OBJECT_SELECTIONREMOVE 0x8008 // hwnd + ID + idChild is item removed
 #define EVENT_OBJECT_SELECTIONWITHIN 0x8009 // hwnd + ID + idChild is parent of changed selected items
 
-/*
- * NOTES:
- * There is only one "focused" child item in a parent.  This is the place
- * keystrokes are going at a given moment.  Hence only send a notification
- * about where the NEW focus is going.  A NEW item getting the focus already
- * implies that the OLD item is losing it.
- *
- * SELECTION however can be multiple.  Hence the different SELECTION
- * notifications.  Here's when to use each:
- *
- * (1) Send a SELECTION notification in the simple single selection
- *     case (like the focus) when the item with the selection is
- *     merely moving to a different item within a container.  hwnd + ID
- *     is the container control, idChildItem is the new child with the
- *     selection.
- *
- * (2) Send a SELECTIONADD notification when a new item has simply been added
- *     to the selection within a container.  This is appropriate when the
- *     number of newly selected items is very small.  hwnd + ID is the
- *     container control, idChildItem is the new child added to the selection.
- *
- * (3) Send a SELECTIONREMOVE notification when a new item has simply been
- *     removed from the selection within a container.  This is appropriate
- *     when the number of newly selected items is very small, just like
- *     SELECTIONADD.  hwnd + ID is the container control, idChildItem is the
- *     new child removed from the selection.
- *
- * (4) Send a SELECTIONWITHIN notification when the selected items within a
- *     control have changed substantially.  Rather than propagate a large
- *     number of changes to reflect removal for some items, addition of
- *     others, just tell somebody who cares that a lot happened.  It will
- *     be faster an easier for somebody watching to just turn around and
- *     query the container control what the new bunch of selected items
- *     are.
- */
+    /*
+     * NOTES:
+     * There is only one "focused" child item in a parent.  This is the place
+     * keystrokes are going at a given moment.  Hence only send a notification
+     * about where the NEW focus is going.  A NEW item getting the focus already
+     * implies that the OLD item is losing it.
+     *
+     * SELECTION however can be multiple.  Hence the different SELECTION
+     * notifications.  Here's when to use each:
+     *
+     * (1) Send a SELECTION notification in the simple single selection
+     *     case (like the focus) when the item with the selection is
+     *     merely moving to a different item within a container.  hwnd + ID
+     *     is the container control, idChildItem is the new child with the
+     *     selection.
+     *
+     * (2) Send a SELECTIONADD notification when a new item has simply been added
+     *     to the selection within a container.  This is appropriate when the
+     *     number of newly selected items is very small.  hwnd + ID is the
+     *     container control, idChildItem is the new child added to the selection.
+     *
+     * (3) Send a SELECTIONREMOVE notification when a new item has simply been
+     *     removed from the selection within a container.  This is appropriate
+     *     when the number of newly selected items is very small, just like
+     *     SELECTIONADD.  hwnd + ID is the container control, idChildItem is the
+     *     new child removed from the selection.
+     *
+     * (4) Send a SELECTIONWITHIN notification when the selected items within a
+     *     control have changed substantially.  Rather than propagate a large
+     *     number of changes to reflect removal for some items, addition of
+     *     others, just tell somebody who cares that a lot happened.  It will
+     *     be faster an easier for somebody watching to just turn around and
+     *     query the container control what the new bunch of selected items
+     *     are.
+     */
 
 #define EVENT_OBJECT_STATECHANGE 0x800A // hwnd + ID + idChild is item w/ state change
 /*
@@ -1233,28 +1241,28 @@ typedef struct tagMONITORINFO
  */
 #define EVENT_OBJECT_LOCATIONCHANGE 0x800B // hwnd + ID + idChild is moved/sized item
 
-/*
- * Note:
- * A LOCATIONCHANGE is not sent for every child object when the parent
- * changes shape/moves.  Send one notification for the topmost object
- * that is changing.  For example, if the user resizes a top level window,
- * USER will generate a LOCATIONCHANGE for it, but not for the menu bar,
- * title bar, scrollbars, etc.  that are also changing shape/moving.
- *
- * In other words, it only generates LOCATIONCHANGE notifications for
- * real windows that are moving/sizing.  It will not generate a LOCATIONCHANGE
- * for every non-floating child window when the parent moves (the children are
- * logically moving also on screen, but not relative to the parent).
- *
- * Now, if the app itself resizes child windows as a result of being
- * sized, USER will generate LOCATIONCHANGEs for those dudes also because
- * it doesn't know better.
- *
- * Note also that USER will generate LOCATIONCHANGE notifications for two
- * non-window sys objects:
- *      (1) System caret
- *      (2) Cursor
- */
+    /*
+     * Note:
+     * A LOCATIONCHANGE is not sent for every child object when the parent
+     * changes shape/moves.  Send one notification for the topmost object
+     * that is changing.  For example, if the user resizes a top level window,
+     * USER will generate a LOCATIONCHANGE for it, but not for the menu bar,
+     * title bar, scrollbars, etc.  that are also changing shape/moving.
+     *
+     * In other words, it only generates LOCATIONCHANGE notifications for
+     * real windows that are moving/sizing.  It will not generate a LOCATIONCHANGE
+     * for every non-floating child window when the parent moves (the children are
+     * logically moving also on screen, but not relative to the parent).
+     *
+     * Now, if the app itself resizes child windows as a result of being
+     * sized, USER will generate LOCATIONCHANGEs for those dudes also because
+     * it doesn't know better.
+     *
+     * Note also that USER will generate LOCATIONCHANGE notifications for two
+     * non-window sys objects:
+     *      (1) System caret
+     *      (2) Cursor
+     */
 
 #define EVENT_OBJECT_NAMECHANGE        0x800C // hwnd + ID + idChild is item w/ name change
 #define EVENT_OBJECT_DESCRIPTIONCHANGE 0x800D // hwnd + ID + idChild is item w/ desc change
@@ -1317,13 +1325,13 @@ typedef struct tagMONITORINFO
 #define MAX_PATH 1000
 
 #pragma pack(push, 1)
-typedef struct tagRGBQUAD
-{
-    BYTE rgbBlue;
-    BYTE rgbGreen;
-    BYTE rgbRed;
-    BYTE rgbReserved;
-} RGBQUAD, *LPRGBQUAD;
+    typedef struct tagRGBQUAD
+    {
+        BYTE rgbBlue;
+        BYTE rgbGreen;
+        BYTE rgbRed;
+        BYTE rgbReserved;
+    } RGBQUAD, *LPRGBQUAD;
 #pragma pack(pop)
 
 #define MF_BYCOMMAND  0x00000000L
@@ -1390,27 +1398,27 @@ typedef struct tagRGBQUAD
 #define PM_REMOVE   0x0001 // Messages are removed from the queue after processing by PeekMessage.
 #define PM_NOYIELD  0x0002 // Prevents the system from releasing any thread that is waiting for the caller to go idle
 
-BOOL WINAPI SetRect(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom);
+    BOOL WINAPI SetRect(LPRECT lprc, int xLeft, int yTop, int xRight, int yBottom);
 
-BOOL WINAPI SetRectEmpty(LPRECT lprc);
+    BOOL WINAPI SetRectEmpty(LPRECT lprc);
 
-BOOL WINAPI CopyRect(LPRECT lprcDst, CONST RECT *lprcSrc);
+    BOOL WINAPI CopyRect(LPRECT lprcDst, CONST RECT *lprcSrc);
 
-BOOL WINAPI InflateRect(LPRECT lprc, int dx, int dy);
+    BOOL WINAPI InflateRect(LPRECT lprc, int dx, int dy);
 
-BOOL WINAPI IntersectRect(LPRECT lprcDst, CONST RECT *lprcSrc1, CONST RECT *lprcSrc2);
+    BOOL WINAPI IntersectRect(LPRECT lprcDst, CONST RECT *lprcSrc1, CONST RECT *lprcSrc2);
 
-BOOL WINAPI UnionRect(LPRECT lprcDst, CONST RECT *lprcSrc1, CONST RECT *lprcSrc2);
+    BOOL WINAPI UnionRect(LPRECT lprcDst, CONST RECT *lprcSrc1, CONST RECT *lprcSrc2);
 
-BOOL WINAPI SubtractRect(LPRECT lprcDst, CONST RECT *lprcSrc1, CONST RECT *lprcSrc2);
+    BOOL WINAPI SubtractRect(LPRECT lprcDst, CONST RECT *lprcSrc1, CONST RECT *lprcSrc2);
 
-BOOL WINAPI OffsetRect(LPRECT lprc, int dx, int dy);
+    BOOL WINAPI OffsetRect(LPRECT lprc, int dx, int dy);
 
-BOOL WINAPI IsRectEmpty(CONST RECT *lprc);
+    BOOL WINAPI IsRectEmpty(CONST RECT *lprc);
 
-BOOL WINAPI EqualRect(CONST RECT *lprc1, CONST RECT *lprc2);
+    BOOL WINAPI EqualRect(CONST RECT *lprc1, CONST RECT *lprc2);
 
-BOOL WINAPI PtInRect(CONST RECT *lprc, POINT pt);
+    BOOL WINAPI PtInRect(CONST RECT *lprc, POINT pt);
 
 /*
  * GetWindow() Constants
@@ -1429,14 +1437,14 @@ BOOL WINAPI PtInRect(CONST RECT *lprc, POINT pt);
 #define RTL_FIELD_SIZE(type, field)           (sizeof(((type *)0)->field))
 #define RTL_SIZEOF_THROUGH_FIELD(type, field) (FIELD_OFFSET(type, field) + RTL_FIELD_SIZE(type, field))
 
-typedef struct _ICONINFO
-{
-    BOOL fIcon;
-    DWORD xHotspot;
-    DWORD yHotspot;
-    HBITMAP hbmMask;
-    HBITMAP hbmColor;
-} ICONINFO, *PICONINFO;
+    typedef struct _ICONINFO
+    {
+        BOOL fIcon;
+        DWORD xHotspot;
+        DWORD yHotspot;
+        HBITMAP hbmMask;
+        HBITMAP hbmColor;
+    } ICONINFO, *PICONINFO;
 
 #define COLOR_SCROLLBAR           0
 #define COLOR_BACKGROUND          1
@@ -1591,23 +1599,20 @@ typedef struct _ICONINFO
 #endif /* _WIN32_WINNT >= 0x0500 */
 #endif /* WINVER >= 0x0500 */
 
+    /* MapVirtualKey translation types */
+#define MAPVK_VK_TO_VSC    0
+#define MAPVK_VSC_TO_VK    1
+#define MAPVK_VK_TO_CHAR   2
+#define MAPVK_VSC_TO_VK_EX 3
+#define MAPVK_VK_TO_VSC_EX 4
 
- /* MapVirtualKey translation types */
-#define MAPVK_VK_TO_VSC     0
-#define MAPVK_VSC_TO_VK     1
-#define MAPVK_VK_TO_CHAR    2
-#define MAPVK_VSC_TO_VK_EX  3
-#define MAPVK_VK_TO_VSC_EX  4
-
-
-typedef struct tagNMHDR
-{
-    HWND hwndFrom;
-    UINT_PTR idFrom;
-    UINT code; // NM_ code
-} NMHDR;
-typedef NMHDR FAR* LPNMHDR;
-
+    typedef struct tagNMHDR
+    {
+        HWND hwndFrom;
+        UINT_PTR idFrom;
+        UINT code; // NM_ code
+    } NMHDR;
+    typedef NMHDR FAR *LPNMHDR;
 
 #define SPI_GETBEEP               1
 #define SPI_SETBEEP               2
@@ -1723,308 +1728,299 @@ typedef NMHDR FAR* LPNMHDR;
 #define SPI_GETAUDIODESCRIPTION   116
 #define SPI_SETAUDIODESCRIPTION   117
 
-#define SPI_GETACTIVEWINDOWTRACKING    0x1000
-#define SPI_SETACTIVEWINDOWTRACKING    0x1001
-#define SPI_GETMENUANIMATION           0x1002
-#define SPI_SETMENUANIMATION           0x1003
-#define SPI_GETCOMBOBOXANIMATION       0x1004
-#define SPI_SETCOMBOBOXANIMATION       0x1005
-#define SPI_GETLISTBOXSMOOTHSCROLLING  0x1006
-#define SPI_SETLISTBOXSMOOTHSCROLLING  0x1007
-#define SPI_GETGRADIENTCAPTIONS        0x1008
-#define SPI_SETGRADIENTCAPTIONS        0x1009
-#define SPI_GETKEYBOARDCUES            0x100A
-#define SPI_SETKEYBOARDCUES            0x100B
-#define SPI_GETMENUUNDERLINES          SPI_GETKEYBOARDCUES
-#define SPI_SETMENUUNDERLINES          SPI_SETKEYBOARDCUES
-#define SPI_GETACTIVEWNDTRKZORDER      0x100C
-#define SPI_SETACTIVEWNDTRKZORDER      0x100D
-#define SPI_GETHOTTRACKING             0x100E
-#define SPI_SETHOTTRACKING             0x100F
-#define SPI_GETMENUFADE                0x1012
-#define SPI_SETMENUFADE                0x1013
-#define SPI_GETSELECTIONFADE           0x1014
-#define SPI_SETSELECTIONFADE           0x1015
-#define SPI_GETTOOLTIPANIMATION        0x1016
-#define SPI_SETTOOLTIPANIMATION        0x1017
-#define SPI_GETTOOLTIPFADE             0x1018
-#define SPI_SETTOOLTIPFADE             0x1019
-#define SPI_GETCURSORSHADOW            0x101A
-#define SPI_SETCURSORSHADOW            0x101B
-#define SPI_GETMOUSESONAR              0x101C
-#define SPI_SETMOUSESONAR              0x101D
-#define SPI_GETMOUSECLICKLOCK          0x101E
-#define SPI_SETMOUSECLICKLOCK          0x101F
-#define SPI_GETMOUSEVANISH             0x1020
-#define SPI_SETMOUSEVANISH             0x1021
-#define SPI_GETFLATMENU                0x1022
-#define SPI_SETFLATMENU                0x1023
-#define SPI_GETDROPSHADOW              0x1024
-#define SPI_SETDROPSHADOW              0x1025
-#define SPI_GETBLOCKSENDINPUTRESETS    0x1026
-#define SPI_SETBLOCKSENDINPUTRESETS    0x1027
-#define SPI_GETUIEFFECTS               0x103E
-#define SPI_SETUIEFFECTS               0x103F
+#define SPI_GETACTIVEWINDOWTRACKING     0x1000
+#define SPI_SETACTIVEWINDOWTRACKING     0x1001
+#define SPI_GETMENUANIMATION            0x1002
+#define SPI_SETMENUANIMATION            0x1003
+#define SPI_GETCOMBOBOXANIMATION        0x1004
+#define SPI_SETCOMBOBOXANIMATION        0x1005
+#define SPI_GETLISTBOXSMOOTHSCROLLING   0x1006
+#define SPI_SETLISTBOXSMOOTHSCROLLING   0x1007
+#define SPI_GETGRADIENTCAPTIONS         0x1008
+#define SPI_SETGRADIENTCAPTIONS         0x1009
+#define SPI_GETKEYBOARDCUES             0x100A
+#define SPI_SETKEYBOARDCUES             0x100B
+#define SPI_GETMENUUNDERLINES           SPI_GETKEYBOARDCUES
+#define SPI_SETMENUUNDERLINES           SPI_SETKEYBOARDCUES
+#define SPI_GETACTIVEWNDTRKZORDER       0x100C
+#define SPI_SETACTIVEWNDTRKZORDER       0x100D
+#define SPI_GETHOTTRACKING              0x100E
+#define SPI_SETHOTTRACKING              0x100F
+#define SPI_GETMENUFADE                 0x1012
+#define SPI_SETMENUFADE                 0x1013
+#define SPI_GETSELECTIONFADE            0x1014
+#define SPI_SETSELECTIONFADE            0x1015
+#define SPI_GETTOOLTIPANIMATION         0x1016
+#define SPI_SETTOOLTIPANIMATION         0x1017
+#define SPI_GETTOOLTIPFADE              0x1018
+#define SPI_SETTOOLTIPFADE              0x1019
+#define SPI_GETCURSORSHADOW             0x101A
+#define SPI_SETCURSORSHADOW             0x101B
+#define SPI_GETMOUSESONAR               0x101C
+#define SPI_SETMOUSESONAR               0x101D
+#define SPI_GETMOUSECLICKLOCK           0x101E
+#define SPI_SETMOUSECLICKLOCK           0x101F
+#define SPI_GETMOUSEVANISH              0x1020
+#define SPI_SETMOUSEVANISH              0x1021
+#define SPI_GETFLATMENU                 0x1022
+#define SPI_SETFLATMENU                 0x1023
+#define SPI_GETDROPSHADOW               0x1024
+#define SPI_SETDROPSHADOW               0x1025
+#define SPI_GETBLOCKSENDINPUTRESETS     0x1026
+#define SPI_SETBLOCKSENDINPUTRESETS     0x1027
+#define SPI_GETUIEFFECTS                0x103E
+#define SPI_SETUIEFFECTS                0x103F
 #define SPI_GETDISABLEOVERLAPPEDCONTENT 0x1040
 #define SPI_SETDISABLEOVERLAPPEDCONTENT 0x1041
-#define SPI_GETCLIENTAREAANIMATION     0x1042
-#define SPI_SETCLIENTAREAANIMATION     0x1043
-#define SPI_GETCLEARTYPE               0x1048
-#define SPI_SETCLEARTYPE               0x1049
-#define SPI_GETSPEECHRECOGNITION       0x104A
-#define SPI_SETSPEECHRECOGNITION       0x104B
-#define SPI_GETFOREGROUNDLOCKTIMEOUT   0x2000
-#define SPI_SETFOREGROUNDLOCKTIMEOUT   0x2001
-#define SPI_GETACTIVEWNDTRKTIMEOUT     0x2002
-#define SPI_SETACTIVEWNDTRKTIMEOUT     0x2003
-#define SPI_GETFOREGROUNDFLASHCOUNT    0x2004
-#define SPI_SETFOREGROUNDFLASHCOUNT    0x2005
-#define SPI_GETCARETWIDTH              0x2006
-#define SPI_SETCARETWIDTH              0x2007
-#define SPI_GETMOUSECLICKLOCKTIME      0x2008
-#define SPI_SETMOUSECLICKLOCKTIME      0x2009
-#define SPI_GETFONTSMOOTHINGTYPE       0x200A
-#define SPI_SETFONTSMOOTHINGTYPE       0x200B
-#define SPI_GETFONTSMOOTHINGCONTRAST   0x200C
-#define SPI_SETFONTSMOOTHINGCONTRAST   0x200D
-#define SPI_GETFOCUSBORDERWIDTH        0x200E
-#define SPI_SETFOCUSBORDERWIDTH        0x200F
-#define SPI_GETFOCUSBORDERHEIGHT       0x2010
-#define SPI_SETFOCUSBORDERHEIGHT       0x2011
+#define SPI_GETCLIENTAREAANIMATION      0x1042
+#define SPI_SETCLIENTAREAANIMATION      0x1043
+#define SPI_GETCLEARTYPE                0x1048
+#define SPI_SETCLEARTYPE                0x1049
+#define SPI_GETSPEECHRECOGNITION        0x104A
+#define SPI_SETSPEECHRECOGNITION        0x104B
+#define SPI_GETFOREGROUNDLOCKTIMEOUT    0x2000
+#define SPI_SETFOREGROUNDLOCKTIMEOUT    0x2001
+#define SPI_GETACTIVEWNDTRKTIMEOUT      0x2002
+#define SPI_SETACTIVEWNDTRKTIMEOUT      0x2003
+#define SPI_GETFOREGROUNDFLASHCOUNT     0x2004
+#define SPI_SETFOREGROUNDFLASHCOUNT     0x2005
+#define SPI_GETCARETWIDTH               0x2006
+#define SPI_SETCARETWIDTH               0x2007
+#define SPI_GETMOUSECLICKLOCKTIME       0x2008
+#define SPI_SETMOUSECLICKLOCKTIME       0x2009
+#define SPI_GETFONTSMOOTHINGTYPE        0x200A
+#define SPI_SETFONTSMOOTHINGTYPE        0x200B
+#define SPI_GETFONTSMOOTHINGCONTRAST    0x200C
+#define SPI_SETFONTSMOOTHINGCONTRAST    0x200D
+#define SPI_GETFOCUSBORDERWIDTH         0x200E
+#define SPI_SETFOCUSBORDERWIDTH         0x200F
+#define SPI_GETFOCUSBORDERHEIGHT        0x2010
+#define SPI_SETFOCUSBORDERHEIGHT        0x2011
 #define SPI_GETFONTSMOOTHINGORIENTATION 0x2012
 #define SPI_SETFONTSMOOTHINGORIENTATION 0x2013
 
-
 /* WM_PRINT flags */
-#define PRF_CHECKVISIBLE    0x00000001L
-#define PRF_NONCLIENT       0x00000002L
-#define PRF_CLIENT          0x00000004L
-#define PRF_ERASEBKGND      0x00000008L
-#define PRF_CHILDREN        0x00000010L
-#define PRF_OWNED           0x00000020L
-
+#define PRF_CHECKVISIBLE 0x00000001L
+#define PRF_NONCLIENT    0x00000002L
+#define PRF_CLIENT       0x00000004L
+#define PRF_ERASEBKGND   0x00000008L
+#define PRF_CHILDREN     0x00000010L
+#define PRF_OWNED        0x00000020L
 
 /*
  * Dialog Codes
  */
-#define DLGC_WANTARROWS     0x0001      /* Control wants arrow keys         */
-#define DLGC_WANTTAB        0x0002      /* Control wants tab keys           */
-#define DLGC_WANTALLKEYS    0x0004      /* Control wants all keys           */
-#define DLGC_WANTMESSAGE    0x0004      /* Pass message to control          */
-#define DLGC_HASSETSEL      0x0008      /* Understands EM_SETSEL message    */
-#define DLGC_DEFPUSHBUTTON  0x0010      /* Default pushbutton               */
-#define DLGC_UNDEFPUSHBUTTON 0x0020     /* Non-default pushbutton           */
-#define DLGC_RADIOBUTTON    0x0040      /* Radio button                     */
-#define DLGC_WANTCHARS      0x0080      /* Want WM_CHAR messages            */
-#define DLGC_STATIC         0x0100      /* Static item: don't include       */
-#define DLGC_BUTTON         0x2000      /* Button item: can be checked      */
+#define DLGC_WANTARROWS      0x0001 /* Control wants arrow keys         */
+#define DLGC_WANTTAB         0x0002 /* Control wants tab keys           */
+#define DLGC_WANTALLKEYS     0x0004 /* Control wants all keys           */
+#define DLGC_WANTMESSAGE     0x0004 /* Pass message to control          */
+#define DLGC_HASSETSEL       0x0008 /* Understands EM_SETSEL message    */
+#define DLGC_DEFPUSHBUTTON   0x0010 /* Default pushbutton               */
+#define DLGC_UNDEFPUSHBUTTON 0x0020 /* Non-default pushbutton           */
+#define DLGC_RADIOBUTTON     0x0040 /* Radio button                     */
+#define DLGC_WANTCHARS       0x0080 /* Want WM_CHAR messages            */
+#define DLGC_STATIC          0x0100 /* Static item: don't include       */
+#define DLGC_BUTTON          0x2000 /* Button item: can be checked      */
 
-
- /*
-  * Predefined Clipboard Formats
-  */
-#define CF_TEXT             1
-#define CF_BITMAP           2
-#define CF_METAFILEPICT     3
-#define CF_SYLK             4
-#define CF_DIF              5
-#define CF_TIFF             6
-#define CF_OEMTEXT          7
-#define CF_DIB              8
-#define CF_PALETTE          9
-#define CF_PENDATA          10
-#define CF_RIFF             11
-#define CF_WAVE             12
-#define CF_UNICODETEXT      13
-#define CF_ENHMETAFILE      14
-#if(WINVER >= 0x0400)
-#define CF_HDROP            15
-#define CF_LOCALE           16
+    /*
+     * Predefined Clipboard Formats
+     */
+#define CF_TEXT         1
+#define CF_BITMAP       2
+#define CF_METAFILEPICT 3
+#define CF_SYLK         4
+#define CF_DIF          5
+#define CF_TIFF         6
+#define CF_OEMTEXT      7
+#define CF_DIB          8
+#define CF_PALETTE      9
+#define CF_PENDATA      10
+#define CF_RIFF         11
+#define CF_WAVE         12
+#define CF_UNICODETEXT  13
+#define CF_ENHMETAFILE  14
+#if (WINVER >= 0x0400)
+#define CF_HDROP  CF_TEXT
+#define CF_LOCALE 16
 #endif /* WINVER >= 0x0400 */
-#if(WINVER >= 0x0500)
-#define CF_DIBV5            17
+#if (WINVER >= 0x0500)
+#define CF_DIBV5 17
 #endif /* WINVER >= 0x0500 */
 
-#if(WINVER >= 0x0500)
-#define CF_MAX              18
-#elif(WINVER >= 0x0400)
-#define CF_MAX              17
+#if (WINVER >= 0x0500)
+#define CF_MAX 18
+#elif (WINVER >= 0x0400)
+#define CF_MAX 17
 #else
-#define CF_MAX              15
+#define CF_MAX 15
 #endif
 
+    typedef BOOL(CALLBACK *PROPENUMPROCA)(HWND, LPCSTR, HANDLE);
+    typedef BOOL(CALLBACK *PROPENUMPROCW)(HWND, LPCWSTR, HANDLE);
 
-typedef BOOL(CALLBACK* PROPENUMPROCA)(HWND, LPCSTR, HANDLE);
-typedef BOOL(CALLBACK* PROPENUMPROCW)(HWND, LPCWSTR, HANDLE);
+    typedef BOOL(CALLBACK *PROPENUMPROCEXA)(HWND, LPSTR, HANDLE, ULONG_PTR);
+    typedef BOOL(CALLBACK *PROPENUMPROCEXW)(HWND, LPWSTR, HANDLE, ULONG_PTR);
 
-typedef BOOL(CALLBACK* PROPENUMPROCEXA)(HWND, LPSTR, HANDLE, ULONG_PTR);
-typedef BOOL(CALLBACK* PROPENUMPROCEXW)(HWND, LPWSTR, HANDLE, ULONG_PTR);
-
-typedef int (CALLBACK* EDITWORDBREAKPROCA)(LPSTR lpch, int ichCurrent, int cch, int code);
-typedef int (CALLBACK* EDITWORDBREAKPROCW)(LPWSTR lpch, int ichCurrent, int cch, int code);
+    typedef int(CALLBACK *EDITWORDBREAKPROCA)(LPSTR lpch, int ichCurrent, int cch, int code);
+    typedef int(CALLBACK *EDITWORDBREAKPROCW)(LPWSTR lpch, int ichCurrent, int cch, int code);
 
 #ifdef UNICODE
-typedef PROPENUMPROCW        PROPENUMPROC;
-typedef PROPENUMPROCEXW      PROPENUMPROCEX;
-typedef EDITWORDBREAKPROCW   EDITWORDBREAKPROC;
+    typedef PROPENUMPROCW PROPENUMPROC;
+    typedef PROPENUMPROCEXW PROPENUMPROCEX;
+    typedef EDITWORDBREAKPROCW EDITWORDBREAKPROC;
 #else  /* !UNICODE */
-typedef PROPENUMPROCA        PROPENUMPROC;
-typedef PROPENUMPROCEXA      PROPENUMPROCEX;
-typedef EDITWORDBREAKPROCA   EDITWORDBREAKPROC;
+    typedef PROPENUMPROCA PROPENUMPROC;
+    typedef PROPENUMPROCEXA PROPENUMPROCEX;
+    typedef EDITWORDBREAKPROCA EDITWORDBREAKPROC;
 #endif /* UNICODE */
 
-
 /* Storage instantiation modes */
-#define STGM_DIRECT             0x00000000L
-#define STGM_TRANSACTED         0x00010000L
-#define STGM_SIMPLE             0x08000000L
+#define STGM_DIRECT     0x00000000L
+#define STGM_TRANSACTED 0x00010000L
+#define STGM_SIMPLE     0x08000000L
 
-#define STGM_READ               0x00000000L
-#define STGM_WRITE              0x00000001L
-#define STGM_READWRITE          0x00000002L
+#define STGM_READ      0x00000000L
+#define STGM_WRITE     0x00000001L
+#define STGM_READWRITE 0x00000002L
 
-#define STGM_SHARE_DENY_NONE    0x00000040L
-#define STGM_SHARE_DENY_READ    0x00000030L
-#define STGM_SHARE_DENY_WRITE   0x00000020L
-#define STGM_SHARE_EXCLUSIVE    0x00000010L
+#define STGM_SHARE_DENY_NONE  0x00000040L
+#define STGM_SHARE_DENY_READ  0x00000030L
+#define STGM_SHARE_DENY_WRITE 0x00000020L
+#define STGM_SHARE_EXCLUSIVE  0x00000010L
 
-#define STGM_PRIORITY           0x00040000L
-#define STGM_DELETEONRELEASE    0x04000000L
+#define STGM_PRIORITY        0x00040000L
+#define STGM_DELETEONRELEASE 0x04000000L
 #if (WINVER >= 400)
-#define STGM_NOSCRATCH          0x00100000L
+#define STGM_NOSCRATCH 0x00100000L
 #endif /* WINVER */
 
-#define STGM_CREATE             0x00001000L
-#define STGM_CONVERT            0x00020000L
-#define STGM_FAILIFTHERE        0x00000000L
+#define STGM_CREATE      0x00001000L
+#define STGM_CONVERT     0x00020000L
+#define STGM_FAILIFTHERE 0x00000000L
 
-#define STGM_NOSNAPSHOT         0x00200000L
+#define STGM_NOSNAPSHOT 0x00200000L
 #if (_WIN32_WINNT >= 0x0500)
-#define STGM_DIRECT_SWMR        0x00400000L
+#define STGM_DIRECT_SWMR 0x00400000L
 #endif
 
-typedef DWORD STGFMT;
+    typedef DWORD STGFMT;
 
-#define STGFMT_STORAGE          0
-#define STGFMT_NATIVE           1
-#define STGFMT_FILE             3
-#define STGFMT_ANY              4
-#define STGFMT_DOCFILE          5
-
+#define STGFMT_STORAGE 0
+#define STGFMT_NATIVE  1
+#define STGFMT_FILE    3
+#define STGFMT_ANY     4
+#define STGFMT_DOCFILE 5
 
 /*
  * EnableScrollBar() flags
  */
-#define ESB_ENABLE_BOTH     0x0000
-#define ESB_DISABLE_BOTH    0x0003
+#define ESB_ENABLE_BOTH  0x0000
+#define ESB_DISABLE_BOTH 0x0003
 
-#define ESB_DISABLE_LEFT    0x0001
-#define ESB_DISABLE_RIGHT   0x0002
+#define ESB_DISABLE_LEFT  0x0001
+#define ESB_DISABLE_RIGHT 0x0002
 
-#define ESB_DISABLE_UP      0x0001
-#define ESB_DISABLE_DOWN    0x0002
+#define ESB_DISABLE_UP   0x0001
+#define ESB_DISABLE_DOWN 0x0002
 
-#define ESB_DISABLE_LTUP    ESB_DISABLE_LEFT
-#define ESB_DISABLE_RTDN    ESB_DISABLE_RIGHT
+#define ESB_DISABLE_LTUP ESB_DISABLE_LEFT
+#define ESB_DISABLE_RTDN ESB_DISABLE_RIGHT
 
-#define MAKEWORD(a, b) ((WORD)(((BYTE)(((DWORD_PTR)(a)) & 0xff)) | ((WORD)((BYTE)(((DWORD_PTR)(b)) & 0xff))) << 8))
-#define MAKELONG(a, b) ((LONG)(((WORD)(((DWORD_PTR)(a)) & 0xffff)) | ((DWORD)((WORD)(((DWORD_PTR)(b)) & 0xffff))) << 16))
-#define MAKELRESULT(l, h)     ((LRESULT)(DWORD)MAKELONG(l, h))
-#define LOWORD(l)      ((WORD)(((DWORD_PTR)(l)) & 0xffff))
-#define HIWORD(l)      ((WORD)((((DWORD_PTR)(l)) >> 16) & 0xffff))
-#define LOBYTE(w)      ((BYTE)(((DWORD_PTR)(w)) & 0xff))
-#define HIBYTE(w)      ((BYTE)((((DWORD_PTR)(w)) >> 8) & 0xff))
+#define MAKEWORD(a, b)    ((WORD)(((BYTE)(((DWORD_PTR)(a)) & 0xff)) | ((WORD)((BYTE)(((DWORD_PTR)(b)) & 0xff))) << 8))
+#define MAKELONG(a, b)    ((LONG)(((WORD)(((DWORD_PTR)(a)) & 0xffff)) | ((DWORD)((WORD)(((DWORD_PTR)(b)) & 0xffff))) << 16))
+#define MAKELRESULT(l, h) ((LRESULT)(DWORD)MAKELONG(l, h))
+#define LOWORD(l)         ((WORD)(((DWORD_PTR)(l)) & 0xffff))
+#define HIWORD(l)         ((WORD)((((DWORD_PTR)(l)) >> 16) & 0xffff))
+#define LOBYTE(w)         ((BYTE)(((DWORD_PTR)(w)) & 0xff))
+#define HIBYTE(w)         ((BYTE)((((DWORD_PTR)(w)) >> 8) & 0xff))
 
- /*
-  * WM_KEYUP/DOWN/CHAR HIWORD(lParam) flags
-  */
-#define KF_EXTENDED       0x0100
-#define KF_DLGMODE        0x0800
-#define KF_MENUMODE       0x1000
-#define KF_ALTDOWN        0x2000
-#define KF_REPEAT         0x4000
-#define KF_UP             0x8000
+    /*
+     * WM_KEYUP/DOWN/CHAR HIWORD(lParam) flags
+     */
+#define KF_EXTENDED 0x0100
+#define KF_DLGMODE  0x0800
+#define KF_MENUMODE 0x1000
+#define KF_ALTDOWN  0x2000
+#define KF_REPEAT   0x4000
+#define KF_UP       0x8000
 
+    BOOL WINAPI MessageBeep(_In_ UINT uType);
 
-BOOL WINAPI MessageBeep(_In_ UINT uType);
-
-#define SW_SCROLLCHILDREN           0x0001  /* Scroll children within *lprcScroll. */
-#define SW_INVALIDATE               0x0002  /* Invalidate after scrolling */
-#define SW_ERASE                    0x0004  /* If SW_INVALIDATE, don't send WM_ERASEBACKGROUND */
-#if(WINVER >= 0x0500)
-#define SW_SMOOTHSCROLL             0x0010  /* Use smooth scrolling */
-#endif /* WINVER >= 0x0500 */
+#define SW_SCROLLCHILDREN 0x0001 /* Scroll children within *lprcScroll. */
+#define SW_INVALIDATE     0x0002 /* Invalidate after scrolling */
+#define SW_ERASE          0x0004 /* If SW_INVALIDATE, don't send WM_ERASEBACKGROUND */
+#if (WINVER >= 0x0500)
+#define SW_SMOOTHSCROLL 0x0010 /* Use smooth scrolling */
+#endif                         /* WINVER >= 0x0500 */
 
 // FInd/Replace options
 #ifndef FR_DOWN
-#define FR_DOWN                         0x00000001
-#define FR_WHOLEWORD                    0x00000002
-#define FR_MATCHCASE                    0x00000004
+#define FR_DOWN      0x00000001
+#define FR_WHOLEWORD 0x00000002
+#define FR_MATCHCASE 0x00000004
 #endif
 
-#define DM_GETDEFID         (WM_USER+0)
-#define DM_SETDEFID         (WM_USER+1)
+#define DM_GETDEFID (WM_USER + 0)
+#define DM_SETDEFID (WM_USER + 1)
 
-#define HWND_DESKTOP        ((HWND)0)
+#define HWND_DESKTOP ((HWND)0)
 
-typedef struct tagSTYLESTRUCT
-{
-    DWORD   styleOld;
-    DWORD   styleNew;
-} STYLESTRUCT, * LPSTYLESTRUCT;
+    typedef struct tagSTYLESTRUCT
+    {
+        DWORD styleOld;
+        DWORD styleNew;
+    } STYLESTRUCT, *LPSTYLESTRUCT;
 
+#define DLL_PROCESS_ATTACH 1
+#define DLL_THREAD_ATTACH  2
+#define DLL_THREAD_DETACH  3
+#define DLL_PROCESS_DETACH 0
 
-#define DLL_PROCESS_ATTACH   1    
-#define DLL_THREAD_ATTACH    2    
-#define DLL_THREAD_DETACH    3    
-#define DLL_PROCESS_DETACH   0    
-
-
-#define DFC_CAPTION             1
-#define DFC_MENU                2
-#define DFC_SCROLL              3
-#define DFC_BUTTON              4
-#if(WINVER >= 0x0500)
-#define DFC_POPUPMENU           5
+#define DFC_CAPTION 1
+#define DFC_MENU    2
+#define DFC_SCROLL  3
+#define DFC_BUTTON  4
+#if (WINVER >= 0x0500)
+#define DFC_POPUPMENU 5
 #endif /* WINVER >= 0x0500 */
 
-#define DFCS_CAPTIONCLOSE       0x0000
-#define DFCS_CAPTIONMIN         0x0001
-#define DFCS_CAPTIONMAX         0x0002
-#define DFCS_CAPTIONRESTORE     0x0003
-#define DFCS_CAPTIONHELP        0x0004
+#define DFCS_CAPTIONCLOSE   0x0000
+#define DFCS_CAPTIONMIN     0x0001
+#define DFCS_CAPTIONMAX     0x0002
+#define DFCS_CAPTIONRESTORE 0x0003
+#define DFCS_CAPTIONHELP    0x0004
 
-#define DFCS_MENUARROW          0x0000
-#define DFCS_MENUCHECK          0x0001
-#define DFCS_MENUBULLET         0x0002
-#define DFCS_MENUARROWRIGHT     0x0004
-#define DFCS_SCROLLUP           0x0000
-#define DFCS_SCROLLDOWN         0x0001
-#define DFCS_SCROLLLEFT         0x0002
-#define DFCS_SCROLLRIGHT        0x0003
-#define DFCS_SCROLLCOMBOBOX     0x0005
-#define DFCS_SCROLLSIZEGRIP     0x0008
+#define DFCS_MENUARROW           0x0000
+#define DFCS_MENUCHECK           0x0001
+#define DFCS_MENUBULLET          0x0002
+#define DFCS_MENUARROWRIGHT      0x0004
+#define DFCS_SCROLLUP            0x0000
+#define DFCS_SCROLLDOWN          0x0001
+#define DFCS_SCROLLLEFT          0x0002
+#define DFCS_SCROLLRIGHT         0x0003
+#define DFCS_SCROLLCOMBOBOX      0x0005
+#define DFCS_SCROLLSIZEGRIP      0x0008
 #define DFCS_SCROLLSIZEGRIPRIGHT 0x0010
 
-#define DFCS_BUTTONCHECK        0x0000
-#define DFCS_BUTTONRADIOIMAGE   0x0001
-#define DFCS_BUTTONRADIOMASK    0x0002
-#define DFCS_BUTTONRADIO        0x0004
-#define DFCS_BUTTON3STATE       0x0008
-#define DFCS_BUTTONPUSH         0x0010
+#define DFCS_BUTTONCHECK      0x0000
+#define DFCS_BUTTONRADIOIMAGE 0x0001
+#define DFCS_BUTTONRADIOMASK  0x0002
+#define DFCS_BUTTONRADIO      0x0004
+#define DFCS_BUTTON3STATE     0x0008
+#define DFCS_BUTTONPUSH       0x0010
 
-#define DFCS_INACTIVE           0x0100
-#define DFCS_PUSHED             0x0200
-#define DFCS_CHECKED            0x0400
+#define DFCS_INACTIVE 0x0100
+#define DFCS_PUSHED   0x0200
+#define DFCS_CHECKED  0x0400
 
-#if(WINVER >= 0x0500)
-#define DFCS_TRANSPARENT        0x0800
-#define DFCS_HOT                0x1000
+#if (WINVER >= 0x0500)
+#define DFCS_TRANSPARENT 0x0800
+#define DFCS_HOT         0x1000
 #endif /* WINVER >= 0x0500 */
 
-#define DFCS_ADJUSTRECT         0x2000
-#define DFCS_FLAT               0x4000
-#define DFCS_MONO               0x8000
+#define DFCS_ADJUSTRECT 0x2000
+#define DFCS_FLAT       0x4000
+#define DFCS_MONO       0x8000
 
 /* 3D border styles */
 #define BDR_RAISEDOUTER 0x0001
@@ -2032,64 +2028,79 @@ typedef struct tagSTYLESTRUCT
 #define BDR_RAISEDINNER 0x0004
 #define BDR_SUNKENINNER 0x0008
 
-#define BDR_OUTER       (BDR_RAISEDOUTER | BDR_SUNKENOUTER)
-#define BDR_INNER       (BDR_RAISEDINNER | BDR_SUNKENINNER)
-#define BDR_RAISED      (BDR_RAISEDOUTER | BDR_RAISEDINNER)
-#define BDR_SUNKEN      (BDR_SUNKENOUTER | BDR_SUNKENINNER)
+#define BDR_OUTER  (BDR_RAISEDOUTER | BDR_SUNKENOUTER)
+#define BDR_INNER  (BDR_RAISEDINNER | BDR_SUNKENINNER)
+#define BDR_RAISED (BDR_RAISEDOUTER | BDR_RAISEDINNER)
+#define BDR_SUNKEN (BDR_SUNKENOUTER | BDR_SUNKENINNER)
 
-
-#define EDGE_RAISED     (BDR_RAISEDOUTER | BDR_RAISEDINNER)
-#define EDGE_SUNKEN     (BDR_SUNKENOUTER | BDR_SUNKENINNER)
-#define EDGE_ETCHED     (BDR_SUNKENOUTER | BDR_RAISEDINNER)
-#define EDGE_BUMP       (BDR_RAISEDOUTER | BDR_SUNKENINNER)
+#define EDGE_RAISED (BDR_RAISEDOUTER | BDR_RAISEDINNER)
+#define EDGE_SUNKEN (BDR_SUNKENOUTER | BDR_SUNKENINNER)
+#define EDGE_ETCHED (BDR_SUNKENOUTER | BDR_RAISEDINNER)
+#define EDGE_BUMP   (BDR_RAISEDOUTER | BDR_SUNKENINNER)
 
 /* Border flags */
-#define BF_LEFT         0x0001
-#define BF_TOP          0x0002
-#define BF_RIGHT        0x0004
-#define BF_BOTTOM       0x0008
+#define BF_LEFT   0x0001
+#define BF_TOP    0x0002
+#define BF_RIGHT  0x0004
+#define BF_BOTTOM 0x0008
 
-#define BF_TOPLEFT      (BF_TOP | BF_LEFT)
-#define BF_TOPRIGHT     (BF_TOP | BF_RIGHT)
-#define BF_BOTTOMLEFT   (BF_BOTTOM | BF_LEFT)
-#define BF_BOTTOMRIGHT  (BF_BOTTOM | BF_RIGHT)
-#define BF_RECT         (BF_LEFT | BF_TOP | BF_RIGHT | BF_BOTTOM)
+#define BF_TOPLEFT     (BF_TOP | BF_LEFT)
+#define BF_TOPRIGHT    (BF_TOP | BF_RIGHT)
+#define BF_BOTTOMLEFT  (BF_BOTTOM | BF_LEFT)
+#define BF_BOTTOMRIGHT (BF_BOTTOM | BF_RIGHT)
+#define BF_RECT        (BF_LEFT | BF_TOP | BF_RIGHT | BF_BOTTOM)
 
-#define BF_DIAGONAL     0x0010
+#define BF_DIAGONAL 0x0010
 
 // For diagonal lines, the BF_RECT flags specify the end point of the
 // vector bounded by the rectangle parameter.
-#define BF_DIAGONAL_ENDTOPRIGHT     (BF_DIAGONAL | BF_TOP | BF_RIGHT)
-#define BF_DIAGONAL_ENDTOPLEFT      (BF_DIAGONAL | BF_TOP | BF_LEFT)
-#define BF_DIAGONAL_ENDBOTTOMLEFT   (BF_DIAGONAL | BF_BOTTOM | BF_LEFT)
-#define BF_DIAGONAL_ENDBOTTOMRIGHT  (BF_DIAGONAL | BF_BOTTOM | BF_RIGHT)
+#define BF_DIAGONAL_ENDTOPRIGHT    (BF_DIAGONAL | BF_TOP | BF_RIGHT)
+#define BF_DIAGONAL_ENDTOPLEFT     (BF_DIAGONAL | BF_TOP | BF_LEFT)
+#define BF_DIAGONAL_ENDBOTTOMLEFT  (BF_DIAGONAL | BF_BOTTOM | BF_LEFT)
+#define BF_DIAGONAL_ENDBOTTOMRIGHT (BF_DIAGONAL | BF_BOTTOM | BF_RIGHT)
 
+#define BF_MIDDLE 0x0800 /* Fill in the middle */
+#define BF_SOFT   0x1000 /* For softer buttons */
+#define BF_ADJUST 0x2000 /* Calculate the space left over */
+#define BF_FLAT   0x4000 /* For flat rather than 3D borders */
+#define BF_MONO   0x8000 /* For monochrome borders */
 
-#define BF_MIDDLE       0x0800  /* Fill in the middle */
-#define BF_SOFT         0x1000  /* For softer buttons */
-#define BF_ADJUST       0x2000  /* Calculate the space left over */
-#define BF_FLAT         0x4000  /* For flat rather than 3D borders */
-#define BF_MONO         0x8000  /* For monochrome borders */
-
-
-typedef BOOL(CALLBACK* DRAWSTATEPROC)(HDC hdc, LPARAM lData, WPARAM wData, int cx, int cy);
+    typedef BOOL(CALLBACK *DRAWSTATEPROC)(HDC hdc, LPARAM lData, WPARAM wData, int cx, int cy);
 /* Image type */
-#define DST_COMPLEX     0x0000
-#define DST_TEXT        0x0001
-#define DST_PREFIXTEXT  0x0002
-#define DST_ICON        0x0003
-#define DST_BITMAP      0x0004
+#define DST_COMPLEX    0x0000
+#define DST_TEXT       0x0001
+#define DST_PREFIXTEXT 0x0002
+#define DST_ICON       0x0003
+#define DST_BITMAP     0x0004
 
 /* State type */
-#define DSS_NORMAL      0x0000
-#define DSS_UNION       0x0010  /* Gray string appearance */
-#define DSS_DISABLED    0x0020
-#define	DSS_DEFAULT	0x0040  /* Make it bold */
-#define DSS_MONO        0x0080
-#if(_WIN32_WINNT >= 0x0500)
-#define DSS_HIDEPREFIX  0x0200
-#define DSS_PREFIXONLY  0x0400
+#define DSS_NORMAL   0x0000
+#define DSS_UNION    0x0010 /* Gray string appearance */
+#define DSS_DISABLED 0x0020
+#define DSS_DEFAULT  0x0040 /* Make it bold */
+#define DSS_MONO     0x0080
+#if (_WIN32_WINNT >= 0x0500)
+#define DSS_HIDEPREFIX 0x0200
+#define DSS_PREFIXONLY 0x0400
 #endif /* _WIN32_WINNT >= 0x0500 */
-#define DSS_RIGHT       0x8000
+#define DSS_RIGHT 0x8000
 
+#define CW_USEDEFAULT ((INT)0x80000000)
+
+/* AnimateWindow() flags */
+#define AW_SLIDE        0x00040000
+#define AW_ACTIVATE     0x00020000
+#define AW_BLEND        0x00080000
+#define AW_HIDE         0x00010000
+#define AW_CENTER       0x00000010
+#define AW_HOR_POSITIVE 0x00000001
+#define AW_HOR_NEGATIVE 0x00000002
+#define AW_VER_POSITIVE 0x00000004
+#define AW_VER_NEGATIVE 0x00000008
+
+#ifdef __cplusplus
+}
+#endif //__cplusplus
+
+#endif // !NOWINSTYLES
 #endif //__WINUSER_H_

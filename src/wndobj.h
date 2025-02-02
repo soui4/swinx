@@ -45,10 +45,53 @@ struct ScrollBar : SCROLLINFO {
 #define DEF_HOVER_DELAY 5          // hover delay 5ms
 #define CR_INVALID      0x00ffffff // RGBA(255,255,255,0)
 
-class _Window
-{
+class CountMutex : public std::recursive_mutex {
+    LONG cLock;
+  public:
+    CountMutex()
+        : cLock(0)
+    {
+    }
+    virtual void Lock()
+    {
+        std::recursive_mutex::lock();
+        cLock++;
+    }
+    virtual void Unlock()
+    {
+        cLock--;
+        std::recursive_mutex::unlock();
+    }
+
+    LONG getLockCount() const
+    {
+        return cLock;
+    }
+
+    LONG FreeLock()
+    {
+        LONG ret = cLock;
+        while (cLock > 0)
+        {
+            std::recursive_mutex::unlock();
+            cLock--;
+        }
+        return ret;
+    }
+
+    void RestoreLock(LONG preLock)
+    {
+        while (cLock < preLock)
+        {
+            std::recursive_mutex::lock();
+            cLock++;
+        }
+    }
+};
+
+
+class _Window : public CountMutex {
 private:
-    std::recursive_mutex mutex;
     LONG cRef;
 public:
     UINT_PTR objOpaque;    
@@ -88,6 +131,10 @@ public:
     UINT_PTR wIDmenu;    /* ID or hmenu (from CreateWindow) */
     UINT helpContext;    /* Help context ID */
     UINT flags;          /* Misc. flags (see below) */
+    xcb_visualid_t visualId;
+    xcb_colormap_t cmap;
+    LPDROPTARGET   dropTarget;
+    IDataObject* dragData;
     DWORD_PTR userdata;  /* User private data */
     int cbWndExtra;      /* class cbWndExtra at window creation */
     char* extra;
@@ -95,15 +142,6 @@ public:
     _Window(size_t extraLen);
     ~_Window();
 
-    void Lock() {
-        AddRef();
-        mutex.lock();
-    }
-
-    void Unlock() {
-        mutex.unlock();
-        Release();
-    }
     LONG AddRef() {
         return InterlockedIncrement(&cRef);
     }
@@ -115,6 +153,17 @@ public:
         }
         return ret;
     }
+
+    virtual void Lock()
+    {
+        CountMutex::Lock();
+        AddRef();
+    }
+    virtual void Unlock()
+    {
+        CountMutex::Unlock();
+        Release();
+    }
 };
 
 class WndObj {
@@ -122,6 +171,11 @@ class WndObj {
 public:
     WndObj(const WndObj& src);
     ~WndObj();
+
+    _Window *data()
+    {
+        return wnd;
+    }
 
     _Window* operator->()
     {
@@ -140,7 +194,8 @@ public:
 
     void operator = (const WndObj& src);
 private:
-    WndObj(_Window* pWnd);
+    WndObj(_Window *pWnd);
+
     _Window* wnd;
 };
 
@@ -149,5 +204,6 @@ public:
     static WndObj fromHwnd(HWND hWnd);
     static BOOL freeWindow(HWND hWnd);
     static BOOL insertWindow(HWND hWnd, _Window* pWnd);
+    static BOOL enumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam);
 };
 #endif//_WINDOBJ_H_

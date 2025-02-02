@@ -2,6 +2,140 @@
 #define _OAIDL_H_
 #include <unknwn.h>
 
+/* Forward Declarations */
+
+#ifndef __ICreateTypeInfo_FWD_DEFINED__
+#define __ICreateTypeInfo_FWD_DEFINED__
+typedef interface ICreateTypeInfo ICreateTypeInfo;
+
+#endif /* __ICreateTypeInfo_FWD_DEFINED__ */
+
+#ifndef __ICreateTypeInfo2_FWD_DEFINED__
+#define __ICreateTypeInfo2_FWD_DEFINED__
+typedef interface ICreateTypeInfo2 ICreateTypeInfo2;
+
+#endif /* __ICreateTypeInfo2_FWD_DEFINED__ */
+
+#ifndef __ICreateTypeLib_FWD_DEFINED__
+#define __ICreateTypeLib_FWD_DEFINED__
+typedef interface ICreateTypeLib ICreateTypeLib;
+
+#endif /* __ICreateTypeLib_FWD_DEFINED__ */
+
+#ifndef __ICreateTypeLib2_FWD_DEFINED__
+#define __ICreateTypeLib2_FWD_DEFINED__
+typedef interface ICreateTypeLib2 ICreateTypeLib2;
+
+#endif /* __ICreateTypeLib2_FWD_DEFINED__ */
+
+#ifndef __IDispatch_FWD_DEFINED__
+#define __IDispatch_FWD_DEFINED__
+typedef interface IDispatch IDispatch;
+
+#endif /* __IDispatch_FWD_DEFINED__ */
+
+#ifndef __IEnumVARIANT_FWD_DEFINED__
+#define __IEnumVARIANT_FWD_DEFINED__
+typedef interface IEnumVARIANT IEnumVARIANT;
+
+#endif /* __IEnumVARIANT_FWD_DEFINED__ */
+
+#ifndef __ITypeComp_FWD_DEFINED__
+#define __ITypeComp_FWD_DEFINED__
+typedef interface ITypeComp ITypeComp;
+
+#endif /* __ITypeComp_FWD_DEFINED__ */
+
+#ifndef __ITypeInfo_FWD_DEFINED__
+#define __ITypeInfo_FWD_DEFINED__
+typedef interface ITypeInfo ITypeInfo;
+
+#endif /* __ITypeInfo_FWD_DEFINED__ */
+
+#ifndef __ITypeInfo2_FWD_DEFINED__
+#define __ITypeInfo2_FWD_DEFINED__
+typedef interface ITypeInfo2 ITypeInfo2;
+
+#endif /* __ITypeInfo2_FWD_DEFINED__ */
+
+#ifndef __ITypeLib_FWD_DEFINED__
+#define __ITypeLib_FWD_DEFINED__
+typedef interface ITypeLib ITypeLib;
+
+#endif /* __ITypeLib_FWD_DEFINED__ */
+
+#ifndef __ITypeLib2_FWD_DEFINED__
+#define __ITypeLib2_FWD_DEFINED__
+typedef interface ITypeLib2 ITypeLib2;
+
+#endif /* __ITypeLib2_FWD_DEFINED__ */
+
+#ifndef __ITypeChangeEvents_FWD_DEFINED__
+#define __ITypeChangeEvents_FWD_DEFINED__
+typedef interface ITypeChangeEvents ITypeChangeEvents;
+
+#endif /* __ITypeChangeEvents_FWD_DEFINED__ */
+
+#ifndef __IErrorInfo_FWD_DEFINED__
+#define __IErrorInfo_FWD_DEFINED__
+typedef interface IErrorInfo IErrorInfo;
+
+#endif /* __IErrorInfo_FWD_DEFINED__ */
+
+#ifndef __ICreateErrorInfo_FWD_DEFINED__
+#define __ICreateErrorInfo_FWD_DEFINED__
+typedef interface ICreateErrorInfo ICreateErrorInfo;
+
+#endif /* __ICreateErrorInfo_FWD_DEFINED__ */
+
+#ifndef __ISupportErrorInfo_FWD_DEFINED__
+#define __ISupportErrorInfo_FWD_DEFINED__
+typedef interface ISupportErrorInfo ISupportErrorInfo;
+
+#endif /* __ISupportErrorInfo_FWD_DEFINED__ */
+
+#ifndef __ITypeFactory_FWD_DEFINED__
+#define __ITypeFactory_FWD_DEFINED__
+typedef interface ITypeFactory ITypeFactory;
+
+#endif /* __ITypeFactory_FWD_DEFINED__ */
+
+#ifndef __ITypeMarshal_FWD_DEFINED__
+#define __ITypeMarshal_FWD_DEFINED__
+typedef interface ITypeMarshal ITypeMarshal;
+
+#endif /* __ITypeMarshal_FWD_DEFINED__ */
+
+#ifndef __IRecordInfo_FWD_DEFINED__
+#define __IRecordInfo_FWD_DEFINED__
+typedef interface IRecordInfo IRecordInfo;
+
+#endif /* __IRecordInfo_FWD_DEFINED__ */
+
+#ifndef __IErrorLog_FWD_DEFINED__
+#define __IErrorLog_FWD_DEFINED__
+typedef interface IErrorLog IErrorLog;
+
+#endif /* __IErrorLog_FWD_DEFINED__ */
+
+#ifndef __IPropertyBag_FWD_DEFINED__
+#define __IPropertyBag_FWD_DEFINED__
+typedef interface IPropertyBag IPropertyBag;
+
+#endif /* __IPropertyBag_FWD_DEFINED__ */
+
+#ifndef __ITypeLibRegistrationReader_FWD_DEFINED__
+#define __ITypeLibRegistrationReader_FWD_DEFINED__
+typedef interface ITypeLibRegistrationReader ITypeLibRegistrationReader;
+
+#endif /* __ITypeLibRegistrationReader_FWD_DEFINED__ */
+
+#ifndef __ITypeLibRegistration_FWD_DEFINED__
+#define __ITypeLibRegistration_FWD_DEFINED__
+typedef interface ITypeLibRegistration ITypeLibRegistration;
+
+#endif /* __ITypeLibRegistration_FWD_DEFINED__ */
+
 /* 0 == FALSE, -1 == TRUE */
 typedef short VARIANT_BOOL;
 typedef VARIANT_BOOL _VARIANT_BOOL;
@@ -337,9 +471,9 @@ typedef VARIANT VARIANTARG;
 
 typedef VARIANT *LPVARIANTARG;
 
-void WINAPI VariantInit(VARIANTARG* pvarg);
-HRESULT WINAPI VariantClear(VARIANTARG* prop);
-HRESULT WINAPI VariantCopy(VARIANTARG* dest, const VARIANTARG* src);
+void WINAPI VariantInit(VARIANTARG *pvarg);
+HRESULT WINAPI VariantClear(VARIANTARG *prop);
+HRESULT WINAPI VariantCopy(VARIANTARG *dest, const VARIANTARG *src);
 
 typedef LONG DISPID;
 
@@ -686,16 +820,16 @@ DECLARE_INTERFACE_(ITypeComp, IUnknown)
         /* [in] */ LPOLESTR szName,
         /* [in] */ ULONG lHashVal,
         /* [in] */ WORD wFlags,
-        /* [out] */ ITypeInfo **ppTInfo,
-        /* [out] */ DESCKIND *pDescKind,
-        /* [out] */ BINDPTR *pBindPtr)
+        /* [out] */ ITypeInfo * *ppTInfo,
+        /* [out] */ DESCKIND * pDescKind,
+        /* [out] */ BINDPTR * pBindPtr)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE BindType(
         /* [in] */ LPOLESTR szName,
         /* [in] */ ULONG lHashVal,
-        /* [out] */ ITypeInfo **ppTInfo,
-        /* [out] */ ITypeComp **ppTComp)
+        /* [out] */ ITypeInfo * *ppTInfo,
+        /* [out] */ ITypeComp * *ppTComp)
         = 0;
 };
 
@@ -807,51 +941,51 @@ DECLARE_INTERFACE_(ITypeLib, IUnknown)
 
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfo(
         /* [in] */ UINT index,
-        /* [out] */ __RPC__deref_out_opt ITypeInfo **ppTInfo)
+        /* [out] */ __RPC__deref_out_opt ITypeInfo * *ppTInfo)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfoType(
         /* [in] */ UINT index,
-        /* [out] */ __RPC__out TYPEKIND *pTKind)
+        /* [out] */ __RPC__out TYPEKIND * pTKind)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfoOfGuid(
         /* [in] */ __RPC__in REFGUID guid,
-        /* [out] */ __RPC__deref_out_opt ITypeInfo **ppTinfo)
+        /* [out] */ __RPC__deref_out_opt ITypeInfo * *ppTinfo)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetLibAttr(
-        /* [out] */ TLIBATTR **ppTLibAttr)
+        /* [out] */ TLIBATTR * *ppTLibAttr)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetTypeComp(
-        /* [out] */ __RPC__deref_out_opt ITypeComp **ppTComp)
+        /* [out] */ __RPC__deref_out_opt ITypeComp * *ppTComp)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetDocumentation(
         /* [in] */ INT index,
-        /* [out] */ BSTR *pBstrName,
-        /* [out] */ BSTR *pBstrDocString,
-        /* [out] */ DWORD *pdwHelpContext,
-        /* [out] */ BSTR *pBstrHelpFile)
+        /* [out] */ BSTR * pBstrName,
+        /* [out] */ BSTR * pBstrDocString,
+        /* [out] */ DWORD * pdwHelpContext,
+        /* [out] */ BSTR * pBstrHelpFile)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE IsName(
         /* [out][in] */ LPOLESTR szNameBuf,
         /* [in] */ ULONG lHashVal,
-        /* [out] */ BOOL *pfName)
+        /* [out] */ BOOL * pfName)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE FindName(
         /* [out][in] */ LPOLESTR szNameBuf,
         /* [in] */ ULONG lHashVal,
-        /* [length_is][size_is][out] */ ITypeInfo **ppTInfo,
-        /* [length_is][size_is][out] */ MEMBERID *rgMemId,
-        /* [out][in] */ USHORT *pcFound)
+        /* [length_is][size_is][out] */ ITypeInfo * *ppTInfo,
+        /* [length_is][size_is][out] */ MEMBERID * rgMemId,
+        /* [out][in] */ USHORT * pcFound)
         = 0;
 
     virtual /* [local] */ void STDMETHODCALLTYPE ReleaseTLibAttr(
-        /* [in] */ TLIBATTR *pTLibAttr)
+        /* [in] */ TLIBATTR * pTLibAttr)
         = 0;
 };
 
@@ -978,109 +1112,109 @@ DECLARE_INTERFACE_(ITypeInfo, IUnknown)
     DECLARE_CLASS_SIID(IID_ITypeInfo)
   public:
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetTypeAttr(
-        /* [out] */ TYPEATTR **ppTypeAttr)
+        /* [out] */ TYPEATTR * *ppTypeAttr)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetTypeComp(
-        /* [out] */ __RPC__deref_out_opt ITypeComp **ppTComp)
+        /* [out] */ __RPC__deref_out_opt ITypeComp * *ppTComp)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetFuncDesc(
         /* [in] */ UINT index,
-        /* [out] */ FUNCDESC **ppFuncDesc)
+        /* [out] */ FUNCDESC * *ppFuncDesc)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetVarDesc(
         /* [in] */ UINT index,
-        /* [out] */ VARDESC **ppVarDesc)
+        /* [out] */ VARDESC * *ppVarDesc)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetNames(
         /* [in] */ MEMBERID memid,
-        /* [length_is][size_is][out] */ BSTR *rgBstrNames,
+        /* [length_is][size_is][out] */ BSTR * rgBstrNames,
         /* [in] */ UINT cMaxNames,
-        /* [out] */ UINT *pcNames)
+        /* [out] */ UINT * pcNames)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetRefTypeOfImplType(
         /* [in] */ UINT index,
-        /* [out] */ __RPC__out HREFTYPE *pRefType)
+        /* [out] */ __RPC__out HREFTYPE * pRefType)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetImplTypeFlags(
         /* [in] */ UINT index,
-        /* [out] */ __RPC__out INT *pImplTypeFlags)
+        /* [out] */ __RPC__out INT * pImplTypeFlags)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetIDsOfNames(
-        /* [size_is][in] */ LPOLESTR *rgszNames,
+        /* [size_is][in] */ LPOLESTR * rgszNames,
         /* [in] */ UINT cNames,
-        /* [size_is][out] */ MEMBERID *pMemId)
+        /* [size_is][out] */ MEMBERID * pMemId)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE Invoke(
         /* [in] */ PVOID pvInstance,
         /* [in] */ MEMBERID memid,
         /* [in] */ WORD wFlags,
-        /* [out][in] */ DISPPARAMS *pDispParams,
-        /* [out] */ VARIANT *pVarResult,
-        /* [out] */ EXCEPINFO *pExcepInfo,
-        /* [out] */ UINT *puArgErr)
+        /* [out][in] */ DISPPARAMS * pDispParams,
+        /* [out] */ VARIANT * pVarResult,
+        /* [out] */ EXCEPINFO * pExcepInfo,
+        /* [out] */ UINT * puArgErr)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetDocumentation(
         /* [in] */ MEMBERID memid,
-        /* [out] */ BSTR *pBstrName,
-        /* [out] */ BSTR *pBstrDocString,
-        /* [out] */ DWORD *pdwHelpContext,
-        /* [out] */ BSTR *pBstrHelpFile)
+        /* [out] */ BSTR * pBstrName,
+        /* [out] */ BSTR * pBstrDocString,
+        /* [out] */ DWORD * pdwHelpContext,
+        /* [out] */ BSTR * pBstrHelpFile)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetDllEntry(
         /* [in] */ MEMBERID memid,
         /* [in] */ INVOKEKIND invKind,
-        /* [out] */ BSTR *pBstrDllName,
-        /* [out] */ BSTR *pBstrName,
-        /* [out] */ WORD *pwOrdinal)
+        /* [out] */ BSTR * pBstrDllName,
+        /* [out] */ BSTR * pBstrName,
+        /* [out] */ WORD * pwOrdinal)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetRefTypeInfo(
         /* [in] */ HREFTYPE hRefType,
-        /* [out] */ __RPC__deref_out_opt ITypeInfo **ppTInfo)
+        /* [out] */ __RPC__deref_out_opt ITypeInfo * *ppTInfo)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE AddressOfMember(
         /* [in] */ MEMBERID memid,
         /* [in] */ INVOKEKIND invKind,
-        /* [out] */ PVOID *ppv)
+        /* [out] */ PVOID * ppv)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE CreateInstance(
-        /* [in] */ IUnknown *pUnkOuter,
+        /* [in] */ IUnknown * pUnkOuter,
         /* [in] */ REFIID riid,
-        /* [iid_is][out] */ PVOID *ppvObj)
+        /* [iid_is][out] */ PVOID * ppvObj)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetMops(
         /* [in] */ MEMBERID memid,
-        /* [out] */ __RPC__deref_out_opt BSTR *pBstrMops)
+        /* [out] */ __RPC__deref_out_opt BSTR * pBstrMops)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetContainingTypeLib(
-        /* [out] */ ITypeLib **ppTLib,
-        /* [out] */ UINT *pIndex)
+        /* [out] */ ITypeLib * *ppTLib,
+        /* [out] */ UINT * pIndex)
         = 0;
 
     virtual /* [local] */ void STDMETHODCALLTYPE ReleaseTypeAttr(
-        /* [in] */ TYPEATTR *pTypeAttr)
+        /* [in] */ TYPEATTR * pTypeAttr)
         = 0;
 
     virtual /* [local] */ void STDMETHODCALLTYPE ReleaseFuncDesc(
-        /* [in] */ FUNCDESC *pFuncDesc)
+        /* [in] */ FUNCDESC * pFuncDesc)
         = 0;
 
     virtual /* [local] */ void STDMETHODCALLTYPE ReleaseVarDesc(
-        /* [in] */ VARDESC *pVarDesc)
+        /* [in] */ VARDESC * pVarDesc)
         = 0;
 };
 
@@ -1301,21 +1435,21 @@ DECLARE_INTERFACE_(IDispatch, IUnknown)
     DECLARE_CLASS_SIID(IID_IDispatch)
   public:
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfoCount(
-        /* [out] */ __RPC__out UINT *pctinfo)
+        /* [out] */ __RPC__out UINT * pctinfo)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfo(
         /* [in] */ UINT iTInfo,
         /* [in] */ LCID lcid,
-        /* [out] */ __RPC__deref_out_opt ITypeInfo **ppTInfo)
+        /* [out] */ __RPC__deref_out_opt ITypeInfo * *ppTInfo)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetIDsOfNames(
         /* [in] */ __RPC__in REFIID riid,
-        /* [size_is][in] */ __RPC__in_ecount_full(cNames) LPOLESTR *rgszNames,
+        /* [size_is][in] */ __RPC__in_ecount_full(cNames) LPOLESTR * rgszNames,
         /* [range][in] */ UINT cNames,
         /* [in] */ LCID lcid,
-        /* [size_is][out] */ __RPC__out_ecount_full(cNames) DISPID *rgDispId)
+        /* [size_is][out] */ __RPC__out_ecount_full(cNames) DISPID * rgDispId)
         = 0;
 
     virtual /* [local] */ HRESULT STDMETHODCALLTYPE Invoke(
@@ -1323,10 +1457,10 @@ DECLARE_INTERFACE_(IDispatch, IUnknown)
         /* [in] */ REFIID riid,
         /* [in] */ LCID lcid,
         /* [in] */ WORD wFlags,
-        /* [out][in] */ DISPPARAMS *pDispParams,
-        /* [out] */ VARIANT *pVarResult,
-        /* [out] */ EXCEPINFO *pExcepInfo,
-        /* [out] */ UINT *puArgErr)
+        /* [out][in] */ DISPPARAMS * pDispParams,
+        /* [out] */ VARIANT * pVarResult,
+        /* [out] */ EXCEPINFO * pExcepInfo,
+        /* [out] */ UINT * puArgErr)
         = 0;
 };
 
@@ -1436,62 +1570,62 @@ DECLARE_INTERFACE_(IRecordInfo, IUnknown)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetGuid(
-        /* [out] */ GUID *pguid)
+        /* [out] */ GUID * pguid)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetName(
-        /* [out] */ BSTR *pbstrName)
+        /* [out] */ BSTR * pbstrName)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetSize(
-        /* [out] */ ULONG *pcbSize)
+        /* [out] */ ULONG * pcbSize)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetTypeInfo(
-        /* [out] */ ITypeInfo **ppTypeInfo)
+        /* [out] */ ITypeInfo * *ppTypeInfo)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetField(
         /* [in] */ PVOID pvData,
         /* [in] */ LPCOLESTR szFieldName,
-        /* [out] */ VARIANT *pvarField)
+        /* [out] */ VARIANT * pvarField)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetFieldNoCopy(
         /* [in] */ PVOID pvData,
         /* [in] */ LPCOLESTR szFieldName,
-        /* [out] */ VARIANT *pvarField,
-        /* [out] */ PVOID *ppvDataCArray)
+        /* [out] */ VARIANT * pvarField,
+        /* [out] */ PVOID * ppvDataCArray)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE PutField(
         /* [in] */ ULONG wFlags,
         /* [out][in] */ PVOID pvData,
         /* [in] */ LPCOLESTR szFieldName,
-        /* [in] */ VARIANT *pvarField)
+        /* [in] */ VARIANT * pvarField)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE PutFieldNoCopy(
         /* [in] */ ULONG wFlags,
         /* [out][in] */ PVOID pvData,
         /* [in] */ LPCOLESTR szFieldName,
-        /* [in] */ VARIANT *pvarField)
+        /* [in] */ VARIANT * pvarField)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetFieldNames(
-        /* [out][in] */ ULONG *pcNames,
-        /* [length_is][size_is][out] */ BSTR *rgBstrNames)
+        /* [out][in] */ ULONG * pcNames,
+        /* [length_is][size_is][out] */ BSTR * rgBstrNames)
         = 0;
 
     virtual BOOL STDMETHODCALLTYPE IsMatchingType(
-        /* [in] */ IRecordInfo *pRecordInfo)
+        /* [in] */ IRecordInfo * pRecordInfo)
         = 0;
 
     virtual PVOID STDMETHODCALLTYPE RecordCreate(void) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE RecordCreateCopy(
         /* [in] */ PVOID pvSource,
-        /* [out] */ PVOID *ppvDest)
+        /* [out] */ PVOID * ppvDest)
         = 0;
 
     virtual HRESULT STDMETHODCALLTYPE RecordDestroy(

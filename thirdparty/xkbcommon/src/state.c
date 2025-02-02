@@ -1035,9 +1035,10 @@ xkb_state_key_get_utf8(struct xkb_state *state, xkb_keycode_t kc,
     if (!is_valid_utf8(buffer, offset))
         goto err_bad;
 
-    if (offset == 1 && (unsigned int) buffer[0] <= 127u &&
-        should_do_ctrl_transformation(state, kc))
-        buffer[0] = XkbToControl(buffer[0]);
+	//discard convert for control key. hjx 2025.1.12
+    // if (offset == 1 && (unsigned int) buffer[0] <= 127u &&
+    //     should_do_ctrl_transformation(state, kc))
+    //     buffer[0] = XkbToControl(buffer[0]);
 
     return offset;
 

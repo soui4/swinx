@@ -2,6 +2,10 @@
 
 project(swinx)
 
+#add gtk demo
+find_package(PkgConfig REQUIRED)
+
+
 add_subdirectory(thirdparty/xkbcommon)
 add_subdirectory(thirdparty/libxcb)
 
@@ -14,6 +18,8 @@ file(GLOB_RECURSE SRCS
     thirdparty/xcb-util-renderutil/*.c  
     thirdparty/xcb-util-keysyms/*.c
     thirdparty/xcb-util-wm/*.c 
+    thirdparty/xcb-util/*.c 
+    thirdparty/libxcb/*.c 
     src/*.cpp
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
@@ -26,7 +32,7 @@ if (NOT ENABLE_SOUI_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
     target_link_libraries(
         swinx
-        libxcb xcb-util cairo uuid xkbcommon
+        libxcb  cairo uuid xkbcommon
     )
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS})
@@ -36,6 +42,8 @@ target_include_directories(swinx
 	PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 	PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xcb
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/sysinclude
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xkbcommon
 )
 
@@ -57,7 +65,7 @@ install(TARGETS swinx
     ARCHIVE DESTINATION lib/Debug
 )
 
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION swinx/include)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION swinx)
 
 
 

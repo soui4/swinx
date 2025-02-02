@@ -12,14 +12,14 @@ typedef struct _GUID
 } GUID;
 
 typedef GUID IID;
-typedef IID* LPIID;
+typedef IID *LPIID;
 typedef GUID CLSID;
-typedef CLSID* LPCLSID;
+typedef CLSID *LPCLSID;
 typedef GUID FMTID;
-typedef FMTID* LPFMTID;
+typedef FMTID *LPFMTID;
 
-#define IsEqualGUID(id1, id2) (memcmp(&id1, &id2, sizeof(GUID)) == 0)
-#define IsEqualIID(riid1, riid2) IsEqualGUID(riid1, riid2)
+#define IsEqualGUID(id1, id2)          (memcmp(&id1, &id2, sizeof(GUID)) == 0)
+#define IsEqualIID(riid1, riid2)       IsEqualGUID(riid1, riid2)
 #define IsEqualCLSID(rclsid1, rclsid2) IsEqualGUID(rclsid1, rclsid2)
 #define IsEqualFMTID(rfmtid1, rfmtid2) IsEqualGUID(rfmtid1, rfmtid2)
 
@@ -31,14 +31,14 @@ inline bool operator==(const GUID &id1, const GUID &id2)
 }
 
 #ifdef __cplusplus
-#define DECLARE_CLASS_SIID(cls_id)     \
-    static const GUID & GetIID()       \
-    {                                  \
-        return cls_id;                 \
+#define DECLARE_CLASS_SIID(cls_id) \
+    static const GUID &GetIID()    \
+    {                              \
+        return cls_id;             \
     }
 #else
 #define DECLARE_CLASS_SIID(cls_id)
-#endif//__cplusplus
+#endif //__cplusplus
 
 #define __suidof(ClassName) ClassName::GetIID()
 #define __uuidof(ClassName) ClassName::GetIID()
@@ -48,7 +48,6 @@ inline bool operator==(const GUID &id1, const GUID &id2)
 #define DECLARE_CLASS_SIID(cls_id)
 
 #endif
-
 
 #ifdef __cplusplus
 #define REFGUID const GUID &
@@ -69,15 +68,11 @@ inline bool operator==(const GUID &id1, const GUID &id2)
 #define SELECT_ANY
 
 #ifdef INITGUID
-#define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
-        EXTERN_C const GUID SELECT_ANY name \
-                = { l, w1, w2, { b1, b2,  b3,  b4,  b5,  b6,  b7,  b8 } }
+#define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) EXTERN_C const GUID SELECT_ANY name = { l, w1, w2, { b1, b2, b3, b4, b5, b6, b7, b8 } }
 #else
-#define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
-    EXTERN_C const GUID  name
+#define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) EXTERN_C const GUID name
 #endif // INITGUID
 
 #ifndef DEFINE_OLEGUID
-#define DEFINE_OLEGUID(name, l, w1, w2) \
-    DEFINE_GUID(name, l, w1, w2, 0xC0,0,0,0,0,0,0,0x46)
-#endif//DEFINE_OLEGUID
+#define DEFINE_OLEGUID(name, l, w1, w2) DEFINE_GUID(name, l, w1, w2, 0xC0, 0, 0, 0, 0, 0, 0, 0x46)
+#endif // DEFINE_OLEGUID

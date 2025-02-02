@@ -7,7 +7,7 @@ _SDC::_SDC(HWND _hwnd)
     : hwnd(_hwnd)
     , nSave(0)
     , crText(RGBA(0, 0, 0, 0xff))
-    , crBk(RGBA(255,255,255,255))
+    , crBk(RGBA(255, 255, 255, 255))
     , pen(GetStockObject(BLACK_PEN))
     , brush(GetStockObject(WHITE_BRUSH))
     , hfont(GetStockObject(SYSTEM_FONT))
@@ -15,15 +15,17 @@ _SDC::_SDC(HWND _hwnd)
     , bkMode(OPAQUE)
     , uGetFlags(0)
     , cairo(nullptr)
-    , textAlign(TA_TOP|TA_LEFT|TA_UPDATECP)
-    , rop2(R2_COPYPEN)
+    , textAlign(TA_TOP | TA_LEFT | TA_UPDATECP)
+    , rop2(R2_EXT_OVER)
 {
-    SLOG_STMD()<<"new sdc:"<<this;
+    ptOrigin.x = ptOrigin.y = 0;
+    cairo_matrix_init_identity(&mtx);
+    SLOG_STMD() << "new sdc:" << this;
 }
 
 _SDC::~_SDC()
 {
-    SLOG_STMD()<<"delete sdc:"<<this<<" cairo:"<<cairo;
+    SLOG_STMD() << "delete sdc:" << this << " cairo:" << cairo;
     if (cairo)
         cairo_destroy(cairo);
 }

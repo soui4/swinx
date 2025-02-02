@@ -5,13 +5,13 @@ extern "C"
 {
 #endif //__cplusplus
 
-#define OBJ_PEN    1
-#define OBJ_BRUSH  2
-#define OBJ_DC     3
-#define OBJ_FONT   6
-#define OBJ_BITMAP 7
-#define OBJ_REGION 8
-#define OBJ_PAL    9
+#define OBJ_PEN      1
+#define OBJ_BRUSH    2
+#define OBJ_DC       3
+#define OBJ_FONT     6
+#define OBJ_BITMAP   7
+#define OBJ_REGION   8
+#define OBJ_PAL      9
 #define OBJ_METAFILE 10
 
     HGDIOBJ InitGdiObj(int type, void *ptr);
@@ -48,12 +48,12 @@ extern "C"
 #define SRCINVERT (DWORD)0x00660046 /* dest = source XOR dest          */
 #define DSTINVERT (DWORD)0x00550009 /* dest = (NOT dest)               */
 
-#define PATCOPY             (DWORD)0x00F00021 /* dest = pattern                  */
-#define PATPAINT            (DWORD)0x00FB0A09 /* dest = DPSnoo                   */
-#define PATINVERT           (DWORD)0x005A0049 /* dest = pattern XOR dest         */
-#define DSTINVERT           (DWORD)0x00550009 /* dest = (NOT dest)               */
-#define BLACKNESS           (DWORD)0x00000042 /* dest = BLACK                    */
-#define WHITENESS           (DWORD)0x00FF0062 /* dest = WHITE                    */
+#define PATCOPY   (DWORD)0x00F00021 /* dest = pattern                  */
+#define PATPAINT  (DWORD)0x00FB0A09 /* dest = DPSnoo                   */
+#define PATINVERT (DWORD)0x005A0049 /* dest = pattern XOR dest         */
+#define DSTINVERT (DWORD)0x00550009 /* dest = (NOT dest)               */
+#define BLACKNESS (DWORD)0x00000042 /* dest = BLACK                    */
+#define WHITENESS (DWORD)0x00FF0062 /* dest = WHITE                    */
 
     typedef struct _MAT2
     {
@@ -102,56 +102,55 @@ extern "C"
 #define TMPF_DEVICE      0x08
 #define TMPF_TRUETYPE    0x04
 
-#define ANSI_CHARSET            0
-#define DEFAULT_CHARSET         1
-#define SYMBOL_CHARSET          2
-#define SHIFTJIS_CHARSET        128
-#define HANGEUL_CHARSET         129
-#define HANGUL_CHARSET          129
-#define GB2312_CHARSET          134
-#define CHINESEBIG5_CHARSET     136
-#define OEM_CHARSET             255
-#if(WINVER >= 0x0400)
-#define JOHAB_CHARSET           130
-#define HEBREW_CHARSET          177
-#define ARABIC_CHARSET          178
-#define GREEK_CHARSET           161
-#define TURKISH_CHARSET         162
-#define VIETNAMESE_CHARSET      163
-#define THAI_CHARSET            222
-#define EASTEUROPE_CHARSET      238
-#define RUSSIAN_CHARSET         204
-#endif//WINVER
-
+#define ANSI_CHARSET        0
+#define DEFAULT_CHARSET     1
+#define SYMBOL_CHARSET      2
+#define SHIFTJIS_CHARSET    128
+#define HANGEUL_CHARSET     129
+#define HANGUL_CHARSET      129
+#define GB2312_CHARSET      134
+#define CHINESEBIG5_CHARSET 136
+#define OEM_CHARSET         255
+#if (WINVER >= 0x0400)
+#define JOHAB_CHARSET      130
+#define HEBREW_CHARSET     177
+#define ARABIC_CHARSET     178
+#define GREEK_CHARSET      161
+#define TURKISH_CHARSET    162
+#define VIETNAMESE_CHARSET 163
+#define THAI_CHARSET       222
+#define EASTEUROPE_CHARSET 238
+#define RUSSIAN_CHARSET    204
+#endif // WINVER
 
 /* Font Families */
-#define FF_DONTCARE         (0<<4)  /* Don't care or don't know. */
-#define FF_ROMAN            (1<<4)  /* Variable stroke width, serifed. */
-                                    /* Times Roman, Century Schoolbook, etc. */
-#define FF_SWISS            (2<<4)  /* Variable stroke width, sans-serifed. */
-                                    /* Helvetica, Swiss, etc. */
-#define FF_MODERN           (3<<4)  /* Constant stroke width, serifed or sans-serifed. */
-                                    /* Pica, Elite, Courier, etc. */
-#define FF_SCRIPT           (4<<4)  /* Cursive, etc. */
-#define FF_DECORATIVE       (5<<4)  /* Old English, etc. */
+#define FF_DONTCARE (0 << 4)   /* Don't care or don't know. */
+#define FF_ROMAN    (1 << 4)   /* Variable stroke width, serifed. */
+                               /* Times Roman, Century Schoolbook, etc. */
+#define FF_SWISS (2 << 4)      /* Variable stroke width, sans-serifed. */
+                               /* Helvetica, Swiss, etc. */
+#define FF_MODERN (3 << 4)     /* Constant stroke width, serifed or sans-serifed. */
+                               /* Pica, Elite, Courier, etc. */
+#define FF_SCRIPT     (4 << 4) /* Cursive, etc. */
+#define FF_DECORATIVE (5 << 4) /* Old English, etc. */
 
 /* Font Weights */
-#define FW_DONTCARE         0
-#define FW_THIN             100
-#define FW_EXTRALIGHT       200
-#define FW_LIGHT            300
-#define FW_NORMAL           400
-#define FW_MEDIUM           500
-#define FW_SEMIBOLD         600
-#define FW_BOLD             700
-#define FW_EXTRABOLD        800
-#define FW_HEAVY            900
+#define FW_DONTCARE   0
+#define FW_THIN       100
+#define FW_EXTRALIGHT 200
+#define FW_LIGHT      300
+#define FW_NORMAL     400
+#define FW_MEDIUM     500
+#define FW_SEMIBOLD   600
+#define FW_BOLD       700
+#define FW_EXTRABOLD  800
+#define FW_HEAVY      900
 
-#define FW_ULTRALIGHT       FW_EXTRALIGHT
-#define FW_REGULAR          FW_NORMAL
-#define FW_DEMIBOLD         FW_SEMIBOLD
-#define FW_ULTRABOLD        FW_EXTRABOLD
-#define FW_BLACK            FW_HEAVY
+#define FW_ULTRALIGHT FW_EXTRALIGHT
+#define FW_REGULAR    FW_NORMAL
+#define FW_DEMIBOLD   FW_SEMIBOLD
+#define FW_ULTRABOLD  FW_EXTRABOLD
+#define FW_BLACK      FW_HEAVY
 
 #define LF_FACESIZE 32
     typedef struct tagLOGFONTA
@@ -170,7 +169,7 @@ extern "C"
         BYTE lfQuality;
         BYTE lfPitchAndFamily;
         char lfFaceName[LF_FACESIZE];
-    } LOGFONTA, * PLOGFONTA, NEAR* NPLOGFONTA, FAR* LPLOGFONTA;
+    } LOGFONTA, *PLOGFONTA, NEAR *NPLOGFONTA, FAR *LPLOGFONTA;
 
     typedef struct tagLOGFONTW
     {
@@ -188,7 +187,7 @@ extern "C"
         BYTE lfQuality;
         BYTE lfPitchAndFamily;
         wchar_t lfFaceName[LF_FACESIZE];
-    } LOGFONTW, * PLOGFONTW, NEAR* NPLOGFONTW, FAR* LPLOGFONTW;
+    } LOGFONTW, *PLOGFONTW, NEAR *NPLOGFONTW, FAR *LPLOGFONTW;
 
 #define LF_FULLFACESIZE 64
 
@@ -245,7 +244,7 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #define GetObject GetObjectW
 #else
 #define GetObject GetObjectA
-#endif//UNICODE
+#endif // UNICODE
 
     int WINAPI GetObjectType(HGDIOBJ hgdiobj);
     /* Logical Pen */
@@ -260,18 +259,17 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     HPEN WINAPI CreatePenIndirect(CONST LOGPEN *plpen);
 
     HFONT WINAPI CreateFontIndirectA(CONST LOGFONTA *lplf);
-    HFONT WINAPI CreateFontIndirectW(CONST LOGFONTW* lplf);
+    HFONT WINAPI CreateFontIndirectW(CONST LOGFONTW *lplf);
     HFONT WINAPI CreateFontA(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, DWORD bItalic, DWORD bUnderline, DWORD bStrikeOut, DWORD iCharSet, DWORD iOutPrecision, DWORD iClipPrecision, DWORD iQuality, DWORD iPitchAndFamily, LPCSTR pszFaceName);
     HFONT WINAPI CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, DWORD bItalic, DWORD bUnderline, DWORD bStrikeOut, DWORD iCharSet, DWORD iOutPrecision, DWORD iClipPrecision, DWORD iQuality, DWORD iPitchAndFamily, LPCWSTR pszFaceName);
 
 #ifdef UNICODE
-#define CreateFont CreateFontW
+#define CreateFont         CreateFontW
 #define CreateFontIndirect CreateFontIndirectW
 #else
-#define CreateFont CreateFontA
+#define CreateFont         CreateFontA
 #define CreateFontIndirect CreateFontIndirectA
-#endif//UNICODE
-
+#endif // UNICODE
 
     /* Bitmap Header Definition */
     typedef struct tagBITMAP
@@ -523,11 +521,11 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #define GM_LAST       2
 
     int WINAPI SetBkMode(HDC hdc, int mode);
-    int WINAPI GetBkMode(  HDC hdc );
+    int WINAPI GetBkMode(HDC hdc);
     int WINAPI SetGraphicsMode(HDC hdc, int iMode);
 
-    COLORREF WINAPI GetBkColor(  HDC hdc );
-    COLORREF WINAPI SetBkColor(  HDC hdc ,COLORREF cr);
+    COLORREF WINAPI GetBkColor(HDC hdc);
+    COLORREF WINAPI SetBkColor(HDC hdc, COLORREF cr);
 
     HBITMAP WINAPI CreateCompatibleBitmap(HDC hdc, int cx, int cy);
     HGDIOBJ WINAPI SelectObject(HDC hdc, HGDIOBJ h);
@@ -561,9 +559,8 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
                          int nHeight // height of region frame
     );
 
-    BOOL WINAPI DrawFocusRect(
-        HDC hDC,          // handle to device context
-        CONST RECT* lprc  // logical coordinates
+    BOOL WINAPI DrawFocusRect(HDC hDC,         // handle to device context
+                              CONST RECT *lprc // logical coordinates
     );
 
     HGDIOBJ WINAPI GetCurrentObject(HDC hdc, UINT type);
@@ -591,36 +588,20 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #define GetTextExtentPointA GetTextExtentPoint32A
 #define GetTextExtentPointW GetTextExtentPoint32W
 
-    BOOL WINAPI GetTextExtentExPointA(
-            HDC hdc,
-            LPCSTR lpszString,
-            int cchString,
-            int nMaxExtent,
-            LPINT lpnFit,
-            LPINT lpnDx,
-            LPSIZE lpSize
-        );
-    BOOL WINAPI GetTextExtentExPointW(
-        HDC hdc,
-        LPCWSTR lpszString,
-        int cchString,
-        int nMaxExtent,
-        LPINT lpnFit,
-        LPINT lpnDx,
-        LPSIZE lpSize
-    );
+    BOOL WINAPI GetTextExtentExPointA(HDC hdc, LPCSTR lpszString, int cchString, int nMaxExtent, LPINT lpnFit, LPINT lpnDx, LPSIZE lpSize);
+    BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, int nMaxExtent, LPINT lpnFit, LPINT lpnDx, LPSIZE lpSize);
 
 #ifdef UNICODE
-#define GetTextExtentPoint GetTextExtentPoint32W
-#define GetTextExtentExPoint  GetTextExtentExPointW
-#define DrawText DrawTextW
+#define GetTextExtentPoint   GetTextExtentPoint32W
+#define GetTextExtentExPoint GetTextExtentExPointW
+#define DrawText             DrawTextW
 #define GetTextExtentPoint32 GetTextExtentPoint32W
 #else
-#define GetTextExtentPoint GetTextExtentPoint32A
-#define GetTextExtentExPoint  GetTextExtentExPointA
-#define DrawText DrawTextA
+#define GetTextExtentPoint   GetTextExtentPoint32A
+#define GetTextExtentExPoint GetTextExtentExPointA
+#define DrawText             DrawTextA
 #define GetTextExtentPoint32 GetTextExtentPoint32A
-#endif//UNICODE
+#endif // UNICODE
 
 /* Stock Logical Objects */
 #define WHITE_BRUSH         0
@@ -656,80 +637,78 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     BOOL WINAPI Polyline(HDC hdc, CONST POINT *apt, int cpt);
 
     BOOL WINAPI AlphaBlend(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, int hDest, HDC hdcSrc, int xoriginSrc, int yoriginSrc, int wSrc, int hSrc, BLENDFUNCTION ftn);
-    
-    #define EXPEND_MODE_NONE 0
-    #define EXPEND_MODE_STRETCH 1
-    #define EXPEND_MODE_TILE 2
 
-    #define FILTER_NONE 0
-    #define FILTER_FAST 1
-    #define FILTER_MIDIUM 2
-    #define FILTER_BEST 3
-    BOOL WINAPI DrawBitmapEx(HDC hdc, LPCRECT pRcDest,HBITMAP bmp,LPCRECT pRcSrc,UINT expendMode, BYTE byAlpha);
+#define EXPEND_MODE_NONE    0
+#define EXPEND_MODE_STRETCH 1
+#define EXPEND_MODE_TILE    2
 
-    BOOL WINAPI DrawBitmap9Patch(HDC hdc, LPCRECT pRcDest,HBITMAP hBmp, LPCRECT pRcSrc,LPCRECT pRcSourMargin,UINT expendMode,BYTE byAlpha );
+#define FILTER_NONE   0
+#define FILTER_FAST   1
+#define FILTER_MIDIUM 2
+#define FILTER_BEST   3
+    BOOL WINAPI DrawBitmapEx(HDC hdc, LPCRECT pRcDest, HBITMAP bmp, LPCRECT pRcSrc, UINT expendMode, BYTE byAlpha);
+
+    BOOL WINAPI DrawBitmap9Patch(HDC hdc, LPCRECT pRcDest, HBITMAP hBmp, LPCRECT pRcSrc, LPCRECT pRcSourMargin, UINT expendMode, BYTE byAlpha);
 
     BOOL WINAPI TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c);
     BOOL WINAPI TextOutW(HDC hdc, int x, int y, LPCWSTR lpString, int c);
 
     LONG WINAPI TabbedTextOutA(HDC hDC,                         // handle to DC
-        int X,                           // x-coord of start
-        int Y,                           // y-coord of start
-        LPCSTR lpString,                // character string
-        int nCount,                      // number of characters
-        int nTabPositions,               // number of tabs in array
-        CONST LPINT lpnTabStopPositions, // array of tab positions
-        int nTabOrigin                   // start of tab expansion
+                               int X,                           // x-coord of start
+                               int Y,                           // y-coord of start
+                               LPCSTR lpString,                 // character string
+                               int nCount,                      // number of characters
+                               int nTabPositions,               // number of tabs in array
+                               CONST LPINT lpnTabStopPositions, // array of tab positions
+                               int nTabOrigin                   // start of tab expansion
     );
     LONG WINAPI TabbedTextOutW(HDC hDC,                         // handle to DC
-        int X,                           // x-coord of start
-        int Y,                           // y-coord of start
-        LPCWSTR lpString,                // character string
-        int nCount,                      // number of characters
-        int nTabPositions,               // number of tabs in array
-        CONST LPINT lpnTabStopPositions, // array of tab positions
-        int nTabOrigin                   // start of tab expansion
+                               int X,                           // x-coord of start
+                               int Y,                           // y-coord of start
+                               LPCWSTR lpString,                // character string
+                               int nCount,                      // number of characters
+                               int nTabPositions,               // number of tabs in array
+                               CONST LPINT lpnTabStopPositions, // array of tab positions
+                               int nTabOrigin                   // start of tab expansion
     );
 
-    DWORD WINAPI GetTabbedTextExtentA(
-        HDC hDC,                        // handle to DC
-        LPCSTR lpString,               // character string
-        int nCount,                     // number of characters
-        int nTabPositions,              // number of tab positions
-        CONST LPINT lpnTabStopPositions // array of tab positions
+    DWORD WINAPI GetTabbedTextExtentA(HDC hDC,                        // handle to DC
+                                      LPCSTR lpString,                // character string
+                                      int nCount,                     // number of characters
+                                      int nTabPositions,              // number of tab positions
+                                      CONST LPINT lpnTabStopPositions // array of tab positions
     );
-    DWORD WINAPI GetTabbedTextExtentW(
-        HDC hDC,                        // handle to DC
-        LPCWSTR lpString,               // character string
-        int nCount,                     // number of characters
-        int nTabPositions,              // number of tab positions
-        CONST LPINT lpnTabStopPositions // array of tab positions
+    DWORD WINAPI GetTabbedTextExtentW(HDC hDC,                        // handle to DC
+                                      LPCWSTR lpString,               // character string
+                                      int nCount,                     // number of characters
+                                      int nTabPositions,              // number of tab positions
+                                      CONST LPINT lpnTabStopPositions // array of tab positions
     );
 #ifdef UNICODE
-#define TextOut TextOutW
-#define TabbedTextOut TabbedTextOutW
+#define TextOut             TextOutW
+#define TabbedTextOut       TabbedTextOutW
 #define GetTabbedTextExtent GetTabbedTextExtentW
 #else
-#define TextOut TextOutA
-#define TabbedTextOut TabbedTextOutA
+#define TextOut             TextOutA
+#define TabbedTextOut       TabbedTextOutA
 #define GetTabbedTextExtent GetTabbedTextExtentA
-#endif//UNICODE
+#endif // UNICODE
 
     BOOL WINAPI SetViewportOrgEx(HDC hdc, int x, int y, LPPOINT lppt);
     BOOL WINAPI GetViewportOrgEx(HDC hdc, LPPOINT lpPoint);
     BOOL WINAPI OffsetViewportOrgEx(HDC hdc, int x, int y, LPPOINT lppt);
     BOOL WINAPI SetWindowOrgEx(HDC hdc,        // handle to device context
-        int X,          // new x-coordinate of window origin
-        int Y,          // new y-coordinate of window origin
-        LPPOINT lpPoint // original window origin
+                               int X,          // new x-coordinate of window origin
+                               int Y,          // new y-coordinate of window origin
+                               LPPOINT lpPoint // original window origin
     );
-    BOOL WINAPI SetWindowExtEx(HDC hdc,       // handle to device context
-        int nXExtent,  // new horizontal window extent
-        int nYExtent,  // new vertical window extent
-        LPSIZE lpSize  // original window extent
+    BOOL WINAPI SetWindowExtEx(HDC hdc,      // handle to device context
+                               int nXExtent, // new horizontal window extent
+                               int nYExtent, // new vertical window extent
+                               LPSIZE lpSize // original window extent
     );
     int WINAPI FillRect(HDC hDC, CONST RECT *lprc, HBRUSH hbr);
-
+    int WINAPI ClearRect(HDC hdc, const RECT *lprc, COLORREF cr);
     int WINAPI FrameRect(HDC hDC, CONST RECT *lprc, HBRUSH hbr);
 
     BOOL WINAPI InvertRect(HDC hDC, CONST RECT *lprc);
@@ -749,23 +728,43 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     BOOL WINAPI GetWorldTransform(HDC hdc, LPXFORM lpxf);
     BOOL WINAPI SetWorldTransform(HDC hdc, CONST XFORM *lpxf);
 
-#define R2_BLACK         1
-#define R2_NOTMERGEPEN   2
-#define R2_MASKNOTPEN    3
-#define R2_NOTCOPYPEN    4
-#define R2_MASKPENNOT    5
-#define R2_NOT           6
-#define R2_XORPEN        7
-#define R2_NOTMASKPEN    8
-#define R2_MASKPEN       9
-#define R2_NOTXORPEN    10
-#define R2_NOP          11
-#define R2_MERGENOTPEN  12
-#define R2_COPYPEN      13
-#define R2_MERGEPENNOT  14
-#define R2_MERGEPEN     15
-#define R2_WHITE        16
-#define R2_LAST         16
+    enum
+    {
+        R2_BLACK = 1,
+        R2_NOTMERGEPEN,
+        R2_MASKNOTPEN,
+        R2_NOTCOPYPEN,
+        R2_MASKPENNOT,
+        R2_NOT,
+        R2_XORPEN,
+        R2_NOTMASKPEN,
+        R2_MASKPEN,
+        R2_NOTXORPEN,
+        R2_NOP,
+        R2_MERGENOTPEN,
+        R2_COPYPEN,
+        R2_MERGEPENNOT,
+        R2_MERGEPEN,
+        R2_WHITE,
+
+        R2_EXT_CLEAR,
+        R2_EXT_SOURCE,
+        R2_EXT_OVER,
+        R2_EXT_IN,
+        R2_EXT_OUT,
+        R2_EXT_ATOP,
+        R2_EXT_DEST,
+        R2_EXT_DEST_OVER,
+        R2_EXT_DEST_IN,
+        R2_EXT_DEST_OUT,
+        R2_EXT_DEST_ATOP,
+        R2_EXT_XOR,
+        R2_EXT_ADD,
+        R2_EXT_SATURATE,
+
+        R2_LAST
+    };
+
     int WINAPI SetROP2(HDC hdc, int rop2);
 
     COLORREF WINAPI SetTextColor(HDC hdc, COLORREF color);
@@ -825,58 +824,58 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #define DI_DEFAULTSIZE 0x0008
 #define DI_NOMIRROR    0x0010
 
-  /* Device parameters for GetDeviceCaps() */
-#define DRIVERVERSION     0
-#define TECHNOLOGY        2
-#define HORZSIZE          4
-#define VERTSIZE          6
-#define HORZRES           8
-#define VERTRES           10
-#define BITSPIXEL         12
-#define PLANES            14
-#define NUMBRUSHES        16
-#define NUMPENS           18
-#define NUMMARKERS        20
-#define NUMFONTS          22
-#define NUMCOLORS         24
-#define PDEVICESIZE       26
-#define CURVECAPS         28
-#define LINECAPS          30
-#define POLYGONALCAPS     32
-#define TEXTCAPS          34
-#define CLIPCAPS          36
-#define RASTERCAPS        38
-#define ASPECTX           40
-#define ASPECTY           42
-#define ASPECTXY          44
-#define LOGPIXELSX        88
-#define LOGPIXELSY        90
-#define CAPS1             94
-#define SIZEPALETTE       104
-#define NUMRESERVED       106
-#define COLORRES          108
+    /* Device parameters for GetDeviceCaps() */
+#define DRIVERVERSION 0
+#define TECHNOLOGY    2
+#define HORZSIZE      4
+#define VERTSIZE      6
+#define HORZRES       8
+#define VERTRES       10
+#define BITSPIXEL     12
+#define PLANES        14
+#define NUMBRUSHES    16
+#define NUMPENS       18
+#define NUMMARKERS    20
+#define NUMFONTS      22
+#define NUMCOLORS     24
+#define PDEVICESIZE   26
+#define CURVECAPS     28
+#define LINECAPS      30
+#define POLYGONALCAPS 32
+#define TEXTCAPS      34
+#define CLIPCAPS      36
+#define RASTERCAPS    38
+#define ASPECTX       40
+#define ASPECTY       42
+#define ASPECTXY      44
+#define LOGPIXELSX    88
+#define LOGPIXELSY    90
+#define CAPS1         94
+#define SIZEPALETTE   104
+#define NUMRESERVED   106
+#define COLORRES      108
 
 /* Device Technologies */
-#define DT_PLOTTER          0   /* Vector plotter                   */
-#define DT_RASDISPLAY       1   /* Raster display                   */
-#define DT_RASPRINTER       2   /* Raster printer                   */
-#define DT_RASCAMERA        3   /* Raster camera                    */
-#define DT_CHARSTREAM       4   /* Character-stream, PLP            */
-#define DT_METAFILE         5   /* Metafile, VDM                    */
-#define DT_DISPFILE         6   /* Display-file                     */
+#define DT_PLOTTER    0 /* Vector plotter                   */
+#define DT_RASDISPLAY 1 /* Raster display                   */
+#define DT_RASPRINTER 2 /* Raster printer                   */
+#define DT_RASCAMERA  3 /* Raster camera                    */
+#define DT_CHARSTREAM 4 /* Character-stream, PLP            */
+#define DT_METAFILE   5 /* Metafile, VDM                    */
+#define DT_DISPFILE   6 /* Display-file                     */
 
-#define PHYSICALWIDTH     110
-#define PHYSICALHEIGHT    111
-#define PHYSICALOFFSETX   112
-#define PHYSICALOFFSETY   113
-#define SCALINGFACTORX    114
-#define SCALINGFACTORY    115
-#define VREFRESH          116
-#define DESKTOPVERTRES    117
-#define DESKTOPHORZRES    118
-#define BLTALIGNMENT      119
-#define SHADEBLENDCAPS    120
-#define COLORMGMTCAPS     121
+#define PHYSICALWIDTH   110
+#define PHYSICALHEIGHT  111
+#define PHYSICALOFFSETX 112
+#define PHYSICALOFFSETY 113
+#define SCALINGFACTORX  114
+#define SCALINGFACTORY  115
+#define VREFRESH        116
+#define DESKTOPVERTRES  117
+#define DESKTOPHORZRES  118
+#define BLTALIGNMENT    119
+#define SHADEBLENDCAPS  120
+#define COLORMGMTCAPS   121
 
     int WINAPI GetDeviceCaps(HDC hdc, int cap);
 
@@ -913,27 +912,27 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     typedef struct tagTEXTMETRICA
     {
-        LONG        tmHeight;
-        LONG        tmAscent;
-        LONG        tmDescent;
-        LONG        tmInternalLeading;
-        LONG        tmExternalLeading;
-        LONG        tmAveCharWidth;
-        LONG        tmMaxCharWidth;
-        LONG        tmWeight;
-        LONG        tmOverhang;
-        LONG        tmDigitizedAspectX;
-        LONG        tmDigitizedAspectY;
-        BYTE        tmFirstChar;
-        BYTE        tmLastChar;
-        BYTE        tmDefaultChar;
-        BYTE        tmBreakChar;
-        BYTE        tmItalic;
-        BYTE        tmUnderlined;
-        BYTE        tmStruckOut;
-        BYTE        tmPitchAndFamily;
-        BYTE        tmCharSet;
-    } TEXTMETRICA, * PTEXTMETRICA, NEAR* NPTEXTMETRICA, FAR* LPTEXTMETRICA;
+        LONG tmHeight;
+        LONG tmAscent;
+        LONG tmDescent;
+        LONG tmInternalLeading;
+        LONG tmExternalLeading;
+        LONG tmAveCharWidth;
+        LONG tmMaxCharWidth;
+        LONG tmWeight;
+        LONG tmOverhang;
+        LONG tmDigitizedAspectX;
+        LONG tmDigitizedAspectY;
+        BYTE tmFirstChar;
+        BYTE tmLastChar;
+        BYTE tmDefaultChar;
+        BYTE tmBreakChar;
+        BYTE tmItalic;
+        BYTE tmUnderlined;
+        BYTE tmStruckOut;
+        BYTE tmPitchAndFamily;
+        BYTE tmCharSet;
+    } TEXTMETRICA, *PTEXTMETRICA, NEAR *NPTEXTMETRICA, FAR *LPTEXTMETRICA;
     typedef struct tagTEXTMETRICW
     {
         LONG tmHeight;
@@ -956,10 +955,10 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
         BYTE tmStruckOut;
         BYTE tmPitchAndFamily;
         BYTE tmCharSet;
-    } 	TEXTMETRICW, * PTEXTMETRICW, NEAR* NPTEXTMETRICW, FAR* LPTEXTMETRICW;
+    } TEXTMETRICW, *PTEXTMETRICW, NEAR *NPTEXTMETRICW, FAR *LPTEXTMETRICW;
 
     BOOL WINAPI GetTextMetricsW(HDC hdc, TEXTMETRICW *txtMetric);
-    BOOL WINAPI GetTextMetricsA(HDC hdc, TEXTMETRICA* txtMetric);
+    BOOL WINAPI GetTextMetricsA(HDC hdc, TEXTMETRICA *txtMetric);
 
     int WINAPI GetTextFaceA(HDC hdc,         // handle to DC
                             int nCount,      // length of typeface name buffer
@@ -972,13 +971,13 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     );
 
 #ifdef UNICODE
-#define TEXTMETRIC TEXTMETRICW
+#define TEXTMETRIC     TEXTMETRICW
 #define GetTextMetrics GetTextMetricsW
-#define GetTextFace GetTextFaceW
+#define GetTextFace    GetTextFaceW
 #else
-#define TEXTMETRIC TEXTMETRICA
+#define TEXTMETRIC     TEXTMETRICA
 #define GetTextMetrics GetTextMetricsA
-#define GetTextFace GetTextFaceA
+#define GetTextFace    GetTextFaceA
 #endif // UNICODE
 
 #define PAN_CULTURE_LATIN 0
@@ -999,193 +998,204 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     BOOL WINAPI Polygon(HDC hdc, const POINT *apt, int cpt);
 
-#define TA_NOUPDATECP                0
-#define TA_UPDATECP                  1
+#define TA_NOUPDATECP 0
+#define TA_UPDATECP   1
 
-#define TA_LEFT                      0
-#define TA_RIGHT                     2
-#define TA_CENTER                    6
+#define TA_LEFT   0
+#define TA_RIGHT  2
+#define TA_CENTER 6
 
-#define TA_TOP                       0
-#define TA_BOTTOM                    8
-#define TA_BASELINE                  24
+#define TA_TOP      0
+#define TA_BOTTOM   8
+#define TA_BASELINE 24
 #if (WINVER >= 0x0400)
-#define TA_RTLREADING                256
-#define TA_MASK       (TA_BASELINE+TA_CENTER+TA_UPDATECP+TA_RTLREADING)
+#define TA_RTLREADING 256
+#define TA_MASK       (TA_BASELINE + TA_CENTER + TA_UPDATECP + TA_RTLREADING)
 #else
-#define TA_MASK       (TA_BASELINE+TA_CENTER+TA_UPDATECP)
+#define TA_MASK (TA_BASELINE + TA_CENTER + TA_UPDATECP)
 #endif
 
-    UINT  WINAPI SetTextAlign(HDC hdc, UINT align);
-    UINT WINAPI GetTextAlign(  HDC hdc);
+    UINT WINAPI SetTextAlign(HDC hdc, UINT align);
+    UINT WINAPI GetTextAlign(HDC hdc);
 
-    COLORREF WINAPI GetNearestColor(HDC hdc,           // handle to DC
-        COLORREF crColor   // color to be matched
+    COLORREF WINAPI GetNearestColor(HDC hdc,         // handle to DC
+                                    COLORREF crColor // color to be matched
     );
 
-#define ETO_OPAQUE                   0x0002
-#define ETO_CLIPPED                  0x0004
-#if(WINVER >= 0x0400)
-#define ETO_GLYPH_INDEX              0x0010
-#define ETO_RTLREADING               0x0080
-#define ETO_NUMERICSLOCAL            0x0400
-#define ETO_NUMERICSLATIN            0x0800
-#define ETO_IGNORELANGUAGE           0x1000
+#define ETO_OPAQUE  0x0002
+#define ETO_CLIPPED 0x0004
+#if (WINVER >= 0x0400)
+#define ETO_GLYPH_INDEX    0x0010
+#define ETO_RTLREADING     0x0080
+#define ETO_NUMERICSLOCAL  0x0400
+#define ETO_NUMERICSLATIN  0x0800
+#define ETO_IGNORELANGUAGE 0x1000
 #endif /* WINVER >= 0x0400 */
 #if (_WIN32_WINNT >= _WIN32_WINNT_WIN2K)
-#define ETO_PDY                      0x2000
+#define ETO_PDY 0x2000
 #endif // (_WIN32_WINNT >= _WIN32_WINNT_WIN2K)
 #if (_WIN32_WINNT >= _WIN32_WINNT_LONGHORN)
-#define ETO_REVERSE_INDEX_MAP        0x10000
+#define ETO_REVERSE_INDEX_MAP 0x10000
 #endif
 
     BOOL WINAPI ExtTextOutA(HDC hdc,          // handle to DC
-        int X,            // x-coordinate of reference point
-        int Y,            // y-coordinate of reference point
-        UINT fuOptions,   // text-output options
-        CONST RECT* lprc, // optional dimensions  
-        LPCSTR lpString, // string
-        UINT cbCount,     // number of characters in string
-        CONST INT* lpDx   // array of spacing values
+                            int X,            // x-coordinate of reference point
+                            int Y,            // y-coordinate of reference point
+                            UINT fuOptions,   // text-output options
+                            CONST RECT *lprc, // optional dimensions
+                            LPCSTR lpString,  // string
+                            UINT cbCount,     // number of characters in string
+                            CONST INT *lpDx   // array of spacing values
     );
 
     BOOL WINAPI ExtTextOutW(HDC hdc,          // handle to DC
-        int X,            // x-coordinate of reference point
-        int Y,            // y-coordinate of reference point
-        UINT fuOptions,   // text-output options
-        CONST RECT* lprc, // optional dimensions  
-        LPCWSTR lpString, // string
-        UINT cbCount,     // number of characters in string
-        CONST INT* lpDx   // array of spacing values
+                            int X,            // x-coordinate of reference point
+                            int Y,            // y-coordinate of reference point
+                            UINT fuOptions,   // text-output options
+                            CONST RECT *lprc, // optional dimensions
+                            LPCWSTR lpString, // string
+                            UINT cbCount,     // number of characters in string
+                            CONST INT *lpDx   // array of spacing values
     );
 
 #ifdef UNICODE
 #define ExtTextOut ExtTextOutW
 #else
 #define ExtTextOut ExtTextOutA
-#endif//UNICODE
+#endif // UNICODE
 
+    typedef enum Antialias
+    {
+        ANTIALIAS_DEFAULT = 0,
 
-typedef enum Antialias {
-    ANTIALIAS_DEFAULT=0,
+        /* method */
+        ANTIALIAS_NONE,
+        ANTIALIAS_GRAY,
+        ANTIALIAS_SUBPIXEL,
 
-    /* method */
-    ANTIALIAS_NONE,
-    ANTIALIAS_GRAY,
-    ANTIALIAS_SUBPIXEL,
+        /* hints */
+        ANTIALIAS_FAST,
+        ANTIALIAS_GOOD,
+        ANTIALIAS_BEST
+    } Antialias;
 
-    /* hints */
-    ANTIALIAS_FAST,
-    ANTIALIAS_GOOD,
-    ANTIALIAS_BEST
-} Antialias;
+    Antialias WINAPI GetAntialiasMode(HDC hdc);
+    Antialias WINAPI SetAntialiasMode(HDC hdc, Antialias mode);
 
-Antialias WINAPI GetAntialiasMode(HDC hdc);
-Antialias WINAPI SetAntialiasMode(HDC hdc,Antialias mode);
+    COLORREF WINAPI GetPixel(IN HDC hdc, IN int x, IN int y);
+    COLORREF WINAPI SetPixel(IN HDC hdc, IN int x, IN int y, IN COLORREF color);
 
-COLORREF WINAPI GetPixel(IN HDC hdc, IN int x, IN int y);
-COLORREF WINAPI SetPixel(IN HDC hdc, IN int x, IN int y, IN COLORREF color);
+#define PC_RESERVED   0x01 /* palette index used for animation */
+#define PC_EXPLICIT   0x02 /* palette index is explicit to device */
+#define PC_NOCOLLAPSE 0x04 /* do not match color to system palette */
 
-#define PC_RESERVED     0x01    /* palette index used for animation */
-#define PC_EXPLICIT     0x02    /* palette index is explicit to device */
-#define PC_NOCOLLAPSE   0x04    /* do not match color to system palette */
+    typedef struct tagPALETTEENTRY
+    {
+        BYTE peRed;
+        BYTE peGreen;
+        BYTE peBlue;
+        BYTE peFlags;
+    } PALETTEENTRY;
 
-typedef struct tagPALETTEENTRY {
-    BYTE peRed;
-    BYTE peGreen;
-    BYTE peBlue;
-    BYTE peFlags;
-} PALETTEENTRY;
+    typedef struct tagLOGPALETTE
+    {
+        WORD palVersion;
+        WORD palNumEntries;
+        PALETTEENTRY palPalEntry[1];
+    } LOGPALETTE;
 
-typedef struct tagLOGPALETTE {
-    WORD         palVersion;
-    WORD         palNumEntries;
-    PALETTEENTRY palPalEntry[1];
-} LOGPALETTE;
+    typedef struct tagKERNINGPAIR
+    {
+        WORD wFirst;
+        WORD wSecond;
+        int iKernAmount;
+    } KERNINGPAIR, *LPKERNINGPAIR;
 
+    typedef struct tagFONTSIGNATURE
+    {
+        DWORD fsUsb[4];
+        DWORD fsCsb[2];
+    } FONTSIGNATURE, *PFONTSIGNATURE, FAR *LPFONTSIGNATURE;
 
-typedef struct tagKERNINGPAIR {
-    WORD  wFirst;
-    WORD  wSecond;
-    int  iKernAmount;
-} KERNINGPAIR, * LPKERNINGPAIR;
+    typedef struct _ABC
+    {
+        int abcA;
+        UINT abcB;
+        int abcC;
+    } ABC, *PABC, NEAR *NPABC, FAR *LPABC;
 
-typedef struct tagFONTSIGNATURE
-{
-    DWORD fsUsb[4];
-    DWORD fsCsb[2];
-} FONTSIGNATURE, * PFONTSIGNATURE, FAR* LPFONTSIGNATURE;
+    typedef struct _ABCFLOAT
+    {
+        FLOAT abcfA;
+        FLOAT abcfB;
+        FLOAT abcfC;
+    } ABCFLOAT, *PABCFLOAT, NEAR *NPABCFLOAT, FAR *LPABCFLOAT;
 
+#define OUT_DEFAULT_PRECIS        0
+#define OUT_STRING_PRECIS         1
+#define OUT_CHARACTER_PRECIS      2
+#define OUT_STROKE_PRECIS         3
+#define OUT_TT_PRECIS             4
+#define OUT_DEVICE_PRECIS         5
+#define OUT_RASTER_PRECIS         6
+#define OUT_TT_ONLY_PRECIS        7
+#define OUT_OUTLINE_PRECIS        8
+#define OUT_SCREEN_OUTLINE_PRECIS 9
+#define OUT_PS_ONLY_PRECIS        10
 
-typedef struct _ABC {
-    int     abcA;
-    UINT    abcB;
-    int     abcC;
-} ABC, * PABC, NEAR* NPABC, FAR* LPABC;
+#define CLIP_DEFAULT_PRECIS   0
+#define CLIP_CHARACTER_PRECIS 1
+#define CLIP_STROKE_PRECIS    2
+#define CLIP_MASK             0xf
 
-typedef struct _ABCFLOAT {
-    FLOAT   abcfA;
-    FLOAT   abcfB;
-    FLOAT   abcfC;
-} ABCFLOAT, * PABCFLOAT, NEAR* NPABCFLOAT, FAR* LPABCFLOAT;
+#define DEFAULT_QUALITY        0
+#define DRAFT_QUALITY          1
+#define PROOF_QUALITY          2
+#define NONANTIALIASED_QUALITY 3
+#define ANTIALIASED_QUALITY    4
 
+#define DEFAULT_PITCH  0
+#define FIXED_PITCH    1
+#define VARIABLE_PITCH 2
 
-#define OUT_DEFAULT_PRECIS          0
-#define OUT_STRING_PRECIS           1
-#define OUT_CHARACTER_PRECIS        2
-#define OUT_STROKE_PRECIS           3
-#define OUT_TT_PRECIS               4
-#define OUT_DEVICE_PRECIS           5
-#define OUT_RASTER_PRECIS           6
-#define OUT_TT_ONLY_PRECIS          7
-#define OUT_OUTLINE_PRECIS          8
-#define OUT_SCREEN_OUTLINE_PRECIS   9
-#define OUT_PS_ONLY_PRECIS          10
+    UINT WINAPI RealizePalette(_In_ HDC hdc);
+    HPALETTE WINAPI SelectPalette(_In_ HDC hdc, _In_ HPALETTE hPal, _In_ BOOL bForceBkgd);
 
+    BOOL WINAPI DPtoLP(HDC hdc,          // handle to device context
+                       LPPOINT lpPoints, // array of points
+                       int nCount        // count of points in array
+    );
 
-UINT WINAPI RealizePalette(_In_ HDC hdc);
-HPALETTE WINAPI SelectPalette(_In_ HDC hdc, _In_ HPALETTE hPal, _In_ BOOL bForceBkgd);
+    BOOL WINAPI LPtoDP(HDC hdc,          // handle to device context
+                       LPPOINT lpPoints, // array of points
+                       int nCount        // count of points in array
+    );
 
-BOOL WINAPI DPtoLP(HDC hdc,           // handle to device context
-    LPPOINT lpPoints,  // array of points
-    int nCount         // count of points in array
-);
+#define CLR_INVALID 0x00FFFFFF
 
-BOOL WINAPI LPtoDP(HDC hdc,           // handle to device context
-    LPPOINT lpPoints,  // array of points
-    int nCount         // count of points in array
-);
+    BOOL WINAPI DrawFrameControl(_In_ HDC, _Inout_ LPRECT, _In_ UINT, _In_ UINT);
 
-#define CLR_INVALID     0x00FFFFFF
-
-BOOL
-WINAPI
-DrawFrameControl(
-    _In_ HDC,
-    _Inout_ LPRECT,
-    _In_ UINT,
-    _In_ UINT);
-
-BOOL  WINAPI GetCharWidthA(_In_ HDC hdc, _In_ UINT iFirst, _In_ UINT iLast, _Out_writes_(iLast + 1 - iFirst) LPINT lpBuffer);
-BOOL  WINAPI GetCharWidthW(_In_ HDC hdc, _In_ UINT iFirst, _In_ UINT iLast, _Out_writes_(iLast + 1 - iFirst) LPINT lpBuffer);
+    BOOL WINAPI GetCharWidthA(_In_ HDC hdc, _In_ UINT iFirst, _In_ UINT iLast, _Out_writes_(iLast + 1 - iFirst) LPINT lpBuffer);
+    BOOL WINAPI GetCharWidthW(_In_ HDC hdc, _In_ UINT iFirst, _In_ UINT iLast, _Out_writes_(iLast + 1 - iFirst) LPINT lpBuffer);
 #ifdef UNICODE
-#define GetCharWidth  GetCharWidthW
+#define GetCharWidth GetCharWidthW
 #else
-#define GetCharWidth  GetCharWidthA
+#define GetCharWidth GetCharWidthA
 #endif // !UNICODE
 
+    HDC WINAPI CreateICW(LPCWSTR lpszDriver,   // driver name
+                         LPCWSTR lpszDevice,   // device name
+                         LPCWSTR lpszOutput,   // port or file name
+                         CONST void *lpdvmInit // optional initialization data
+    );
 
-HDC WINAPI CreateICW(LPCWSTR lpszDriver,       // driver name
-    LPCWSTR lpszDevice,       // device name
-    LPCWSTR lpszOutput,       // port or file name
-    CONST void* lpdvmInit  // optional initialization data
-);
+    HDC WINAPI CreateICA(LPCSTR lpszDriver,    // driver name
+                         LPCSTR lpszDevice,    // device name
+                         LPCSTR lpszOutput,    // port or file name
+                         CONST void *lpdvmInit // optional initialization data
+    );
 
-HDC WINAPI CreateICA(LPCSTR lpszDriver,       // driver name
-    LPCSTR lpszDevice,       // device name
-    LPCSTR lpszOutput,       // port or file name
-    CONST void* lpdvmInit  // optional initialization data
-);
+    BOOL WINAPI DrawEdge(HDC hdc, LPRECT rc, UINT edge, UINT flags);
 
 #ifdef __cplusplus
 }
