@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <malloc.h>
 
-#ifdef __cplusplus 
+#ifdef __cplusplus
 extern "C"
 {
 #endif //__cplusplus
@@ -571,15 +571,15 @@ typedef int(WINAPI *PROC)();
 #ifdef UNICODE
 #define SetEnvironmentVariable SetEnvironmentVariableW
 #define GetEnvironmentVariable GetEnvironmentVariableW
-#define GetModuleHandle GetModuleHandleW
+#define GetModuleHandle        GetModuleHandleW
 #else
 #define SetEnvironmentVariable SetEnvironmentVariableA
 #define GetEnvironmentVariable GetEnvironmentVariableA
-#define GetModuleHandle GetModuleHandleA
+#define GetModuleHandle        GetModuleHandleA
 #endif // UNICODE
 
 #ifdef __cplusplus
 }
 #endif //__cplusplus
 
-#endif//_SYSAPI_H_
+#endif //_SYSAPI_H_

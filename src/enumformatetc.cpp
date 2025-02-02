@@ -40,7 +40,7 @@ HRESULT SEnumFormatEtc::Next(ULONG celt, FORMATETC *rgelt, ULONG *pceltFethed)
     return ((i == celt) ? S_OK : S_FALSE);
 }
 
-HRESULT SEnumFormatEtc::Skip( ULONG celt)
+HRESULT SEnumFormatEtc::Skip(ULONG celt)
 {
     if ((posFmt + celt) >= countFmt)
         return S_FALSE;
@@ -58,8 +58,8 @@ HRESULT SEnumFormatEtc::Clone(IEnumFORMATETC **ppenum)
 {
     if (!ppenum)
         return E_INVALIDARG;
-    
-    *ppenum = new SEnumFormatEtc(countFmt,pFmt);
+
+    *ppenum = new SEnumFormatEtc(countFmt, pFmt);
     if (*ppenum)
         (*ppenum)->Skip(posFmt);
     return S_OK;

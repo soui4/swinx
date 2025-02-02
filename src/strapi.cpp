@@ -189,96 +189,168 @@ BOOL WINAPI OemToCharW(LPCSTR s, LPWSTR d)
     return OemToCharBuffW(s, d, strlen(s) + 1);
 }
 
-#define INRANGE(x,a,b) ((x)>=(a) && (x)<=(b))
+#define INRANGE(x, a, b) ((x) >= (a) && (x) <= (b))
 
-static WORD get_char_type(wchar_t ch, DWORD dwInfoType) {
+static WORD get_char_type(wchar_t ch, DWORD dwInfoType)
+{
     WORD ret = 0;
-    if (ch == 0x3000) {
-        switch (dwInfoType) {
-        case CT_CTYPE1: ret = C1_DEFINED; break;
-        case CT_CTYPE2: ret = C2_WHITESPACE; break;
-        case CT_CTYPE3: ret = C3_ALPHA; break;
+    if (ch == 0x3000)
+    {
+        switch (dwInfoType)
+        {
+        case CT_CTYPE1:
+            ret = C1_DEFINED;
+            break;
+        case CT_CTYPE2:
+            ret = C2_WHITESPACE;
+            break;
+        case CT_CTYPE3:
+            ret = C3_ALPHA;
+            break;
         }
     }
-    else if (ch > 0x7f) {
-        switch (dwInfoType) {
-        case CT_CTYPE1: ret = C1_DEFINED; break;
-        case CT_CTYPE2: ret = C2_OTHERNEUTRAL; break;
-        case CT_CTYPE3: ret = C3_LOWSURROGATE; break;
+    else if (ch > 0x7f)
+    {
+        switch (dwInfoType)
+        {
+        case CT_CTYPE1:
+            ret = C1_DEFINED;
+            break;
+        case CT_CTYPE2:
+            ret = C2_OTHERNEUTRAL;
+            break;
+        case CT_CTYPE3:
+            ret = C3_LOWSURROGATE;
+            break;
         }
     }
-    else if (INRANGE(ch, 'a', 'z')) {
-        switch (dwInfoType) {
-        case CT_CTYPE1: ret = C1_LOWER; break;
-        case CT_CTYPE2: ret = C2_ARABICNUMBER; break;
-        case CT_CTYPE3: ret = C3_ALPHA; break;
+    else if (INRANGE(ch, 'a', 'z'))
+    {
+        switch (dwInfoType)
+        {
+        case CT_CTYPE1:
+            ret = C1_LOWER;
+            break;
+        case CT_CTYPE2:
+            ret = C2_ARABICNUMBER;
+            break;
+        case CT_CTYPE3:
+            ret = C3_ALPHA;
+            break;
         }
     }
-    else if (INRANGE(ch, 'A', 'Z')) {
-        switch (dwInfoType) {
-        case CT_CTYPE1: ret = C1_UPPER; break;
-        case CT_CTYPE2: ret = C2_ARABICNUMBER; break;
-        case CT_CTYPE3: ret = C3_ALPHA; break;
+    else if (INRANGE(ch, 'A', 'Z'))
+    {
+        switch (dwInfoType)
+        {
+        case CT_CTYPE1:
+            ret = C1_UPPER;
+            break;
+        case CT_CTYPE2:
+            ret = C2_ARABICNUMBER;
+            break;
+        case CT_CTYPE3:
+            ret = C3_ALPHA;
+            break;
         }
     }
-    else if (INRANGE(ch, '0', '9')) {
-        switch (dwInfoType) {
-        case CT_CTYPE1: ret = C1_DIGIT; break;
-        case CT_CTYPE2: ret = C2_ARABICNUMBER; break;
-        case CT_CTYPE3: ret = C3_ALPHA; break;
+    else if (INRANGE(ch, '0', '9'))
+    {
+        switch (dwInfoType)
+        {
+        case CT_CTYPE1:
+            ret = C1_DIGIT;
+            break;
+        case CT_CTYPE2:
+            ret = C2_ARABICNUMBER;
+            break;
+        case CT_CTYPE3:
+            ret = C3_ALPHA;
+            break;
         }
     }
-    else if (INRANGE(ch, 0x21, 0x2f) || ch == 0x7F) {
-        switch (dwInfoType) {
-        case CT_CTYPE1: ret = C1_PUNCT; break;
-        case CT_CTYPE2: ret = C2_ARABICNUMBER; break;
-        case CT_CTYPE3: ret = C3_ALPHA; break;
+    else if (INRANGE(ch, 0x21, 0x2f) || ch == 0x7F)
+    {
+        switch (dwInfoType)
+        {
+        case CT_CTYPE1:
+            ret = C1_PUNCT;
+            break;
+        case CT_CTYPE2:
+            ret = C2_ARABICNUMBER;
+            break;
+        case CT_CTYPE3:
+            ret = C3_ALPHA;
+            break;
         }
     }
-    else if (INRANGE(ch, 0x21, 0x2f)// !=0x21, /=0x2f 
-        || INRANGE(ch, 0x3A, 0x40) //:=0x3A @=0x40
-        || INRANGE(ch, 0x5B, 0x60) //[=0x5B `=0x60
-        || INRANGE(ch, 0x7B, 0x7E) // {=0x7B, ~=0x7E
-        ) {
-        switch (dwInfoType) {
-        case CT_CTYPE1: ret = C1_PUNCT; break;
-        case CT_CTYPE2: ret = C2_ARABICNUMBER; break;
-        case CT_CTYPE3: ret = C3_ALPHA; break;
+    else if (INRANGE(ch, 0x21, 0x2f)    // !=0x21, /=0x2f
+             || INRANGE(ch, 0x3A, 0x40) //:=0x3A @=0x40
+             || INRANGE(ch, 0x5B, 0x60) //[=0x5B `=0x60
+             || INRANGE(ch, 0x7B, 0x7E) // {=0x7B, ~=0x7E
+    )
+    {
+        switch (dwInfoType)
+        {
+        case CT_CTYPE1:
+            ret = C1_PUNCT;
+            break;
+        case CT_CTYPE2:
+            ret = C2_ARABICNUMBER;
+            break;
+        case CT_CTYPE3:
+            ret = C3_ALPHA;
+            break;
         }
     }
-    else if (ch == 0x20) {
-        switch (dwInfoType) {
-        case CT_CTYPE1: ret = C1_BLANK; break;
-        case CT_CTYPE2: ret = C2_ARABICNUMBER; break;
-        case CT_CTYPE3: ret = C3_ALPHA; break;
+    else if (ch == 0x20)
+    {
+        switch (dwInfoType)
+        {
+        case CT_CTYPE1:
+            ret = C1_BLANK;
+            break;
+        case CT_CTYPE2:
+            ret = C2_ARABICNUMBER;
+            break;
+        case CT_CTYPE3:
+            ret = C3_ALPHA;
+            break;
         }
     }
     return ret;
 }
 
-BOOL WINAPI GetStringTypeExW(
-    _In_ LCID lcid,
-    _In_ DWORD dwInfoType,
-    _In_reads_(nLength) LPCWSTR pszSrc,
-    _In_ int nLength,
-    _Out_ LPWORD pwCharType) {
+BOOL WINAPI GetStringTypeExW(_In_ LCID lcid, _In_ DWORD dwInfoType, _In_reads_(nLength) LPCWSTR pszSrc, _In_ int nLength, _Out_ LPWORD pwCharType)
+{
 
     if (dwInfoType != CT_CTYPE1 || dwInfoType != CT_CTYPE2 || dwInfoType != CT_CTYPE3)
         return FALSE;
     int i = 0;
-    while (i < nLength) {
+    while (i < nLength)
+    {
         int charLen = WideCharLength(*pszSrc);
-        if (charLen > 1) {
-            for (int j = 0; j < charLen; j++) {
-                switch (dwInfoType) {
-                case CT_CTYPE1: *pwCharType = C1_DEFINED; break;
-                case CT_CTYPE2: *pwCharType = C2_OTHERNEUTRAL; break;
-                case CT_CTYPE3: *pwCharType = C3_HIGHSURROGATE; break;
+        if (charLen > 1)
+        {
+            for (int j = 0; j < charLen; j++)
+            {
+                switch (dwInfoType)
+                {
+                case CT_CTYPE1:
+                    *pwCharType = C1_DEFINED;
+                    break;
+                case CT_CTYPE2:
+                    *pwCharType = C2_OTHERNEUTRAL;
+                    break;
+                case CT_CTYPE3:
+                    *pwCharType = C3_HIGHSURROGATE;
+                    break;
                 }
                 pwCharType++;
             }
         }
-        else {
+        else
+        {
             *pwCharType = get_char_type(*pszSrc, dwInfoType);
             pwCharType++;
         }
@@ -288,34 +360,42 @@ BOOL WINAPI GetStringTypeExW(
     return TRUE;
 }
 
-BOOL WINAPI GetStringTypeExA(
-    _In_ LCID lcid,
-    _In_ DWORD dwInfoType,
-    _In_reads_(nLength) LPCSTR pszSrc,
-    _In_ int nLength,
-    _Out_ LPWORD pwCharType) {
+BOOL WINAPI GetStringTypeExA(_In_ LCID lcid, _In_ DWORD dwInfoType, _In_reads_(nLength) LPCSTR pszSrc, _In_ int nLength, _Out_ LPWORD pwCharType)
+{
 
     if (dwInfoType != CT_CTYPE1 || dwInfoType != CT_CTYPE2 || dwInfoType != CT_CTYPE3)
         return FALSE;
     int i = 0;
-    while (i < nLength) {
+    while (i < nLength)
+    {
         int u8CharLen = UTF8CharLength(*pszSrc);
         wchar_t wc[3];
         MultiByteToWideChar(CP_UTF8, 0, pszSrc, u8CharLen, wc, 3);
         int charLen = WideCharLength(wc[0]);
-        if (charLen > 1) {
-            for (int j = 0; j < u8CharLen; j++) {
-                switch (dwInfoType) {
-                case CT_CTYPE1: *pwCharType = C1_DEFINED; break;
-                case CT_CTYPE2: *pwCharType = C2_OTHERNEUTRAL; break;
-                case CT_CTYPE3: *pwCharType = C3_HIGHSURROGATE; break;
+        if (charLen > 1)
+        {
+            for (int j = 0; j < u8CharLen; j++)
+            {
+                switch (dwInfoType)
+                {
+                case CT_CTYPE1:
+                    *pwCharType = C1_DEFINED;
+                    break;
+                case CT_CTYPE2:
+                    *pwCharType = C2_OTHERNEUTRAL;
+                    break;
+                case CT_CTYPE3:
+                    *pwCharType = C3_HIGHSURROGATE;
+                    break;
                 }
                 pwCharType++;
             }
         }
-        else {
+        else
+        {
             WORD charType = get_char_type(wc[0], dwInfoType);
-            for (int j = 0; j < u8CharLen; j++) {
+            for (int j = 0; j < u8CharLen; j++)
+            {
                 *pwCharType++ = charType;
             }
         }
@@ -325,34 +405,42 @@ BOOL WINAPI GetStringTypeExA(
     return TRUE;
 }
 
-LPWSTR WINAPI CharLowerW(LPWSTR lpsz) {
-    if (HIWORD(DWORD_PTR(lpsz)) == 0) {
+LPWSTR WINAPI CharLowerW(LPWSTR lpsz)
+{
+    if (HIWORD(DWORD_PTR(lpsz)) == 0)
+    {
         wchar_t c = LOWORD(DWORD_PTR(lpsz));
         return (LPWSTR)(INT_PTR)tolower(c);
     }
-    else {
+    else
+    {
         return _wcslwr(lpsz);
     }
 }
 
-LPSTR WINAPI CharLowerA(LPSTR lpsz) {
-    if (HIWORD(DWORD_PTR(lpsz)) == 0) {
+LPSTR WINAPI CharLowerA(LPSTR lpsz)
+{
+    if (HIWORD(DWORD_PTR(lpsz)) == 0)
+    {
         wchar_t c = LOWORD(DWORD_PTR(lpsz));
         return (LPSTR)(INT_PTR)tolower(c);
     }
-    else {
-        return (LPSTR)_mbscvt((uint8_t*)lpsz, TRUE);
+    else
+    {
+        return (LPSTR)_mbscvt((uint8_t *)lpsz, TRUE);
     }
 }
 
-
-DWORD WINAPI CharLowerBuffW(LPWSTR lpsz, DWORD cchLength) {
+DWORD WINAPI CharLowerBuffW(LPWSTR lpsz, DWORD cchLength)
+{
     int i = 0;
-    while (i < cchLength) {
+    while (i < cchLength)
+    {
         int charLen = WideCharLength(*lpsz);
         if (charLen > cchLength - i)
             break;
-        if (charLen == 1) {
+        if (charLen == 1)
+        {
             *lpsz = tolower(*lpsz);
         }
         i += charLen;
@@ -361,13 +449,16 @@ DWORD WINAPI CharLowerBuffW(LPWSTR lpsz, DWORD cchLength) {
     return i;
 }
 
-DWORD WINAPI CharLowerBuffA(LPSTR lpsz, DWORD cchLength) {
+DWORD WINAPI CharLowerBuffA(LPSTR lpsz, DWORD cchLength)
+{
     int i = 0;
-    while (i < cchLength) {
+    while (i < cchLength)
+    {
         int charLen = UTF8CharLength(*lpsz);
         if (charLen > cchLength - i)
             break;
-        if (charLen == 1) {
+        if (charLen == 1)
+        {
             *lpsz = tolower(*lpsz);
         }
         i += charLen;
@@ -376,13 +467,16 @@ DWORD WINAPI CharLowerBuffA(LPSTR lpsz, DWORD cchLength) {
     return i;
 }
 
-DWORD WINAPI CharUpperBuffW(LPWSTR lpsz, DWORD cchLength) {
+DWORD WINAPI CharUpperBuffW(LPWSTR lpsz, DWORD cchLength)
+{
     int i = 0;
-    while (i < cchLength) {
+    while (i < cchLength)
+    {
         int charLen = WideCharLength(*lpsz);
         if (charLen > cchLength - i)
             break;
-        if (charLen == 1) {
+        if (charLen == 1)
+        {
             *lpsz = toupper(*lpsz);
         }
         i += charLen;
@@ -391,13 +485,16 @@ DWORD WINAPI CharUpperBuffW(LPWSTR lpsz, DWORD cchLength) {
     return i;
 }
 
-DWORD WINAPI CharUpperBuffA(LPSTR lpsz, DWORD cchLength) {
+DWORD WINAPI CharUpperBuffA(LPSTR lpsz, DWORD cchLength)
+{
     int i = 0;
-    while (i < cchLength) {
+    while (i < cchLength)
+    {
         int charLen = UTF8CharLength(*lpsz);
         if (charLen > cchLength - i)
             break;
-        if (charLen == 1) {
+        if (charLen == 1)
+        {
             *lpsz = toupper(*lpsz);
         }
         i += charLen;

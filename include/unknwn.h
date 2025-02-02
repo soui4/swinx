@@ -13,7 +13,6 @@
 #define __RPC__out_ecount_full(x)
 #define __RPC_unique_pointer
 
-
 DEFINE_GUID(IID_IUnknown, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1);
 #undef INTERFACE
 #define INTERFACE IUnknown
@@ -25,7 +24,7 @@ DECLARE_INTERFACE(IUnknown)
     STDMETHOD_(ULONG, Release)(THIS) PURE;
 };
 
-typedef /* [unique] */ IUnknown* LPUNKNOWN;
+typedef /* [unique] */ IUnknown *LPUNKNOWN;
 
 DEFINE_GUID(GUID_NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 

@@ -21,8 +21,7 @@ struct hook
     char module[MAX_PATH];
 };
 
-
-static const char *const hook_names[WH_MAXHOOK - WH_MINHOOK] = { "WH_MSGFILTER", "WH_KEYBOARD", "WH_GETMESSAGE", "WH_CALLWNDPROC", "WH_SYSMSGFILTER", "WH_MOUSE", "WH_CALLWNDPROCRET"};
+static const char *const hook_names[WH_MAXHOOK - WH_MINHOOK] = { "WH_MSGFILTER", "WH_KEYBOARD", "WH_GETMESSAGE", "WH_CALLWNDPROC", "WH_SYSMSGFILTER", "WH_MOUSE", "WH_CALLWNDPROCRET" };
 
 class HookMgr {
   public:
@@ -53,14 +52,15 @@ class HookMgr {
     HHOOK get_first_hook(INT id);
 
     HHOOK get_next_hook(HHOOK hhk);
+
   private:
     UINT get_hook_timeout();
 
     std::list<hook *> s_hooks[WH_MAXHOOK - WH_MINHOOK + 1];
     SRwLock s_mutex;
-}s_hookMgr;
+} s_hookMgr;
 
- /***********************************************************************
+/***********************************************************************
  *		get_hook_timeout
  *
  */
@@ -132,22 +132,23 @@ HHOOK HookMgr::get_first_hook(INT id)
     return ret;
 }
 
-HHOOK HookMgr::get_next_hook(HHOOK hhk){
-    if(!hhk)
+HHOOK HookMgr::get_next_hook(HHOOK hhk)
+{
+    if (!hhk)
         return NULL;
     HHOOK ret = NULL;
     s_mutex.LockShared();
     auto it = std::find(s_hooks[hhk->id].begin(), s_hooks[hhk->id].end(), hhk);
-    if(it!= s_hooks[hhk->id].end()) 
+    if (it != s_hooks[hhk->id].end())
         it++;
-    ret = it==s_hooks[hhk->id].end()?nullptr:(*it);
+    ret = it == s_hooks[hhk->id].end() ? nullptr : (*it);
     s_mutex.UnlockShared();
     return ret;
 }
 
 LRESULT HookMgr::call_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
 {
-    if(!hhk)
+    if (!hhk)
         return 0;
     LRESULT ret = 0;
     if (hhk->proc)
@@ -176,7 +177,6 @@ LRESULT HookMgr::call_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
     }
     return ret;
 }
-
 
 /***********************************************************************
  *		SetWindowsHookA (USER32.@)
@@ -218,11 +218,11 @@ BOOL WINAPI UnhookWindowsHookEx(HHOOK hhk)
 LRESULT WINAPI CallNextHookEx(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
 {
     hhk = s_hookMgr.get_next_hook(hhk);
-    return s_hookMgr.call_hook(hhk,nCode,wParam,lParam);
+    return s_hookMgr.call_hook(hhk, nCode, wParam, lParam);
 }
 
 BOOL WINAPI CallHook(INT id, int nCode, WPARAM wParam, LPARAM lParam)
 {
     HHOOK hhk = s_hookMgr.get_first_hook(id);
-    return s_hookMgr.call_hook(hhk,nCode,wParam,lParam);
+    return s_hookMgr.call_hook(hhk, nCode, wParam, lParam);
 }

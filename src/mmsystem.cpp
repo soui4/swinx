@@ -19,7 +19,7 @@ MMRESULT timeGetDevCaps(LPTIMECAPS lpCaps, UINT wSize)
 {
     if (lpCaps == 0)
     {
-        SLOG_STMW()<<"invalid lpCaps";
+        SLOG_STMW() << "invalid lpCaps";
         return TIMERR_NOCANDO;
     }
 

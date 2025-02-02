@@ -63,4 +63,4 @@ extern "C"
 }
 #endif //__cplusplus
 
-#endif//_OLE2_H_
+#endif //_OLE2_H_

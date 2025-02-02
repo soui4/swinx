@@ -49,32 +49,34 @@ typedef struct tagWNDCLASSEXW
     LPCWSTR lpszMenuName;
     LPCWSTR lpszClassName;
     HICON hIconSm;
-} WNDCLASSEXW, * PWNDCLASSEXW, * LPWNDCLASSEXW;
+} WNDCLASSEXW, *PWNDCLASSEXW, *LPWNDCLASSEXW;
 
-typedef struct tagWNDCLASSA {
-    UINT        style;
-    WNDPROC     lpfnWndProc;
-    int         cbClsExtra;
-    int         cbWndExtra;
-    HINSTANCE   hInstance;
-    HICON       hIcon;
-    HCURSOR     hCursor;
-    HBRUSH      hbrBackground;
-    LPCSTR      lpszMenuName;
-    LPCSTR      lpszClassName;
-} WNDCLASSA, * PWNDCLASSA, NEAR* NPWNDCLASSA, FAR* LPWNDCLASSA;
-typedef struct tagWNDCLASSW {
-    UINT        style;
-    WNDPROC     lpfnWndProc;
-    int         cbClsExtra;
-    int         cbWndExtra;
-    HINSTANCE   hInstance;
-    HICON       hIcon;
-    HCURSOR     hCursor;
-    HBRUSH      hbrBackground;
-    LPCWSTR     lpszMenuName;
-    LPCWSTR     lpszClassName;
-} WNDCLASSW, * PWNDCLASSW, NEAR* NPWNDCLASSW, FAR* LPWNDCLASSW;
+typedef struct tagWNDCLASSA
+{
+    UINT style;
+    WNDPROC lpfnWndProc;
+    int cbClsExtra;
+    int cbWndExtra;
+    HINSTANCE hInstance;
+    HICON hIcon;
+    HCURSOR hCursor;
+    HBRUSH hbrBackground;
+    LPCSTR lpszMenuName;
+    LPCSTR lpszClassName;
+} WNDCLASSA, *PWNDCLASSA, NEAR *NPWNDCLASSA, FAR *LPWNDCLASSA;
+typedef struct tagWNDCLASSW
+{
+    UINT style;
+    WNDPROC lpfnWndProc;
+    int cbClsExtra;
+    int cbWndExtra;
+    HINSTANCE hInstance;
+    HICON hIcon;
+    HCURSOR hCursor;
+    HBRUSH hbrBackground;
+    LPCWSTR lpszMenuName;
+    LPCWSTR lpszClassName;
+} WNDCLASSW, *PWNDCLASSW, NEAR *NPWNDCLASSW, FAR *LPWNDCLASSW;
 #ifdef UNICODE
 typedef WNDCLASSW WNDCLASS;
 typedef PWNDCLASSW PWNDCLASS;
@@ -87,15 +89,15 @@ typedef NPWNDCLASSA NPWNDCLASS;
 typedef LPWNDCLASSA LPWNDCLASS;
 #endif // UNICODE
 
-ATOM WINAPI RegisterClassA(const WNDCLASSA* lpWndClass);
-ATOM WINAPI RegisterClassW(const WNDCLASSW* lpWndClass);
+ATOM WINAPI RegisterClassA(const WNDCLASSA *lpWndClass);
+ATOM WINAPI RegisterClassW(const WNDCLASSW *lpWndClass);
 ATOM WINAPI RegisterClassExA(const WNDCLASSEXA *wc);
-ATOM WINAPI RegisterClassExW(const WNDCLASSEXW* wc);
+ATOM WINAPI RegisterClassExW(const WNDCLASSEXW *wc);
 BOOL WINAPI UnregisterClassA(LPCSTR className, HINSTANCE instance);
 BOOL WINAPI UnregisterClassW(LPCWSTR className, HINSTANCE instance);
 
 BOOL WINAPI GetClassInfoExA(HINSTANCE hInstance, LPCSTR name, WNDCLASSEXA *wc);
-BOOL WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW* wc);
+BOOL WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW *wc);
 
 UINT WINAPI GetAtomNameA(ATOM atomName, LPSTR name, int cchLen);
 UINT WINAPI GetAtomNameW(ATOM atomName, LPWSTR name, int cchLen);
@@ -104,22 +106,21 @@ ATOM WINAPI FindAtomA(_In_opt_ LPCSTR lpString);
 ATOM WINAPI FindAtomW(_In_opt_ LPCWSTR lpString);
 
 #ifdef UNICODE
-#define WNDCLASSEX WNDCLASSEXW
-#define RegisterClass  RegisterClassW
+#define WNDCLASSEX      WNDCLASSEXW
+#define RegisterClass   RegisterClassW
 #define RegisterClassEx RegisterClassExW
 #define UnregisterClass UnregisterClassW
-#define GetClassInfoEx GetClassInfoExW
-#define GetAtomName GetAtomNameW
-#define FindAtom  FindAtomW
+#define GetClassInfoEx  GetClassInfoExW
+#define GetAtomName     GetAtomNameW
+#define FindAtom        FindAtomW
 #else
-#define WNDCLASSEX WNDCLASSEXA
-#define RegisterClass  RegisterClassA
+#define WNDCLASSEX      WNDCLASSEXA
+#define RegisterClass   RegisterClassA
 #define RegisterClassEx RegisterClassExA
 #define UnregisterClass UnregisterClassA
-#define GetClassInfoEx GetClassInfoExA
-#define GetAtomName GetAtomNameA
-#define FindAtom  FindAtomA
+#define GetClassInfoEx  GetClassInfoExA
+#define GetAtomName     GetAtomNameA
+#define FindAtom        FindAtomA
 #endif // UNICODE
-
 
 #endif //_CLASS_H_

@@ -62,7 +62,7 @@ extern "C"
 
 #define MAKELANGID(p, s) ((((WORD)(s)) << 10) | (WORD)(p))
 
-#define PRIMARYLANGID(l) ((WORD)(l) & 0x3ff)
+#define PRIMARYLANGID(l) ((WORD)(l)&0x3ff)
 #define SUBLANGID(l)     ((WORD)(l) >> 10)
 
 #define LANGIDFROMLCID(lcid) ((WORD)(lcid))
@@ -613,4 +613,4 @@ extern "C"
 }
 #endif //__cplusplus
 
-#endif//_WINNLS_H_
+#endif //_WINNLS_H_

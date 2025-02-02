@@ -30,7 +30,6 @@ typedef std::lock_guard<std::recursive_mutex> SAutoLock;
 
 using namespace swinx;
 
-
 SConnMgr *SConnMgr::instance()
 {
     if (!s_connMgr)
@@ -44,7 +43,6 @@ SConnMgr *SConnMgr::instance()
     }
     return s_connMgr;
 }
-
 
 //----------------------------------------------------------
 SConnMgr::SConnMgr()
@@ -101,7 +99,6 @@ SConnection *SConnMgr::getConnection(pthread_t tid_, int screenNum)
     }
 }
 
-
 static uint32_t GetDoubleClickSpan(xcb_connection_t *connection, xcb_screen_t *screen)
 {
     uint32_t ret = 400;
@@ -128,14 +125,12 @@ void SConnection::readXResources()
 {
     int offset = 0;
     std::stringstream resources;
-    while(1) {
-        xcb_get_property_reply_t *reply =
-            xcb_get_property_reply(connection,
-                xcb_get_property_unchecked(connection, false, screen->root,
-                                 XCB_ATOM_RESOURCE_MANAGER,
-                                 XCB_ATOM_STRING, offset/4, 8192), NULL);
+    while (1)
+    {
+        xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, xcb_get_property_unchecked(connection, false, screen->root, XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, offset / 4, 8192), NULL);
         bool more = false;
-        if (reply && reply->format == 8 && reply->type == XCB_ATOM_STRING) {
+        if (reply && reply->format == 8 && reply->type == XCB_ATOM_STRING)
+        {
             int len = xcb_get_property_value_length(reply);
             resources << std::string((const char *)xcb_get_property_value(reply), len);
             offset += len;
@@ -151,9 +146,11 @@ void SConnection::readXResources()
 
     std::string line;
     static const char kDpiDesc[] = "Xft.dpi:\t";
-    while (std::getline(resources, line, '\n')) {
-        if(line.length() > ARRAYSIZE(kDpiDesc)-1 && strncmp(line.c_str(),kDpiDesc,ARRAYSIZE(kDpiDesc)-1)==0){
-            m_forceDpi = atoi(line.c_str()+ARRAYSIZE(kDpiDesc)-1);
+    while (std::getline(resources, line, '\n'))
+    {
+        if (line.length() > ARRAYSIZE(kDpiDesc) - 1 && strncmp(line.c_str(), kDpiDesc, ARRAYSIZE(kDpiDesc) - 1) == 0)
+        {
+            m_forceDpi = atoi(line.c_str() + ARRAYSIZE(kDpiDesc) - 1);
         }
     }
 }
@@ -191,39 +188,41 @@ SConnection::SConnection(int screenNum)
 
     {
         xcb_depth_iterator_t depth_iter = xcb_screen_allowed_depths_iterator(screen);
-        for (; depth_iter.rem && rgba_visual == 0; xcb_depth_next(&depth_iter)) {
-            if (depth_iter.data->depth == 32) {
+        for (; depth_iter.rem && rgba_visual == 0; xcb_depth_next(&depth_iter))
+        {
+            if (depth_iter.data->depth == 32)
+            {
                 xcb_visualtype_iterator_t visual_iter = xcb_depth_visuals_iterator(depth_iter.data);
-                for (; visual_iter.rem; xcb_visualtype_next(&visual_iter)) {
-                    xcb_visualtype_t* visual_type = visual_iter.data;
-                    if (visual_type->_class == XCB_VISUAL_CLASS_TRUE_COLOR &&
-                        visual_type->red_mask == 0xFF0000 &&
-                        visual_type->green_mask == 0x00FF00 &&
-                        visual_type->blue_mask == 0x0000FF) {
+                for (; visual_iter.rem; xcb_visualtype_next(&visual_iter))
+                {
+                    xcb_visualtype_t *visual_type = visual_iter.data;
+                    if (visual_type->_class == XCB_VISUAL_CLASS_TRUE_COLOR && visual_type->red_mask == 0xFF0000 && visual_type->green_mask == 0x00FF00 && visual_type->blue_mask == 0x0000FF)
+                    {
                         rgba_visual = visual_type;
                         break;
                     }
                 }
             }
         }
-        if(rgba_visual)
+        if (rgba_visual)
             SLOG_STMI() << "32 bit visual id=" << rgba_visual->visual_id;
     }
     readXResources();
     initializeXFixes();
-    if (rgba_visual) {//get composited for screen
+    if (rgba_visual)
+    { // get composited for screen
         char szAtom[50];
         sprintf(szAtom, "_NET_WM_CM_S%d", screenNum);
-        xcb_atom_t atom = SAtoms::internAtom(connection, FALSE, szAtom);        
+        xcb_atom_t atom = SAtoms::internAtom(connection, FALSE, szAtom);
         xcb_get_selection_owner_cookie_t owner_cookie = xcb_get_selection_owner(connection, atom);
-        xcb_get_selection_owner_reply_t* owner_reply = xcb_get_selection_owner_reply(connection, owner_cookie, NULL);
-        m_bComposited =  owner_reply->owner!=0;
+        xcb_get_selection_owner_reply_t *owner_reply = xcb_get_selection_owner_reply(connection, owner_cookie, NULL);
+        m_bComposited = owner_reply->owner != 0;
         free(owner_reply);
-        SLOG_STMI()<<"enable composite="<<m_bComposited;
+        SLOG_STMI() << "enable composite=" << m_bComposited;
     }
     m_tid = GetCurrentThreadId();
 
-    atoms.Init(connection,screenNum);    
+    atoms.Init(connection, screenNum);
     m_tsDoubleSpan = GetDoubleClickSpan(connection, screen);
 
     m_bQuit = false;
@@ -238,7 +237,7 @@ SConnection::SConnection(int screenNum)
     m_deskBmp = CreateCompatibleBitmap(m_deskDC, 1, 1);
     SelectObject(m_deskDC, m_deskBmp);
 
-    memset(&m_caretInfo,0, sizeof(m_caretInfo));
+    memset(&m_caretInfo, 0, sizeof(m_caretInfo));
 
     m_rcWorkArea.left = m_rcWorkArea.top = 0;
     m_rcWorkArea.right = screen->width_in_pixels;
@@ -247,12 +246,10 @@ SConnection::SConnection(int screenNum)
     m_evtSync = CreateEventA(nullptr, FALSE, FALSE, nullptr);
     m_trdEvtReader = std::move(std::thread(std::bind(&readProc, this)));
 
-    
     m_keyboard = new SKeyboard(this);
     m_trayIconMgr = new STrayIconMgr(this);
     m_clipboard = new SClipboard(this);
 }
-
 
 SConnection::~SConnection()
 {
@@ -270,44 +267,41 @@ SConnection::~SConnection()
     }
     m_sysCursor.clear();
 
-
     delete m_deskDC;
     DeleteObject(m_deskBmp);
     DestroyCaret();
 
-    SLOG_STMI()<<"quit sconnection";
-    //m_bQuit = true;
+    SLOG_STMI() << "quit sconnection";
+    // m_bQuit = true;
 
     xcb_window_t hTmp = xcb_generate_id(connection);
     xcb_create_window(connection,
-                                     XCB_COPY_FROM_PARENT,            // depth -- same as root
-                                     hTmp,                        // window id
-                                     screen->root,                   // parent window id
-                                     0,0,3,3,
-                                     0,                               // border width
-                                     XCB_WINDOW_CLASS_INPUT_ONLY,   // window class
-                                     screen->root_visual, // visual
-                                     0,                               // value mask
-                                     0);                             // value list
+                      XCB_COPY_FROM_PARENT, // depth -- same as root
+                      hTmp,                 // window id
+                      screen->root,         // parent window id
+                      0, 0, 3, 3,
+                      0,                           // border width
+                      XCB_WINDOW_CLASS_INPUT_ONLY, // window class
+                      screen->root_visual,         // visual
+                      0,                           // value mask
+                      0);                          // value list
 
     // the hWnd is valid window id.
     xcb_client_message_event_t client_msg_event = {
-        XCB_CLIENT_MESSAGE,          //.response_type
-        32,                          //.format
-        0,                           //.sequence
-        (xcb_window_t)hTmp,          //.window
-        atoms.WM_DISCONN //.type
+        XCB_CLIENT_MESSAGE, //.response_type
+        32,                 //.format
+        0,                  //.sequence
+        (xcb_window_t)hTmp, //.window
+        atoms.WM_DISCONN    //.type
     };
     xcb_send_event(connection, 0, hTmp, XCB_EVENT_MASK_NO_EVENT, (const char *)&client_msg_event);
     xcb_flush(connection);
     m_trdEvtReader.join();
-    SLOG_STMI()<<"event reader quited";
+    SLOG_STMI() << "event reader quited";
 
-    xcb_destroy_window(connection,hTmp);
+    xcb_destroy_window(connection, hTmp);
     xcb_flush(connection);
     xcb_disconnect(connection);
-
- 
 
     for (auto it : m_msgQueue)
     {
@@ -331,19 +325,17 @@ SConnection::~SConnection()
 
 void SConnection::initializeXFixes()
 {
-    xcb_generic_error_t* error = 0;
-    const xcb_query_extension_reply_t* reply = xcb_get_extension_data(connection, &xcb_xfixes_id);
+    xcb_generic_error_t *error = 0;
+    const xcb_query_extension_reply_t *reply = xcb_get_extension_data(connection, &xcb_xfixes_id);
     if (!reply || !reply->present)
         return;
 
     xfixes_first_event = reply->first_event;
-    xcb_xfixes_query_version_cookie_t xfixes_query_cookie = xcb_xfixes_query_version(connection,
-        XCB_XFIXES_MAJOR_VERSION,
-        XCB_XFIXES_MINOR_VERSION);
-    xcb_xfixes_query_version_reply_t* xfixes_query = xcb_xfixes_query_version_reply(connection,
-        xfixes_query_cookie, &error);
-    if (!xfixes_query || error || xfixes_query->major_version < 2) {
-        SLOG_STMW()<<"SConnection: Failed to initialize XFixes";
+    xcb_xfixes_query_version_cookie_t xfixes_query_cookie = xcb_xfixes_query_version(connection, XCB_XFIXES_MAJOR_VERSION, XCB_XFIXES_MINOR_VERSION);
+    xcb_xfixes_query_version_reply_t *xfixes_query = xcb_xfixes_query_version_reply(connection, xfixes_query_cookie, &error);
+    if (!xfixes_query || error || xfixes_query->major_version < 2)
+    {
+        SLOG_STMW() << "SConnection: Failed to initialize XFixes";
         free(error);
         xfixes_first_event = 0;
     }
@@ -373,17 +365,17 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
     }
     if (!m_bBlockTimer)
     {
-        static const int kMaxDalayMsg = 5;//max delay ms for a timer.
+        static const int kMaxDalayMsg = 5; // max delay ms for a timer.
         std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
         int msgQueueSize = (int)m_msgQueue.size();
-        int elapse2 = elapse + std::min(msgQueueSize,kMaxDalayMsg);
+        int elapse2 = elapse + std::min(msgQueueSize, kMaxDalayMsg);
         POINT pt;
         GetCursorPos(&pt);
         for (auto &it : m_lstTimer)
         {
             if (it.fireRemain <= elapse2)
             {
-                    // fire timer event
+                // fire timer event
                 Msg *pMsg = new Msg;
                 pMsg->hwnd = it.hWnd;
                 pMsg->message = WM_TIMER;
@@ -424,8 +416,9 @@ bool SConnection::waitMsg()
 }
 
 DWORD SConnection::GetMsgPos() const
-{//todo:hjx
-    if (m_msgPeek) {
+{ // todo:hjx
+    if (m_msgPeek)
+    {
         return MAKELONG(m_msgPeek->pt.x, m_msgPeek->pt.y);
     }
     return 0;
@@ -433,7 +426,8 @@ DWORD SConnection::GetMsgPos() const
 
 LONG SConnection::GetMsgTime() const
 {
-    if (m_msgPeek) {
+    if (m_msgPeek)
+    {
         return m_msgPeek->time;
     }
     return GetTickCount();
@@ -503,26 +497,32 @@ DWORD SConnection::GetQueueStatus(UINT flags)
 }
 
 class DefEvtChecker : public IEventChecker {
-public:
+  public:
     int type;
-    DefEvtChecker(int _type) :type(_type) {}
+    DefEvtChecker(int _type)
+        : type(_type)
+    {
+    }
 
-    bool checkEvent(xcb_generic_event_t* e) const {
+    bool checkEvent(xcb_generic_event_t *e) const
+    {
         return e->response_type == type;
     }
 };
-xcb_generic_event_t* SConnection::checkEvent(int type)
+xcb_generic_event_t *SConnection::checkEvent(int type)
 {
     DefEvtChecker checker(type);
     return checkEvent(&checker);
 }
 
-xcb_generic_event_t* SConnection::checkEvent(IEventChecker* checker)
+xcb_generic_event_t *SConnection::checkEvent(IEventChecker *checker)
 {
     std::unique_lock<std::mutex> lock(m_mutex4Evt);
-    for (auto it = m_evtQueue.begin(); it != m_evtQueue.end(); it++) {
-        if (checker->checkEvent(*it)) {
-            xcb_generic_event_t* ret = *it;
+    for (auto it = m_evtQueue.begin(); it != m_evtQueue.end(); it++)
+    {
+        if (checker->checkEvent(*it))
+        {
+            xcb_generic_event_t *ret = *it;
             m_evtQueue.erase(it);
             return ret;
         }
@@ -640,10 +640,11 @@ BOOL SConnection::TranslateMessage(const MSG *pMsg)
     if (pMsg->message == WM_KEYDOWN || pMsg->message == WM_SYSKEYDOWN)
     {
         char c = m_keyboard->scanCodeToAscii(HIWORD(pMsg->lParam));
-        if(c!=0 && !GetKeyState(VK_CONTROL) && !GetKeyState(VK_MENU)){
+        if (c != 0 && !GetKeyState(VK_CONTROL) && !GetKeyState(VK_MENU))
+        {
             std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
             Msg *msg = new Msg;
-            msg->message = pMsg->message == WM_KEYDOWN?WM_CHAR:WM_SYSCHAR;
+            msg->message = pMsg->message == WM_KEYDOWN ? WM_CHAR : WM_SYSCHAR;
             msg->hwnd = pMsg->hwnd;
             msg->wParam = c;
             msg->lParam = pMsg->lParam;
@@ -721,25 +722,24 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         else
         {
             m_msgQueue.erase(it);
-            if(m_msgPeek->message == WM_PAINT)
+            if (m_msgPeek->message == WM_PAINT)
             {
-                static const uint64_t kFrameInterval = 15;//15 interval for 66 frame per second
+                static const uint64_t kFrameInterval = 15; // 15 interval for 66 frame per second
                 if (m_msgQueue.empty() || m_tsLastPaint == -1 || (GetTickCount64() - m_msgPeek->time) >= kFrameInterval)
                     m_tsLastPaint = m_msgPeek->time;
                 else
                 {
-                    m_msgPeek=nullptr;
-                    BOOL bRet = peekMsg(pMsg,hWnd,wMsgFilterMin,wMsgFilterMax,wRemoveMsg);
-                    m_msgQueue.push_back(msg);//insert paint message back.
+                    m_msgPeek = nullptr;
+                    BOOL bRet = peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+                    m_msgQueue.push_back(msg); // insert paint message back.
                     SetEvent(m_evtSync);
                     return bRet;
                 }
             }
             m_bMsgNeedFree = true;
-            
         }
         memcpy(pMsg, (MSG *)m_msgPeek, sizeof(MSG));
-        if (!m_msgQueue.empty())//wake up the next waitMsg.
+        if (!m_msgQueue.empty()) // wake up the next waitMsg.
             SetEvent(m_evtSync);
         return TRUE;
     }
@@ -775,10 +775,11 @@ void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp)
     SetEvent(m_evtSync);
 }
 
-void SConnection::postMsg2(BOOL bWideChar,HWND hWnd, UINT message, WPARAM wp, LPARAM lp, MsgReply *reply)
+void SConnection::postMsg2(BOOL bWideChar, HWND hWnd, UINT message, WPARAM wp, LPARAM lp, MsgReply *reply)
 {
     std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
-    if(!bWideChar){
+    if (!bWideChar)
+    {
         Msg *pMsg = new Msg(reply);
         pMsg->hwnd = hWnd;
         pMsg->message = message;
@@ -786,7 +787,9 @@ void SConnection::postMsg2(BOOL bWideChar,HWND hWnd, UINT message, WPARAM wp, LP
         pMsg->lParam = lp;
         GetCursorPos(&pMsg->pt);
         m_msgQueue.push_back(pMsg);
-    }else{
+    }
+    else
+    {
         MsgW2A *pMsg = new MsgW2A(reply);
         pMsg->orgMsg.message = message;
         pMsg->orgMsg.wParam = wp;
@@ -808,7 +811,7 @@ BOOL SConnection::CreateCaret(HWND hWnd, HBITMAP hBitmap, int nWidth, int nHeigh
 {
     DestroyCaret();
     m_caretInfo.hOwner = hWnd;
-    if (hBitmap == (HBITMAP)1) //windows api support hBitmap set to 1 to indicator a gray caret, ignore it.
+    if (hBitmap == (HBITMAP)1) // windows api support hBitmap set to 1 to indicator a gray caret, ignore it.
         hBitmap = nullptr;
     m_caretInfo.hBmp = RefGdiObj(hBitmap);
     m_caretInfo.nWidth = nWidth;
@@ -819,7 +822,8 @@ BOOL SConnection::CreateCaret(HWND hWnd, HBITMAP hBitmap, int nWidth, int nHeigh
 
 BOOL SConnection::DestroyCaret()
 {
-    if (m_caretInfo.nVisible>0) {
+    if (m_caretInfo.nVisible > 0)
+    {
         KillTimer(m_caretInfo.hOwner, TM_CARET);
     }
     DeleteObject(m_caretInfo.hBmp);
@@ -831,34 +835,40 @@ BOOL SConnection::DestroyCaret()
     return TRUE;
 }
 
-BOOL SConnection::ShowCaret(HWND hWnd) {
+BOOL SConnection::ShowCaret(HWND hWnd)
+{
     if (hWnd && hWnd != m_caretInfo.hOwner)
         return FALSE;
     m_caretInfo.nVisible++;
-    if (m_caretInfo.nVisible == 1) {
+    if (m_caretInfo.nVisible == 1)
+    {
         SetTimer(hWnd, TM_CARET, m_caretBlinkTime, NULL);
     }
     return TRUE;
 }
 
-BOOL SConnection::HideCaret(HWND hWnd) {
+BOOL SConnection::HideCaret(HWND hWnd)
+{
     if (hWnd && hWnd != m_caretInfo.hOwner)
         return FALSE;
     m_caretInfo.nVisible--;
 
-    if (m_caretInfo.nVisible ==0) {
+    if (m_caretInfo.nVisible == 0)
+    {
         KillTimer(hWnd, TM_CARET);
     }
     return TRUE;
 }
 
-BOOL SConnection::SetCaretPos(int X, int Y) {
+BOOL SConnection::SetCaretPos(int X, int Y)
+{
     m_caretInfo.x = X;
     m_caretInfo.y = Y;
     return TRUE;
 }
 
-BOOL SConnection::GetCaretPos(LPPOINT lpPoint) {
+BOOL SConnection::GetCaretPos(LPPOINT lpPoint)
+{
     if (!lpPoint)
         return FALSE;
     lpPoint->x = m_caretInfo.x;
@@ -866,24 +876,25 @@ BOOL SConnection::GetCaretPos(LPPOINT lpPoint) {
     return TRUE;
 }
 
-void SConnection::SetCaretBlinkTime(UINT blinkTime) {
+void SConnection::SetCaretBlinkTime(UINT blinkTime)
+{
     m_caretBlinkTime = blinkTime;
 }
 
-
 void SConnection::EnableDragDrop(HWND hWnd, BOOL enable)
 {
-    if (enable) {
+    if (enable)
+    {
         xcb_atom_t atm = SDragDrop::xdnd_version;
-        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd,
-            atoms.XdndAware, XCB_ATOM_ATOM, 32, 1, &atm);
+        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.XdndAware, XCB_ATOM_ATOM, 32, 1, &atm);
     }
-    else {
+    else
+    {
         xcb_delete_property(connection, hWnd, atoms.XdndAware);
     }
 }
 
-void SConnection::SendXdndStatus(HWND hTarget,HWND hSource, BOOL accept, DWORD dwEffect)
+void SConnection::SendXdndStatus(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect)
 {
     xcb_client_message_event_t response;
     response.response_type = XCB_CLIENT_MESSAGE;
@@ -892,14 +903,12 @@ void SConnection::SendXdndStatus(HWND hTarget,HWND hSource, BOOL accept, DWORD d
     response.format = 32;
     response.type = atoms.XdndStatus;
     response.data.data32[0] = hTarget;
-    response.data.data32[1] = accept?1:0; // flags
-    response.data.data32[2] = 0; // x, y
-    response.data.data32[3] = 0; // w, h
+    response.data.data32[1] = accept ? 1 : 0;              // flags
+    response.data.data32[2] = 0;                           // x, y
+    response.data.data32[3] = 0;                           // w, h
     response.data.data32[4] = XdndEffect2Action(dwEffect); // action
-    xcb_send_event(connection, false, hSource,
-        XCB_EVENT_MASK_NO_EVENT, (const char*)&response);
+    xcb_send_event(connection, false, hSource, XCB_EVENT_MASK_NO_EVENT, (const char *)&response);
 }
-
 
 void SConnection::SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect)
 {
@@ -910,10 +919,9 @@ void SConnection::SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD 
     response.format = 32;
     response.type = atoms.XdndFinished;
     response.data.data32[0] = hTarget;
-    response.data.data32[1] = accept ? 1 : 0; // flags
+    response.data.data32[1] = accept ? 1 : 0;              // flags
     response.data.data32[2] = XdndEffect2Action(dwEffect); // action
-    xcb_send_event(connection, false, hSource,
-        XCB_EVENT_MASK_NO_EVENT, (const char*)&response);
+    xcb_send_event(connection, false, hSource, XCB_EVENT_MASK_NO_EVENT, (const char *)&response);
 }
 
 xcb_atom_t SConnection::clipFormat2Atom(UINT uFormat)
@@ -954,29 +962,32 @@ uint32_t SConnection::atom2ClipFormat(xcb_atom_t atom)
 
 std::shared_ptr<std::vector<char>> SConnection::readXdndSelection(uint32_t fmt)
 {
-    return m_clipboard->getDataInFormat(atoms.XdndSelection,clipFormat2Atom(fmt));
+    return m_clipboard->getDataInFormat(atoms.XdndSelection, clipFormat2Atom(fmt));
 }
 
 void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
 {
     KillWindowTimer(hWnd);
-    if(GetCapture()==hWnd){
+    if (GetCapture() == hWnd)
+    {
         ReleaseCapture();
     }
-    if (GetCaretInfo()->hOwner == hWnd) {
-		DestroyCaret();
-	}
+    if (GetCaretInfo()->hOwner == hWnd)
+    {
+        DestroyCaret();
+    }
     if (hWnd == m_hFocus)
     {
         m_hFocus = 0;
     }
-    if(m_hWndActive == hWnd){
+    if (m_hWndActive == hWnd)
+    {
         m_hWndActive = 0;
     }
     m_wndCursor.erase(hWnd);
     xcb_destroy_window(connection, hWnd);
     xcb_free_colormap(connection, wnd->cmap);
-    wnd->cmap=0;
+    wnd->cmap = 0;
     xcb_flush(connection);
 }
 
@@ -1021,7 +1032,7 @@ void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
 {
     if (!hParent)
     {
-        if(m_hWndActive)
+        if (m_hWndActive)
             hWnd = m_hWndActive;
         else
             hParent = screen->root;
@@ -1031,7 +1042,8 @@ void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
     {
         xcb_icccm_set_wm_transient_for(connection, hWnd, hParent);
     }
-    else if(hParent){
+    else if (hParent)
+    {
         xcb_reparent_window(connection, hWnd, hParent, 0, 0);
     }
     xcb_flush(connection);
@@ -1061,21 +1073,28 @@ void SConnection::AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESUL
     }
 }
 
-class PropertyNotifyEvent : public IEventChecker{
-public:
+class PropertyNotifyEvent : public IEventChecker {
+  public:
     PropertyNotifyEvent(xcb_window_t win, xcb_atom_t property)
-        : window(win), type(XCB_PROPERTY_NOTIFY), atom(property) {}
+        : window(win)
+        , type(XCB_PROPERTY_NOTIFY)
+        , atom(property)
+    {
+    }
     xcb_window_t window;
     int type;
     xcb_atom_t atom;
-    bool checkEvent(xcb_generic_event_t* event) const {
+    bool checkEvent(xcb_generic_event_t *event) const
+    {
         if (!event)
             return false;
-        if ((event->response_type & ~0x80) != type) {
+        if ((event->response_type & ~0x80) != type)
+        {
             return false;
         }
-        else {
-            xcb_property_notify_event_t* pn = (xcb_property_notify_event_t*)event;
+        else
+        {
+            xcb_property_notify_event_t *pn = (xcb_property_notify_event_t *)event;
             if ((pn->window == window) && (pn->atom == atom))
                 return true;
         }
@@ -1083,7 +1102,8 @@ public:
     }
 };
 
-xcb_timestamp_t SConnection::getSectionTs() {
+xcb_timestamp_t SConnection::getSectionTs()
+{
     return m_tsSelection;
 }
 
@@ -1147,8 +1167,9 @@ BOOL SConnection::KillTimer(HWND hWnd, UINT_PTR id)
         }
     }
 
-    if(bRet){
-        //remove timer from message queue.
+    if (bRet)
+    {
+        // remove timer from message queue.
         auto it = m_msgQueue.begin();
         while (it != m_msgQueue.end())
         {
@@ -1181,20 +1202,21 @@ HWND SConnection::SetCapture(HWND hCapture)
     if (hCapture == m_hWndCapture)
         return ret;
     xcb_grab_pointer_cookie_t cookie = xcb_grab_pointer(connection,
-                     1, // 这个标志位表示不使用对子窗口的事件
-                     hCapture, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION,
-                     XCB_GRAB_MODE_ASYNC, // 异步捕获
-                     XCB_GRAB_MODE_ASYNC,
-                     XCB_NONE,        // 捕获事件的窗口
-                     XCB_NONE,        // 使用默认光标
-                     XCB_CURRENT_TIME // 立即开始捕获
+                                                        1, // 这个标志位表示不使用对子窗口的事件
+                                                        hCapture, XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION,
+                                                        XCB_GRAB_MODE_ASYNC, // 异步捕获
+                                                        XCB_GRAB_MODE_ASYNC,
+                                                        XCB_NONE,        // 捕获事件的窗口
+                                                        XCB_NONE,        // 使用默认光标
+                                                        XCB_CURRENT_TIME // 立即开始捕获
     );
     xcb_grab_pointer_reply_t *reply = xcb_grab_pointer_reply(connection, cookie, NULL);
     bool result = false;
     if (reply)
     {
         result = reply->status == XCB_GRAB_STATUS_SUCCESS;
-        if(!result) SLOG_STMI() << "set capture: reply->status=" << reply->status;
+        if (!result)
+            SLOG_STMI() << "set capture: reply->status=" << reply->status;
         free(reply);
     }
     if (result)
@@ -1202,7 +1224,7 @@ HWND SConnection::SetCapture(HWND hCapture)
         m_hWndCapture = hCapture;
     }
     xcb_flush(connection);
-    //SLOG_STMI() << "set capture:" << hCapture << " result="<<result;
+    // SLOG_STMI() << "set capture:" << hCapture << " result="<<result;
     return ret;
 }
 
@@ -1210,7 +1232,7 @@ BOOL SConnection::ReleaseCapture()
 {
     if (!m_hWndCapture)
         return FALSE;
-    //SLOG_STMI() << "release capture, oldCapture=" << m_hWndCapture;
+    // SLOG_STMI() << "release capture, oldCapture=" << m_hWndCapture;
     m_hWndCapture = 0;
     xcb_ungrab_pointer(connection, XCB_CURRENT_TIME);
     xcb_flush(connection);
@@ -1304,10 +1326,11 @@ end:
     return xcb_cursor;
 }
 
-HCURSOR SConnection::GetCursor() {
+HCURSOR SConnection::GetCursor()
+{
     HWND hWnd = GetActiveWnd();
     auto it = m_wndCursor.find(hWnd);
-    if(it == m_wndCursor.end())
+    if (it == m_wndCursor.end())
         return 0;
     return it->second;
 }
@@ -1315,28 +1338,30 @@ HCURSOR SConnection::GetCursor() {
 HCURSOR SConnection::SetCursor(HCURSOR cursor)
 {
     HWND hWnd = GetActiveWnd();
-    if(!hWnd)
+    if (!hWnd)
         return cursor;
     auto it = m_wndCursor.find(hWnd);
     HCURSOR ret = 0;
-    if(it != m_wndCursor.end()){
+    if (it != m_wndCursor.end())
+    {
         ret = it->second;
-    }else if(cursor == it->second)
+    }
+    else if (cursor == it->second)
     {
         return cursor;
     }
-    SetWindowCursor(hWnd,cursor);
+    SetWindowCursor(hWnd, cursor);
     return ret;
 }
 
 xcb_cursor_t SConnection::getXcbCursor(HCURSOR cursor)
 {
     if (!cursor)
-        cursor = ::LoadCursor(nullptr,IDC_ARROW);
+        cursor = ::LoadCursor(nullptr, IDC_ARROW);
     assert(cursor);
     xcb_cursor_t xcbCursor = 0;
     auto it = m_sysCursor.find(cursor);
-    if ( it!= m_sysCursor.end())
+    if (it != m_sysCursor.end())
     {
         xcbCursor = it->second;
     }
@@ -1345,7 +1370,7 @@ xcb_cursor_t SConnection::getXcbCursor(HCURSOR cursor)
         xcbCursor = createXcbCursor(cursor);
         if (!xcbCursor)
         {
-            SLOG_STMW()<<"create xcb cursor failed!";
+            SLOG_STMW() << "create xcb cursor failed!";
             return 0;
         }
         m_sysCursor.insert(std::make_pair(cursor, xcbCursor));
@@ -1356,22 +1381,23 @@ xcb_cursor_t SConnection::getXcbCursor(HCURSOR cursor)
 BOOL SConnection::SetWindowCursor(HWND hWnd, HCURSOR cursor)
 {
     auto it = m_wndCursor.find(hWnd);
-    if(it != m_wndCursor.end() && it->second == cursor)
+    if (it != m_wndCursor.end() && it->second == cursor)
         return TRUE;
     xcb_cursor_t xcbCursor = getXcbCursor(cursor);
-    if(!xcbCursor)
+    if (!xcbCursor)
         return FALSE;
     uint32_t val[] = { xcbCursor };
     xcb_change_window_attributes(connection, hWnd, XCB_CW_CURSOR, val);
-    m_wndCursor[hWnd]=cursor;//update window cursor
-    //SLOG_STMI()<<"SetWindowCursor, hWnd="<<hWnd<<" cursor="<<cursor<<" xcb cursor="<<xcbCursor;
+    m_wndCursor[hWnd] = cursor; // update window cursor
+    // SLOG_STMI()<<"SetWindowCursor, hWnd="<<hWnd<<" cursor="<<cursor<<" xcb cursor="<<xcbCursor;
     return TRUE;
 }
 
 BOOL SConnection::DestroyCursor(HCURSOR cursor)
 {
-    for(auto &it:m_wndCursor){
-        if(it.second == cursor)
+    for (auto &it : m_wndCursor)
+    {
+        if (it.second == cursor)
             return FALSE;
     }
     // look for sys cursor
@@ -1418,12 +1444,12 @@ HWND SConnection::GetActiveWnd() const
 
 BOOL SConnection::SetActiveWindow(HWND hWnd)
 {
-    if(m_hWndActive == hWnd)
+    if (m_hWndActive == hWnd)
         return FALSE;
     HWND ret = m_hWndActive;
     SetFocus(hWnd);
     m_hWndActive = hWnd;
-    //SLOG_STMI()<<"SetActiveWindow hwnd="<<hWnd;
+    // SLOG_STMI()<<"SetActiveWindow hwnd="<<hWnd;
     return TRUE;
 }
 
@@ -1525,15 +1551,17 @@ BOOL SConnection::GetCursorPos(LPPOINT ppt) const
 
 int SConnection::GetDpi(BOOL bx) const
 {
-    if (!screen) {
+    if (!screen)
+    {
         SLOG_STME() << "screen is null! swinx will crash!!!";
     }
-    if(m_forceDpi != -1){
+    if (m_forceDpi != -1)
+    {
         return m_forceDpi;
     }
     if (bx)
     {
-        return floor(25.4 * screen->width_in_pixels  / screen->width_in_millimeters+0.5f);
+        return floor(25.4 * screen->width_in_pixels / screen->width_in_millimeters + 0.5f);
     }
     else
     {
@@ -1574,10 +1602,10 @@ HWND SConnection::GetForegroundWindow()
 
 BOOL SConnection::SetForegroundWindow(HWND hWnd)
 {
-        uint32_t values[] = { XCB_STACK_MODE_TOP_IF };
-        xcb_configure_window(connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
-        xcb_flush(connection);
-        return TRUE;
+    uint32_t values[] = { XCB_STACK_MODE_TOP_IF };
+    xcb_configure_window(connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
+    xcb_flush(connection);
+    return TRUE;
 }
 
 BOOL SConnection::SetWindowOpacity(HWND hWnd, BYTE byAlpha)
@@ -1616,7 +1644,9 @@ BOOL SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn)
         }
         free(pData);
         xcb_shape_rectangles(connection, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING, XCB_CLIP_ORDERING_UNSORTED, hWnd, 0, 0, rects.size(), &rects[0]);
-    }else{
+    }
+    else
+    {
         xcb_shape_mask(connection, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING, hWnd, 0, 0, XCB_NONE);
     }
     return TRUE;
@@ -1631,8 +1661,9 @@ HKL SConnection::ActivateKeyboardLayout(HKL hKl)
 
 HWND SConnection::SetFocus(HWND hWnd)
 {
-    //TRACE("setfocus hwnd=%d, curfocus=%d\n",(int)hWnd,(int)m_hFocus);
-    if(hWnd == m_hFocus){
+    // TRACE("setfocus hwnd=%d, curfocus=%d\n",(int)hWnd,(int)m_hFocus);
+    if (hWnd == m_hFocus)
+    {
         return hWnd;
     }
     HWND ret = m_hFocus;
@@ -1687,11 +1718,11 @@ DWORD SConnection::XdndAction2Effect(xcb_atom_t action)
     }
     else if (action == atoms.XdndActionCopy)
     {
-        return  DROPEFFECT_COPY;
+        return DROPEFFECT_COPY;
     }
     else if (action == atoms.XdndActionLink)
     {
-        return  DROPEFFECT_LINK;
+        return DROPEFFECT_LINK;
     }
     else
     {
@@ -1699,13 +1730,14 @@ DWORD SConnection::XdndAction2Effect(xcb_atom_t action)
     }
 }
 
-xcb_atom_t SConnection::XdndEffect2Action(DWORD dwEffect){
+xcb_atom_t SConnection::XdndEffect2Action(DWORD dwEffect)
+{
     xcb_atom_t action = XCB_NONE;
-    if(dwEffect & DROPEFFECT_MOVE)
+    if (dwEffect & DROPEFFECT_MOVE)
         action = atoms.XdndActionMove;
-    else if(dwEffect & DROPEFFECT_LINK)
+    else if (dwEffect & DROPEFFECT_LINK)
         action = atoms.XdndActionCopy;
-    else if(dwEffect & DROPEFFECT_COPY)
+    else if (dwEffect & DROPEFFECT_COPY)
         action = atoms.XdndActionCopy;
     return action;
 }
@@ -1719,22 +1751,22 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     {
     case XCB_SELECTION_REQUEST:
     {
-        xcb_selection_request_event_t* e2 = (xcb_selection_request_event_t*)event;
+        xcb_selection_request_event_t *e2 = (xcb_selection_request_event_t *)event;
         m_tsSelection = e2->time;
         m_clipboard->handleSelectionRequest(e2);
         return false;
     }
     case XCB_SELECTION_CLEAR:
     {
-        xcb_selection_clear_event_t* e2 = (xcb_selection_clear_event_t*)event;
+        xcb_selection_clear_event_t *e2 = (xcb_selection_clear_event_t *)event;
         m_tsSelection = e2->time;
         m_clipboard->handleSelectionClear(e2);
         return false;
     }
     case XCB_SELECTION_NOTIFY:
     {
-        //todo:hjx
-        xcb_selection_notify_event_t* e2 = (xcb_selection_notify_event_t*)event;
+        // todo:hjx
+        xcb_selection_notify_event_t *e2 = (xcb_selection_notify_event_t *)event;
         m_tsSelection = e2->time;
         return false;
     }
@@ -1770,7 +1802,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         uint32_t tst = (scanCode << 16);
         int cn = m_keyboard->getRepeatCount();
         pMsg->lParam = (scanCode << 16) | m_keyboard->getRepeatCount();
-        //SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
+        // SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
         break;
     }
     case XCB_KEY_RELEASE:
@@ -1783,7 +1815,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
         pMsg->lParam = scanCode << 16;
-        //SLOG_FMTI("onkeyup, detail=%d,vk=%d", e2->detail, vk);
+        // SLOG_FMTI("onkeyup, detail=%d,vk=%d", e2->detail, vk);
         break;
     }
     case XCB_EXPOSE:
@@ -1814,7 +1846,8 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_PROPERTY_NOTIFY:
     {
         xcb_property_notify_event_t *e2 = (xcb_property_notify_event_t *)event;
-        if (e2->atom == atoms._NET_WORKAREA) {
+        if (e2->atom == atoms._NET_WORKAREA)
+        {
             updateWorkArea();
         }
         else if (e2->atom == atoms._NET_WM_STATE || e2->atom == atoms.WM_STATE)
@@ -1916,7 +1949,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg->wParam = 0;
             pMsg->lParam = MAKELPARAM(e2->width, e2->height);
             GetCursorPos(&pMsg->pt);
-            m_msgQueue.push_back(pMsg);        
+            m_msgQueue.push_back(pMsg);
         }
         pMsg = nullptr;
         break;
@@ -1944,7 +1977,8 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg->wParam = e2->data.data32[0];
             pMsg->lParam = 0;
         }
-        else if (e2->type == atoms.XdndEnter) {
+        else if (e2->type == atoms.XdndEnter)
+        {
             WndObj wndObj = WndMgr::fromHwnd(e2->window);
             if (!wndObj)
                 break;
@@ -1955,21 +1989,23 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             int version = (int)(e2->data.data32[1] >> 24);
             if (version > SDragDrop::xdnd_version)
                 break;
-            SDataObjectProxy* pData = new SDataObjectProxy(this,pMsg2->hFrom,e2->data.data32);
-            SLOG_STMI()<<"####drag enter, init dragData";
+            SDataObjectProxy *pData = new SDataObjectProxy(this, pMsg2->hFrom, e2->data.data32);
+            SLOG_STMI() << "####drag enter, init dragData";
             wndObj->dragData = pData;
 
             POINT pt;
             GetCursorPos(&pt);
             pMsg2->DragEnterData::pt.x = pt.x;
             pMsg2->DragEnterData::pt.y = pt.y;
-            
+
             pMsg = pMsg2;
         }
-        else if (e2->type == atoms.XdndPosition) {
-            //remove old position
+        else if (e2->type == atoms.XdndPosition)
+        {
+            // remove old position
             std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
-            for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++) {
+            for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++)
+            {
                 if ((*it)->message == UM_XDND_DRAG_OVER && (*it)->hwnd == e2->window)
                 {
                     m_msgQueue.erase(it);
@@ -1979,12 +2015,12 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             WndObj wndObj = WndMgr::fromHwnd(e2->window);
             if (!wndObj || !wndObj->dragData)
                 break;
-            SDataObjectProxy* pData = (SDataObjectProxy*)wndObj->dragData;
+            SDataObjectProxy *pData = (SDataObjectProxy *)wndObj->dragData;
             if (pData->getSource() != e2->data.data32[0])
                 break;
             if (e2->data.data32[3] != XCB_NONE)
                 pData->m_targetTime = e2->data.data32[3];
-            DragOverMsg* pMsg2 = new DragOverMsg;
+            DragOverMsg *pMsg2 = new DragOverMsg;
             pMsg2->hwnd = e2->window;
             pMsg2->message = UM_XDND_DRAG_OVER;
             pMsg2->hFrom = e2->data.data32[0];
@@ -1994,33 +2030,37 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg2->DragOverData::pt.y = LOWORD(e2->data.data32[2]);
             pMsg = pMsg2;
         }
-        else if (e2->type == atoms.XdndLeave) {
-            Msg * pMsg2 = new Msg;
+        else if (e2->type == atoms.XdndLeave)
+        {
+            Msg *pMsg2 = new Msg;
             pMsg2->hwnd = e2->window;
             pMsg2->message = UM_XDND_DRAG_LEAVE;
             pMsg2->wParam = e2->data.data32[0];
             pMsg = pMsg2;
         }
-        else if (e2->type == atoms.XdndDrop) {
-            DragDropMsg* pMsg2 = new DragDropMsg;
+        else if (e2->type == atoms.XdndDrop)
+        {
+            DragDropMsg *pMsg2 = new DragDropMsg;
             pMsg2->hwnd = e2->window;
             pMsg2->message = UM_XDND_DRAG_DROP;
             pMsg2->hFrom = e2->data.data32[0];
             pMsg2->wParam = e2->data.data32[4];
             pMsg = pMsg2;
         }
-        else if (e2->type == atoms.XdndFinished) {
+        else if (e2->type == atoms.XdndFinished)
+        {
             pMsg = new Msg;
             pMsg->hwnd = e2->window;
             pMsg->message = UM_XDND_FINISH;
-            pMsg->wParam = e2->data.data32[1];//accept flag
+            pMsg->wParam = e2->data.data32[1]; // accept flag
             pMsg->lParam = XdndAction2Effect(e2->data.data32[2]);
         }
-        else if (e2->type == atoms.XdndStatus) {
+        else if (e2->type == atoms.XdndStatus)
+        {
             pMsg = new Msg;
             pMsg->hwnd = e2->window;
             pMsg->message = UM_XDND_STATUS;
-            pMsg->wParam = e2->data.data32[1];//accept flag
+            pMsg->wParam = e2->data.data32[1]; // accept flag
             pMsg->lParam = XdndAction2Effect(e2->data.data32[4]);
         }
     }
@@ -2037,9 +2077,9 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg->pt.y = e2->event_y;
             if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
             {
-                MapWindowPoints(e2->event,m_hWndCapture,&pMsg->pt,1);
-                pMsg->hwnd=m_hWndCapture;
-            } 
+                MapWindowPoints(e2->event, m_hWndCapture, &pMsg->pt, 1);
+                pMsg->hwnd = m_hWndCapture;
+            }
             pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
             switch (e2->detail)
             {
@@ -2056,19 +2096,27 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             if (e2->detail <= XCB_BUTTON_INDEX_3)
             {
                 uint8_t vk = 0;
-                switch(e2->detail){
-                case XCB_BUTTON_INDEX_1:vk = VK_LBUTTON; break;
-                case XCB_BUTTON_INDEX_2:vk = VK_MBUTTON; break;
-                case XCB_BUTTON_INDEX_3:vk = VK_RBUTTON; break;
+                switch (e2->detail)
+                {
+                case XCB_BUTTON_INDEX_1:
+                    vk = VK_LBUTTON;
+                    break;
+                case XCB_BUTTON_INDEX_2:
+                    vk = VK_MBUTTON;
+                    break;
+                case XCB_BUTTON_INDEX_3:
+                    vk = VK_RBUTTON;
+                    break;
                 }
-                m_keyboard->setKeyState(vk,0x80);
+                m_keyboard->setKeyState(vk, 0x80);
             }
             pMsg->wParam = ButtonState2Mask(e2->state);
             m_tsPrevPress = e2->time;
         }
-        else if (e2->detail == XCB_BUTTON_INDEX_4 || e2->detail == XCB_BUTTON_INDEX_5) {
-            //mouse wheel event
-            //SLOG_STMI() << "mouse wheel, dir = " << (e2->detail == XCB_BUTTON_INDEX_4 ? "up" : "down");
+        else if (e2->detail == XCB_BUTTON_INDEX_4 || e2->detail == XCB_BUTTON_INDEX_5)
+        {
+            // mouse wheel event
+            // SLOG_STMI() << "mouse wheel, dir = " << (e2->detail == XCB_BUTTON_INDEX_4 ? "up" : "down");
             pMsg = new Msg;
             pMsg->hwnd = e2->event;
             pMsg->message = WM_MOUSEWHEEL;
@@ -2085,9 +2133,10 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             vkFlag |= GetKeyState(VK_RBUTTON) ? MK_RBUTTON : 0;
             vkFlag |= GetKeyState(VK_SHIFT) ? MK_SHIFT : 0;
             int delta = e2->detail == XCB_BUTTON_INDEX_4 ? WHEEL_DELTA : -WHEEL_DELTA;
-            pMsg->wParam = MAKEWPARAM(vkFlag,delta);
+            pMsg->wParam = MAKEWPARAM(vkFlag, delta);
         }
-        if(pMsg && !IsWindowEnabled(pMsg->hwnd)){
+        if (pMsg && !IsWindowEnabled(pMsg->hwnd))
+        {
             delete pMsg;
             pMsg = nullptr;
         }
@@ -2104,8 +2153,8 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             pMsg->pt.y = e2->event_y;
             if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
             {
-                MapWindowPoints(e2->event,m_hWndCapture,&pMsg->pt,1);
-                pMsg->hwnd=m_hWndCapture;
+                MapWindowPoints(e2->event, m_hWndCapture, &pMsg->pt, 1);
+                pMsg->hwnd = m_hWndCapture;
             }
             pMsg->lParam = MAKELPARAM(pMsg->pt.x, pMsg->pt.y);
             uint8_t vk = 0;
@@ -2127,7 +2176,8 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             m_keyboard->setKeyState(vk, 0);
             pMsg->wParam = ButtonState2Mask(e2->state);
         }
-        if(pMsg && !IsWindowEnabled(pMsg->hwnd)){
+        if (pMsg && !IsWindowEnabled(pMsg->hwnd))
+        {
             delete pMsg;
             pMsg = nullptr;
         }
@@ -2136,15 +2186,17 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_MOTION_NOTIFY:
     {
         xcb_motion_notify_event_t *e2 = (xcb_motion_notify_event_t *)event;
-        //remove old mouse move
+        // remove old mouse move
         static const int16_t kMinPosDiff = 3;
         WPARAM wp = ButtonState2Mask(e2->state);
         std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
-        for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++) {
+        for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++)
+        {
             if ((*it)->message == WM_MOUSEMOVE && (*it)->hwnd == e2->event && (*it)->wParam == wp)
             {
-                int16_t diff = abs((*it)->pt.x-e2->event_x)+abs((*it)->pt.y-e2->event_y);
-                if(diff <= kMinPosDiff){
+                int16_t diff = abs((*it)->pt.x - e2->event_x) + abs((*it)->pt.y - e2->event_y);
+                if (diff <= kMinPosDiff)
+                {
                     m_msgQueue.erase(it);
                     break;
                 }
@@ -2153,47 +2205,47 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg = new Msg;
         pMsg->hwnd = e2->event;
         pMsg->message = WM_MOUSEMOVE;
-        POINT pt ={e2->event_x,e2->event_y};
+        POINT pt = { e2->event_x, e2->event_y };
         if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
         {
-            //SLOG_STMI()<<"remap mousemove to capture: capture="<<m_hWndCapture<<" event window="<<e2->event;
-            MapWindowPoints(e2->event,m_hWndCapture,&pt,1);
-            pMsg->hwnd=m_hWndCapture;
+            // SLOG_STMI()<<"remap mousemove to capture: capture="<<m_hWndCapture<<" event window="<<e2->event;
+            MapWindowPoints(e2->event, m_hWndCapture, &pt, 1);
+            pMsg->hwnd = m_hWndCapture;
         }
         pMsg->lParam = MAKELPARAM(pt.x, pt.y);
         pMsg->wParam = wp;
         pMsg->time = e2->time;
-        //different from other mouse message, dispatch mousemove dispite whether the target window is disable or not. we need it to generate WM_SETCURSOR
+        // different from other mouse message, dispatch mousemove dispite whether the target window is disable or not. we need it to generate WM_SETCURSOR
         break;
     }
     case XCB_FOCUS_IN:
-	{
-		xcb_focus_in_event_t* e2 = (xcb_focus_in_event_t*)event;
-		pMsg = new Msg;
-		pMsg->hwnd = e2->event;
-		pMsg->message = WM_SETFOCUS;
-		if (m_hFocus != pMsg->hwnd)
-		{
-			pMsg->wParam = (WPARAM)m_hFocus;
-			m_hFocus = e2->event;
-		}
-		pMsg->lParam = 0;
-		break;
-	}
+    {
+        xcb_focus_in_event_t *e2 = (xcb_focus_in_event_t *)event;
+        pMsg = new Msg;
+        pMsg->hwnd = e2->event;
+        pMsg->message = WM_SETFOCUS;
+        if (m_hFocus != pMsg->hwnd)
+        {
+            pMsg->wParam = (WPARAM)m_hFocus;
+            m_hFocus = e2->event;
+        }
+        pMsg->lParam = 0;
+        break;
+    }
     case XCB_FOCUS_OUT:
     {
-		xcb_focus_out_event_t* e2 = (xcb_focus_out_event_t*)event;
-		pMsg = new Msg;
-		pMsg->hwnd = e2->event;
-		pMsg->message = WM_KILLFOCUS;
-		pMsg->wParam = (WPARAM)m_hFocus;
-		pMsg->lParam = 0;
-		if (e2->event == m_hFocus)
-		{
-			m_hFocus = 0;
-		}
-		break;
-	}
+        xcb_focus_out_event_t *e2 = (xcb_focus_out_event_t *)event;
+        pMsg = new Msg;
+        pMsg->hwnd = e2->event;
+        pMsg->message = WM_KILLFOCUS;
+        pMsg->wParam = (WPARAM)m_hFocus;
+        pMsg->lParam = 0;
+        if (e2->event == m_hFocus)
+        {
+            m_hFocus = 0;
+        }
+        break;
+    }
     case XCB_MAP_NOTIFY:
     {
         xcb_map_notify_event_t *e2 = (xcb_map_notify_event_t *)event;
@@ -2214,7 +2266,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     }
     case XCB_MAPPING_NOTIFY:
     {
-        xcb_mapping_notify_event_t* e2 = (xcb_mapping_notify_event_t*)event;
+        xcb_mapping_notify_event_t *e2 = (xcb_mapping_notify_event_t *)event;
         m_keyboard->onMappingNotifyEvent(e2);
         break;
     }
@@ -2246,10 +2298,11 @@ void SConnection::_readProc()
         {
             continue;
         }
-        if((event->response_type& 0x7f)==XCB_CLIENT_MESSAGE && ((xcb_client_message_event_t *)event)->type == atoms.WM_DISCONN){
+        if ((event->response_type & 0x7f) == XCB_CLIENT_MESSAGE && ((xcb_client_message_event_t *)event)->type == atoms.WM_DISCONN)
+        {
             m_bQuit = true;
             SetEvent(m_evtSync);
-            SLOG_STMI()<<"recv WM_DISCONN, quit event reading thread";
+            SLOG_STMI() << "recv WM_DISCONN, quit event reading thread";
             break;
         }
         {
@@ -2267,128 +2320,131 @@ void SConnection::_readProc()
     m_evtQueue.clear();
     m_mutex4Evt.unlock();
 
-    SLOG_STMI()<<"event reader done";
+    SLOG_STMI() << "event reader done";
 }
 
 void SConnection::updateWorkArea()
 {
     memset(&m_rcWorkArea, 0, sizeof(RECT));
-    xcb_get_property_reply_t* workArea =
-        xcb_get_property_reply(connection,
-            xcb_get_property_unchecked(connection, false, screen->root,
-                atoms._NET_WORKAREA,
-                XCB_ATOM_CARDINAL, 0, 1024), NULL);
-    if (workArea && workArea->type == XCB_ATOM_CARDINAL && workArea->format == 32 && workArea->value_len >= 4) {
+    xcb_get_property_reply_t *workArea = xcb_get_property_reply(connection, xcb_get_property_unchecked(connection, false, screen->root, atoms._NET_WORKAREA, XCB_ATOM_CARDINAL, 0, 1024), NULL);
+    if (workArea && workArea->type == XCB_ATOM_CARDINAL && workArea->format == 32 && workArea->value_len >= 4)
+    {
         // If workArea->value_len > 4, the remaining ones seem to be for WM's virtual desktops
         // (don't mess with QXcbVirtualDesktop which represents an X screen).
         // But QScreen doesn't know about that concept.  In reality there could be a
         // "docked" panel (with _NET_WM_STRUT_PARTIAL atom set) on just one desktop.
         // But for now just assume the first 4 values give us the geometry of the
         // "work area", AKA "available geometry"
-        uint32_t* geom = (uint32_t*)xcb_get_property_value(workArea);
+        uint32_t *geom = (uint32_t *)xcb_get_property_value(workArea);
         m_rcWorkArea.left = geom[0];
         m_rcWorkArea.top = geom[1];
         m_rcWorkArea.right = m_rcWorkArea.left + geom[2];
         m_rcWorkArea.bottom = m_rcWorkArea.top + geom[3];
     }
     free(workArea);
-    SLOG_STMI() << "updateWorkArea, rc="<<m_rcWorkArea.left<<","<<m_rcWorkArea.top<<","<<m_rcWorkArea.right<<","<<m_rcWorkArea.bottom;
+    SLOG_STMI() << "updateWorkArea, rc=" << m_rcWorkArea.left << "," << m_rcWorkArea.top << "," << m_rcWorkArea.right << "," << m_rcWorkArea.bottom;
 }
 
-void SConnection::GetWorkArea(RECT* prc)
+void SConnection::GetWorkArea(RECT *prc)
 {
     memcpy(prc, &m_rcWorkArea, sizeof(RECT));
 }
 
-
 //--------------------------------------------------------------------------
 // clipboard api
 
-BOOL
-SConnection::EmptyClipboard() {
+BOOL SConnection::EmptyClipboard()
+{
     return m_clipboard->emptyClipboard();
 }
 
-BOOL
-SConnection::IsClipboardFormatAvailable(_In_ UINT format) {
-    if(!GetClipboardOwner())
+BOOL SConnection::IsClipboardFormatAvailable(_In_ UINT format)
+{
+    if (!GetClipboardOwner())
         return FALSE;
     return m_clipboard->hasFormat(format);
 }
 
-BOOL SConnection::OpenClipboard(HWND hWndNewOwner) {
+BOOL SConnection::OpenClipboard(HWND hWndNewOwner)
+{
     return m_clipboard->openClipboard(hWndNewOwner);
 }
 
-BOOL
-SConnection::CloseClipboard() {
+BOOL SConnection::CloseClipboard()
+{
     return m_clipboard->closeClipboard();
 }
 
-HWND
-SConnection::GetClipboardOwner() {
+HWND SConnection::GetClipboardOwner()
+{
     return m_clipboard->getClipboardOwner();
 }
 
 HANDLE
-SConnection::GetClipboardData(UINT uFormat) {
+SConnection::GetClipboardData(UINT uFormat)
+{
     HANDLE ret = m_clipboard->getClipboardData(uFormat);
-    if (uFormat == CF_UNICODETEXT) {
-        const char* src = (const char*)GlobalLock(ret);
+    if (uFormat == CF_UNICODETEXT)
+    {
+        const char *src = (const char *)GlobalLock(ret);
         size_t len = GlobalSize(ret);
         std::wstring wstr;
         towstring(src, len, wstr);
         GlobalUnlock(ret);
         ret = GlobalReAlloc(ret, wstr.length() * sizeof(wchar_t), 0);
-        void* buf = GlobalLock(ret);
+        void *buf = GlobalLock(ret);
         memcpy(buf, wstr.c_str(), wstr.length() * sizeof(wchar_t));
         GlobalUnlock(ret);
     }
     return ret;
 }
 
-HANDLE SConnection::SetClipboardData( UINT uFormat, HANDLE hMem) {
+HANDLE SConnection::SetClipboardData(UINT uFormat, HANDLE hMem)
+{
     return m_clipboard->setClipboardData(uFormat, hMem);
 }
 
 UINT SConnection::RegisterClipboardFormatA(LPCSTR pszName)
 {
-    return CF_MAX +  SAtoms::internAtom(connection, 0, pszName);
+    return CF_MAX + SAtoms::internAtom(connection, 0, pszName);
 }
 
-BOOL SConnection::IsDropTarget(HWND hWnd) {
+BOOL SConnection::IsDropTarget(HWND hWnd)
+{
     xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, hWnd, atoms.XdndAware, XCB_GET_PROPERTY_TYPE_ANY, 0, 1024);
-    xcb_get_property_reply_t* reply = xcb_get_property_reply(connection, cookie, NULL);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
     int ret = 0;
-    if (reply) {
-        if (reply->type != XCB_NONE) {
-            char* data = (char *)xcb_get_property_value(reply);
-            if (data[0] <= SDragDrop::xdnd_version) {
+    if (reply)
+    {
+        if (reply->type != XCB_NONE)
+        {
+            char *data = (char *)xcb_get_property_value(reply);
+            if (data[0] <= SDragDrop::xdnd_version)
+            {
                 ret = data[0];
             }
         }
         free(reply);
     }
-//    SLOG_STMD() << "IsDropTarget for " << hWnd << " ret=" << ret;
+    //    SLOG_STMD() << "IsDropTarget for " << hWnd << " ret=" << ret;
     return ret;
 }
 
 VOID CALLBACK OnFlashWindowTimeout(HWND hWnd, UINT, UINT_PTR, DWORD)
 {
-
 }
 
 BOOL SConnection::FlashWindowEx(PFLASHWINFO info)
 {
     if (info->dwFlags == FLASHW_STOP)
-    {//stop flash for the window
+    { // stop flash for the window
         changeNetWmState(info->hwnd, false, atoms._NET_WM_STATE_DEMANDS_ATTENTION, 0);
     }
     else
-    {//start flash
+    { // start flash
         changeNetWmState(info->hwnd, true, atoms._NET_WM_STATE_DEMANDS_ATTENTION, 0);
         if (info->dwFlags != FLASHW_TIMER)
-        {//
+        { //
             SetTimer(info->hwnd, TM_FLASH, info->dwTimeout * info->uCount, OnFlashWindowTimeout);
         }
     }

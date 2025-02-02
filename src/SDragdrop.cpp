@@ -14,7 +14,7 @@
  */
 static DWORD OLEDD_GetButtonState(void)
 {
-    BYTE  keyboardState[256];
+    BYTE keyboardState[256];
     DWORD keyMask = 0;
 
     GetKeyboardState(keyboardState);
@@ -42,7 +42,7 @@ static DWORD OLEDD_GetButtonState(void)
 
 static inline BOOL is_droptarget(HWND hwnd)
 {
-    SConnection* conn = SConnMgr::instance()->getConnection();
+    SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->IsDropTarget(hwnd);
 }
 
@@ -58,14 +58,15 @@ static inline BOOL is_droptarget(HWND hwnd)
  */
 LRESULT SDragDrop::TrackStateChange(UINT uMsg, WPARAM wp, LPARAM lp)
 {
-    HWND   hwndNewTarget = 0;
+    HWND hwndNewTarget = 0;
     POINT pt;
 
     /*
      * This method may be called from QueryContinueDrag again,
      * (i.e. by running message loop) so avoid recursive call chain.
      */
-    if (inTrackCall) return 0;
+    if (inTrackCall)
+        return 0;
     inTrackCall = TRUE;
 
     /*
@@ -99,7 +100,8 @@ LRESULT SDragDrop::TrackStateChange(UINT uMsg, WPARAM wp, LPARAM lp)
         {
             drag_over(curTargetHWND, curMousePos.x, curMousePos.y);
         }
-        else {
+        else
+        {
             give_feedback();
         }
     }
@@ -110,7 +112,8 @@ LRESULT SDragDrop::TrackStateChange(UINT uMsg, WPARAM wp, LPARAM lp)
     return 0;
 }
 
-LRESULT SDragDrop::OnXdndStatus(UINT uMsg, WPARAM wp, LPARAM lp) {
+LRESULT SDragDrop::OnXdndStatus(UINT uMsg, WPARAM wp, LPARAM lp)
+{
     if (!wp)
         *pdwEffect = DROPEFFECT_NONE;
     else
@@ -119,13 +122,14 @@ LRESULT SDragDrop::OnXdndStatus(UINT uMsg, WPARAM wp, LPARAM lp) {
     return 0;
 }
 
-LRESULT SDragDrop::OnXdndFinish(UINT uMsg, WPARAM wp, LPARAM lp) {
+LRESULT SDragDrop::OnXdndFinish(UINT uMsg, WPARAM wp, LPARAM lp)
+{
     trackingDone = TRUE;
     if (!wp)
         *pdwEffect = DROPEFFECT_NONE, returnValue = DRAGDROP_S_CANCEL;
     else
         *pdwEffect = lp, returnValue = DRAGDROP_S_DROP;
-//    SLOG_STMI() << "OnXdndFinish, returnValue=" << returnValue;
+    //    SLOG_STMI() << "OnXdndFinish, returnValue=" << returnValue;
     return 0;
 }
 
@@ -138,10 +142,10 @@ void SDragDrop::drag_leave(HWND target)
     leave.format = 32;
     leave.type = conn->atoms.XdndLeave;
     leave.data.data32[0] = m_hWnd;
-    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char*)&leave);
+    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char *)&leave);
 }
 
-static uint32_t getXdndAction(DWORD dwEffect,SConnection *conn)
+static uint32_t getXdndAction(DWORD dwEffect, SConnection *conn)
 {
     if (dwEffect & DROPEFFECT_MOVE)
         return conn->atoms.XdndActionMove;
@@ -153,7 +157,7 @@ static uint32_t getXdndAction(DWORD dwEffect,SConnection *conn)
         return XCB_NONE;
 }
 
-void SDragDrop::drag_over(HWND target,int x,int y)
+void SDragDrop::drag_over(HWND target, int x, int y)
 {
     xcb_client_message_event_t position;
     position.response_type = XCB_CLIENT_MESSAGE;
@@ -164,17 +168,18 @@ void SDragDrop::drag_over(HWND target,int x,int y)
     position.data.data32[0] = m_hWnd;
     position.data.data32[1] = dwKeyState; // reserved, we use it to transfer the key state.
     position.data.data32[2] = MAKELONG(y, x);
-    position.data.data32[3] = XCB_CURRENT_TIME;//time
-    position.data.data32[4] = getXdndAction(dwOKEffect,conn);//suggested action.
-    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char*)&position);
+    position.data.data32[3] = XCB_CURRENT_TIME;                // time
+    position.data.data32[4] = getXdndAction(dwOKEffect, conn); // suggested action.
+    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char *)&position);
 }
 
 void SDragDrop::drag_enter(HWND target)
 {
     assert(dataObject);
     std::vector<xcb_atom_t> types;
-    IEnumFORMATETC* fmt = NULL;
-    if (dataObject->EnumFormatEtc(1, &fmt) == S_OK) {
+    IEnumFORMATETC *fmt = NULL;
+    if (dataObject->EnumFormatEtc(1, &fmt) == S_OK)
+    {
         FORMATETC fmtEtc;
         while (fmt->Next(1, &fmtEtc, NULL) == S_OK)
         {
@@ -192,19 +197,19 @@ void SDragDrop::drag_enter(HWND target)
     enter.format = 32;
     enter.type = conn->atoms.XdndEnter;
     enter.data.data32[0] = m_hWnd;
-    enter.data.data32[1] = xdnd_version <<24;
-    if (types.size() > 3) {
+    enter.data.data32[1] = xdnd_version << 24;
+    if (types.size() > 3)
+    {
         enter.data.data32[1] |= 1;
-        xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, m_hWnd,
-            conn->atoms.XdndTypeList,
-            XCB_ATOM_ATOM, 32, types.size(), (const void*)types.data());
+        xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, m_hWnd, conn->atoms.XdndTypeList, XCB_ATOM_ATOM, 32, types.size(), (const void *)types.data());
     }
-    else {
+    else
+    {
         enter.data.data32[2] = types.size() > 0 ? types.at(0) : 0;
         enter.data.data32[3] = types.size() > 1 ? types.at(1) : 0;
         enter.data.data32[4] = types.size() > 2 ? types.at(2) : 0;
     }
-    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char*)&enter);
+    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char *)&enter);
     drag_over(target, curMousePos.x, curMousePos.y);
 }
 
@@ -221,7 +226,7 @@ void SDragDrop::drag_drop(HWND target, DWORD dwEffect)
     drop.data.data32[2] = XCB_TIME_CURRENT_TIME;
     drop.data.data32[3] = 0;
     drop.data.data32[4] = dwEffect;
-    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char*)&drop);
+    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char *)&drop);
 }
 
 void SDragDrop::drag_end()
@@ -230,7 +235,8 @@ void SDragDrop::drag_end()
     {
         drag_drop(curTargetHWND, dwOKEffect);
     }
-    else {
+    else
+    {
         trackingDone = TRUE;
         *pdwEffect = DROPEFFECT_NONE;
     }
@@ -242,7 +248,7 @@ HRESULT SDragDrop::give_feedback()
     HRESULT hr;
     LPCSTR res = NULL;
     HCURSOR cur;
-    if(!curTargetHWND)
+    if (!curTargetHWND)
         *this->pdwEffect = DROPEFFECT_NONE;
     hr = this->dropSource->GiveFeedback(*this->pdwEffect);
 
@@ -264,14 +270,14 @@ HRESULT SDragDrop::give_feedback()
     return hr;
 }
 
-HRESULT SDragDrop::DoDragDrop(IDataObject* pDataObject, IDropSource* pDropSource, DWORD dwOKEffect, DWORD* pdwEffect)
+HRESULT SDragDrop::DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource, DWORD dwOKEffect, DWORD *pdwEffect)
 {
-    MSG             msg;
+    MSG msg;
     SLOG_FMTD("(%p, %p, %08x, %p)", pDataObject, pDropSource, dwOKEffect, pdwEffect);
 
     if (!pDataObject || !pDropSource || !pdwEffect)
         return E_INVALIDARG;
-    SConnection* conn = SConnMgr::instance()->getConnection();
+    SConnection *conn = SConnMgr::instance()->getConnection();
     /*
      * Setup the drag n drop tracking window.
      */
@@ -304,8 +310,7 @@ HRESULT SDragDrop::DoDragDrop(IDataObject* pDataObject, IDropSource* pDropSource
             trackerInfo.curMousePos.y = msg.pt.y;
             trackerInfo.dwKeyState = OLEDD_GetButtonState();
 
-            if (!trackerInfo.dragEnded &&((msg.message >= WM_KEYFIRST) &&(msg.message <= WM_KEYLAST)
-                || (msg.message >= WM_MOUSEFIRST) && (msg.message <= WM_MOUSELAST)))
+            if (!trackerInfo.dragEnded && ((msg.message >= WM_KEYFIRST) && (msg.message <= WM_KEYLAST) || (msg.message >= WM_MOUSEFIRST) && (msg.message <= WM_MOUSELAST)))
             {
                 /*
                  * When keyboard messages are sent to windows on this thread, we
@@ -313,8 +318,7 @@ HRESULT SDragDrop::DoDragDrop(IDataObject* pDataObject, IDropSource* pDropSource
                  * in the case of the Escape key, we also notify the drop source
                  * we give it a special meaning.
                  */
-                if ((msg.message == WM_KEYDOWN) &&
-                    (msg.wParam == VK_ESCAPE))
+                if ((msg.message == WM_KEYDOWN) && (msg.wParam == VK_ESCAPE))
                 {
                     trackerInfo.escPressed = TRUE;
                 }
@@ -322,7 +326,7 @@ HRESULT SDragDrop::DoDragDrop(IDataObject* pDataObject, IDropSource* pDropSource
                 /*
                  * Notify the drop source.
                  */
-                trackerInfo.TrackStateChange(msg.message,msg.wParam,msg.lParam);
+                trackerInfo.TrackStateChange(msg.message, msg.wParam, msg.lParam);
             }
             else
             {
@@ -347,57 +351,68 @@ HRESULT SDragDrop::DoDragDrop(IDataObject* pDataObject, IDropSource* pDropSource
     return E_FAIL;
 }
 
-
 //-------------------------------------------------------
-SDataObjectProxy::SDataObjectProxy(SConnection* conn, HWND hWnd, const uint32_t data32[5]) :m_conn(conn), m_hSource(hWnd) {
+SDataObjectProxy::SDataObjectProxy(SConnection *conn, HWND hWnd, const uint32_t data32[5])
+    : m_conn(conn)
+    , m_hSource(hWnd)
+{
     m_targetTime = XCB_CURRENT_TIME;
     m_dwEffect = 0;
     m_dwKeyState = 0;
     initTypeList(data32);
 }
 
-void SDataObjectProxy::initTypeList(const uint32_t data32[5]){
-        if (data32[1] & 1) {
-                xcb_get_property_cookie_t cookie = xcb_get_property(m_conn->connection, false, m_hSource,
-                    m_conn->atoms.XdndTypeList, XCB_ATOM_ATOM,
-                    0, SDragDrop::xdnd_max_type);
-                xcb_get_property_reply_t* reply = xcb_get_property_reply(m_conn->connection, cookie, 0);
-                if (reply && reply->type != XCB_NONE && reply->format == 32) {
-                    int length = xcb_get_property_value_length(reply) / 4;
-                    if (length > SDragDrop::xdnd_max_type)
-                        length = SDragDrop::xdnd_max_type;
+void SDataObjectProxy::initTypeList(const uint32_t data32[5])
+{
+    if (data32[1] & 1)
+    {
+        xcb_get_property_cookie_t cookie = xcb_get_property(m_conn->connection, false, m_hSource, m_conn->atoms.XdndTypeList, XCB_ATOM_ATOM, 0, SDragDrop::xdnd_max_type);
+        xcb_get_property_reply_t *reply = xcb_get_property_reply(m_conn->connection, cookie, 0);
+        if (reply && reply->type != XCB_NONE && reply->format == 32)
+        {
+            int length = xcb_get_property_value_length(reply) / 4;
+            if (length > SDragDrop::xdnd_max_type)
+                length = SDragDrop::xdnd_max_type;
 
-                    xcb_atom_t* atoms = (xcb_atom_t*)xcb_get_property_value(reply);
-                    m_lstTypes.resize(length);
-                    for (int i = 0; i < length; ++i)
-                    {
-                        xcb_get_atom_name_cookie_t cookie= xcb_get_atom_name(m_conn->connection,atoms[i]);
-                        xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(m_conn->connection,cookie,NULL);
-                        if(reply){
-                            SLOG_STMI()<<"atom "<<atoms[i]<<" name is "<< xcb_get_atom_name_name(reply);
-                            free(reply);
-                        }
-                        m_lstTypes[i]= m_conn->atom2ClipFormat(atoms[i]);
-                    }    
-                    SLOG_STMI()<<"dragenter and receive avaiable format count="<<length;
-                }else{
-                    SLOG_STMI()<<"dragenter but receive avaiable format count failed!!";
+            xcb_atom_t *atoms = (xcb_atom_t *)xcb_get_property_value(reply);
+            m_lstTypes.resize(length);
+            for (int i = 0; i < length; ++i)
+            {
+                xcb_get_atom_name_cookie_t cookie = xcb_get_atom_name(m_conn->connection, atoms[i]);
+                xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(m_conn->connection, cookie, NULL);
+                if (reply)
+                {
+                    SLOG_STMI() << "atom " << atoms[i] << " name is " << xcb_get_atom_name_name(reply);
+                    free(reply);
                 }
-                free(reply);
+                m_lstTypes[i] = m_conn->atom2ClipFormat(atoms[i]);
             }
-            else {
-                for (int i = 2; i < 5; i++) {
-                    if (data32[i]) {
-                        uint32_t cf = m_conn->atom2ClipFormat(data32[i]);
-                        if(cf)
-                            m_lstTypes.push_back(cf);
-                    }
-                }
-            }
+            SLOG_STMI() << "dragenter and receive avaiable format count=" << length;
+        }
+        else
+        {
+            SLOG_STMI() << "dragenter but receive avaiable format count failed!!";
+        }
+        free(reply);
     }
+    else
+    {
+        for (int i = 2; i < 5; i++)
+        {
+            if (data32[i])
+            {
+                uint32_t cf = m_conn->atom2ClipFormat(data32[i]);
+                if (cf)
+                    m_lstTypes.push_back(cf);
+            }
+        }
+    }
+}
 
-HRESULT  SDataObjectProxy::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) {
-    if (QueryGetData(pformatetcIn) != S_OK) {
+HRESULT SDataObjectProxy::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
+{
+    if (QueryGetData(pformatetcIn) != S_OK)
+    {
         return DV_E_FORMATETC;
     }
     std::shared_ptr<std::vector<char>> buf = m_conn->readXdndSelection(pformatetcIn->cfFormat);
@@ -407,7 +422,7 @@ HRESULT  SDataObjectProxy::GetData(FORMATETC* pformatetcIn, STGMEDIUM* pmedium) 
     pmedium->hGlobal = GlobalAlloc(0, bufLen);
     if (!pmedium->hGlobal)
         return STG_E_MEDIUMFULL;
-    void* dst = GlobalLock(pmedium->hGlobal);
+    void *dst = GlobalLock(pmedium->hGlobal);
     memcpy(dst, buf->data(), bufLen);
     GlobalUnlock(pmedium->hGlobal);
     return S_OK;

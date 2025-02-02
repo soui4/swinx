@@ -95,7 +95,7 @@
 #define DECLSPEC_NOTHROW
 
 #if defined(__cplusplus) && !defined(CINTERFACE)
- //#define interface               struct FAR
+//#define interface               struct FAR
 
 #ifdef COM_STDMETHOD_CAN_THROW
 #define COM_DECLSPEC_NOTHROW
@@ -193,4 +193,4 @@
 #define DECLARE_INTERFACE_IID_(iface, baseiface, iid) DECLARE_INTERFACE_(iface, baseiface)
 #endif // defined(__cplusplus) && !defined(CINTERFACE)
 
-#endif//_BASE_TYPES_H_
+#endif //_BASE_TYPES_H_

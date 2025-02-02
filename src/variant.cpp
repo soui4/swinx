@@ -1,13 +1,13 @@
 #include <windows.h>
 #include <oaidl.h>
 
-void VariantInit( VARIANTARG* pvarg
-) {
+void VariantInit(VARIANTARG *pvarg)
+{
     memset(pvarg, 0, sizeof(VARIANTARG));
     pvarg->vt = VT_EMPTY;
 }
 
-HRESULT VariantClear(VARIANTARG* prop)
+HRESULT VariantClear(VARIANTARG *prop)
 {
     if (prop->vt == VT_BSTR)
         SysFreeString(prop->bstrVal);
@@ -15,15 +15,15 @@ HRESULT VariantClear(VARIANTARG* prop)
     return S_OK;
 }
 
-HRESULT VariantCopy(VARIANTARG* dest, const VARIANTARG* src)
+HRESULT VariantCopy(VARIANTARG *dest, const VARIANTARG *src)
 {
     HRESULT res = ::VariantClear(dest);
     if (res != S_OK)
         return res;
-    switch (src->vt) {
+    switch (src->vt)
+    {
     case VT_BSTR:
-        dest->bstrVal = SysAllocStringByteLen((LPCSTR)src->bstrVal,
-            SysStringByteLen(src->bstrVal));
+        dest->bstrVal = SysAllocStringByteLen((LPCSTR)src->bstrVal, SysStringByteLen(src->bstrVal));
         if (!dest->bstrVal)
             return E_OUTOFMEMORY;
         dest->vt = VT_BSTR;

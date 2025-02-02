@@ -27,7 +27,7 @@ extern "C"
 #else
 #define SetWindowsHookEx SetWindowsHookExA
 #define SetWindowsHook   SetWindowsHookA
-#endif//UNICODE
+#endif // UNICODE
 
 #ifdef UNICODE
 #define SetWindowsHook   SetWindowsHookW

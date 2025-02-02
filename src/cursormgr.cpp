@@ -7,9 +7,9 @@ static CursorMgr s_cursorMgr;
 enum
 {
     CIDC_NODROP = 1,
-    CIDC_MOVE   = 2,
-    CIDC_COPY   = 3,
-    CIDC_LINK   = 4,
+    CIDC_MOVE = 2,
+    CIDC_COPY = 3,
+    CIDC_LINK = 4,
 
     CIDC_ARROW = 32512,
     CIDC_IBEAM = 32513,
@@ -125,7 +125,6 @@ static bool getStdCursorCData(WORD wId, CData &data)
     return ret;
 }
 
-
 CursorMgr::CursorMgr()
 {
 }
@@ -139,7 +138,8 @@ CursorMgr::~CursorMgr()
     m_stdCursor.clear();
 }
 
-HCURSOR CursorMgr::LoadCursor(LPCSTR lpCursorName){
+HCURSOR CursorMgr::LoadCursor(LPCSTR lpCursorName)
+{
     return s_cursorMgr._LoadCursor(lpCursorName);
 }
 
@@ -168,7 +168,8 @@ HCURSOR CursorMgr::_LoadCursor(LPCSTR lpCursorName)
     return ret;
 }
 
-BOOL CursorMgr::DestroyCursor(HCURSOR cursor){
+BOOL CursorMgr::DestroyCursor(HCURSOR cursor)
+{
     return s_cursorMgr._DestroyCursor(cursor);
 }
 

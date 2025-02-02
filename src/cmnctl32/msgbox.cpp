@@ -17,7 +17,7 @@ class CMessageBox : public CNativeWnd {
         HFONT hOldFont = (HFONT)SelectObject(hDc, hFont);
         //此处SOUI实现和windows API DrawText实现不一致
         RECT rc = { 0, 0, 0, 65535 };
-        rc.right = maxWid;        
+        rc.right = maxWid;
         DrawText(hDc, text, -1, &rc, DT_CALCRECT);
 
         SelectObject(hDc, hOldFont);
@@ -36,7 +36,7 @@ class CMessageBox : public CNativeWnd {
             std::string text;
         };
         std::list<ButtonInfo> _ButtonInfo;
-        //std::unordered_map<int, std::string> _ButtonInfo;
+        // std::unordered_map<int, std::string> _ButtonInfo;
 
         switch (uType & 0x0f)
         {
@@ -101,7 +101,7 @@ class CMessageBox : public CNativeWnd {
         int nScreenWid = info.rcWork.right - info.rcWork.left;
         int nScreenHei = info.rcWork.bottom - info.rcWork.top;
         RECT rcText = CalcTextRect(lpText, nScreenWid);
-        int nContentWid = rcText.right - rcText.left; // 文字宽度
+        int nContentWid = rcText.right - rcText.left;         // 文字宽度
         nContentWid += ((m_iconIdx != -1) ? 49 : 0) + 6 + 20; // 图标宽度
 
         int wndWid = rcWnd.right - rcWnd.left;
@@ -213,7 +213,7 @@ int MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType)
     MSG msg;
     while (GetMessage(&msg, 0, 0, 0))
     {
-        if(CallMsgFilter(&msg, MSGF_MESSAGEBOX))
+        if (CallMsgFilter(&msg, MSGF_MESSAGEBOX))
             continue;
         if (msg.hwnd == hWnd)
         {

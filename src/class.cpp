@@ -11,7 +11,6 @@
 #include "debug.h"
 #define kLogTag "class"
 
-
 UINT GetAtomNameA(ATOM atomName, LPSTR name, int cchLen)
 {
     return ClassMgr::instance()->get_atom_name(atomName, name, cchLen);
@@ -33,12 +32,14 @@ UINT GetAtomNameW(ATOM atomName, LPWSTR name, int cchLen)
     return cbWchar + 1;
 }
 
-ATOM WINAPI FindAtomA(LPCSTR lpString) {
-    CLASS* cls = ClassMgr::instance()->find_class(0, lpString);
+ATOM WINAPI FindAtomA(LPCSTR lpString)
+{
+    CLASS *cls = ClassMgr::instance()->find_class(0, lpString);
     return cls ? cls->atomName : 0;
 }
 
-ATOM WINAPI FindAtomW(LPCWSTR lpString) {
+ATOM WINAPI FindAtomW(LPCWSTR lpString)
+{
     std::string str;
     tostring(lpString, -1, str);
     return FindAtomA(str.c_str());
@@ -52,7 +53,7 @@ ATOM WINAPI RegisterClassExA(const WNDCLASSEXA *wc)
     return ClassMgr::instance()->register_class(wc);
 }
 
-ATOM WINAPI RegisterClassExW(const WNDCLASSEXW* wc)
+ATOM WINAPI RegisterClassExW(const WNDCLASSEXW *wc)
 {
     WNDCLASSEXA wca;
     memcpy(&wca, wc, FIELD_OFFSET(WNDCLASSEXW, lpszMenuName));
@@ -60,7 +61,7 @@ ATOM WINAPI RegisterClassExW(const WNDCLASSEXW* wc)
     char szClsName[MAX_ATOM_LEN] = { 0 };
     char szMenuName[MAX_ATOM_LEN] = { 0 };
     WideCharToMultiByte(CP_UTF8, 0, wc->lpszClassName, -1, szClsName, MAX_ATOM_LEN, NULL, NULL);
-    if(wc->lpszMenuName)
+    if (wc->lpszMenuName)
         WideCharToMultiByte(CP_UTF8, 0, wc->lpszMenuName, -1, szMenuName, MAX_ATOM_LEN, NULL, NULL);
     wca.lpszClassName = szClsName;
     wca.lpszMenuName = szMenuName;
@@ -68,7 +69,8 @@ ATOM WINAPI RegisterClassExW(const WNDCLASSEXW* wc)
     return RegisterClassExA(&wca);
 }
 
-ATOM WINAPI RegisterClassA(const WNDCLASSA* lpWndClass) {
+ATOM WINAPI RegisterClassA(const WNDCLASSA *lpWndClass)
+{
     WNDCLASSEXA wca = { 0 };
     wca.cbSize = sizeof(wca);
     wca.style = lpWndClass->style;
@@ -83,7 +85,8 @@ ATOM WINAPI RegisterClassA(const WNDCLASSA* lpWndClass) {
     return RegisterClassExA(&wca);
 }
 
-ATOM WINAPI RegisterClassW(const WNDCLASSW* lpWndClass) {
+ATOM WINAPI RegisterClassW(const WNDCLASSW *lpWndClass)
+{
     WNDCLASSEXW wca = { 0 };
     wca.cbSize = sizeof(wca);
     wca.style = lpWndClass->style;
@@ -96,22 +99,21 @@ ATOM WINAPI RegisterClassW(const WNDCLASSW* lpWndClass) {
     wca.hbrBackground = lpWndClass->hbrBackground;
     wca.lpszClassName = lpWndClass->lpszClassName;
     return RegisterClassExW(&wca);
-
 }
 
-BOOL WINAPI UnregisterClassA(LPCSTR className, HINSTANCE instance) {
+BOOL WINAPI UnregisterClassA(LPCSTR className, HINSTANCE instance)
+{
     return ClassMgr::instance()->unregister_class(className, instance);
 }
 
-
-BOOL WINAPI UnregisterClassW(LPCWSTR className, HINSTANCE instance) {
+BOOL WINAPI UnregisterClassW(LPCWSTR className, HINSTANCE instance)
+{
     if (IS_INTRESOURCE(className))
         return UnregisterClassA((LPCSTR)className, instance);
     char szClsName[MAX_ATOM_LEN];
     if (0 == WideCharToMultiByte(CP_UTF8, 0, className, -1, szClsName, MAX_ATOM_LEN, NULL, NULL))
         return FALSE;
     return UnregisterClassA(szClsName, instance);
-
 }
 
 /***********************************************************************
@@ -129,7 +131,7 @@ BOOL WINAPI GetClassInfoExA(HINSTANCE hInstance, LPCSTR name, WNDCLASSEXA *wc)
     return ClassMgr::instance()->get_class_info(hInstance, name, wc);
 }
 
-BOOL WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW* wc)
+BOOL WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW *wc)
 {
     ATOM atom;
 
@@ -139,15 +141,18 @@ BOOL WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW* wc)
         return FALSE;
     }
     WNDCLASSEXA wca;
-    if (IS_INTRESOURCE(name)) {
+    if (IS_INTRESOURCE(name))
+    {
         atom = ClassMgr::instance()->get_class_info(hInstance, (LPCSTR)name, &wca);
     }
-    else {
+    else
+    {
         char szClsName[MAX_ATOM_LEN] = { 0 };
         WideCharToMultiByte(CP_UTF8, 0, name, -1, szClsName, MAX_ATOM_LEN, NULL, NULL);
         atom = ClassMgr::instance()->get_class_info(hInstance, szClsName, &wca);
     }
-    if (!atom) {        
+    if (!atom)
+    {
         return FALSE;
     }
     wc->style = wca.style;
@@ -163,31 +168,33 @@ BOOL WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW* wc)
     return TRUE;
 }
 
-ULONG_PTR GetClassLongSize(ATOM atom, int nIndex, int sz) {
-    if (nIndex < 0)
-        return 0;
-    char szName[MAX_ATOM_LEN+1];
-    if (0 == GetAtomNameA(atom, szName, MAX_ATOM_LEN+1))
-        return 0;
-    CLASS* cls = ClassMgr::instance()->find_class(0, szName);
-    if (!cls)
-        return 0;
-    ULONG_PTR ret = 0;
-    memcpy(&ret, (char*)(cls + 1) + nIndex, sz);
-    return ret;
-}
-
-ULONG_PTR SetClassLongSize(ATOM atom, int nIndex, ULONG_PTR data, int sz) {
+ULONG_PTR GetClassLongSize(ATOM atom, int nIndex, int sz)
+{
     if (nIndex < 0)
         return 0;
     char szName[MAX_ATOM_LEN + 1];
     if (0 == GetAtomNameA(atom, szName, MAX_ATOM_LEN + 1))
         return 0;
-    CLASS* cls = ClassMgr::instance()->find_class(0, szName);
+    CLASS *cls = ClassMgr::instance()->find_class(0, szName);
     if (!cls)
         return 0;
     ULONG_PTR ret = 0;
-    memcpy(&ret, (char*)(cls + 1) + nIndex, sz);
-    memcpy((char*)(cls + 1) + nIndex, &data, sz);
+    memcpy(&ret, (char *)(cls + 1) + nIndex, sz);
+    return ret;
+}
+
+ULONG_PTR SetClassLongSize(ATOM atom, int nIndex, ULONG_PTR data, int sz)
+{
+    if (nIndex < 0)
+        return 0;
+    char szName[MAX_ATOM_LEN + 1];
+    if (0 == GetAtomNameA(atom, szName, MAX_ATOM_LEN + 1))
+        return 0;
+    CLASS *cls = ClassMgr::instance()->find_class(0, szName);
+    if (!cls)
+        return 0;
+    ULONG_PTR ret = 0;
+    memcpy(&ret, (char *)(cls + 1) + nIndex, sz);
+    memcpy((char *)(cls + 1) + nIndex, &data, sz);
     return ret;
 }

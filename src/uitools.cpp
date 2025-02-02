@@ -23,84 +23,41 @@
 #include "debug.h"
 #define kLogTag "uitools"
 
-#define max(a,b) (a)>(b)?(a):(b)
-#define min(a,b) (a)<(b)?(a):(b)
-static const signed char LTInnerNormal[] = {
-    -1,           -1,                 -1,                 -1,
-    -1,           COLOR_BTNHIGHLIGHT, COLOR_BTNHIGHLIGHT, -1,
-    -1,           COLOR_3DDKSHADOW,   COLOR_3DDKSHADOW,   -1,
-    -1,           -1,                 -1,                 -1
-};
+#define max(a, b) (a) > (b) ? (a) : (b)
+#define min(a, b) (a) < (b) ? (a) : (b)
+static const signed char LTInnerNormal[] = { -1, -1, -1, -1, -1, COLOR_BTNHIGHLIGHT, COLOR_BTNHIGHLIGHT, -1, -1, COLOR_3DDKSHADOW, COLOR_3DDKSHADOW, -1, -1, -1, -1, -1 };
 
-static const signed char LTOuterNormal[] = {
-    -1,                 COLOR_3DLIGHT,     COLOR_BTNSHADOW, -1,
-    COLOR_BTNHIGHLIGHT, COLOR_3DLIGHT,     COLOR_BTNSHADOW, -1,
-    COLOR_3DDKSHADOW,   COLOR_3DLIGHT,     COLOR_BTNSHADOW, -1,
-    -1,                 COLOR_3DLIGHT,     COLOR_BTNSHADOW, -1
-};
+static const signed char LTOuterNormal[] = { -1, COLOR_3DLIGHT, COLOR_BTNSHADOW, -1, COLOR_BTNHIGHLIGHT, COLOR_3DLIGHT, COLOR_BTNSHADOW, -1, COLOR_3DDKSHADOW, COLOR_3DLIGHT, COLOR_BTNSHADOW, -1, -1, COLOR_3DLIGHT, COLOR_BTNSHADOW, -1 };
 
-static const signed char RBInnerNormal[] = {
-    -1,           -1,                -1,              -1,
-    -1,           COLOR_BTNSHADOW,   COLOR_BTNSHADOW, -1,
-    -1,           COLOR_3DLIGHT,     COLOR_3DLIGHT,   -1,
-    -1,           -1,                -1,              -1
-};
+static const signed char RBInnerNormal[] = { -1, -1, -1, -1, -1, COLOR_BTNSHADOW, COLOR_BTNSHADOW, -1, -1, COLOR_3DLIGHT, COLOR_3DLIGHT, -1, -1, -1, -1, -1 };
 
-static const signed char RBOuterNormal[] = {
-    -1,              COLOR_3DDKSHADOW,  COLOR_BTNHIGHLIGHT, -1,
-    COLOR_BTNSHADOW, COLOR_3DDKSHADOW,  COLOR_BTNHIGHLIGHT, -1,
-    COLOR_3DLIGHT,   COLOR_3DDKSHADOW,  COLOR_BTNHIGHLIGHT, -1,
-    -1,              COLOR_3DDKSHADOW,  COLOR_BTNHIGHLIGHT, -1
-};
+static const signed char RBOuterNormal[] = { -1, COLOR_3DDKSHADOW, COLOR_BTNHIGHLIGHT, -1, COLOR_BTNSHADOW, COLOR_3DDKSHADOW, COLOR_BTNHIGHLIGHT, -1, COLOR_3DLIGHT, COLOR_3DDKSHADOW, COLOR_BTNHIGHLIGHT, -1, -1, COLOR_3DDKSHADOW, COLOR_BTNHIGHLIGHT, -1 };
 
-static const signed char LTInnerSoft[] = {
-    -1,                  -1,                -1,              -1,
-    -1,                  COLOR_3DLIGHT,     COLOR_3DLIGHT,   -1,
-    -1,                  COLOR_BTNSHADOW,   COLOR_BTNSHADOW, -1,
-    -1,                  -1,                -1,              -1
-};
+static const signed char LTInnerSoft[] = { -1, -1, -1, -1, -1, COLOR_3DLIGHT, COLOR_3DLIGHT, -1, -1, COLOR_BTNSHADOW, COLOR_BTNSHADOW, -1, -1, -1, -1, -1 };
 
-static const signed char LTOuterSoft[] = {
-    -1,              COLOR_BTNHIGHLIGHT, COLOR_3DDKSHADOW, -1,
-    COLOR_3DLIGHT,   COLOR_BTNHIGHLIGHT, COLOR_3DDKSHADOW, -1,
-    COLOR_BTNSHADOW, COLOR_BTNHIGHLIGHT, COLOR_3DDKSHADOW, -1,
-    -1,              COLOR_BTNHIGHLIGHT, COLOR_3DDKSHADOW, -1
-};
+static const signed char LTOuterSoft[] = { -1, COLOR_BTNHIGHLIGHT, COLOR_3DDKSHADOW, -1, COLOR_3DLIGHT, COLOR_BTNHIGHLIGHT, COLOR_3DDKSHADOW, -1, COLOR_BTNSHADOW, COLOR_BTNHIGHLIGHT, COLOR_3DDKSHADOW, -1, -1, COLOR_BTNHIGHLIGHT, COLOR_3DDKSHADOW, -1 };
 
-#define RBInnerSoft RBInnerNormal   /* These are the same */
+#define RBInnerSoft RBInnerNormal /* These are the same */
 #define RBOuterSoft RBOuterNormal
 
 static const signed char LTRBOuterMono[] = {
-    -1,           COLOR_WINDOWFRAME, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME,
-    COLOR_WINDOW, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME,
-    COLOR_WINDOW, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME,
-    COLOR_WINDOW, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME,
+    -1, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME, COLOR_WINDOW, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME, COLOR_WINDOW, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME, COLOR_WINDOW, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME, COLOR_WINDOWFRAME,
 };
 
 static const signed char LTRBInnerMono[] = {
-    -1, -1,           -1,           -1,
-    -1, COLOR_WINDOW, COLOR_WINDOW, COLOR_WINDOW,
-    -1, COLOR_WINDOW, COLOR_WINDOW, COLOR_WINDOW,
-    -1, COLOR_WINDOW, COLOR_WINDOW, COLOR_WINDOW,
+    -1, -1, -1, -1, -1, COLOR_WINDOW, COLOR_WINDOW, COLOR_WINDOW, -1, COLOR_WINDOW, COLOR_WINDOW, COLOR_WINDOW, -1, COLOR_WINDOW, COLOR_WINDOW, COLOR_WINDOW,
 };
 
 static const signed char LTRBOuterFlat[] = {
-    -1,                COLOR_BTNSHADOW, COLOR_BTNSHADOW, COLOR_BTNSHADOW,
-    COLOR_BTNFACE,     COLOR_BTNSHADOW, COLOR_BTNSHADOW, COLOR_BTNSHADOW,
-    COLOR_BTNFACE,     COLOR_BTNSHADOW, COLOR_BTNSHADOW, COLOR_BTNSHADOW,
-    COLOR_BTNFACE,     COLOR_BTNSHADOW, COLOR_BTNSHADOW, COLOR_BTNSHADOW,
+    -1, COLOR_BTNSHADOW, COLOR_BTNSHADOW, COLOR_BTNSHADOW, COLOR_BTNFACE, COLOR_BTNSHADOW, COLOR_BTNSHADOW, COLOR_BTNSHADOW, COLOR_BTNFACE, COLOR_BTNSHADOW, COLOR_BTNSHADOW, COLOR_BTNSHADOW, COLOR_BTNFACE, COLOR_BTNSHADOW, COLOR_BTNSHADOW, COLOR_BTNSHADOW,
 };
 
 static const signed char LTRBInnerFlat[] = {
-    -1, -1,              -1,              -1,
-    -1, COLOR_BTNFACE,     COLOR_BTNFACE,     COLOR_BTNFACE,
-    -1, COLOR_BTNFACE,     COLOR_BTNFACE,     COLOR_BTNFACE,
-    -1, COLOR_BTNFACE,     COLOR_BTNFACE,     COLOR_BTNFACE,
+    -1, -1, -1, -1, -1, COLOR_BTNFACE, COLOR_BTNFACE, COLOR_BTNFACE, -1, COLOR_BTNFACE, COLOR_BTNFACE, COLOR_BTNFACE, -1, COLOR_BTNFACE, COLOR_BTNFACE, COLOR_BTNFACE,
 };
 
 /* last COLOR id */
-#define COLOR_MAX   COLOR_MENUBAR
-
+#define COLOR_MAX COLOR_MENUBAR
 
 /***********************************************************************
  *           set_control_clipping
@@ -108,18 +65,18 @@ static const signed char LTRBInnerFlat[] = {
  * Set clipping for a builtin control that uses CS_PARENTDC.
  * Return the previous clip region if any.
  */
-HRGN set_control_clipping( HDC hdc, const RECT *rect )
+HRGN set_control_clipping(HDC hdc, const RECT *rect)
 {
     RECT rc = *rect;
-    HRGN hrgn = CreateRectRgn( 0, 0, 0, 0 );
+    HRGN hrgn = CreateRectRgn(0, 0, 0, 0);
 
-    if (GetClipRgn( hdc, hrgn ) != 1)
+    if (GetClipRgn(hdc, hrgn) != 1)
     {
-        DeleteObject( hrgn );
+        DeleteObject(hrgn);
         hrgn = 0;
     }
-    DPtoLP( hdc, (POINT *)&rc, 2 );
-    IntersectClipRect( hdc, rc.left, rc.top, rc.right, rc.bottom );
+    DPtoLP(hdc, (POINT *)&rc, 2);
+    IntersectClipRect(hdc, rc.left, rc.top, rc.right, rc.bottom);
     return hrgn;
 }
 
@@ -132,8 +89,7 @@ HRGN set_control_clipping( HDC hdc, const RECT *rect )
  *
  * See also comments with UITOOLS_DrawRectEdge()
  */
-static BOOL UITOOLS95_DrawDiagEdge(HDC hdc, LPRECT rc,
-				     UINT uType, UINT uFlags)
+static BOOL UITOOLS95_DrawDiagEdge(HDC hdc, LPRECT rc, UINT uType, UINT uFlags)
 {
     POINT Points[4];
     signed char InnerI, OuterI;
@@ -143,13 +99,10 @@ static BOOL UITOOLS95_DrawDiagEdge(HDC hdc, LPRECT rc,
     int spx, spy;
     int epx, epy;
     int Width = rc->right - rc->left;
-    int Height= rc->bottom - rc->top;
+    int Height = rc->bottom - rc->top;
     int SmallDiam = Width > Height ? Height : Width;
-    BOOL retval = !(   ((uType & BDR_INNER) == BDR_INNER
-                       || (uType & BDR_OUTER) == BDR_OUTER)
-                      && !(uFlags & (BF_FLAT|BF_MONO)) );
-    int add = (LTRBInnerMono[uType & (BDR_INNER|BDR_OUTER)] != -1 ? 1 : 0)
-            + (LTRBOuterMono[uType & (BDR_INNER|BDR_OUTER)] != -1 ? 1 : 0);
+    BOOL retval = !(((uType & BDR_INNER) == BDR_INNER || (uType & BDR_OUTER) == BDR_OUTER) && !(uFlags & (BF_FLAT | BF_MONO)));
+    int add = (LTRBInnerMono[uType & (BDR_INNER | BDR_OUTER)] != -1 ? 1 : 0) + (LTRBOuterMono[uType & (BDR_INNER | BDR_OUTER)] != -1 ? 1 : 0);
 
     /* Init some vars */
     OuterPen = InnerPen = GetStockObject(NULL_PEN);
@@ -157,45 +110,47 @@ static BOOL UITOOLS95_DrawDiagEdge(HDC hdc, LPRECT rc,
     spx = spy = epx = epy = 0; /* Satisfy the compiler... */
 
     /* Determine the colors of the edges */
-    if(uFlags & BF_MONO)
+    if (uFlags & BF_MONO)
     {
-        InnerI = LTRBInnerMono[uType & (BDR_INNER|BDR_OUTER)];
-        OuterI = LTRBOuterMono[uType & (BDR_INNER|BDR_OUTER)];
+        InnerI = LTRBInnerMono[uType & (BDR_INNER | BDR_OUTER)];
+        OuterI = LTRBOuterMono[uType & (BDR_INNER | BDR_OUTER)];
     }
-    else if(uFlags & BF_FLAT)
+    else if (uFlags & BF_FLAT)
     {
-        InnerI = LTRBInnerFlat[uType & (BDR_INNER|BDR_OUTER)];
-        OuterI = LTRBOuterFlat[uType & (BDR_INNER|BDR_OUTER)];
+        InnerI = LTRBInnerFlat[uType & (BDR_INNER | BDR_OUTER)];
+        OuterI = LTRBOuterFlat[uType & (BDR_INNER | BDR_OUTER)];
     }
-    else if(uFlags & BF_SOFT)
+    else if (uFlags & BF_SOFT)
     {
-        if(uFlags & BF_BOTTOM)
+        if (uFlags & BF_BOTTOM)
         {
-            InnerI = RBInnerSoft[uType & (BDR_INNER|BDR_OUTER)];
-            OuterI = RBOuterSoft[uType & (BDR_INNER|BDR_OUTER)];
+            InnerI = RBInnerSoft[uType & (BDR_INNER | BDR_OUTER)];
+            OuterI = RBOuterSoft[uType & (BDR_INNER | BDR_OUTER)];
         }
         else
         {
-            InnerI = LTInnerSoft[uType & (BDR_INNER|BDR_OUTER)];
-            OuterI = LTOuterSoft[uType & (BDR_INNER|BDR_OUTER)];
+            InnerI = LTInnerSoft[uType & (BDR_INNER | BDR_OUTER)];
+            OuterI = LTOuterSoft[uType & (BDR_INNER | BDR_OUTER)];
         }
     }
     else
     {
-        if(uFlags & BF_BOTTOM)
+        if (uFlags & BF_BOTTOM)
         {
-            InnerI = RBInnerNormal[uType & (BDR_INNER|BDR_OUTER)];
-            OuterI = RBOuterNormal[uType & (BDR_INNER|BDR_OUTER)];
+            InnerI = RBInnerNormal[uType & (BDR_INNER | BDR_OUTER)];
+            OuterI = RBOuterNormal[uType & (BDR_INNER | BDR_OUTER)];
         }
         else
         {
-            InnerI = LTInnerNormal[uType & (BDR_INNER|BDR_OUTER)];
-            OuterI = LTOuterNormal[uType & (BDR_INNER|BDR_OUTER)];
+            InnerI = LTInnerNormal[uType & (BDR_INNER | BDR_OUTER)];
+            OuterI = LTOuterNormal[uType & (BDR_INNER | BDR_OUTER)];
         }
     }
 
-    if(InnerI != -1) InnerPen = GetSysColorPen(InnerI);
-    if(OuterI != -1) OuterPen = GetSysColorPen(OuterI);
+    if (InnerI != -1)
+        InnerPen = GetSysColorPen(InnerI);
+    if (OuterI != -1)
+        OuterPen = GetSysColorPen(OuterI);
 
     MoveToEx(hdc, 0, 0, &SavePoint);
 
@@ -205,14 +160,14 @@ static BOOL UITOOLS95_DrawDiagEdge(HDC hdc, LPRECT rc,
     /* So, this might look a bit brute force here (and it is), but */
     /* it gets the job done;) */
 
-    switch(uFlags & BF_RECT)
+    switch (uFlags & BF_RECT)
     {
     case 0:
     case BF_LEFT:
     case BF_BOTTOM:
     case BF_BOTTOMLEFT:
         /* Left bottom endpoint */
-        epx = rc->left-1;
+        epx = rc->left - 1;
         spx = epx + SmallDiam;
         epy = rc->bottom;
         spy = epy - SmallDiam;
@@ -221,26 +176,26 @@ static BOOL UITOOLS95_DrawDiagEdge(HDC hdc, LPRECT rc,
     case BF_TOPLEFT:
     case BF_BOTTOMRIGHT:
         /* Left top endpoint */
-        epx = rc->left-1;
+        epx = rc->left - 1;
         spx = epx + SmallDiam;
-        epy = rc->top-1;
+        epy = rc->top - 1;
         spy = epy + SmallDiam;
         break;
 
     case BF_TOP:
     case BF_RIGHT:
     case BF_TOPRIGHT:
-    case BF_RIGHT|BF_LEFT:
-    case BF_RIGHT|BF_LEFT|BF_TOP:
-    case BF_BOTTOM|BF_TOP:
-    case BF_BOTTOM|BF_TOP|BF_LEFT:
-    case BF_BOTTOMRIGHT|BF_LEFT:
-    case BF_BOTTOMRIGHT|BF_TOP:
+    case BF_RIGHT | BF_LEFT:
+    case BF_RIGHT | BF_LEFT | BF_TOP:
+    case BF_BOTTOM | BF_TOP:
+    case BF_BOTTOM | BF_TOP | BF_LEFT:
+    case BF_BOTTOMRIGHT | BF_LEFT:
+    case BF_BOTTOMRIGHT | BF_TOP:
     case BF_RECT:
         /* Right top endpoint */
         spx = rc->left;
         epx = spx + SmallDiam;
-        spy = rc->bottom-1;
+        spy = rc->bottom - 1;
         epy = spy - SmallDiam;
         break;
     }
@@ -251,103 +206,101 @@ static BOOL UITOOLS95_DrawDiagEdge(HDC hdc, LPRECT rc,
 
     SelectObject(hdc, InnerPen);
 
-    switch(uFlags & (BF_RECT|BF_DIAGONAL))
+    switch (uFlags & (BF_RECT | BF_DIAGONAL))
     {
     case BF_DIAGONAL_ENDBOTTOMLEFT:
-    case (BF_DIAGONAL|BF_BOTTOM):
+    case (BF_DIAGONAL | BF_BOTTOM):
     case BF_DIAGONAL:
-    case (BF_DIAGONAL|BF_LEFT):
-        MoveToEx(hdc, spx-1, spy, NULL);
-        LineTo(hdc, epx, epy-1);
-        Points[0].x = spx-add;
+    case (BF_DIAGONAL | BF_LEFT):
+        MoveToEx(hdc, spx - 1, spy, NULL);
+        LineTo(hdc, epx, epy - 1);
+        Points[0].x = spx - add;
         Points[0].y = spy;
         Points[1].x = rc->left;
         Points[1].y = rc->top;
-        Points[2].x = epx+1;
-        Points[2].y = epy-1-add;
+        Points[2].x = epx + 1;
+        Points[2].y = epy - 1 - add;
         Points[3] = Points[2];
         break;
 
     case BF_DIAGONAL_ENDBOTTOMRIGHT:
-        MoveToEx(hdc, spx-1, spy, NULL);
-        LineTo(hdc, epx, epy+1);
-        Points[0].x = spx-add;
+        MoveToEx(hdc, spx - 1, spy, NULL);
+        LineTo(hdc, epx, epy + 1);
+        Points[0].x = spx - add;
         Points[0].y = spy;
         Points[1].x = rc->left;
-        Points[1].y = rc->bottom-1;
-        Points[2].x = epx+1;
-        Points[2].y = epy+1+add;
+        Points[1].y = rc->bottom - 1;
+        Points[2].x = epx + 1;
+        Points[2].y = epy + 1 + add;
         Points[3] = Points[2];
         break;
 
-    case (BF_DIAGONAL|BF_BOTTOM|BF_RIGHT|BF_TOP):
-    case (BF_DIAGONAL|BF_BOTTOM|BF_RIGHT|BF_TOP|BF_LEFT):
+    case (BF_DIAGONAL | BF_BOTTOM | BF_RIGHT | BF_TOP):
+    case (BF_DIAGONAL | BF_BOTTOM | BF_RIGHT | BF_TOP | BF_LEFT):
     case BF_DIAGONAL_ENDTOPRIGHT:
-    case (BF_DIAGONAL|BF_RIGHT|BF_TOP|BF_LEFT):
-        MoveToEx(hdc, spx+1, spy, NULL);
-        LineTo(hdc, epx, epy+1);
-        Points[0].x = epx-1;
-        Points[0].y = epy+1+add;
-        Points[1].x = rc->right-1;
-        Points[1].y = rc->top+add;
-        Points[2].x = rc->right-1;
-        Points[2].y = rc->bottom-1;
-        Points[3].x = spx+add;
+    case (BF_DIAGONAL | BF_RIGHT | BF_TOP | BF_LEFT):
+        MoveToEx(hdc, spx + 1, spy, NULL);
+        LineTo(hdc, epx, epy + 1);
+        Points[0].x = epx - 1;
+        Points[0].y = epy + 1 + add;
+        Points[1].x = rc->right - 1;
+        Points[1].y = rc->top + add;
+        Points[2].x = rc->right - 1;
+        Points[2].y = rc->bottom - 1;
+        Points[3].x = spx + add;
         Points[3].y = spy;
         break;
 
     case BF_DIAGONAL_ENDTOPLEFT:
-        MoveToEx(hdc, spx, spy-1, NULL);
-        LineTo(hdc, epx+1, epy);
-        Points[0].x = epx+1+add;
-        Points[0].y = epy+1;
-        Points[1].x = rc->right-1;
+        MoveToEx(hdc, spx, spy - 1, NULL);
+        LineTo(hdc, epx + 1, epy);
+        Points[0].x = epx + 1 + add;
+        Points[0].y = epy + 1;
+        Points[1].x = rc->right - 1;
         Points[1].y = rc->top;
-        Points[2].x = rc->right-1;
-        Points[2].y = rc->bottom-1-add;
+        Points[2].x = rc->right - 1;
+        Points[2].y = rc->bottom - 1 - add;
         Points[3].x = spx;
-        Points[3].y = spy-add;
+        Points[3].y = spy - add;
         break;
 
-    case (BF_DIAGONAL|BF_TOP):
-    case (BF_DIAGONAL|BF_BOTTOM|BF_TOP):
-    case (BF_DIAGONAL|BF_BOTTOM|BF_TOP|BF_LEFT):
-        MoveToEx(hdc, spx+1, spy-1, NULL);
+    case (BF_DIAGONAL | BF_TOP):
+    case (BF_DIAGONAL | BF_BOTTOM | BF_TOP):
+    case (BF_DIAGONAL | BF_BOTTOM | BF_TOP | BF_LEFT):
+        MoveToEx(hdc, spx + 1, spy - 1, NULL);
         LineTo(hdc, epx, epy);
-        Points[0].x = epx-1;
-        Points[0].y = epy+1;
-        Points[1].x = rc->right-1;
+        Points[0].x = epx - 1;
+        Points[0].y = epy + 1;
+        Points[1].x = rc->right - 1;
         Points[1].y = rc->top;
-        Points[2].x = rc->right-1;
-        Points[2].y = rc->bottom-1-add;
-        Points[3].x = spx+add;
-        Points[3].y = spy-add;
+        Points[2].x = rc->right - 1;
+        Points[2].y = rc->bottom - 1 - add;
+        Points[3].x = spx + add;
+        Points[3].y = spy - add;
         break;
 
-    case (BF_DIAGONAL|BF_RIGHT):
-    case (BF_DIAGONAL|BF_RIGHT|BF_LEFT):
-    case (BF_DIAGONAL|BF_RIGHT|BF_LEFT|BF_BOTTOM):
+    case (BF_DIAGONAL | BF_RIGHT):
+    case (BF_DIAGONAL | BF_RIGHT | BF_LEFT):
+    case (BF_DIAGONAL | BF_RIGHT | BF_LEFT | BF_BOTTOM):
         MoveToEx(hdc, spx, spy, NULL);
-        LineTo(hdc, epx-1, epy+1);
+        LineTo(hdc, epx - 1, epy + 1);
         Points[0].x = spx;
         Points[0].y = spy;
         Points[1].x = rc->left;
-        Points[1].y = rc->top+add;
-        Points[2].x = epx-1-add;
-        Points[2].y = epy+1+add;
+        Points[1].y = rc->top + add;
+        Points[2].x = epx - 1 - add;
+        Points[2].y = epy + 1 + add;
         Points[3] = Points[2];
         break;
     }
 
     /* Fill the interior if asked */
-    if((uFlags & BF_MIDDLE) && retval)
+    if ((uFlags & BF_MIDDLE) && retval)
     {
         HBRUSH hbsave;
-        HBRUSH hb = GetSysColorBrush(uFlags & BF_MONO ? COLOR_WINDOW
-					 :COLOR_BTNFACE);
+        HBRUSH hb = GetSysColorBrush(uFlags & BF_MONO ? COLOR_WINDOW : COLOR_BTNFACE);
         HPEN hpsave;
-        HPEN hp = GetSysColorPen(uFlags & BF_MONO ? COLOR_WINDOW
-				     : COLOR_BTNFACE);
+        HPEN hp = GetSysColorPen(uFlags & BF_MONO ? COLOR_WINDOW : COLOR_BTNFACE);
         hbsave = SelectObject(hdc, hb);
         hpsave = SelectObject(hdc, hp);
         Polygon(hdc, Points, 4);
@@ -356,12 +309,16 @@ static BOOL UITOOLS95_DrawDiagEdge(HDC hdc, LPRECT rc,
     }
 
     /* Adjust rectangle if asked */
-    if(uFlags & BF_ADJUST)
+    if (uFlags & BF_ADJUST)
     {
-        if(uFlags & BF_LEFT)   rc->left   += add;
-        if(uFlags & BF_RIGHT)  rc->right  -= add;
-        if(uFlags & BF_TOP)    rc->top    += add;
-        if(uFlags & BF_BOTTOM) rc->bottom -= add;
+        if (uFlags & BF_LEFT)
+            rc->left += add;
+        if (uFlags & BF_RIGHT)
+            rc->right -= add;
+        if (uFlags & BF_TOP)
+            rc->top += add;
+        if (uFlags & BF_BOTTOM)
+            rc->bottom -= add;
     }
 
     /* Cleanup */
@@ -445,148 +402,149 @@ static BOOL UITOOLS95_DrawDiagEdge(HDC hdc, LPRECT rc,
  * 22 = COLOR_3DLIGHT
  */
 
-
-static BOOL UITOOLS95_DrawRectEdge(HDC hdc, LPRECT rc,
-                                   UINT uType, UINT uFlags, UINT width)
+static BOOL UITOOLS95_DrawRectEdge(HDC hdc, LPRECT rc, UINT uType, UINT uFlags, UINT width)
 {
     signed char LTInnerI, LTOuterI;
     signed char RBInnerI, RBOuterI;
     HBRUSH lti_brush, lto_brush, rbi_brush, rbo_brush;
     RECT InnerRect = *rc, fill_rect;
     int lbi_offset = 0, lti_offset = 0, rti_offset = 0, rbi_offset = 0;
-    BOOL retval = !(   ((uType & BDR_INNER) == BDR_INNER
-                       || (uType & BDR_OUTER) == BDR_OUTER)
-                      && !(uFlags & (BF_FLAT|BF_MONO)) );
+    BOOL retval = !(((uType & BDR_INNER) == BDR_INNER || (uType & BDR_OUTER) == BDR_OUTER) && !(uFlags & (BF_FLAT | BF_MONO)));
 
     lti_brush = lto_brush = rbi_brush = rbo_brush = GetStockObject(NULL_BRUSH);
 
     /* Determine the colors of the edges */
-    if(uFlags & BF_MONO)
+    if (uFlags & BF_MONO)
     {
-        LTInnerI = RBInnerI = LTRBInnerMono[uType & (BDR_INNER|BDR_OUTER)];
-        LTOuterI = RBOuterI = LTRBOuterMono[uType & (BDR_INNER|BDR_OUTER)];
+        LTInnerI = RBInnerI = LTRBInnerMono[uType & (BDR_INNER | BDR_OUTER)];
+        LTOuterI = RBOuterI = LTRBOuterMono[uType & (BDR_INNER | BDR_OUTER)];
     }
-    else if(uFlags & BF_FLAT)
+    else if (uFlags & BF_FLAT)
     {
-        LTInnerI = RBInnerI = LTRBInnerFlat[uType & (BDR_INNER|BDR_OUTER)];
-        LTOuterI = RBOuterI = LTRBOuterFlat[uType & (BDR_INNER|BDR_OUTER)];
+        LTInnerI = RBInnerI = LTRBInnerFlat[uType & (BDR_INNER | BDR_OUTER)];
+        LTOuterI = RBOuterI = LTRBOuterFlat[uType & (BDR_INNER | BDR_OUTER)];
 
-	if( LTInnerI != -1 ) LTInnerI = RBInnerI = COLOR_BTNFACE;
+        if (LTInnerI != -1)
+            LTInnerI = RBInnerI = COLOR_BTNFACE;
     }
-    else if(uFlags & BF_SOFT)
+    else if (uFlags & BF_SOFT)
     {
-        LTInnerI = LTInnerSoft[uType & (BDR_INNER|BDR_OUTER)];
-        LTOuterI = LTOuterSoft[uType & (BDR_INNER|BDR_OUTER)];
-        RBInnerI = RBInnerSoft[uType & (BDR_INNER|BDR_OUTER)];
-        RBOuterI = RBOuterSoft[uType & (BDR_INNER|BDR_OUTER)];
+        LTInnerI = LTInnerSoft[uType & (BDR_INNER | BDR_OUTER)];
+        LTOuterI = LTOuterSoft[uType & (BDR_INNER | BDR_OUTER)];
+        RBInnerI = RBInnerSoft[uType & (BDR_INNER | BDR_OUTER)];
+        RBOuterI = RBOuterSoft[uType & (BDR_INNER | BDR_OUTER)];
     }
     else
     {
-        LTInnerI = LTInnerNormal[uType & (BDR_INNER|BDR_OUTER)];
-        LTOuterI = LTOuterNormal[uType & (BDR_INNER|BDR_OUTER)];
-        RBInnerI = RBInnerNormal[uType & (BDR_INNER|BDR_OUTER)];
-        RBOuterI = RBOuterNormal[uType & (BDR_INNER|BDR_OUTER)];
+        LTInnerI = LTInnerNormal[uType & (BDR_INNER | BDR_OUTER)];
+        LTOuterI = LTOuterNormal[uType & (BDR_INNER | BDR_OUTER)];
+        RBInnerI = RBInnerNormal[uType & (BDR_INNER | BDR_OUTER)];
+        RBOuterI = RBOuterNormal[uType & (BDR_INNER | BDR_OUTER)];
     }
 
-    if((uFlags & BF_BOTTOMLEFT) == BF_BOTTOMLEFT)   lbi_offset = width;
-    if((uFlags & BF_TOPRIGHT) == BF_TOPRIGHT)       rti_offset = width;
-    if((uFlags & BF_BOTTOMRIGHT) == BF_BOTTOMRIGHT) rbi_offset = width;
-    if((uFlags & BF_TOPLEFT) == BF_TOPLEFT)         lti_offset = width;
+    if ((uFlags & BF_BOTTOMLEFT) == BF_BOTTOMLEFT)
+        lbi_offset = width;
+    if ((uFlags & BF_TOPRIGHT) == BF_TOPRIGHT)
+        rti_offset = width;
+    if ((uFlags & BF_BOTTOMRIGHT) == BF_BOTTOMRIGHT)
+        rbi_offset = width;
+    if ((uFlags & BF_TOPLEFT) == BF_TOPLEFT)
+        lti_offset = width;
 
-    if(LTInnerI != -1) lti_brush = GetSysColorBrush(LTInnerI);
-    if(LTOuterI != -1) lto_brush = GetSysColorBrush(LTOuterI);
-    if(RBInnerI != -1) rbi_brush = GetSysColorBrush(RBInnerI);
-    if(RBOuterI != -1) rbo_brush = GetSysColorBrush(RBOuterI);
+    if (LTInnerI != -1)
+        lti_brush = GetSysColorBrush(LTInnerI);
+    if (LTOuterI != -1)
+        lto_brush = GetSysColorBrush(LTOuterI);
+    if (RBInnerI != -1)
+        rbi_brush = GetSysColorBrush(RBInnerI);
+    if (RBOuterI != -1)
+        rbo_brush = GetSysColorBrush(RBOuterI);
 
     /* Draw the outer edge */
-    if(uFlags & BF_TOP)
+    if (uFlags & BF_TOP)
     {
         fill_rect = InnerRect;
         fill_rect.bottom = fill_rect.top + width;
-        FillRect( hdc, &fill_rect, lto_brush );
+        FillRect(hdc, &fill_rect, lto_brush);
     }
-    if(uFlags & BF_LEFT)
+    if (uFlags & BF_LEFT)
     {
         fill_rect = InnerRect;
         fill_rect.right = fill_rect.left + width;
-        FillRect( hdc, &fill_rect, lto_brush );
+        FillRect(hdc, &fill_rect, lto_brush);
     }
-    if(uFlags & BF_BOTTOM)
+    if (uFlags & BF_BOTTOM)
     {
         fill_rect = InnerRect;
         fill_rect.top = fill_rect.bottom - width;
-        FillRect( hdc, &fill_rect, rbo_brush );
+        FillRect(hdc, &fill_rect, rbo_brush);
     }
-    if(uFlags & BF_RIGHT)
+    if (uFlags & BF_RIGHT)
     {
         fill_rect = InnerRect;
         fill_rect.left = fill_rect.right - width;
-        FillRect( hdc, &fill_rect, rbo_brush );
+        FillRect(hdc, &fill_rect, rbo_brush);
     }
 
     /* Draw the inner edge */
-    if(uFlags & BF_TOP)
+    if (uFlags & BF_TOP)
     {
-        SetRect( &fill_rect, InnerRect.left + lti_offset, InnerRect.top + width,
-                 InnerRect.right - rti_offset, InnerRect.top + 2 * width );
-        FillRect( hdc, &fill_rect, lti_brush );
+        SetRect(&fill_rect, InnerRect.left + lti_offset, InnerRect.top + width, InnerRect.right - rti_offset, InnerRect.top + 2 * width);
+        FillRect(hdc, &fill_rect, lti_brush);
     }
-    if(uFlags & BF_LEFT)
+    if (uFlags & BF_LEFT)
     {
-        SetRect( &fill_rect, InnerRect.left + width, InnerRect.top + lti_offset,
-                 InnerRect.left + 2 * width, InnerRect.bottom - lbi_offset );
-        FillRect( hdc, &fill_rect, lti_brush );
+        SetRect(&fill_rect, InnerRect.left + width, InnerRect.top + lti_offset, InnerRect.left + 2 * width, InnerRect.bottom - lbi_offset);
+        FillRect(hdc, &fill_rect, lti_brush);
     }
-    if(uFlags & BF_BOTTOM)
+    if (uFlags & BF_BOTTOM)
     {
-        SetRect( &fill_rect, InnerRect.left + lbi_offset, InnerRect.bottom - 2 * width,
-                 InnerRect.right - rbi_offset, InnerRect.bottom - width );
-        FillRect( hdc, &fill_rect, rbi_brush );
+        SetRect(&fill_rect, InnerRect.left + lbi_offset, InnerRect.bottom - 2 * width, InnerRect.right - rbi_offset, InnerRect.bottom - width);
+        FillRect(hdc, &fill_rect, rbi_brush);
     }
-    if(uFlags & BF_RIGHT)
+    if (uFlags & BF_RIGHT)
     {
-        SetRect( &fill_rect, InnerRect.right - 2 * width, InnerRect.top + rti_offset,
-                 InnerRect.right - width, InnerRect.bottom - rbi_offset );
-        FillRect( hdc, &fill_rect, rbi_brush );
+        SetRect(&fill_rect, InnerRect.right - 2 * width, InnerRect.top + rti_offset, InnerRect.right - width, InnerRect.bottom - rbi_offset);
+        FillRect(hdc, &fill_rect, rbi_brush);
     }
 
-    if( ((uFlags & BF_MIDDLE) && retval) || (uFlags & BF_ADJUST) )
+    if (((uFlags & BF_MIDDLE) && retval) || (uFlags & BF_ADJUST))
     {
-        int add = (LTRBInnerMono[uType & (BDR_INNER|BDR_OUTER)] != -1 ? width : 0)
-                + (LTRBOuterMono[uType & (BDR_INNER|BDR_OUTER)] != -1 ? width : 0);
+        int add = (LTRBInnerMono[uType & (BDR_INNER | BDR_OUTER)] != -1 ? width : 0) + (LTRBOuterMono[uType & (BDR_INNER | BDR_OUTER)] != -1 ? width : 0);
 
-        if(uFlags & BF_LEFT)   InnerRect.left   += add;
-        if(uFlags & BF_RIGHT)  InnerRect.right  -= add;
-        if(uFlags & BF_TOP)    InnerRect.top    += add;
-        if(uFlags & BF_BOTTOM) InnerRect.bottom -= add;
+        if (uFlags & BF_LEFT)
+            InnerRect.left += add;
+        if (uFlags & BF_RIGHT)
+            InnerRect.right -= add;
+        if (uFlags & BF_TOP)
+            InnerRect.top += add;
+        if (uFlags & BF_BOTTOM)
+            InnerRect.bottom -= add;
 
-        if((uFlags & BF_MIDDLE) && retval)
-	{
-            FillRect(hdc, &InnerRect, GetSysColorBrush(uFlags & BF_MONO ?
-						       COLOR_WINDOW : COLOR_BTNFACE));
-	}
+        if ((uFlags & BF_MIDDLE) && retval)
+        {
+            FillRect(hdc, &InnerRect, GetSysColorBrush(uFlags & BF_MONO ? COLOR_WINDOW : COLOR_BTNFACE));
+        }
 
-	if(uFlags & BF_ADJUST)
-	    *rc = InnerRect;
+        if (uFlags & BF_ADJUST)
+            *rc = InnerRect;
     }
 
     return retval;
 }
 
-
 /**********************************************************************
  *          DrawEdge   (USER32.@)
  */
-BOOL WINAPI DrawEdge( HDC hdc, LPRECT rc, UINT edge, UINT flags )
+BOOL WINAPI DrawEdge(HDC hdc, LPRECT rc, UINT edge, UINT flags)
 {
-    TRACE("%p %s %04x %04x\n", hdc, wine_dbgstr_rect(rc), edge, flags );
+    TRACE("%p %s %04x %04x\n", hdc, wine_dbgstr_rect(rc), edge, flags);
 
-    if(flags & BF_DIAGONAL)
-      return UITOOLS95_DrawDiagEdge(hdc, rc, edge, flags);
+    if (flags & BF_DIAGONAL)
+        return UITOOLS95_DrawDiagEdge(hdc, rc, edge, flags);
     else
-      return UITOOLS95_DrawRectEdge(hdc, rc, edge, flags, 1);
+        return UITOOLS95_DrawRectEdge(hdc, rc, edge, flags, 1);
 }
-
 
 /************************************************************************
  *	UITOOLS_MakeSquareRect
@@ -595,40 +553,40 @@ BOOL WINAPI DrawEdge( HDC hdc, LPRECT rc, UINT edge, UINT flags )
  */
 static int UITOOLS_MakeSquareRect(LPRECT src, LPRECT dst)
 {
-    int Width  = src->right - src->left;
+    int Width = src->right - src->left;
     int Height = src->bottom - src->top;
     int SmallDiam = Width > Height ? Height : Width;
 
     *dst = *src;
 
     /* Make it a square box */
-    if(Width < Height)      /* SmallDiam == Width */
+    if (Width < Height) /* SmallDiam == Width */
     {
-        dst->top += (Height-Width)/2;
+        dst->top += (Height - Width) / 2;
         dst->bottom = dst->top + SmallDiam;
     }
-    else if(Width > Height) /* SmallDiam == Height */
+    else if (Width > Height) /* SmallDiam == Height */
     {
-        dst->left += (Width-Height)/2;
+        dst->left += (Width - Height) / 2;
         dst->right = dst->left + SmallDiam;
     }
 
-   return SmallDiam;
+    return SmallDiam;
 }
 
-static void UITOOLS_DrawCheckedRect( HDC dc, LPRECT rect )
+static void UITOOLS_DrawCheckedRect(HDC dc, LPRECT rect)
 {
-    if(GetSysColor(COLOR_BTNHIGHLIGHT) == RGB(255, 255, 255))
+    if (GetSysColor(COLOR_BTNHIGHLIGHT) == RGB(255, 255, 255))
     {
-      HBRUSH hbsave;
-      COLORREF bg;
+        HBRUSH hbsave;
+        COLORREF bg;
 
-      FillRect(dc, rect, GetSysColorBrush(COLOR_BTNFACE));
-      bg = SetBkColor(dc, RGB(255, 255, 255));
-      //hbsave = SelectObject(dc, SYSCOLOR_Get55AABrush());
-      PatBlt(dc, rect->left, rect->top, rect->right-rect->left, rect->bottom-rect->top, 0x00FA0089);
-      //SelectObject(dc, hbsave);
-      SetBkColor(dc, bg);
+        FillRect(dc, rect, GetSysColorBrush(COLOR_BTNFACE));
+        bg = SetBkColor(dc, RGB(255, 255, 255));
+        // hbsave = SelectObject(dc, SYSCOLOR_Get55AABrush());
+        PatBlt(dc, rect->left, rect->top, rect->right - rect->left, rect->bottom - rect->top, 0x00FA0089);
+        // SelectObject(dc, hbsave);
+        SetBkColor(dc, bg);
     }
     else
     {
@@ -650,43 +608,41 @@ static BOOL UITOOLS95_DFC_ButtonPush(HDC dc, LPRECT r, UINT uFlags)
     UINT edge;
     RECT myr = *r;
 
-    if(uFlags & (DFCS_PUSHED | DFCS_CHECKED | DFCS_FLAT))
+    if (uFlags & (DFCS_PUSHED | DFCS_CHECKED | DFCS_FLAT))
         edge = EDGE_SUNKEN;
     else
         edge = EDGE_RAISED;
 
-    if(uFlags & DFCS_CHECKED)
+    if (uFlags & DFCS_CHECKED)
     {
-        if(uFlags & DFCS_MONO)
-            UITOOLS95_DrawRectEdge(dc, &myr, edge, BF_MONO|BF_RECT|BF_ADJUST, 1);
+        if (uFlags & DFCS_MONO)
+            UITOOLS95_DrawRectEdge(dc, &myr, edge, BF_MONO | BF_RECT | BF_ADJUST, 1);
         else
-            UITOOLS95_DrawRectEdge(dc, &myr, edge, (uFlags&DFCS_FLAT)|BF_RECT|BF_SOFT|BF_ADJUST, 1);
+            UITOOLS95_DrawRectEdge(dc, &myr, edge, (uFlags & DFCS_FLAT) | BF_RECT | BF_SOFT | BF_ADJUST, 1);
 
-	if (!(uFlags & DFCS_TRANSPARENT))
-	    UITOOLS_DrawCheckedRect( dc, &myr );
+        if (!(uFlags & DFCS_TRANSPARENT))
+            UITOOLS_DrawCheckedRect(dc, &myr);
     }
     else
     {
-        if(uFlags & DFCS_MONO)
+        if (uFlags & DFCS_MONO)
         {
-            UITOOLS95_DrawRectEdge(dc, &myr, edge, BF_MONO|BF_RECT|BF_ADJUST, 1);
-	    if (!(uFlags & DFCS_TRANSPARENT))
+            UITOOLS95_DrawRectEdge(dc, &myr, edge, BF_MONO | BF_RECT | BF_ADJUST, 1);
+            if (!(uFlags & DFCS_TRANSPARENT))
                 FillRect(dc, &myr, GetSysColorBrush(COLOR_BTNFACE));
         }
         else
         {
-            UITOOLS95_DrawRectEdge(dc, r, edge, (uFlags & DFCS_FLAT) |
-                                   ((uFlags & DFCS_TRANSPARENT) ? 0 : BF_MIDDLE) | BF_RECT | BF_SOFT, 1);
+            UITOOLS95_DrawRectEdge(dc, r, edge, (uFlags & DFCS_FLAT) | ((uFlags & DFCS_TRANSPARENT) ? 0 : BF_MIDDLE) | BF_RECT | BF_SOFT, 1);
         }
     }
 
     /* Adjust rectangle if asked */
-    if(uFlags & DFCS_ADJUSTRECT)
+    if (uFlags & DFCS_ADJUSTRECT)
         InflateRect(r, -2, -2);
 
     return TRUE;
 }
-
 
 /************************************************************************
  *	UITOOLS_DFC_ButtonCheck
@@ -705,28 +661,29 @@ static BOOL UITOOLS95_DFC_ButtonCheck(HDC dc, LPRECT r, UINT uFlags)
 
     UITOOLS_MakeSquareRect(r, &myr);
 
-    if(uFlags & DFCS_FLAT) flags |= BF_FLAT;
-    else if(uFlags & DFCS_MONO) flags |= BF_MONO;
+    if (uFlags & DFCS_FLAT)
+        flags |= BF_FLAT;
+    else if (uFlags & DFCS_MONO)
+        flags |= BF_MONO;
 
-    UITOOLS95_DrawRectEdge( dc, &myr, EDGE_SUNKEN, flags, max( (myr.right - myr.left + 8) / 16, 1) );
+    UITOOLS95_DrawRectEdge(dc, &myr, EDGE_SUNKEN, flags, max((myr.right - myr.left + 8) / 16, 1));
 
     if (!(uFlags & DFCS_TRANSPARENT))
     {
-	if(uFlags & (DFCS_INACTIVE | DFCS_PUSHED))
+        if (uFlags & (DFCS_INACTIVE | DFCS_PUSHED))
             FillRect(dc, &myr, GetSysColorBrush(COLOR_BTNFACE));
-	else if( (uFlags & DFCS_BUTTON3STATE) && (uFlags & DFCS_CHECKED) )
-            UITOOLS_DrawCheckedRect( dc, &myr );
-	else
+        else if ((uFlags & DFCS_BUTTON3STATE) && (uFlags & DFCS_CHECKED))
+            UITOOLS_DrawCheckedRect(dc, &myr);
+        else
             FillRect(dc, &myr, GetSysColorBrush(COLOR_WINDOW));
     }
 
-    if(uFlags & DFCS_CHECKED)
+    if (uFlags & DFCS_CHECKED)
     {
         POINT pt[6];
         HPEN old_pen;
         HBRUSH old_brush;
-        int color = (uFlags & DFCS_INACTIVE) || (uFlags & 0xff) == DFCS_BUTTON3STATE ?
-            COLOR_BTNSHADOW : COLOR_WINDOWTEXT;
+        int color = (uFlags & DFCS_INACTIVE) || (uFlags & 0xff) == DFCS_BUTTON3STATE ? COLOR_BTNSHADOW : COLOR_WINDOWTEXT;
 
         pt[0].x = myr.right - 1;
         pt[0].y = myr.top;
@@ -741,15 +698,14 @@ static BOOL UITOOLS95_DFC_ButtonCheck(HDC dc, LPRECT r, UINT uFlags)
         pt[5].x = pt[2].x;
         pt[5].y = pt[2].y - (myr.bottom - myr.top) / 3;
 
-        old_brush = SelectObject( dc, GetSysColorBrush( color ) );
-        old_pen = SelectObject( dc, GetStockObject( NULL_PEN ));
-        Polygon( dc, pt, 6 );
-        SelectObject( dc, old_brush );
-        SelectObject( dc, old_pen );
+        old_brush = SelectObject(dc, GetSysColorBrush(color));
+        old_pen = SelectObject(dc, GetStockObject(NULL_PEN));
+        Polygon(dc, pt, 6);
+        SelectObject(dc, old_brush);
+        SelectObject(dc, old_pen);
     }
     return TRUE;
 }
-
 
 /************************************************************************
  *	UITOOLS_DFC_ButtonRadio
@@ -770,21 +726,22 @@ static BOOL UITOOLS95_DFC_ButtonRadio(HDC dc, LPRECT r, UINT uFlags)
     HBRUSH hbsave;
     int xc, yc;
 
-    if(BorderShrink < 1) BorderShrink = 1;
+    if (BorderShrink < 1)
+        BorderShrink = 1;
 
-    if((uFlags & 0xff) == DFCS_BUTTONRADIOIMAGE)
+    if ((uFlags & 0xff) == DFCS_BUTTONRADIOIMAGE)
         FillRect(dc, r, GetStockObject(BLACK_BRUSH));
-    else if((uFlags & 0xff) == DFCS_BUTTONRADIOMASK)
+    else if ((uFlags & 0xff) == DFCS_BUTTONRADIOMASK)
         FillRect(dc, r, GetStockObject(WHITE_BRUSH));
 
-    xc = myr.left + SmallDiam - SmallDiam/2;
-    yc = myr.top  + SmallDiam - SmallDiam/2;
+    xc = myr.left + SmallDiam - SmallDiam / 2;
+    yc = myr.top + SmallDiam - SmallDiam / 2;
 
     /* Define bounding box */
-    i = 14*SmallDiam/16;
+    i = 14 * SmallDiam / 16;
     SetRect(&myr, xc - i + i / 2, yc - i + i / 2, xc + i / 2, yc + i / 2);
 
-    if((uFlags & 0xff) == DFCS_BUTTONRADIOMASK)
+    if ((uFlags & 0xff) == DFCS_BUTTONRADIOMASK)
     {
         hbsave = SelectObject(dc, GetStockObject(BLACK_BRUSH));
         Ellipse(dc, myr.left, myr.top, myr.right, myr.bottom);
@@ -792,7 +749,7 @@ static BOOL UITOOLS95_DFC_ButtonRadio(HDC dc, LPRECT r, UINT uFlags)
     }
     else
     {
-        if(uFlags & (DFCS_FLAT|DFCS_MONO))
+        if (uFlags & (DFCS_FLAT | DFCS_MONO))
         {
             hpsave = SelectObject(dc, GetSysColorPen(COLOR_WINDOWFRAME));
             hbsave = SelectObject(dc, GetSysColorBrush(COLOR_WINDOWFRAME));
@@ -804,27 +761,27 @@ static BOOL UITOOLS95_DFC_ButtonRadio(HDC dc, LPRECT r, UINT uFlags)
         {
             hpsave = SelectObject(dc, GetSysColorPen(COLOR_BTNHIGHLIGHT));
             hbsave = SelectObject(dc, GetSysColorBrush(COLOR_BTNHIGHLIGHT));
-            Pie(dc, myr.left, myr.top, myr.right+1, myr.bottom+1, myr.left-1, myr.bottom, myr.right+1, myr.top);
+            Pie(dc, myr.left, myr.top, myr.right + 1, myr.bottom + 1, myr.left - 1, myr.bottom, myr.right + 1, myr.top);
 
             SelectObject(dc, GetSysColorPen(COLOR_BTNSHADOW));
             SelectObject(dc, GetSysColorBrush(COLOR_BTNSHADOW));
-            Pie(dc, myr.left, myr.top, myr.right+1, myr.bottom+1, myr.right+1, myr.top, myr.left-1, myr.bottom);
+            Pie(dc, myr.left, myr.top, myr.right + 1, myr.bottom + 1, myr.right + 1, myr.top, myr.left - 1, myr.bottom);
 
             InflateRect(&myr, -BorderShrink, -BorderShrink);
             SelectObject(dc, GetSysColorPen(COLOR_3DLIGHT));
             SelectObject(dc, GetSysColorBrush(COLOR_3DLIGHT));
-            Pie(dc, myr.left, myr.top, myr.right+1, myr.bottom+1, myr.left-1, myr.bottom, myr.right+1, myr.top);
+            Pie(dc, myr.left, myr.top, myr.right + 1, myr.bottom + 1, myr.left - 1, myr.bottom, myr.right + 1, myr.top);
 
             SelectObject(dc, GetSysColorPen(COLOR_3DDKSHADOW));
             SelectObject(dc, GetSysColorBrush(COLOR_3DDKSHADOW));
-            Pie(dc, myr.left, myr.top, myr.right+1, myr.bottom+1, myr.right+1, myr.top, myr.left-1, myr.bottom);
+            Pie(dc, myr.left, myr.top, myr.right + 1, myr.bottom + 1, myr.right + 1, myr.top, myr.left - 1, myr.bottom);
             SelectObject(dc, hbsave);
             SelectObject(dc, hpsave);
         }
 
-        i = 10*SmallDiam/16;
+        i = 10 * SmallDiam / 16;
         SetRect(&myr, xc - i + i / 2, yc - i + i / 2, xc + i / 2, yc + i / 2);
-        i= !(uFlags & (DFCS_INACTIVE|DFCS_PUSHED)) ? COLOR_WINDOW : COLOR_BTNFACE;
+        i = !(uFlags & (DFCS_INACTIVE | DFCS_PUSHED)) ? COLOR_WINDOW : COLOR_BTNFACE;
         hpsave = SelectObject(dc, GetSysColorPen(i));
         hbsave = SelectObject(dc, GetSysColorBrush(i));
         Ellipse(dc, myr.left, myr.top, myr.right, myr.bottom);
@@ -832,9 +789,9 @@ static BOOL UITOOLS95_DFC_ButtonRadio(HDC dc, LPRECT r, UINT uFlags)
         SelectObject(dc, hpsave);
     }
 
-    if(uFlags & DFCS_CHECKED)
+    if (uFlags & DFCS_CHECKED)
     {
-        i = 6*SmallDiam/16;
+        i = 6 * SmallDiam / 16;
         i = i < 1 ? 1 : i;
         SetRect(&myr, xc - i + i / 2, yc - i + i / 2, xc + i / 2, yc + i / 2);
 
@@ -866,7 +823,7 @@ static BOOL UITOOLS95_DFC_ButtonRadio(HDC dc, LPRECT r, UINT uFlags)
  */
 static BOOL UITOOLS95_DrawFrameButton(HDC hdc, LPRECT rc, UINT uState)
 {
-    switch(uState & 0xff)
+    switch (uState & 0xff)
     {
     case DFCS_BUTTONPUSH:
         return UITOOLS95_DFC_ButtonPush(hdc, rc, uState);
@@ -896,12 +853,12 @@ static BOOL UITOOLS95_DrawFrameButton(HDC hdc, LPRECT rc, UINT uState)
 static BOOL UITOOLS95_DrawFrameCaption(HDC dc, LPRECT r, UINT uFlags)
 {
     RECT myr;
-    int SmallDiam = UITOOLS_MakeSquareRect(r, &myr)-2;
+    int SmallDiam = UITOOLS_MakeSquareRect(r, &myr) - 2;
     HFONT hfsave, hf;
     int colorIdx = uFlags & DFCS_INACTIVE ? COLOR_BTNSHADOW : COLOR_BTNTEXT;
-    int xc = (myr.left+myr.right)/2;
-    int yc = (myr.top+myr.bottom)/2;
-    WCHAR str[] = {0, 0};
+    int xc = (myr.left + myr.right) / 2;
+    int yc = (myr.top + myr.bottom) / 2;
+    WCHAR str[] = { 0, 0 };
     UINT alignsave;
     int bksave;
     COLORREF clrsave;
@@ -909,44 +866,51 @@ static BOOL UITOOLS95_DrawFrameCaption(HDC dc, LPRECT r, UINT uFlags)
 
     UITOOLS95_DFC_ButtonPush(dc, r, uFlags & 0xff00);
 
-    switch(uFlags & 0xf)
+    switch (uFlags & 0xf)
     {
-    case DFCS_CAPTIONCLOSE:     str[0] = 0x72; break;
-    case DFCS_CAPTIONHELP:      str[0] = 0x73; break;
-    case DFCS_CAPTIONMIN:       str[0] = 0x30; break;
-    case DFCS_CAPTIONMAX:       str[0] = 0x31; break;
-    case DFCS_CAPTIONRESTORE:   str[0] = 0x32; break;
+    case DFCS_CAPTIONCLOSE:
+        str[0] = 0x72;
+        break;
+    case DFCS_CAPTIONHELP:
+        str[0] = 0x73;
+        break;
+    case DFCS_CAPTIONMIN:
+        str[0] = 0x30;
+        break;
+    case DFCS_CAPTIONMAX:
+        str[0] = 0x31;
+        break;
+    case DFCS_CAPTIONRESTORE:
+        str[0] = 0x32;
+        break;
     default:
         WARN("Invalid caption; flags=0x%04x\n", uFlags);
         return FALSE;
     }
-    
-    hf = CreateFontW(-SmallDiam, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
-                    SYMBOL_CHARSET, OUT_DEFAULT_PRECIS, 0,
-                    DEFAULT_QUALITY, FF_DONTCARE, L"Marlett");
-    alignsave = SetTextAlign(dc, TA_TOP|TA_LEFT);
+
+    hf = CreateFontW(-SmallDiam, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, SYMBOL_CHARSET, OUT_DEFAULT_PRECIS, 0, DEFAULT_QUALITY, FF_DONTCARE, L"Marlett");
+    alignsave = SetTextAlign(dc, TA_TOP | TA_LEFT);
     bksave = SetBkMode(dc, TRANSPARENT);
     clrsave = GetTextColor(dc);
     hfsave = SelectObject(dc, hf);
     GetTextExtentPoint32W(dc, str, 1, &size);
 
-    if(uFlags & DFCS_INACTIVE)
+    if (uFlags & DFCS_INACTIVE)
     {
         SetTextColor(dc, GetSysColor(COLOR_BTNHIGHLIGHT));
-        TextOutW(dc, xc-size.cx/2+1, yc-size.cy/2+1, str, 1);
+        TextOutW(dc, xc - size.cx / 2 + 1, yc - size.cy / 2 + 1, str, 1);
     }
     SetTextColor(dc, GetSysColor(colorIdx));
-    TextOutW(dc, xc-size.cx/2, yc-size.cy/2, str, 1);
+    TextOutW(dc, xc - size.cx / 2, yc - size.cy / 2, str, 1);
 
     SelectObject(dc, hfsave);
     SetTextColor(dc, clrsave);
     SetBkMode(dc, bksave);
     SetTextAlign(dc, alignsave);
     DeleteObject(hf);
-  
+
     return TRUE;
 }
-
 
 /************************************************************************
  *      UITOOLS_DrawFrameScroll
@@ -961,7 +925,7 @@ static BOOL UITOOLS95_DrawFrameScroll(HDC dc, LPRECT r, UINT uFlags)
     int i;
     HBRUSH hbsave, hb, hb2;
     HPEN hpsave, hp, hp2;
-    int tri = 290*SmallDiam/1000 - 1;
+    int tri = 290 * SmallDiam / 1000 - 1;
     int d46, d93;
 
     /*
@@ -969,38 +933,38 @@ static BOOL UITOOLS95_DrawFrameScroll(HDC dc, LPRECT r, UINT uFlags)
      * with the updown control.
      * Making sure that the arrow is as least 3 pixels wide (or high).
      */
-    tri = max( 2, tri );
+    tri = max(2, tri);
 
-    switch(uFlags & 0xff)
+    switch (uFlags & 0xff)
     {
     case DFCS_SCROLLCOMBOBOX:
     case DFCS_SCROLLDOWN:
-        Line[2].x = myr.left + 470*SmallDiam/1000 + 2;
-        Line[2].y = myr.top  + 687*SmallDiam/1000 + 1;
+        Line[2].x = myr.left + 470 * SmallDiam / 1000 + 2;
+        Line[2].y = myr.top + 687 * SmallDiam / 1000 + 1;
         Line[0].x = Line[2].x - tri;
         Line[1].x = Line[2].x + tri;
         Line[0].y = Line[1].y = Line[2].y - tri;
         break;
 
     case DFCS_SCROLLUP:
-        Line[2].x = myr.left + 470*SmallDiam/1000 + 2;
-        Line[2].y = myr.bottom - (687*SmallDiam/1000 + 1);
+        Line[2].x = myr.left + 470 * SmallDiam / 1000 + 2;
+        Line[2].y = myr.bottom - (687 * SmallDiam / 1000 + 1);
         Line[0].x = Line[2].x - tri;
         Line[1].x = Line[2].x + tri;
         Line[0].y = Line[1].y = Line[2].y + tri;
         break;
 
     case DFCS_SCROLLLEFT:
-        Line[2].x = myr.right - (687*SmallDiam/1000 + 1);
-        Line[2].y = myr.top  + 470*SmallDiam/1000 + 2;
+        Line[2].x = myr.right - (687 * SmallDiam / 1000 + 1);
+        Line[2].y = myr.top + 470 * SmallDiam / 1000 + 2;
         Line[0].y = Line[2].y - tri;
         Line[1].y = Line[2].y + tri;
         Line[0].x = Line[1].x = Line[2].x + tri;
         break;
 
     case DFCS_SCROLLRIGHT:
-        Line[2].x = myr.left + 687*SmallDiam/1000 + 1;
-        Line[2].y = myr.top  + 470*SmallDiam/1000 + 2;
+        Line[2].x = myr.left + 687 * SmallDiam / 1000 + 1;
+        Line[2].y = myr.top + 470 * SmallDiam / 1000 + 2;
         Line[0].y = Line[2].y - tri;
         Line[1].y = Line[2].y + tri;
         Line[0].x = Line[1].x = Line[2].x - tri;
@@ -1008,27 +972,27 @@ static BOOL UITOOLS95_DrawFrameScroll(HDC dc, LPRECT r, UINT uFlags)
 
     case DFCS_SCROLLSIZEGRIP:
         /* This one breaks the flow... */
-        UITOOLS95_DrawRectEdge(dc, r, EDGE_BUMP, BF_MIDDLE | ((uFlags&(DFCS_MONO|DFCS_FLAT)) ? BF_MONO : 0), 1);
+        UITOOLS95_DrawRectEdge(dc, r, EDGE_BUMP, BF_MIDDLE | ((uFlags & (DFCS_MONO | DFCS_FLAT)) ? BF_MONO : 0), 1);
         hpsave = SelectObject(dc, GetStockObject(NULL_PEN));
         hbsave = SelectObject(dc, GetStockObject(NULL_BRUSH));
-        if(uFlags & (DFCS_MONO|DFCS_FLAT))
+        if (uFlags & (DFCS_MONO | DFCS_FLAT))
         {
             hp = hp2 = GetSysColorPen(COLOR_WINDOWFRAME);
             hb = hb2 = GetSysColorBrush(COLOR_WINDOWFRAME);
         }
         else
         {
-            hp  = GetSysColorPen(COLOR_BTNHIGHLIGHT);
+            hp = GetSysColorPen(COLOR_BTNHIGHLIGHT);
             hp2 = GetSysColorPen(COLOR_BTNSHADOW);
-            hb  = GetSysColorBrush(COLOR_BTNHIGHLIGHT);
+            hb = GetSysColorBrush(COLOR_BTNHIGHLIGHT);
             hb2 = GetSysColorBrush(COLOR_BTNSHADOW);
         }
-        Line[0].x = Line[1].x = r->right-1;
-        Line[2].y = Line[3].y = r->bottom-1;
-        d46 = 46*SmallDiam/750;
-        d93 = 93*SmallDiam/750;
+        Line[0].x = Line[1].x = r->right - 1;
+        Line[2].y = Line[3].y = r->bottom - 1;
+        d46 = 46 * SmallDiam / 750;
+        d93 = 93 * SmallDiam / 750;
 
-        i = 586*SmallDiam/750;
+        i = 586 * SmallDiam / 750;
         Line[0].y = r->bottom - i - 1;
         Line[3].x = r->right - i - 1;
         Line[1].y = Line[0].y + d46;
@@ -1037,14 +1001,15 @@ static BOOL UITOOLS95_DrawFrameScroll(HDC dc, LPRECT r, UINT uFlags)
         SelectObject(dc, hp);
         Polygon(dc, Line, 4);
 
-        Line[1].y++; Line[2].x++;
+        Line[1].y++;
+        Line[2].x++;
         Line[0].y = Line[1].y + d93;
         Line[3].x = Line[2].x + d93;
         SelectObject(dc, hb2);
         SelectObject(dc, hp2);
         Polygon(dc, Line, 4);
 
-        i = 398*SmallDiam/750;
+        i = 398 * SmallDiam / 750;
         Line[0].y = r->bottom - i - 1;
         Line[3].x = r->right - i - 1;
         Line[1].y = Line[0].y + d46;
@@ -1053,14 +1018,15 @@ static BOOL UITOOLS95_DrawFrameScroll(HDC dc, LPRECT r, UINT uFlags)
         SelectObject(dc, hp);
         Polygon(dc, Line, 4);
 
-        Line[1].y++; Line[2].x++;
+        Line[1].y++;
+        Line[2].x++;
         Line[0].y = Line[1].y + d93;
         Line[3].x = Line[2].x + d93;
         SelectObject(dc, hb2);
         SelectObject(dc, hp2);
         Polygon(dc, Line, 4);
 
-        i = 210*SmallDiam/750;
+        i = 210 * SmallDiam / 750;
         Line[0].y = r->bottom - i - 1;
         Line[3].x = r->right - i - 1;
         Line[1].y = Line[0].y + d46;
@@ -1069,7 +1035,8 @@ static BOOL UITOOLS95_DrawFrameScroll(HDC dc, LPRECT r, UINT uFlags)
         SelectObject(dc, hp);
         Polygon(dc, Line, 4);
 
-        Line[1].y++; Line[2].x++;
+        Line[1].y++;
+        Line[2].x++;
         Line[0].y = Line[1].y + d93;
         Line[3].x = Line[2].x + d93;
         SelectObject(dc, hb2);
@@ -1086,14 +1053,14 @@ static BOOL UITOOLS95_DrawFrameScroll(HDC dc, LPRECT r, UINT uFlags)
     }
 
     /* Here do the real scroll-bar controls end up */
-    if( ! (uFlags & (0xff00 & ~DFCS_ADJUSTRECT)) )
-      /* UITOOLS95_DFC_ButtonPush always uses BF_SOFT which we don't */
-      /* want for the normal scroll-arrow button. */
-      UITOOLS95_DrawRectEdge( dc, r, EDGE_RAISED, (uFlags&DFCS_ADJUSTRECT) | BF_MIDDLE | BF_RECT, 1);
+    if (!(uFlags & (0xff00 & ~DFCS_ADJUSTRECT)))
+        /* UITOOLS95_DFC_ButtonPush always uses BF_SOFT which we don't */
+        /* want for the normal scroll-arrow button. */
+        UITOOLS95_DrawRectEdge(dc, r, EDGE_RAISED, (uFlags & DFCS_ADJUSTRECT) | BF_MIDDLE | BF_RECT, 1);
     else
-      UITOOLS95_DFC_ButtonPush(dc, r, (uFlags & 0xff00) );
+        UITOOLS95_DFC_ButtonPush(dc, r, (uFlags & 0xff00));
 
-    if(uFlags & DFCS_INACTIVE)
+    if (uFlags & DFCS_INACTIVE)
     {
         hbsave = SelectObject(dc, GetSysColorBrush(COLOR_BTNHIGHLIGHT));
         hpsave = SelectObject(dc, GetSysColorPen(COLOR_BTNHIGHLIGHT));
@@ -1102,12 +1069,12 @@ static BOOL UITOOLS95_DrawFrameScroll(HDC dc, LPRECT r, UINT uFlags)
         SelectObject(dc, hbsave);
     }
 
-    if( (uFlags & DFCS_INACTIVE) || !(uFlags & DFCS_PUSHED) )
-      for(i = 0; i < 3; i++)
-      {
-        Line[i].x--;
-        Line[i].y--;
-      }
+    if ((uFlags & DFCS_INACTIVE) || !(uFlags & DFCS_PUSHED))
+        for (i = 0; i < 3; i++)
+        {
+            Line[i].x--;
+            Line[i].y--;
+        }
 
     i = uFlags & DFCS_INACTIVE ? COLOR_BTNSHADOW : COLOR_BTNTEXT;
     hbsave = SelectObject(dc, GetSysColorBrush(i));
@@ -1146,12 +1113,12 @@ static BOOL UITOOLS95_DrawFrameMenu(HDC dc, LPRECT r, UINT uFlags)
     hbsave = SelectObject(dc, GetStockObject(BLACK_BRUSH));
     hpsave = SelectObject(dc, GetStockObject(BLACK_PEN));
 
-    switch(uFlags & 0xff)
+    switch (uFlags & 0xff)
     {
     case DFCS_MENUARROW:
-        i = 187*SmallDiam/750;
-        Points[2].x = myr.left + 468*SmallDiam/750;
-        Points[2].y = myr.top  + 352*SmallDiam/750+1;
+        i = 187 * SmallDiam / 750;
+        Points[2].x = myr.left + 468 * SmallDiam / 750;
+        Points[2].y = myr.top + 352 * SmallDiam / 750 + 1;
         Points[0].y = Points[2].y - i;
         Points[1].y = Points[2].y + i;
         Points[0].x = Points[1].x = Points[2].x - i;
@@ -1160,28 +1127,28 @@ static BOOL UITOOLS95_DrawFrameMenu(HDC dc, LPRECT r, UINT uFlags)
 
     case DFCS_MENUBULLET:
         xe = myr.left;
-        ye = myr.top  + SmallDiam - SmallDiam/2;
-        xc = myr.left + SmallDiam - SmallDiam/2;
-        yc = myr.top  + SmallDiam - SmallDiam/2;
-        i = 234*SmallDiam/750;
+        ye = myr.top + SmallDiam - SmallDiam / 2;
+        xc = myr.left + SmallDiam - SmallDiam / 2;
+        yc = myr.top + SmallDiam - SmallDiam / 2;
+        i = 234 * SmallDiam / 750;
         i = i < 1 ? 1 : i;
         SetRect(&myr, xc - i + i / 2, yc - i + i / 2, xc + i / 2, yc + i / 2);
         Pie(dc, myr.left, myr.top, myr.right, myr.bottom, xe, ye, xe, ye);
         break;
 
     case DFCS_MENUCHECK:
-        Points[0].x = myr.left + 253*SmallDiam/1000;
-        Points[0].y = myr.top  + 445*SmallDiam/1000;
-        Points[1].x = myr.left + 409*SmallDiam/1000;
-        Points[1].y = Points[0].y + (Points[1].x-Points[0].x);
-        Points[2].x = myr.left + 690*SmallDiam/1000;
-        Points[2].y = Points[1].y - (Points[2].x-Points[1].x);
+        Points[0].x = myr.left + 253 * SmallDiam / 1000;
+        Points[0].y = myr.top + 445 * SmallDiam / 1000;
+        Points[1].x = myr.left + 409 * SmallDiam / 1000;
+        Points[1].y = Points[0].y + (Points[1].x - Points[0].x);
+        Points[2].x = myr.left + 690 * SmallDiam / 1000;
+        Points[2].y = Points[1].y - (Points[2].x - Points[1].x);
         Points[3].x = Points[2].x;
-        Points[3].y = Points[2].y + 3*SmallDiam/16;
+        Points[3].y = Points[2].y + 3 * SmallDiam / 16;
         Points[4].x = Points[1].x;
-        Points[4].y = Points[1].y + 3*SmallDiam/16;
+        Points[4].y = Points[1].y + 3 * SmallDiam / 16;
         Points[5].x = Points[0].x;
-        Points[5].y = Points[0].y + 3*SmallDiam/16;
+        Points[5].y = Points[0].y + 3 * SmallDiam / 16;
         Polygon(dc, Points, 6);
         break;
 
@@ -1196,25 +1163,23 @@ static BOOL UITOOLS95_DrawFrameMenu(HDC dc, LPRECT r, UINT uFlags)
     return retval;
 }
 
-
 /**********************************************************************
  *          DrawFrameControl  (USER32.@)
  */
-BOOL WINAPI DrawFrameControl( HDC hdc, LPRECT rc, UINT uType,
-                                  UINT uState )
+BOOL WINAPI DrawFrameControl(HDC hdc, LPRECT rc, UINT uType, UINT uState)
 {
-    switch(uType)
+    switch (uType)
     {
     case DFC_BUTTON:
-      return UITOOLS95_DrawFrameButton(hdc, rc, uState);
+        return UITOOLS95_DrawFrameButton(hdc, rc, uState);
     case DFC_CAPTION:
-      return UITOOLS95_DrawFrameCaption(hdc, rc, uState);
+        return UITOOLS95_DrawFrameCaption(hdc, rc, uState);
     case DFC_MENU:
-      return UITOOLS95_DrawFrameMenu(hdc, rc, uState);
+        return UITOOLS95_DrawFrameMenu(hdc, rc, uState);
     case DFC_SCROLL:
-      return UITOOLS95_DrawFrameScroll(hdc, rc, uState);
+        return UITOOLS95_DrawFrameScroll(hdc, rc, uState);
     default:
-      WARN("(%p,%p,%d,%x), bad type!\n", hdc,rc,uType,uState );
+        WARN("(%p,%p,%d,%x), bad type!\n", hdc, rc, uType, uState);
     }
     return FALSE;
 }
@@ -1222,20 +1187,18 @@ BOOL WINAPI DrawFrameControl( HDC hdc, LPRECT rc, UINT uType,
 /**********************************************************************
  *		DrawAnimatedRects (USER32.@)
  */
-BOOL WINAPI DrawAnimatedRects( HWND hwnd, INT idAni, const RECT* lprcFrom, const RECT* lprcTo )
+BOOL WINAPI DrawAnimatedRects(HWND hwnd, INT idAni, const RECT *lprcFrom, const RECT *lprcTo)
 {
-    //FIXME("(%p,%d,%p,%p): stub\n",hwnd,idAni,lprcFrom,lprcTo);
+    // FIXME("(%p,%d,%p,%p): stub\n",hwnd,idAni,lprcFrom,lprcTo);
     return TRUE;
 }
-
 
 /**********************************************************************
  *          UITOOLS_DrawStateJam
  *
  * Jams in the requested type in the dc
  */
-static BOOL UITOOLS_DrawStateJam( HDC hdc, UINT opcode, DRAWSTATEPROC func, LPARAM lp, WPARAM wp,
-                                  LPRECT rc, UINT dtflags, BOOL unicode )
+static BOOL UITOOLS_DrawStateJam(HDC hdc, UINT opcode, DRAWSTATEPROC func, LPARAM lp, WPARAM wp, LPRECT rc, UINT dtflags, BOOL unicode)
 {
     HDC memdc;
     HBITMAP hbmsave;
@@ -1243,11 +1206,11 @@ static BOOL UITOOLS_DrawStateJam( HDC hdc, UINT opcode, DRAWSTATEPROC func, LPAR
     INT cx = rc->right - rc->left;
     INT cy = rc->bottom - rc->top;
 
-    switch(opcode)
+    switch (opcode)
     {
     case DST_TEXT:
     case DST_PREFIXTEXT:
-        if(unicode)
+        if (unicode)
             return DrawTextW(hdc, (LPWSTR)lp, (INT)wp, rc, dtflags);
         else
             return DrawTextA(hdc, (LPSTR)lp, (INT)wp, rc, dtflags);
@@ -1257,9 +1220,10 @@ static BOOL UITOOLS_DrawStateJam( HDC hdc, UINT opcode, DRAWSTATEPROC func, LPAR
 
     case DST_BITMAP:
         memdc = CreateCompatibleDC(hdc);
-        if(!memdc) return FALSE;
+        if (!memdc)
+            return FALSE;
         hbmsave = SelectObject(memdc, (HBITMAP)lp);
-        if(!hbmsave)
+        if (!hbmsave)
         {
             DeleteDC(memdc);
             return FALSE;
@@ -1270,7 +1234,8 @@ static BOOL UITOOLS_DrawStateJam( HDC hdc, UINT opcode, DRAWSTATEPROC func, LPAR
         return retval;
 
     case DST_COMPLEX:
-        if(func) {
+        if (func)
+        {
             BOOL bRet;
             /* DRAWSTATEPROC assumes that it draws at the center of coordinates  */
 
@@ -1279,7 +1244,8 @@ static BOOL UITOOLS_DrawStateJam( HDC hdc, UINT opcode, DRAWSTATEPROC func, LPAR
             /* Restore origin */
             OffsetViewportOrgEx(hdc, -rc->left, -rc->top, NULL);
             return bRet;
-        } else
+        }
+        else
             return FALSE;
     }
     return FALSE;
@@ -1288,8 +1254,7 @@ static BOOL UITOOLS_DrawStateJam( HDC hdc, UINT opcode, DRAWSTATEPROC func, LPAR
 /**********************************************************************
  *      UITOOLS_DrawState()
  */
-static BOOL UITOOLS_DrawState(HDC hdc, HBRUSH hbr, DRAWSTATEPROC func, LPARAM lp, WPARAM wp,
-                              INT x, INT y, INT cx, INT cy, UINT flags, BOOL unicode )
+static BOOL UITOOLS_DrawState(HDC hdc, HBRUSH hbr, DRAWSTATEPROC func, LPARAM lp, WPARAM wp, INT x, INT y, INT cx, INT cy, UINT flags, BOOL unicode)
 {
     HBITMAP hbm, hbmsave;
     HFONT hfsave;
@@ -1302,39 +1267,42 @@ static BOOL UITOOLS_DrawState(HDC hdc, HBRUSH hbr, DRAWSTATEPROC func, LPARAM lp
     INT len = wp;
     BOOL retval, tmp;
 
-    if((opcode == DST_TEXT || opcode == DST_PREFIXTEXT) && !len)    /* The string is '\0' terminated */
+    if ((opcode == DST_TEXT || opcode == DST_PREFIXTEXT) && !len) /* The string is '\0' terminated */
     {
-        if (!lp) return FALSE;
+        if (!lp)
+            return FALSE;
 
-        if(unicode)
+        if (unicode)
             len = lstrlenW((LPWSTR)lp);
         else
             len = strlen((LPSTR)lp);
     }
 
     /* Find out what size the image has if not given by caller */
-    if(!cx || !cy)
+    if (!cx || !cy)
     {
         SIZE s;
         BITMAP bm;
 
-        switch(opcode)
+        switch (opcode)
         {
         case DST_TEXT:
         case DST_PREFIXTEXT:
-            if(unicode)
+            if (unicode)
                 retval = GetTextExtentPoint32W(hdc, (LPWSTR)lp, len, &s);
             else
                 retval = GetTextExtentPoint32A(hdc, (LPSTR)lp, len, &s);
-            if(!retval) return FALSE;
+            if (!retval)
+                return FALSE;
             break;
 
-        //case DST_ICON:
-        //    if (!get_icon_size( (HICON)lp, &s )) return FALSE;
-        //    break;
+            // case DST_ICON:
+            //    if (!get_icon_size( (HICON)lp, &s )) return FALSE;
+            //    break;
 
         case DST_BITMAP:
-            if(!GetObjectA((HBITMAP)lp, sizeof(bm), &bm)) return FALSE;
+            if (!GetObjectA((HBITMAP)lp, sizeof(bm), &bm))
+                return FALSE;
             s.cx = bm.bmWidth;
             s.cy = bm.bmHeight;
             break;
@@ -1343,19 +1311,21 @@ static BOOL UITOOLS_DrawState(HDC hdc, HBRUSH hbr, DRAWSTATEPROC func, LPARAM lp
             return FALSE;
         }
 
-        if(!cx) cx = s.cx;
-        if(!cy) cy = s.cy;
+        if (!cx)
+            cx = s.cx;
+        if (!cy)
+            cy = s.cy;
     }
 
     SetRect(&rc, x, y, x + cx, y + cy);
 
-    if(flags & DSS_RIGHT)    /* This one is not documented in the win32.hlp file */
+    if (flags & DSS_RIGHT) /* This one is not documented in the win32.hlp file */
         dtflags |= DT_RIGHT;
-    if(opcode == DST_TEXT)
+    if (opcode == DST_TEXT)
         dtflags |= DT_NOPREFIX;
 
     /* For DSS_NORMAL we just jam in the image and return */
-    if((flags & 0x7ff0) == DSS_NORMAL)
+    if ((flags & 0x7ff0) == DSS_NORMAL)
     {
         return UITOOLS_DrawStateJam(hdc, opcode, func, lp, len, &rc, dtflags, unicode);
     }
@@ -1364,30 +1334,39 @@ static BOOL UITOOLS_DrawState(HDC hdc, HBRUSH hbr, DRAWSTATEPROC func, LPARAM lp
     /* before it is displayed */
     fg = SetTextColor(hdc, RGB(0, 0, 0));
     bg = SetBkColor(hdc, RGB(255, 255, 255));
-    hbm = NULL; hbmsave = NULL;
-    memdc = NULL; hbsave = NULL;
+    hbm = NULL;
+    hbmsave = NULL;
+    memdc = NULL;
+    hbsave = NULL;
     retval = FALSE; /* assume failure */
 
     /* From here on we must use "goto cleanup" when something goes wrong */
-    hbm     = CreateBitmap(cx, cy, 1, 1, NULL);
-    if(!hbm) goto cleanup;
-    memdc   = CreateCompatibleDC(hdc);
-    if(!memdc) goto cleanup;
+    hbm = CreateBitmap(cx, cy, 1, 1, NULL);
+    if (!hbm)
+        goto cleanup;
+    memdc = CreateCompatibleDC(hdc);
+    if (!memdc)
+        goto cleanup;
     hbmsave = SelectObject(memdc, hbm);
-    if(!hbmsave) goto cleanup;
+    if (!hbmsave)
+        goto cleanup;
     SetRect(&rc, 0, 0, cx, cy);
-    if(!FillRect(memdc, &rc, GetStockObject(WHITE_BRUSH))) goto cleanup;
+    if (!FillRect(memdc, &rc, GetStockObject(WHITE_BRUSH)))
+        goto cleanup;
     SetBkColor(memdc, RGB(255, 255, 255));
     SetTextColor(memdc, RGB(0, 0, 0));
-    hfsave  = SelectObject(memdc, GetCurrentObject(hdc, OBJ_FONT));
+    hfsave = SelectObject(memdc, GetCurrentObject(hdc, OBJ_FONT));
 
     /* DST_COMPLEX may draw text as well,
      * so we must be sure that correct font is selected
      */
-    if(!hfsave && (opcode <= DST_PREFIXTEXT)) goto cleanup;
+    if (!hfsave && (opcode <= DST_PREFIXTEXT))
+        goto cleanup;
     tmp = UITOOLS_DrawStateJam(memdc, opcode, func, lp, len, &rc, dtflags, unicode);
-    if(hfsave) SelectObject(memdc, hfsave);
-    if(!tmp) goto cleanup;
+    if (hfsave)
+        SelectObject(memdc, hfsave);
+    if (!tmp)
+        goto cleanup;
 
     /* This state cause the image to be dithered */
     /*if(flags & DSS_UNION)
@@ -1400,31 +1379,34 @@ static BOOL UITOOLS_DrawState(HDC hdc, HBRUSH hbr, DRAWSTATEPROC func, LPARAM lp
     }*/
 
     if (flags & DSS_DISABLED)
-       hbrtmp = GetSysColorBrush(COLOR_3DHILIGHT);
+        hbrtmp = GetSysColorBrush(COLOR_3DHILIGHT);
     else if (flags & DSS_DEFAULT)
-       hbrtmp = GetSysColorBrush(COLOR_3DSHADOW);
+        hbrtmp = GetSysColorBrush(COLOR_3DSHADOW);
 
     /* Draw light or dark shadow */
-    if (flags & (DSS_DISABLED|DSS_DEFAULT))
+    if (flags & (DSS_DISABLED | DSS_DEFAULT))
     {
-       hbsave = SelectObject(hdc, hbrtmp);
-       if(!hbsave) goto cleanup;
-       if(!BitBlt(hdc, x+1, y+1, cx, cy, memdc, 0, 0, 0x00B8074A)) goto cleanup;
-       SelectObject(hdc, hbsave);
+        hbsave = SelectObject(hdc, hbrtmp);
+        if (!hbsave)
+            goto cleanup;
+        if (!BitBlt(hdc, x + 1, y + 1, cx, cy, memdc, 0, 0, 0x00B8074A))
+            goto cleanup;
+        SelectObject(hdc, hbsave);
     }
 
     if (flags & DSS_DISABLED)
     {
-       hbr = GetSysColorBrush(COLOR_3DSHADOW);
+        hbr = GetSysColorBrush(COLOR_3DSHADOW);
     }
     else if (!hbr)
     {
-       hbr = GetStockObject(BLACK_BRUSH);
+        hbr = GetStockObject(BLACK_BRUSH);
     }
 
     hbsave = SelectObject(hdc, hbr);
 
-    if(!BitBlt(hdc, x, y, cx, cy, memdc, 0, 0, 0x00B8074A)) goto cleanup;
+    if (!BitBlt(hdc, x, y, cx, cy, memdc, 0, 0, 0x00B8074A))
+        goto cleanup;
 
     retval = TRUE; /* We succeeded */
 
@@ -1432,10 +1414,14 @@ cleanup:
     SetTextColor(hdc, fg);
     SetBkColor(hdc, bg);
 
-    if(hbsave)  SelectObject(hdc, hbsave);
-    if(hbmsave) SelectObject(memdc, hbmsave);
-    if(hbm)     DeleteObject(hbm);
-    if(memdc)   DeleteDC(memdc);
+    if (hbsave)
+        SelectObject(hdc, hbsave);
+    if (hbmsave)
+        SelectObject(memdc, hbmsave);
+    if (hbm)
+        DeleteObject(hbm);
+    if (memdc)
+        DeleteDC(memdc);
 
     return retval;
 }
@@ -1443,9 +1429,7 @@ cleanup:
 /**********************************************************************
  *		DrawStateA (USER32.@)
  */
-BOOL WINAPI DrawStateA(HDC hdc, HBRUSH hbr,
-                   DRAWSTATEPROC func, LPARAM ldata, WPARAM wdata,
-                   INT x, INT y, INT cx, INT cy, UINT flags)
+BOOL WINAPI DrawStateA(HDC hdc, HBRUSH hbr, DRAWSTATEPROC func, LPARAM ldata, WPARAM wdata, INT x, INT y, INT cx, INT cy, UINT flags)
 {
     return UITOOLS_DrawState(hdc, hbr, func, ldata, wdata, x, y, cx, cy, flags, FALSE);
 }
@@ -1453,9 +1437,7 @@ BOOL WINAPI DrawStateA(HDC hdc, HBRUSH hbr,
 /**********************************************************************
  *		DrawStateW (USER32.@)
  */
-BOOL WINAPI DrawStateW(HDC hdc, HBRUSH hbr,
-                   DRAWSTATEPROC func, LPARAM ldata, WPARAM wdata,
-                   INT x, INT y, INT cx, INT cy, UINT flags)
+BOOL WINAPI DrawStateW(HDC hdc, HBRUSH hbr, DRAWSTATEPROC func, LPARAM ldata, WPARAM wdata, INT x, INT y, INT cx, INT cy, UINT flags)
 {
     return UITOOLS_DrawState(hdc, hbr, func, ldata, wdata, x, y, cx, cy, flags, TRUE);
 }

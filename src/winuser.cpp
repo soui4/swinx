@@ -68,7 +68,7 @@ BOOL SubtractRect(LPRECT dest, const RECT *src1, const RECT *src2)
 
     if (left >= right || top >= bottom)
     {
-        *dest = *src1; 
+        *dest = *src1;
         return TRUE;
     }
 

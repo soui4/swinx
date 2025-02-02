@@ -8,12 +8,12 @@
 
 void LISTBOX_Register(void);
 
-
-void ClassMgr::builtin_register() {
+void ClassMgr::builtin_register()
+{
     std::unique_lock<std::recursive_mutex> lock(cls_mutex);
-    if(builtin_registed)
+    if (builtin_registed)
         return;
-    builtin_registed=true;
+    builtin_registed = true;
     {
         WNDCLASSEXA clsInfo = { 0 };
         clsInfo.cbSize = sizeof(clsInfo);
@@ -51,7 +51,7 @@ CLASS *ClassMgr::find_class(HINSTANCE module, LPCSTR clsName)
     {
         ATOM atom = (ATOM) reinterpret_cast<LONG_PTR>(clsName);
         bool bValid = false;
-        for (auto& it : atom_map)
+        for (auto &it : atom_map)
         {
             if (it.second == atom)
             {
@@ -63,7 +63,7 @@ CLASS *ClassMgr::find_class(HINSTANCE module, LPCSTR clsName)
         if (!bValid)
             return nullptr;
     }
-    for (auto& it : class_list)
+    for (auto &it : class_list)
     {
         if (stricmp(it->name, clsName) == 0)
             return it;
@@ -71,10 +71,10 @@ CLASS *ClassMgr::find_class(HINSTANCE module, LPCSTR clsName)
     return NULL;
 }
 
-ATOM ClassMgr::get_class_info(HINSTANCE instance, const char* class_name, WNDCLASSEXA* wc)
+ATOM ClassMgr::get_class_info(HINSTANCE instance, const char *class_name, WNDCLASSEXA *wc)
 {
     std::unique_lock<std::recursive_mutex> lock(cls_mutex);
-    CLASS* _class;
+    CLASS *_class;
     ATOM atom;
     if (!(_class = find_class(instance, class_name)))
         return 0;
@@ -96,10 +96,10 @@ ATOM ClassMgr::get_class_info(HINSTANCE instance, const char* class_name, WNDCLA
     return atom;
 }
 
-
-UINT ClassMgr::get_atom_name(ATOM atomName, LPSTR name, int cchLen) {
+UINT ClassMgr::get_atom_name(ATOM atomName, LPSTR name, int cchLen)
+{
     std::unique_lock<std::recursive_mutex> lock(cls_mutex);
-    for (auto& it : atom_map)
+    for (auto &it : atom_map)
     {
         if (it.second == atomName)
         {
@@ -141,9 +141,10 @@ static ATOM get_int_atom_value(const char *name)
     return ret;
 }
 
-ATOM ClassMgr::register_class(const WNDCLASSEXA* wc) {
+ATOM ClassMgr::register_class(const WNDCLASSEXA *wc)
+{
     HINSTANCE instance;
-    CLASS* _class;
+    CLASS *_class;
     ATOM atom;
     BOOL ret;
 
@@ -152,7 +153,8 @@ ATOM ClassMgr::register_class(const WNDCLASSEXA* wc) {
         SetLastError(ERROR_INVALID_PARAMETER);
         return 0;
     }
-    if (find_class(wc->hInstance, wc->lpszClassName)) {
+    if (find_class(wc->hInstance, wc->lpszClassName))
+    {
         SetLastError(ERROR_CLASS_ALREADY_EXISTS);
         return 0;
     }
@@ -163,7 +165,7 @@ ATOM ClassMgr::register_class(const WNDCLASSEXA* wc) {
     if (wc->cbWndExtra > 40) /* Extra bytes are limited to 40 in Win32 */
         SLOG_FMTW("Win extra bytes %d is > 40\n", wc->cbWndExtra);
 
-    if (!(_class = (CLASS*)calloc(1, sizeof(CLASS) + wc->cbClsExtra)))
+    if (!(_class = (CLASS *)calloc(1, sizeof(CLASS) + wc->cbClsExtra)))
         return 0;
 
     _class->atomName = get_int_atom_value(wc->lpszClassName);
@@ -193,10 +195,12 @@ ATOM ClassMgr::register_class(const WNDCLASSEXA* wc) {
     _class->hIconSm = wc->hIconSm;
     _class->hCursor = wc->hCursor;
     _class->winproc = wc->lpfnWndProc;
-    if (wc->hbrBackground && IS_INTRESOURCE(wc->hbrBackground)) {
+    if (wc->hbrBackground && IS_INTRESOURCE(wc->hbrBackground))
+    {
         _class->hbrBackground = RefGdiObj(GetSysColorBrush((int)(UINT_PTR)wc->hbrBackground));
     }
-    else {
+    else
+    {
         _class->hbrBackground = wc->hbrBackground;
     }
     if (!_class->atomName)
@@ -227,7 +231,6 @@ ATOM ClassMgr::register_class(const WNDCLASSEXA* wc) {
 
     return atom;
 }
-
 
 /***********************************************************************
  *		UnregisterClassW (USER32.@)

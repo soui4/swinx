@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <wchar.h>
-#include <wctype.h> 
+#include <wctype.h>
 #include <ctypes.h>
 #include <errno.h>
 #include <tchar.h>
@@ -140,4 +140,4 @@ extern "C"
 }
 #endif //__cplusplus
 
-#endif//__STRFUN_H_
+#endif //__STRFUN_H_

@@ -173,4 +173,4 @@ typedef LPDISPLAY_DEVICEA LPDISPLAY_DEVICE;
 }
 #endif //__cplusplus
 
-#endif//_MULTIMON_H_
+#endif //_MULTIMON_H_

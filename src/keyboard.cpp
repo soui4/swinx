@@ -147,7 +147,7 @@ SKeyboard::SKeyboard(SConnection *conn)
     , xkb_context(0)
     , xkb_keymap(0)
     , xkb_state_4_convert(0)
-    ,xkb_state_4_vt(0)
+    , xkb_state_4_vt(0)
     , latin_keymap(0)
     , m_hasLatinLayout(false)
     , m_config(false)
@@ -179,27 +179,28 @@ xcb_connection_t *SKeyboard::xcb_connection()
 UINT SKeyboard::mapVirtualKey(UINT code, UINT type) const
 {
     UINT ret;
-    switch (type) {
-        case MAPVK_VK_TO_VSC_EX:
-        case MAPVK_VK_TO_VSC:
-            {
-                //todo:hjx
-                ret = lookVkMap(code);
-                break;
-            }
-        case MAPVK_VSC_TO_VK:
-        case MAPVK_VSC_TO_VK_EX:
-            {
-            xcb_keysym_t keySym = xkb_state_key_get_one_sym(xkb_state_4_convert, code);
-            ret = keySymToVk(keySym, 0);
-            break;
-            }
-        case MAPVK_VK_TO_CHAR:
-            //todo:
-            break;
-        default:
-            //FIXME_(keyboard)("unknown type %d\n", type);
-            return 0;
+    switch (type)
+    {
+    case MAPVK_VK_TO_VSC_EX:
+    case MAPVK_VK_TO_VSC:
+    {
+        // todo:hjx
+        ret = lookVkMap(code);
+        break;
+    }
+    case MAPVK_VSC_TO_VK:
+    case MAPVK_VSC_TO_VK_EX:
+    {
+        xcb_keysym_t keySym = xkb_state_key_get_one_sym(xkb_state_4_convert, code);
+        ret = keySymToVk(keySym, 0);
+        break;
+    }
+    case MAPVK_VK_TO_CHAR:
+        // todo:
+        break;
+    default:
+        // FIXME_(keyboard)("unknown type %d\n", type);
+        return 0;
     }
     return ret;
 }
@@ -256,15 +257,15 @@ void SKeyboard::readXKBConfig()
 void SKeyboard::clearXKBConfig()
 {
     if (xkb_names.rules)
-        free((void*)xkb_names.rules);
+        free((void *)xkb_names.rules);
     if (xkb_names.model)
-        free((void*)xkb_names.model);
+        free((void *)xkb_names.model);
     if (xkb_names.layout)
-        free((void*)xkb_names.layout);
+        free((void *)xkb_names.layout);
     if (xkb_names.variant)
-        free((void*)xkb_names.variant);
+        free((void *)xkb_names.variant);
     if (xkb_names.options)
-        free((void*)xkb_names.options);
+        free((void *)xkb_names.options);
     memset(&xkb_names, 0, sizeof(xkb_names));
 }
 
@@ -279,14 +280,14 @@ void SKeyboard::updateKeymap()
         xkb_context_set_log_level(xkb_context, (xkb_log_level)XKB_LOG_LEVEL_CRITICAL);
     }
     // update xkb keymap object
-    if(xkb_keymap){
+    if (xkb_keymap)
+    {
         xkb_keymap_unref(xkb_keymap);
         xkb_keymap = 0;
     }
 
+    struct xkb_state *new_state = 0, *new_state_4_vt = 0;
 
-    struct xkb_state *new_state = 0, * new_state_4_vt=0;
-    
     {
         // Compile a keymap from RMLVO (rules, models, layouts, variants and options) names
         readXKBConfig();
@@ -294,8 +295,8 @@ void SKeyboard::updateKeymap()
         if (!xkb_keymap)
         {
             // last fallback is to used hard-coded keymap name, see DEFAULT_XKB_* in xkbcommon.pri
-            SLOG_STMW()<<"swinx: Could not determine keyboard configuration data"
-                      " from X server, will use hard-coded keymap configuration.";
+            SLOG_STMW() << "swinx: Could not determine keyboard configuration data"
+                           " from X server, will use hard-coded keymap configuration.";
             clearXKBConfig();
             xkb_keymap = xkb_keymap_new_from_names(xkb_context, &xkb_names, (xkb_keymap_compile_flags)0);
         }
@@ -306,27 +307,29 @@ void SKeyboard::updateKeymap()
         }
         else
         {
-            SLOG_STMW()<<("swinx: Failed to compile a keymap!");
+            SLOG_STMW() << ("swinx: Failed to compile a keymap!");
             m_config = false;
             return;
         }
     }
     if (!new_state || !new_state_4_vt)
     {
-        SLOG_STMW()<<("swinx: Failed to create xkb state!");
+        SLOG_STMW() << ("swinx: Failed to create xkb state!");
         m_config = false;
         return;
     }
     // update xkb state object
-    if(xkb_state_4_convert){
+    if (xkb_state_4_convert)
+    {
         xkb_state_unref(xkb_state_4_convert);
-        xkb_state_4_convert=0;
+        xkb_state_4_convert = 0;
     }
     xkb_state_4_convert = new_state;
 
-    if(xkb_state_4_vt){
+    if (xkb_state_4_vt)
+    {
         xkb_state_unref(xkb_state_4_vt);
-        xkb_state_4_vt=0;
+        xkb_state_4_vt = 0;
     }
     xkb_state_4_vt = new_state_4_vt;
     updateXKBMods();
@@ -440,12 +443,11 @@ int SKeyboard::lookVkMap(xcb_keysym_t key) const
     return 0;
 }
 
-
 char SKeyboard::scanCodeToAscii(xcb_keycode_t code)
 {
     char szBuf[2];
     const int size = xkb_state_key_get_utf8(xkb_state_4_convert, code, szBuf, 2);
-    if (size <=0 )
+    if (size <= 0)
         return 0;
     return szBuf[0];
 }
@@ -489,13 +491,16 @@ uint32_t SKeyboard::onKeyEvent(bool bPress, xcb_keycode_t code, uint16_t state, 
     updateXKBStateFromState(xkb_state_4_convert, state);
     xcb_keysym_t sym = xkb_state_key_get_one_sym(xkb_state_4_vt, code);
     uint32_t modifiers = translateModifiers(state);
-    
+
     uint32_t vk = keySymToVk(sym, modifiers);
-    if (bPress) {
-        if (m_autorepeat_code == code) {
+    if (bPress)
+    {
+        if (m_autorepeat_code == code)
+        {
             m_repeatCount++;
         }
-        else {
+        else
+        {
             m_autorepeat_code = code;
             m_repeatCount = 0;
         }
@@ -505,27 +510,33 @@ uint32_t SKeyboard::onKeyEvent(bool bPress, xcb_keycode_t code, uint16_t state, 
         m_byKeyboardState[vk] = 0x80;
     else
         m_byKeyboardState[vk] = 0x00;
-    if (vk == VK_CAPITAL) {
-        m_byKeyboardState[vk] |= xkb_state_led_name_is_active(xkb_state_4_convert, XKB_LED_NAME_CAPS ) ? 0x01 : 0x00;
+    if (vk == VK_CAPITAL)
+    {
+        m_byKeyboardState[vk] |= xkb_state_led_name_is_active(xkb_state_4_convert, XKB_LED_NAME_CAPS) ? 0x01 : 0x00;
     }
-    if (vk == VK_NUMLOCK) {
+    if (vk == VK_NUMLOCK)
+    {
         m_byKeyboardState[vk] |= xkb_state_led_name_is_active(xkb_state_4_convert, XKB_LED_NAME_NUM) ? 0x01 : 0x00;
     }
-    if (vk == VK_SCROLL) {
+    if (vk == VK_SCROLL)
+    {
         m_byKeyboardState[vk] |= xkb_state_led_name_is_active(xkb_state_4_convert, XKB_LED_NAME_SCROLL) ? 0x01 : 0x00;
     }
-    if(vk>=VK_SHIFT && vk<=VK_MENU){
-        m_byKeyboardState[vk] = bPress?0x80:0x00;
-    }else{
+    if (vk >= VK_SHIFT && vk <= VK_MENU)
+    {
+        m_byKeyboardState[vk] = bPress ? 0x80 : 0x00;
+    }
+    else
+    {
         m_byKeyboardState[VK_SHIFT] = (modifiers & XCB_MOD_MASK_SHIFT) ? 0x80 : 0x00;
         m_byKeyboardState[VK_CONTROL] = (modifiers & XCB_MOD_MASK_CONTROL) ? 0x80 : 0x00;
         m_byKeyboardState[VK_MENU] = (modifiers & XCB_MOD_MASK_1) ? 0x80 : 0x00;
     }
-    //SLOG_STMI()<<"ctrl state="<<m_byKeyboardState[VK_CONTROL] <<" bPress="<<bPress<<" code="<<code;
+    // SLOG_STMI()<<"ctrl state="<<m_byKeyboardState[VK_CONTROL] <<" bPress="<<bPress<<" code="<<code;
     return vk;
 }
 
-void SKeyboard::onMappingNotifyEvent(xcb_mapping_notify_event_t* event)
+void SKeyboard::onMappingNotifyEvent(xcb_mapping_notify_event_t *event)
 {
     updateKeymap();
     xcb_refresh_keyboard_mapping(m_key_symbols, event);
