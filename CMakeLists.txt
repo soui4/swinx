@@ -5,12 +5,6 @@ project(swinx)
 #add gtk demo
 find_package(PkgConfig REQUIRED)
 
-if(0)
-#use local build cairo lib
-#pkg_check_modules(CAIRO REQUIRED cairo)
-include_directories("/home/flyhigh/work/build/cairo/include")
-link_directories("/home/flyhigh/work/build/cairo/lib")
-endif()
 
 add_subdirectory(thirdparty/xkbcommon)
 add_subdirectory(thirdparty/libxcb)
@@ -71,7 +65,7 @@ install(TARGETS swinx
     ARCHIVE DESTINATION lib/Debug
 )
 
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION swinx/include)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION swinx)
 
 
 
