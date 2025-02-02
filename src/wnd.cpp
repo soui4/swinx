@@ -766,6 +766,8 @@ BOOL ClientToScreen(HWND hWnd, LPPOINT ppt)
     HWND hParent = wndObj->parent;
     while (hParent) {
         WndObj wndObj = WndMgr::fromHwnd(hParent);
+        if (!wndObj)//todo:hjx
+            break;
         ppt->x += wndObj->rc.left;
         ppt->y += wndObj->rc.top;
         if (wndObj->dwStyle & WS_BORDER) {
@@ -798,6 +800,8 @@ BOOL ScreenToClient(HWND hWnd, LPPOINT ppt)
     HWND hParent = wndObj->parent;
     while (hParent) {
         WndObj wndObj = WndMgr::fromHwnd(hParent);
+        if (!wndObj) // todo:hjx
+            break;
         ppt->x -= wndObj->rc.left;
         ppt->y -= wndObj->rc.top;
         if (wndObj->dwStyle & WS_BORDER) {
@@ -1366,9 +1370,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 			RECT rc = wndObj->rc;
 			OffsetRect(&rc, -rc.left, -rc.top);
 			InvalidateRect(hWnd, &rc, TRUE);
-		}else{
-            bSkipMsg = TRUE;
-        }
+		}
     	wndObj->nSizing++;
 		break;
 	}
