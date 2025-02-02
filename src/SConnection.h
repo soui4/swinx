@@ -34,10 +34,6 @@ struct IEventChecker {
     virtual bool checkEvent(xcb_generic_event_t* e) const = 0;
 };
 
-struct ISelectionListener {
-  virtual void handleSelectionRequest(xcb_selection_request_event_t *e)=0;
-};
-
 class SKeyboard;
 class SClipboard;
 class _Window;
@@ -200,8 +196,6 @@ public:
       bool hasXFixes() const { return xfixes_first_event > 0; }
       STrayIconMgr* GetTrayIconMgr() { return m_trayIconMgr; }
 
-      void AddSelectionListener(ISelectionListener* pListener);
-      void RemoveSelectionListener(ISelectionListener* pListener);
       void EnableDragDrop(HWND hWnd, BOOL enable);
       void SendXdndStatus(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect);
       void SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect);
@@ -298,8 +292,6 @@ public:
     BOOL m_bComposited = FALSE;
     RECT m_rcWorkArea = { 0 };
     uint32_t xfixes_first_event = 0;
-
-    std::list<ISelectionListener*> m_lstSelListener;
 };
 
 class SConnMgr {

@@ -251,7 +251,6 @@ SConnection::SConnection(int screenNum)
     m_keyboard = new SKeyboard(this);
     m_trayIconMgr = new STrayIconMgr(this);
     m_clipboard = new SClipboard(this);
-    m_lstSelListener.push_back(m_clipboard);
 }
 
 
@@ -262,7 +261,6 @@ SConnection::~SConnection()
         return;
     }
 
-    m_lstSelListener.clear();
     delete m_keyboard;
     delete m_clipboard;
     delete m_trayIconMgr;
@@ -872,24 +870,6 @@ void SConnection::SetCaretBlinkTime(UINT blinkTime) {
     m_caretBlinkTime = blinkTime;
 }
 
-
-void SConnection::AddSelectionListener(ISelectionListener* pListener)
-{
-    for (auto it : m_lstSelListener)
-        if (it == pListener)
-            return;
-    m_lstSelListener.push_back(pListener);
-}
-
-void SConnection::RemoveSelectionListener(ISelectionListener* pListener)
-{
-    for (auto it =m_lstSelListener.begin();it!= m_lstSelListener.end();it++)
-        if (*it == pListener)
-        {
-            m_lstSelListener.erase(it);
-            return;
-        }
-}
 
 void SConnection::EnableDragDrop(HWND hWnd, BOOL enable)
 {
@@ -1741,9 +1721,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     {
         xcb_selection_request_event_t* e2 = (xcb_selection_request_event_t*)event;
         m_tsSelection = e2->time;
-        for(auto it:m_lstSelListener){
-            it->handleSelectionRequest(e2);
-        }
+        m_clipboard->handleSelectionRequest(e2);
         return false;
     }
     case XCB_SELECTION_CLEAR:

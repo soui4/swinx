@@ -74,7 +74,7 @@ public:
 };
 
 
-class SClipboard : public ISelectionListener {
+class SClipboard {
 	enum {
 		kWaitTimeout = 5000,
 		kIncrTimeout = 50000,
