@@ -75,6 +75,7 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
     }
     else
     {
+        SetLastError(NO_ERROR);
         return UTF16FromUTF8(src, len, (uint16_t *)dst, dstLen);
     }
 #else
@@ -92,6 +93,7 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
     }
     else
     {
+        SetLastError(NO_ERROR);
         return UTF32FromUTF8(src, len, (uint32_t *)dst, dstLen);
     }
 #endif
@@ -124,6 +126,7 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
     }
     else
     {
+        SetLastError(NO_ERROR);
         return UTF8FromUTF16((const uint16_t *)src, len, dst, dstLen);
     }
 #else
@@ -136,8 +139,10 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
         SetLastError(ERROR_INSUFFICIENT_BUFFER);
         return 0;
     }
-    else
+    else{
+        SetLastError(NO_ERROR);
         return UTF8FromUTF32((const uint32_t *)src, len, dst, dstLen);
+    }
 #endif
 }
 
