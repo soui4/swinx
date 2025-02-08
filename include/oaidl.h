@@ -1425,6 +1425,12 @@ typedef struct IDispatch *LPDISPATCH;
 /* The range -5500 through -5550 is reserved for Forms */
 /* The remainder of the negative DISPIDs are reserved for future use */
 
+/* Flags for IDispatch::Invoke */
+#define DISPATCH_METHOD         0x1
+#define DISPATCH_PROPERTYGET    0x2
+#define DISPATCH_PROPERTYPUT    0x4
+#define DISPATCH_PROPERTYPUTREF 0x8
+
 DEFINE_GUID(IID_IDispatch, 0x00020400, 0, 0, 0xC0, 0, 0, 0, 0, 0, 0, 0x46);
 #if defined(__cplusplus) && !defined(CINTERFACE)
 
