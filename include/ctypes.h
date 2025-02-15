@@ -197,6 +197,7 @@ typedef void *HMODULE;
 
 typedef UINT_PTR HWND;
 typedef struct _Handle *HGDIOBJ;
+typedef struct _IMContext * HIMC; 
 
 typedef HGDIOBJ HPEN;
 typedef HGDIOBJ HFONT;

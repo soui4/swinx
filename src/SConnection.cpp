@@ -121,38 +121,75 @@ static uint32_t GetDoubleClickSpan(xcb_connection_t *connection, xcb_screen_t *s
     return ret;
 }
 
-void SConnection::readXResources()
+static void xim_forward_event(xcb_xim_t *im, xcb_xic_t ic, xcb_key_press_event_t *event,
+                   void *user_data) {
+    SLOG_FMTI("Key %s Keycode %u, State %u\n",
+            event->response_type == XCB_KEY_PRESS ? "press" : "release",
+            event->detail, event->state);
+}
+
+static void xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, char *str,
+                   uint32_t length, uint32_t *keysym, size_t nKeySym,
+                   void *user_data) {
+    if (xcb_xim_get_encoding(im) == XCB_XIM_UTF8_STRING) {
+        SLOG_FMTI("key commit utf8: %.*s\n", length, str);
+    } else if (xcb_xim_get_encoding(im) == XCB_XIM_COMPOUND_TEXT) {
+        size_t newLength = 0;
+        char *utf8 = xcb_compound_text_to_utf8(str, length, &newLength);
+        if (utf8) {
+            int l = newLength;
+            SLOG_FMTI("key commit: %.*s\n", l, utf8);
+        }
+    }
+}
+
+static void xim_disconnected(xcb_xim_t *im, void *user_data) {
+    HIMC hIMC = (HIMC)user_data;
+    hIMC->xic = 0;
+    SLOG_STMI()<<"Disconnected from input method server.";
+}
+
+extern "C"
 {
-    int offset = 0;
-    std::stringstream resources;
-    while (1)
-    {
-        xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, xcb_get_property_unchecked(connection, false, screen->root, XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, offset / 4, 8192), NULL);
-        bool more = false;
-        if (reply && reply->format == 8 && reply->type == XCB_ATOM_STRING)
-        {
-            int len = xcb_get_property_value_length(reply);
-            resources << std::string((const char *)xcb_get_property_value(reply), len);
-            offset += len;
-            more = reply->bytes_after != 0;
-        }
+    xcb_xim_im_callback xim_callback = {
+        .forward_event = xim_forward_event,
+        .commit_string = xim_commit_string,
+        .disconnected = xim_disconnected,
+    };
+}
 
-        if (reply)
-            free(reply);
 
-        if (!more)
-            break;
+static void xim_logger(const char *fmt, ...) {
+    va_list argp;
+    va_start(argp, fmt);
+    vprintf(fmt, argp);
+    va_end(argp);
+}
+
+static void xim_create_ic_callback(xcb_xim_t *im, xcb_xic_t new_ic, void *user_data) {
+    HIMC hIMC = (HIMC)user_data;
+    hIMC->xic = new_ic;
+    hIMC->AddRef();
+    if(new_ic && GetFocus() == hIMC->hWnd){
+        //delay set ic focus
+        xcb_xim_set_ic_focus(im, new_ic);
+        SLOG_STMI()<<"set windows "<<hIMC->hWnd<<" icid="<<new_ic;
     }
+}
 
-    std::string line;
-    static const char kDpiDesc[] = "Xft.dpi:\t";
-    while (std::getline(resources, line, '\n'))
-    {
-        if (line.length() > ARRAYSIZE(kDpiDesc) - 1 && strncmp(line.c_str(), kDpiDesc, ARRAYSIZE(kDpiDesc) - 1) == 0)
-        {
-            m_forceDpi = atoi(line.c_str() + ARRAYSIZE(kDpiDesc) - 1);
-        }
-    }
+static void xim_open_callback(xcb_xim_t *im, void *user_data) {
+    uint32_t input_style = XCB_IM_PreeditPosition | XCB_IM_StatusArea;
+    xcb_point_t spot;
+    spot.x = 0;
+    spot.y = 0;
+    HIMC hIMC = (HIMC)user_data;
+    xcb_xim_nested_list nested =
+        xcb_xim_create_nested_list(im, XCB_XIM_XNSpotLocation, &spot, NULL);
+    xcb_xim_create_ic(im, xim_create_ic_callback, user_data, XCB_XIM_XNInputStyle,
+                      &input_style, XCB_XIM_XNClientWindow, &hIMC->hWnd,
+                      XCB_XIM_XNFocusWindow, &hIMC->hWnd, XCB_XIM_XNPreeditAttributes,
+                      &nested, NULL);
+    free(nested.data);
 }
 
 SConnection::SConnection(int screenNum)
@@ -160,6 +197,7 @@ SConnection::SConnection(int screenNum)
     , m_hook_table(nullptr)
     , m_forceDpi(-1)
     , connection(nullptr)
+    , m_xim(nullptr)
 {
     connection = xcb_connect(nullptr, &screenNum);
     if (int errCode = xcb_connection_has_error(connection) > 0)
@@ -246,6 +284,16 @@ SConnection::SConnection(int screenNum)
     m_evtSync = CreateEventA(nullptr, FALSE, FALSE, nullptr);
     m_trdEvtReader = std::move(std::thread(std::bind(&readProc, this)));
 
+    m_xim = xcb_xim_create(connection, screenNum, NULL);
+
+    xcb_xim_set_im_callback(m_xim, &xim_callback, this);
+    xcb_xim_set_log_handler(m_xim, xim_logger);
+    xcb_xim_set_use_compound_text(m_xim, true);
+    xcb_xim_set_use_utf8_string(m_xim, true);
+
+    // Open connection to XIM server.
+    xcb_xim_open(m_xim, xim_open_callback, true, this);
+
     m_keyboard = new SKeyboard(this);
     m_trayIconMgr = new STrayIconMgr(this);
     m_clipboard = new SClipboard(this);
@@ -256,6 +304,11 @@ SConnection::~SConnection()
     if (!connection)
     {
         return;
+    }
+    if(m_xim){
+        xcb_xim_close(m_xim);
+        xcb_xim_destroy(m_xim);
+        m_xim = nullptr;
     }
 
     delete m_keyboard;
@@ -323,6 +376,40 @@ SConnection::~SConnection()
     CloseHandle(m_evtSync);
 }
 
+void SConnection::readXResources()
+{
+    int offset = 0;
+    std::stringstream resources;
+    while (1)
+    {
+        xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, xcb_get_property_unchecked(connection, false, screen->root, XCB_ATOM_RESOURCE_MANAGER, XCB_ATOM_STRING, offset / 4, 8192), NULL);
+        bool more = false;
+        if (reply && reply->format == 8 && reply->type == XCB_ATOM_STRING)
+        {
+            int len = xcb_get_property_value_length(reply);
+            resources << std::string((const char *)xcb_get_property_value(reply), len);
+            offset += len;
+            more = reply->bytes_after != 0;
+        }
+
+        if (reply)
+            free(reply);
+
+        if (!more)
+            break;
+    }
+
+    std::string line;
+    static const char kDpiDesc[] = "Xft.dpi:\t";
+    while (std::getline(resources, line, '\n'))
+    {
+        if (line.length() > ARRAYSIZE(kDpiDesc) - 1 && strncmp(line.c_str(), kDpiDesc, ARRAYSIZE(kDpiDesc) - 1) == 0)
+        {
+            m_forceDpi = atoi(line.c_str() + ARRAYSIZE(kDpiDesc) - 1);
+        }
+    }
+}
+
 void SConnection::initializeXFixes()
 {
     xcb_generic_error_t *error = 0;
@@ -357,7 +444,17 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
             if (m_clipboard->processIncr())
                 m_clipboard->incrTransactionPeeker(it, accepted);
             if (!accepted)
+            {
                 pushEvent(it);
+                if (!xcb_xim_filter_event(m_xim, it)) {
+                    // Forward event to input method if IC is created.
+                    HIMC hIMC = ImmGetContext(m_hFocus);
+                    if (hIMC && hIMC->xic && (((it->response_type & ~0x80) == XCB_KEY_PRESS) ||
+                               ((it->response_type & ~0x80) == XCB_KEY_RELEASE))) {
+                        xcb_xim_forward_event(m_xim, hIMC->xic, (xcb_key_press_event_t *)it);
+                    }
+                }
+            }    
             free(it);
         }
         bRet = !m_evtQueue.empty();
@@ -965,6 +1062,184 @@ std::shared_ptr<std::vector<char>> SConnection::readXdndSelection(uint32_t fmt)
     return m_clipboard->getDataInFormat(atoms.XdndSelection, clipFormat2Atom(fmt));
 }
 
+
+
+struct MotifWmHints
+{
+    uint32_t flags, functions, decorations;
+    uint32_t input_mode;
+    uint32_t status;
+};
+
+enum
+{
+    MWM_HINTS_FUNCTIONS = (1L << 0),
+
+    MWM_FUNC_ALL = (1L << 0),
+    MWM_FUNC_RESIZE = (1L << 1),
+    MWM_FUNC_MOVE = (1L << 2),
+    MWM_FUNC_MINIMIZE = (1L << 3),
+    MWM_FUNC_MAXIMIZE = (1L << 4),
+    MWM_FUNC_CLOSE = (1L << 5),
+
+    MWM_HINTS_DECORATIONS = (1L << 1),
+
+    MWM_DECOR_ALL = (1L << 0),
+    MWM_DECOR_BORDER = (1L << 1),
+    MWM_DECOR_RESIZEH = (1L << 2),
+    MWM_DECOR_TITLE = (1L << 3),
+    MWM_DECOR_MENU = (1L << 4),
+    MWM_DECOR_MINIMIZE = (1L << 5),
+    MWM_DECOR_MAXIMIZE = (1L << 6),
+
+    MWM_HINTS_INPUT_MODE = (1L << 2),
+
+    MWM_INPUT_MODELESS = 0L,
+    MWM_INPUT_PRIMARY_APPLICATION_MODAL = 1L,
+    MWM_INPUT_FULL_APPLICATION_MODAL = 3L
+};
+
+
+enum QX11EmbedInfoFlags
+{
+    XEMBED_VERSION = 0,
+    XEMBED_MAPPED = (1 << 0),
+};
+
+
+static MotifWmHints getMotifWmHints(SConnection *c, HWND window)
+{
+    MotifWmHints hints;
+
+    xcb_get_property_cookie_t get_cookie = xcb_get_property_unchecked(c->connection, 0, window, c->atoms._MOTIF_WM_HINTS, c->atoms._MOTIF_WM_HINTS, 0, 20);
+
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(c->connection, get_cookie, NULL);
+
+    if (reply && reply->format == 32 && reply->type == c->atoms._MOTIF_WM_HINTS)
+    {
+        hints = *((MotifWmHints *)xcb_get_property_value(reply));
+    }
+    else
+    {
+        hints.flags = 0L;
+        hints.functions = MWM_FUNC_ALL;
+        hints.decorations = MWM_DECOR_ALL;
+        hints.input_mode = 0L;
+        hints.status = 0L;
+    }
+
+    free(reply);
+
+    return hints;
+}
+
+static void setMotifWmHints(SConnection *c, HWND window, const MotifWmHints &hints)
+{
+    if (hints.flags != 0l)
+    {
+        xcb_change_property(c->connection, XCB_PROP_MODE_REPLACE, window, c->atoms._MOTIF_WM_HINTS, c->atoms._MOTIF_WM_HINTS, 32, 5, &hints);
+    }
+    else
+    {
+        xcb_delete_property(c->connection, window, c->atoms._MOTIF_WM_HINTS);
+    }
+}
+
+static void setMotifWindowFlags(SConnection *c, HWND hWnd, DWORD dwStyle, DWORD dwExStyle)
+{
+    MotifWmHints mwmhints;
+    mwmhints.flags = MWM_HINTS_DECORATIONS | MWM_HINTS_FUNCTIONS;
+    mwmhints.functions = MWM_FUNC_RESIZE | MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE | MWM_FUNC_MAXIMIZE;
+    mwmhints.decorations = 0;
+    mwmhints.input_mode = 0L;
+    mwmhints.status = 0L;
+
+    if (dwStyle & WS_CAPTION)
+    {
+        mwmhints.flags |= MWM_HINTS_DECORATIONS;
+        mwmhints.functions = MWM_FUNC_CLOSE | MWM_FUNC_MOVE;
+        mwmhints.decorations |= MWM_DECOR_TITLE;
+        if (dwStyle & WS_MINIMIZEBOX)
+        {
+            mwmhints.decorations |= MWM_DECOR_MINIMIZE;
+        }
+        if (dwStyle & WS_MAXIMIZEBOX)
+        {
+            mwmhints.decorations |= MWM_DECOR_MAXIMIZE;
+        }
+        if (dwStyle & WS_SYSMENU)
+        {
+            mwmhints.decorations |= MWM_DECOR_MENU;
+        }
+    }
+
+    if (dwStyle & WS_SIZEBOX)
+    {
+        mwmhints.decorations |= MWM_DECOR_RESIZEH;
+    }
+    setMotifWmHints(c, hWnd, mwmhints);
+}
+
+HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs,int depth)
+{
+    HWND hWnd = xcb_generate_id(connection);
+
+    xcb_colormap_t cmap = xcb_generate_id(connection);
+    xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE, cmap, screen->root, pWnd->visualId);
+
+    const uint32_t evt_mask = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
+
+    const uint32_t mask = XCB_CW_BACK_PIXMAP | XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_SAVE_UNDER | XCB_CW_EVENT_MASK | XCB_CW_COLORMAP;
+
+    const uint32_t values[] = {
+        XCB_NONE,                                    // XCB_CW_BACK_PIXMAP
+        0,                                           // XCB_CW_BORDER_PIXEL
+        (cs->dwExStyle & WS_EX_TOOLWINDOW) ? 1u : 0, // XCB_CW_OVERRIDE_REDIRECT
+        0,                                           // XCB_CW_SAVE_UNDER
+        evt_mask,                                    // XCB_CW_EVENT_MASK
+        cmap                                         // XCB_CW_COLORMAP
+    };
+    xcb_window_class_t wndCls = XCB_WINDOW_CLASS_INPUT_OUTPUT;
+    HWND hParent = pWnd->parent;
+    if (hParent == HWND_MESSAGE)
+    {
+        hParent = screen->root;
+        wndCls = XCB_WINDOW_CLASS_INPUT_ONLY;
+    }
+    else if (!(cs->style & WS_CHILD) || !hParent)
+        hParent = screen->root;
+    xcb_void_cookie_t cookie = xcb_create_window_checked(connection, depth, hWnd, hParent, cs->x, cs->y, std::max(cs->cx, 1u), std::max(cs->cy, 1u), 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, pWnd->visualId, mask, values);
+
+    xcb_generic_error_t *err = xcb_request_check(connection, cookie);
+    if (err)
+    {
+        SLOG_FMTE("xcb_create_window failed, errcode=%d", err->error_code);
+        free(err);
+        xcb_free_colormap(connection, cmap);
+        return 0;
+    }
+    pWnd->cmap = cmap;
+    xcb_change_window_attributes(connection, hWnd, mask, values);
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_PROTOCOLS, XCB_ATOM_ATOM, 32, 1, &atoms.WM_DELETE_WINDOW);
+
+    // set the PID to let the WM kill the application if unresponsive
+    uint32_t pid = getpid();
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms._NET_WM_PID, XCB_ATOM_CARDINAL, 32, 1, &pid);
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
+
+    setMotifWindowFlags(this,hWnd, pWnd->dwStyle, pWnd->dwExStyle);
+    {
+        /* Add XEMBED info; this operation doesn't initiate the embedding. */
+        uint32_t data[] = { XEMBED_VERSION, XEMBED_MAPPED };
+        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms._XEMBED_INFO, atoms._XEMBED_INFO, 32, 2, (void *)data);
+    }
+    if(!(pWnd->dwStyle & WS_EX_TOOLWINDOW) && wndCls == XCB_WINDOW_CLASS_INPUT_OUTPUT)
+        pWnd->hIMC = new IMContext(hWnd,m_xim);
+    
+    xcb_flush(connection);
+    return hWnd;
+}
+
 void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
 {
     KillWindowTimer(hWnd);
@@ -978,16 +1253,20 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
     }
     if (hWnd == m_hFocus)
     {
-        m_hFocus = 0;
+        SetFocus(0);
     }
     if (m_hWndActive == hWnd)
     {
         m_hWndActive = 0;
     }
+
     m_wndCursor.erase(hWnd);
     xcb_destroy_window(connection, hWnd);
-    xcb_free_colormap(connection, wnd->cmap);
-    wnd->cmap = 0;
+    if(wnd->cmap){
+        xcb_free_colormap(connection, wnd->cmap);
+        wnd->cmap = 0;
+    }
+
     xcb_flush(connection);
 }
 
@@ -1047,6 +1326,51 @@ void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
         xcb_reparent_window(connection, hWnd, hParent, 0, 0);
     }
     xcb_flush(connection);
+}
+
+void SConnection::SendExposeEvent(HWND hWnd)
+{
+    xcb_expose_event_t expose_event;
+    expose_event.response_type = XCB_EXPOSE;
+    expose_event.window = hWnd;
+    expose_event.x = 0;
+    expose_event.y = 0;
+    expose_event.width = 0;
+    expose_event.height = 0;
+    xcb_send_event(connection, false, hWnd, XCB_EVENT_MASK_EXPOSURE, (const char *)&expose_event);
+    xcb_flush(connection);
+}
+
+void SConnection::SetWindowMsgTransparent(HWND hWnd,_Window * wndObj, BOOL bTransparent)
+{
+    BOOL transparent = (wndObj->dwExStyle & WS_EX_TRANSPARENT) != 0;
+    if (!(transparent ^ bTransparent) || !wndObj->mConnection->hasXFixes())
+        return;
+
+    xcb_rectangle_t rectangle;
+
+    xcb_rectangle_t *rect = nullptr;
+    int nrect = 0;
+
+    if (!bTransparent)
+    {
+        rectangle.x = 0;
+        rectangle.y = 0;
+        rectangle.width = wndObj->rc.right - wndObj->rc.left;
+        rectangle.height = wndObj->rc.bottom - wndObj->rc.top;
+        rect = &rectangle;
+        nrect = 1;
+    }
+
+    xcb_xfixes_region_t region = xcb_generate_id(wndObj->mConnection->connection);
+    xcb_xfixes_create_region(wndObj->mConnection->connection, region, nrect, rect);
+    xcb_xfixes_set_window_shape_region_checked(wndObj->mConnection->connection, hWnd, XCB_SHAPE_SK_INPUT, 0, 0, region);
+    xcb_xfixes_destroy_region(wndObj->mConnection->connection, region);
+
+    if (bTransparent)
+        wndObj->dwExStyle |= WS_EX_TRANSPARENT;
+    else
+        wndObj->dwExStyle &= ~WS_EX_TRANSPARENT;
 }
 
 void SConnection::BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -1661,13 +1985,33 @@ HKL SConnection::ActivateKeyboardLayout(HKL hKl)
 
 HWND SConnection::SetFocus(HWND hWnd)
 {
-    // TRACE("setfocus hwnd=%d, curfocus=%d\n",(int)hWnd,(int)m_hFocus);
     if (hWnd == m_hFocus)
     {
         return hWnd;
     }
     HWND ret = m_hFocus;
-    xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd, XCB_CURRENT_TIME);
+    if(m_hFocus){
+        HIMC hIMC = ImmGetContext(m_hFocus);
+        if(hIMC){
+            if(hIMC->xic){
+                xcb_xim_set_ic_focus(m_xim, 0);
+                hIMC->xic = 0;
+            }
+            xcb_xim_close(m_xim);
+            
+            ImmReleaseContext(m_hFocus,hIMC);
+        }
+    }
+    m_hFocus = hWnd;
+    if(hWnd){
+        HIMC hIMC = ImmGetContext(hWnd);
+        if(hIMC){
+            xcb_xim_open(m_xim, xim_open_callback, true, (void*)hIMC);
+            ImmReleaseContext(m_hFocus,hIMC);
+        }
+        xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd, XCB_CURRENT_TIME);
+    }
+
     xcb_flush(connection);
     return ret;
 }

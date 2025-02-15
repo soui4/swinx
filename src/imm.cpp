@@ -1,9 +1,53 @@
 #include <windows.h>
 #include <imm.h>
+#include "SImContext.h"
+#include "wndobj.h"
+
+HIMC WINAPI ImmCreateContext(void)
+{
+    return 0;
+}
+
+BOOL ImmDestroyContext(HIMC hIMC)
+{
+    return FALSE;
+}
 
 HIMC WINAPI ImmGetContext(HWND hWnd)
 {
-    return 0;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(!wndObj)
+        return 0;
+    else
+    {
+        if(wndObj->hIMC)
+            wndObj->hIMC->AddRef();
+        return wndObj->hIMC;
+    }    
+}
+
+BOOL ImmReleaseContext(HWND hWnd, HIMC hIMC)
+{
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(!wndObj || ! wndObj->hIMC)
+        return FALSE;
+    if(wndObj->hIMC != hIMC)
+        return FALSE;
+    wndObj->hIMC->Release();
+    return TRUE;
+}
+
+HIMC ImmAssociateContext(HWND hWnd, HIMC hIMC)
+{
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(!wndObj)
+        return nullptr;
+    HIMC hRet = wndObj->hIMC;
+    wndObj->hIMC=hIMC;
+    if(GetFocus() == hWnd){
+        
+    }
+    return hRet;
 }
 
 LONG WINAPI ImmGetCompositionStringA(IN HIMC, IN DWORD, __out_bcount_opt(dwBufLen) LPVOID lpBuf, IN DWORD dwBufLen)
@@ -90,16 +134,6 @@ BOOL ImmSetOpenStatus(HIMC hIMC, BOOL fOpen)
 UINT ImmGetVirtualKey(HWND hWnd)
 {
     return 0;
-}
-
-HIMC ImmAssociateContext(HWND hWnd, HIMC hIMC)
-{
-    return 0;
-}
-
-BOOL ImmReleaseContext(HWND hWnd, HIMC hIMC)
-{
-    return FALSE;
 }
 
 HWND ImmGetDefaultIMEWnd(HWND hWnd)

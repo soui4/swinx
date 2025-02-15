@@ -9,8 +9,6 @@ extern "C"
 {
 #endif //__cplusplus
 
-#define HIMC UINT_PTR
-
 // parameter of ImmGetCompositionString
 #define GCS_COMPREADSTR      0x0001
 #define GCS_COMPREADATTR     0x0002
@@ -29,6 +27,8 @@ extern "C"
 #define CS_INSERTCHAR  0x2000
 #define CS_NOMOVECARET 0x4000
 
+    HIMC WINAPI ImmCreateContext(void);
+    BOOL ImmDestroyContext(HIMC hIMC);
     HIMC WINAPI ImmGetContext(HWND hWnd);
 
     LONG WINAPI ImmGetCompositionStringA(IN HIMC, IN DWORD, __out_bcount_opt(dwBufLen) LPVOID lpBuf, IN DWORD dwBufLen);
@@ -56,9 +56,6 @@ extern "C"
 #define CFS_FORCE_POSITION 0x0020
 #define CFS_CANDIDATEPOS   0x0040
 #define CFS_EXCLUDE        0x0080
-
-#define _Out_
-#define _In_
 
     BOOL WINAPI ImmGetStatusWindowPos(IN HIMC, _Out_ LPPOINT lpptPos);
     BOOL WINAPI ImmSetStatusWindowPos(IN HIMC, _In_ LPPOINT lpptPos);
@@ -110,9 +107,9 @@ extern "C"
 #define IMR_QUERYCHARPOSITION      0x0006
 #define IMR_DOCUMENTFEED           0x0007
 
-    LRESULT ImmEscapeW(HKL unnamedParam1, HIMC unnamedParam2, UINT unnamedParam3, LPVOID unnamedParam4);
+    LRESULT WINAPI ImmEscapeW(HKL unnamedParam1, HIMC unnamedParam2, UINT unnamedParam3, LPVOID unnamedParam4);
 
-    LRESULT ImmEscapeA(HKL unnamedParam1, HIMC unnamedParam2, UINT unnamedParam3, LPVOID unnamedParam4);
+    LRESULT WINAPI ImmEscapeA(HKL unnamedParam1, HIMC unnamedParam2, UINT unnamedParam3, LPVOID unnamedParam4);
 
     BOOL WINAPI ImmSetCompositionFontA(IN HIMC, _In_ LPLOGFONTA lplf);
     BOOL WINAPI ImmSetCompositionFontW(IN HIMC, _In_ LPLOGFONTW lplf);
@@ -417,15 +414,15 @@ extern "C"
 #define IME_REGWORD_STYLE_USER_LAST  0xFFFFFFFF
 
     DWORD WINAPI ImmGetProperty(HKL hKL, DWORD fdwIndex);
-    BOOL ImmGetOpenStatus(HIMC hIMC);
-    BOOL ImmSetOpenStatus(HIMC hIMC, BOOL fOpen);
-    UINT ImmGetVirtualKey(HWND hWnd);
-    HIMC ImmAssociateContext(HWND hWnd, HIMC hIMC);
-    BOOL ImmReleaseContext(HWND hWnd, HIMC hIMC);
-    HWND ImmGetDefaultIMEWnd(HWND hWnd);
-    BOOL ImmSetConversionStatus(HIMC hIMC, DWORD fdwConversion, DWORD fdwSentence);
-    BOOL ImmGetConversionStatus(HIMC hIMC, LPDWORD lpfdwConversion, LPDWORD lpfdwSentence);
-    BOOL ImmIsIME(HKL hKL);
+    BOOL WINAPI ImmGetOpenStatus(HIMC hIMC);
+    BOOL WINAPI ImmSetOpenStatus(HIMC hIMC, BOOL fOpen);
+    UINT WINAPI ImmGetVirtualKey(HWND hWnd);
+    HIMC WINAPI ImmAssociateContext(HWND hWnd, HIMC hIMC);
+    BOOL WINAPI ImmReleaseContext(HWND hWnd, HIMC hIMC);
+    HWND WINAPI ImmGetDefaultIMEWnd(HWND hWnd);
+    BOOL WINAPI ImmSetConversionStatus(HIMC hIMC, DWORD fdwConversion, DWORD fdwSentence);
+    BOOL WINAPI ImmGetConversionStatus(HIMC hIMC, LPDWORD lpfdwConversion, LPDWORD lpfdwSentence);
+    BOOL WINAPI ImmIsIME(HKL hKL);
 
 #ifdef __cplusplus
 }

@@ -12,12 +12,15 @@
 #include <condition_variable>
 #include <memory>
 #include <vector>
+#include <imm.h>
+#include "SImContext.h"
 #include "sdc.h"
 #include "SRwLock.hpp"
 #include "uimsg.h"
 #include "atoms.h"
 #include "STrayIconMgr.h"
 #include "cursormgr.h"
+
 
 struct TimerInfo
 {
@@ -202,9 +205,13 @@ public:
       xcb_atom_t clipFormat2Atom(UINT uFormat);
       uint32_t atom2ClipFormat(xcb_atom_t atom);
       std::shared_ptr< std::vector<char>> readXdndSelection(uint32_t fmt);
+
+      HWND OnWindowCreate(_Window *wnd,CREATESTRUCT *cs,int depth);
       void OnWindowDestroy(HWND hWnd,_Window *wnd);
       void SetWindowVisible(HWND hWnd, _Window *wnd, BOOL bVisible, int nCmdShow);
       void SetParent(HWND hWnd, _Window *wnd,HWND parent);
+      void SendExposeEvent(HWND hWnd);
+      void SetWindowMsgTransparent(HWND hWnd,_Window * wndObj,BOOL bTransparent);
   public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);
@@ -286,6 +293,7 @@ public:
     HANDLE m_evtSync;
     tid_t m_tid;
     HKL   m_hkl = 0;
+    xcb_xim_t *m_xim;
 
     CaretInfo m_caretInfo;
     UINT m_caretBlinkTime = TS_CARET;

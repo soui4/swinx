@@ -50,12 +50,6 @@
 #define XCB_WM_STATE_WITHDRAWN         XCB_ICCCM_WM_STATE_WITHDRAWN
 #endif
 
-enum QX11EmbedInfoFlags
-{
-    XEMBED_VERSION = 0,
-    XEMBED_MAPPED = (1 << 0),
-};
-
 enum
 {
     kMapped = 1 << 0,
@@ -171,114 +165,6 @@ static void WIN_UpdateIcon(HWND hWnd)
         }
         xcb_flush(wndObj->mConnection->connection);
     }
-}
-
-struct MotifWmHints
-{
-    uint32_t flags, functions, decorations;
-    uint32_t input_mode;
-    uint32_t status;
-};
-
-enum
-{
-    MWM_HINTS_FUNCTIONS = (1L << 0),
-
-    MWM_FUNC_ALL = (1L << 0),
-    MWM_FUNC_RESIZE = (1L << 1),
-    MWM_FUNC_MOVE = (1L << 2),
-    MWM_FUNC_MINIMIZE = (1L << 3),
-    MWM_FUNC_MAXIMIZE = (1L << 4),
-    MWM_FUNC_CLOSE = (1L << 5),
-
-    MWM_HINTS_DECORATIONS = (1L << 1),
-
-    MWM_DECOR_ALL = (1L << 0),
-    MWM_DECOR_BORDER = (1L << 1),
-    MWM_DECOR_RESIZEH = (1L << 2),
-    MWM_DECOR_TITLE = (1L << 3),
-    MWM_DECOR_MENU = (1L << 4),
-    MWM_DECOR_MINIMIZE = (1L << 5),
-    MWM_DECOR_MAXIMIZE = (1L << 6),
-
-    MWM_HINTS_INPUT_MODE = (1L << 2),
-
-    MWM_INPUT_MODELESS = 0L,
-    MWM_INPUT_PRIMARY_APPLICATION_MODAL = 1L,
-    MWM_INPUT_FULL_APPLICATION_MODAL = 3L
-};
-
-static MotifWmHints getMotifWmHints(SConnection *c, HWND window)
-{
-    MotifWmHints hints;
-
-    xcb_get_property_cookie_t get_cookie = xcb_get_property_unchecked(c->connection, 0, window, c->atoms._MOTIF_WM_HINTS, c->atoms._MOTIF_WM_HINTS, 0, 20);
-
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(c->connection, get_cookie, NULL);
-
-    if (reply && reply->format == 32 && reply->type == c->atoms._MOTIF_WM_HINTS)
-    {
-        hints = *((MotifWmHints *)xcb_get_property_value(reply));
-    }
-    else
-    {
-        hints.flags = 0L;
-        hints.functions = MWM_FUNC_ALL;
-        hints.decorations = MWM_DECOR_ALL;
-        hints.input_mode = 0L;
-        hints.status = 0L;
-    }
-
-    free(reply);
-
-    return hints;
-}
-
-static void setMotifWmHints(SConnection *c, HWND window, const MotifWmHints &hints)
-{
-    if (hints.flags != 0l)
-    {
-        xcb_change_property(c->connection, XCB_PROP_MODE_REPLACE, window, c->atoms._MOTIF_WM_HINTS, c->atoms._MOTIF_WM_HINTS, 32, 5, &hints);
-    }
-    else
-    {
-        xcb_delete_property(c->connection, window, c->atoms._MOTIF_WM_HINTS);
-    }
-}
-
-static void setMotifWindowFlags(SConnection *c, HWND hWnd, DWORD dwStyle, DWORD dwExStyle)
-{
-    MotifWmHints mwmhints;
-    mwmhints.flags = MWM_HINTS_DECORATIONS | MWM_HINTS_FUNCTIONS;
-    mwmhints.functions = MWM_FUNC_RESIZE | MWM_FUNC_MOVE | MWM_FUNC_MINIMIZE | MWM_FUNC_MAXIMIZE;
-    mwmhints.decorations = 0;
-    mwmhints.input_mode = 0L;
-    mwmhints.status = 0L;
-
-    if (dwStyle & WS_CAPTION)
-    {
-        mwmhints.flags |= MWM_HINTS_DECORATIONS;
-        mwmhints.functions = MWM_FUNC_CLOSE | MWM_FUNC_MOVE;
-        mwmhints.decorations |= MWM_DECOR_TITLE;
-        if (dwStyle & WS_MINIMIZEBOX)
-        {
-            mwmhints.decorations |= MWM_DECOR_MINIMIZE;
-        }
-        if (dwStyle & WS_MAXIMIZEBOX)
-        {
-            mwmhints.decorations |= MWM_DECOR_MAXIMIZE;
-        }
-        if (dwStyle & WS_SYSMENU)
-        {
-            mwmhints.decorations |= MWM_DECOR_MENU;
-        }
-    }
-
-    if (dwStyle & WS_SIZEBOX)
-    {
-        mwmhints.decorations |= MWM_DECOR_RESIZEH;
-    }
-    setMotifWmHints(c, hWnd, mwmhints);
 }
 
 static void SetWindowPosHint(SConnection *c, HWND hWnd, int x, int y, int cx, int cy)
@@ -451,51 +337,9 @@ BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
     wndObj->invalid.bErase = wndObj->invalid.bErase || bErase;
     if (!isWaitingPaint)
     {
-        // 发送曝光事件
-        xcb_connection_t *connection = wndObj->mConnection->connection;
-        xcb_expose_event_t expose_event;
-        expose_event.response_type = XCB_EXPOSE;
-        expose_event.window = hWnd;
-        expose_event.x = 0;
-        expose_event.y = 0;
-        expose_event.width = 0;
-        expose_event.height = 0;
-        xcb_send_event(connection, false, hWnd, XCB_EVENT_MASK_EXPOSURE, (const char *)&expose_event);
-        xcb_flush(connection);
+        wndObj->mConnection->SendExposeEvent(hWnd);
     }
     return TRUE;
-}
-
-static void SetWindowTransparent(HWND hWnd, BOOL bTransparent)
-{
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    BOOL transparent = (wndObj->dwExStyle & WS_EX_TRANSPARENT) != 0;
-    if (!(transparent ^ bTransparent) || !wndObj->mConnection->hasXFixes())
-        return;
-    xcb_rectangle_t rectangle;
-
-    xcb_rectangle_t *rect = 0;
-    int nrect = 0;
-
-    if (!bTransparent)
-    {
-        rectangle.x = 0;
-        rectangle.y = 0;
-        rectangle.width = wndObj->rc.right - wndObj->rc.left;
-        rectangle.height = wndObj->rc.bottom - wndObj->rc.top;
-        rect = &rectangle;
-        nrect = 1;
-    }
-
-    xcb_xfixes_region_t region = xcb_generate_id(wndObj->mConnection->connection);
-    xcb_xfixes_create_region(wndObj->mConnection->connection, region, nrect, rect);
-    xcb_xfixes_set_window_shape_region_checked(wndObj->mConnection->connection, hWnd, XCB_SHAPE_SK_INPUT, 0, 0, region);
-    xcb_xfixes_destroy_region(wndObj->mConnection->connection, region);
-
-    if (bTransparent)
-        wndObj->dwExStyle |= WS_EX_TRANSPARENT;
-    else
-        wndObj->dwExStyle &= ~WS_EX_TRANSPARENT;
 }
 
 /***********************************************************************
@@ -556,58 +400,11 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
         pWnd->dwExStyle &= ~WS_EX_COMPOSITED;
     }
 
-    HWND hWnd = xcb_generate_id(conn->connection);
-
-    xcb_colormap_t cmap = xcb_generate_id(conn->connection);
-    xcb_create_colormap(conn->connection, XCB_COLORMAP_ALLOC_NONE, cmap, conn->screen->root, pWnd->visualId);
-
-    const uint32_t evt_mask = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
-
-    const uint32_t mask = XCB_CW_BACK_PIXMAP | XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_SAVE_UNDER | XCB_CW_EVENT_MASK | XCB_CW_COLORMAP;
-
-    const uint32_t values[] = {
-        XCB_NONE,                                    // XCB_CW_BACK_PIXMAP
-        0,                                           // XCB_CW_BORDER_PIXEL
-        (cs->dwExStyle & WS_EX_TOOLWINDOW) ? 1u : 0, // XCB_CW_OVERRIDE_REDIRECT
-        0,                                           // XCB_CW_SAVE_UNDER
-        evt_mask,                                    // XCB_CW_EVENT_MASK
-        cmap                                         // XCB_CW_COLORMAP
-    };
-    xcb_window_class_t wndCls = XCB_WINDOW_CLASS_INPUT_OUTPUT;
-    if (isMsgWnd)
-    {
-        hParent = conn->screen->root;
-        wndCls = XCB_WINDOW_CLASS_INPUT_ONLY;
-    }
-    else if (!(cs->style & WS_CHILD) || !hParent)
-        hParent = conn->screen->root;
-    xcb_void_cookie_t cookie = xcb_create_window_checked(conn->connection, depth, hWnd, hParent, cs->x, cs->y, std::max(cs->cx, 1u), std::max(cs->cy, 1u), 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, pWnd->visualId, mask, values);
-
-    xcb_generic_error_t *err = xcb_request_check(conn->connection, cookie);
-    if (err)
-    {
-        printf("xcb_create_window failed, errcode=%d\n", err->error_code);
-        free(err);
-        xcb_free_colormap(conn->connection, cmap);
-        delete pWnd;
+    HWND hWnd = conn->OnWindowCreate(pWnd,cs,depth);
+    if(!hWnd){
+        free(pWnd);
         return 0;
     }
-
-    xcb_change_window_attributes(conn->connection, hWnd, mask, values);
-    xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, hWnd, conn->atoms.WM_PROTOCOLS, XCB_ATOM_ATOM, 32, 1, &conn->atoms.WM_DELETE_WINDOW);
-
-    // set the PID to let the WM kill the application if unresponsive
-    uint32_t pid = getpid();
-    xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, hWnd, conn->atoms._NET_WM_PID, XCB_ATOM_CARDINAL, 32, 1, &pid);
-    xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
-
-    setMotifWindowFlags(conn, hWnd, pWnd->dwStyle, pWnd->dwExStyle);
-    {
-        /* Add XEMBED info; this operation doesn't initiate the embedding. */
-        uint32_t data[] = { XEMBED_VERSION, XEMBED_MAPPED };
-        xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, hWnd, conn->atoms._XEMBED_INFO, conn->atoms._XEMBED_INFO, 32, 2, (void *)data);
-    }
-    xcb_flush(conn->connection);
     WndMgr::insertWindow(hWnd, pWnd);
 
     SetWindowLongPtrA(hWnd, GWLP_ID, cs->hMenu);
@@ -617,13 +414,11 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
 
     if (0 == SendMessage(hWnd, WM_NCCREATE, 0, (LPARAM)cs) || 0 != SendMessage(hWnd, WM_CREATE, 0, (LPARAM)cs))
     {
-        xcb_destroy_window(conn->connection, hWnd);
-        xcb_free_colormap(conn->connection, cmap);
-        xcb_flush(conn->connection);
+        conn->OnWindowDestroy(hWnd,pWnd);
         WndMgr::freeWindow(hWnd);
         return 0;
     }
-    pWnd->cmap = cmap;
+
     if (memcmp(&pWnd->rc, &rcInit, sizeof(RECT)) == 0)
     { // notify init size and pos
         SetWindowPos(hWnd, 0, cs->x, cs->y, cs->cx, cs->cy, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -643,7 +438,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     }
     if (isTransparent)
     {
-        SetWindowTransparent(hWnd, TRUE);
+        conn->SetWindowMsgTransparent(hWnd,pWnd,TRUE);
     }
     if (!isMsgWnd && cs->style & WS_VISIBLE)
     {
@@ -1667,6 +1462,16 @@ LRESULT SendMessageTimeoutW(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, UINT fuFl
 LRESULT SendMessageTimeoutA(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, UINT fuFlags, UINT uTimeout, PDWORD_PTR lpdwResult)
 {
     return _SendMessageTimeout(FALSE, hWnd, msg, wp, lp, fuFlags, uTimeout, lpdwResult);
+}
+
+BOOL SendNotifyMessageA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+{
+    return FALSE;
+}
+
+BOOL SendNotifyMessageW(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
+{
+    return FALSE;
 }
 
 #define DEF_SENDMSG_TIMEOUT 5000
