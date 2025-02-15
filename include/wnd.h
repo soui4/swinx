@@ -59,18 +59,25 @@ extern "C"
 
     int WINAPI MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType);
     int WINAPI MessageBoxW(HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType);
+
+    BOOL SendNotifyMessageA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+    BOOL SendNotifyMessageW(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
+
 #ifdef UNICODE
 #define PostMessage         PostMessageW
 #define SendMessage         SendMessageW
 #define SendMessageTimeout  SendMessageTimeoutW
 #define SendMessageCallback SendMessageCallbackW
 #define MessageBox          MessageBoxW
+#define SendNotifyMessage   SendNotifyMessageW
 #else
 #define PostMessage         PostMessageA
 #define SendMessage         SendMessageA
 #define SendMessageTimeout  SendMessageTimeoutA
 #define SendMessageCallback SendMessageCallbackW
 #define MessageBox          MessageBoxA
+#define SendNotifyMessage   SendNotifyMessageA
+
 #endif // UNICODE
     tid_t WINAPI GetWindowThreadProcessId(HWND hWnd, LPDWORD lpdwProcessId);
 

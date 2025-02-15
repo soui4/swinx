@@ -8,7 +8,7 @@ find_package(PkgConfig REQUIRED)
 
 add_subdirectory(thirdparty/xkbcommon)
 add_subdirectory(thirdparty/libxcb)
-
+add_subdirectory(thirdparty/xcb-imdkit)
 add_definitions(-DPLATFORM_EXPORTS)
 add_compile_options(-Wno-format-truncation)
 
@@ -32,10 +32,11 @@ if (NOT ENABLE_SOUI_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
     target_link_libraries(
         swinx
-        libxcb  cairo uuid xkbcommon
+        libxcb  cairo uuid xkbcommon xcb-imdkit
     )
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS})
+    add_dependencies(swinx xcb-imdkit)
 endif()
 
 target_include_directories(swinx
@@ -45,6 +46,7 @@ target_include_directories(swinx
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xcb
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/sysinclude
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xkbcommon
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xcb-imdkit/include
 )
 
 set_target_properties (swinx PROPERTIES

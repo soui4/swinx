@@ -136,6 +136,7 @@ public:
     LPDROPTARGET   dropTarget;
     IDataObject* dragData;
     DWORD_PTR userdata;  /* User private data */
+    HIMC      hIMC;
     int cbWndExtra;      /* class cbWndExtra at window creation */
     char* extra;
 
