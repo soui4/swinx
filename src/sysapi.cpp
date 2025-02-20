@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <assert.h>
+#include <iconv.h>
 #include "SConnection.h"
 #include "wnd.h"
 #include "uimsg.h"
@@ -16,6 +17,104 @@
 #define kLogTag "sysapi"
 
 using namespace swinx;
+
+#define ICONV_UTF32LE   "UTF32LE"
+#define ICONV_UTF16LE   "UTF16LE"
+#define ICONV_WINDOWS_936     	"WINDOWS-936"
+#define ICONV_WINDOWS_1250    	"WINDOWS-1250"
+#define ICONV_WINDOWS_1251    	"WINDOWS-1251"
+#define ICONV_WINDOWS_1252    	"WINDOWS-1252"
+#define ICONV_WINDOWS_1253    	"WINDOWS-1253"
+#define ICONV_WINDOWS_1254    	"WINDOWS-1254"
+#define ICONV_WINDOWS_1255    	"WINDOWS-1255"
+#define ICONV_WINDOWS_1256    	"WINDOWS-1256"
+#define ICONV_WINDOWS_1257    	"WINDOWS-1257"
+#define ICONV_WINDOWS_1258    	"WINDOWS-1258"
+
+
+const char * Cp2IConvCode(int codePage){
+    switch(codePage){
+        case 936: return ICONV_WINDOWS_936;
+        case 1250: return ICONV_WINDOWS_1250;
+        case 1251: return ICONV_WINDOWS_1251;
+        case 1252: return ICONV_WINDOWS_1252;
+        case 1253: return ICONV_WINDOWS_1253;
+        case 1254: return ICONV_WINDOWS_1254;
+        case 1255: return ICONV_WINDOWS_1255;
+        case 1256: return ICONV_WINDOWS_1256;
+        case 1257: return ICONV_WINDOWS_1257;
+        case 1258: return ICONV_WINDOWS_1258;
+        default: return NULL;
+    }
+    
+}
+
+int to_mb(const wchar_t *input, size_t input_len,int codePage, std::string &out){
+    const char *toCode = Cp2IConvCode(codePage);
+    if(!toCode)
+        return 0;
+    #if WCHAR_SIZE==4
+    iconv_t cd = iconv_open(toCode,ICONV_UTF32LE);
+    #else
+    iconv_t cd = iconv_open(toCode,ICONV_UTF16LE);
+    #endif
+    if (cd == (iconv_t)-1) {
+        SLOG_STMW()<<"iconv_open failed, codePage="<<codePage;
+        return 0;
+    }
+    size_t output_len = (input_len+1) * 4; // UTF-32 字符一般比 GBK 长
+        out.resize(output_len);
+        char *output = (char*)out.c_str();
+        char *inbuf = (char *)input;
+        char *outbuf = output;
+        size_t inbytesleft = input_len*sizeof(wchar_t);
+        size_t outbytesleft = output_len;
+        
+        size_t ret = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft) ;
+        if(ret != -1){
+            out.resize(output_len-outbytesleft);
+            //out = out.substr(0,output_len-outbytesleft);
+        }else{
+            out.clear();
+        }
+
+    iconv_close(cd);
+    return out.length();
+}
+
+int to_unicode(const char *input, size_t input_len,int codePage, std::wstring &out) {
+    const char *fromCode = Cp2IConvCode(codePage);
+    if(!fromCode)
+        return 0;
+    #if WCHAR_SIZE==4
+    iconv_t cd = iconv_open(ICONV_UTF32LE, fromCode);
+    #else
+    iconv_t cd = iconv_open(ICONV_UTF16LE, fromCode);
+    #endif
+    if (cd == (iconv_t)-1) {
+        SLOG_STMW()<<"iconv_open failed, codePage="<<codePage;
+        return 0;
+    }
+    size_t output_len = (input_len+1) * sizeof(wchar_t); // UTF-32 字符一般比 GBK 长
+        out.resize(output_len);
+        char *output = (char*)out.c_str();
+        char *inbuf = (char *)input;
+        char *outbuf = output;
+        size_t inbytesleft = input_len;
+        size_t outbytesleft = output_len;
+        
+        size_t ret = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft) ;
+        if(ret != -1){
+            out.resize((output_len-outbytesleft)/sizeof(wchar_t));
+            //out=out.substr(0,(output_len-outbytesleft)/sizeof(wchar_t));
+        }else{
+            out.clear();
+        }
+
+    iconv_close(cd);
+    return out.length();
+}
+
 
 FILE *_wfopen(const wchar_t *path, const wchar_t *mode)
 {
@@ -56,10 +155,26 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
     assert(src);
     if (cp == CP_OEMCP)
         cp = CP_UTF8; // todo:hjx
-    if (cp != CP_ACP && cp != CP_UTF8)
-        return 0;
+    
     if (len < 0)
-        len = strlen(src);
+        len = strlen(src)+1;
+    if (cp != CP_ACP && cp != CP_UTF8)
+    {
+        std::wstring str;
+        int ret = to_unicode(src,len,cp,str);//using iconv to support 936
+        if(!dst)
+            return str.length();
+        else if(dstLen<ret){
+            SetLastError(ERROR_INSUFFICIENT_BUFFER);
+            return 0;
+        }else{
+            memcpy(dst,str.c_str(),ret*sizeof(wchar_t));
+            if(ret<dstLen)
+                dst[ret]=0;
+            return ret;
+        }
+    }    
+
 #if (WCHAR_SIZE == 2)
     assert(sizeof(wchar_t) == 2);
     // handle for utf16
@@ -104,13 +219,26 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
     assert(src);
     const wchar_t *ptr = src;
     if (len < 0)
-        len = wcslen(src);
+        len = wcslen(src)+1;
     const wchar_t *stop = src + len;
     size_t i = 0;
     if (cp == CP_OEMCP)
         cp = CP_UTF8; // todo:hjx
     if (cp != CP_ACP && cp != CP_UTF8)
-        return 0;
+    {
+        std::string str;
+        int ret = to_mb(src,len,cp,str);
+        if(ret == 0)
+            return 0;
+        if(ret>dstLen){
+            SetLastError(ERROR_INSUFFICIENT_BUFFER);
+            return 0;
+        }
+        memcpy(dst,str.c_str(),ret);
+        if(ret<dstLen)
+            dst[ret]=0;
+        return ret;
+    }    
 
 #if (WCHAR_SIZE == 2)
     assert(sizeof(wchar_t) == 2);

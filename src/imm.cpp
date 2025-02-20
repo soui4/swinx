@@ -5,12 +5,20 @@
 
 HIMC WINAPI ImmCreateContext(void)
 {
-    return 0;
+    return new IMContext();
 }
 
 BOOL ImmDestroyContext(HIMC hIMC)
 {
-    return FALSE;
+    if(!hIMC)
+        return FALSE;
+    if(hIMC->xic){
+        xcb_xim_destroy_ic(hIMC->xim,hIMC->xic,nullptr,nullptr);
+        hIMC->xic = 0;
+    }
+
+    hIMC->Release();
+    return TRUE;
 }
 
 HIMC WINAPI ImmGetContext(HWND hWnd)
@@ -28,6 +36,8 @@ HIMC WINAPI ImmGetContext(HWND hWnd)
 
 BOOL ImmReleaseContext(HWND hWnd, HIMC hIMC)
 {
+    if(!hIMC)
+        return FALSE;
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if(!wndObj || ! wndObj->hIMC)
         return FALSE;
@@ -43,10 +53,7 @@ HIMC ImmAssociateContext(HWND hWnd, HIMC hIMC)
     if(!wndObj)
         return nullptr;
     HIMC hRet = wndObj->hIMC;
-    wndObj->hIMC=hIMC;
-    if(GetFocus() == hWnd){
-        
-    }
+    wndObj->mConnection->AssociateHIMC(hWnd,wndObj.data(),hIMC);
     return hRet;
 }
 

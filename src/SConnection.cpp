@@ -121,16 +121,16 @@ static uint32_t GetDoubleClickSpan(xcb_connection_t *connection, xcb_screen_t *s
     return ret;
 }
 
-static void xim_forward_event(xcb_xim_t *im, xcb_xic_t ic, xcb_key_press_event_t *event,
+void SConnection::xim_forward_event(xcb_xim_t *im, xcb_xic_t ic, xcb_key_press_event_t *event,
                    void *user_data) {
-    SLOG_FMTI("Key %s Keycode %u, State %u\n",
-            event->response_type == XCB_KEY_PRESS ? "press" : "release",
-            event->detail, event->state);
+    SConnection *conn = (SConnection*)user_data;
+    conn->pushEvent((xcb_generic_event_t*)event);
 }
 
-static void xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, char *str,
+void SConnection::xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, char *str,
                    uint32_t length, uint32_t *keysym, size_t nKeySym,
                    void *user_data) {
+    SConnection *conn = (SConnection *)user_data;
     if (xcb_xim_get_encoding(im) == XCB_XIM_UTF8_STRING) {
         SLOG_FMTI("key commit utf8: %.*s\n", length, str);
     } else if (xcb_xim_get_encoding(im) == XCB_XIM_COMPOUND_TEXT) {
@@ -139,55 +139,70 @@ static void xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, char *
         if (utf8) {
             int l = newLength;
             SLOG_FMTI("key commit: %.*s\n", l, utf8);
+            std::wstring buf;
+            towstring(utf8,newLength,buf);
+            for(int i=0;i<buf.length();i++){
+                SLOG_STMI()<<"commit text "<< i<<" is "<<buf.c_str()[i];
+                Msg * pMsg = new Msg;
+                pMsg->hwnd = conn->m_hFocus;
+                pMsg->message = WM_IME_CHAR;
+                pMsg->wParam = buf.c_str()[i];
+                pMsg->lParam = 0;
+                pMsg->time = GetTickCount();
+                std::unique_lock<std::recursive_mutex> lock(conn->m_mutex4Msg);
+                conn->m_msgQueue.push_back(pMsg);
+            }
         }
     }
 }
 
-static void xim_disconnected(xcb_xim_t *im, void *user_data) {
-    HIMC hIMC = (HIMC)user_data;
-    hIMC->xic = 0;
-    SLOG_STMI()<<"Disconnected from input method server.";
-}
-
-extern "C"
+void SConnection::xim_logger(const char *fmt, ...)
 {
-    xcb_xim_im_callback xim_callback = {
-        .forward_event = xim_forward_event,
-        .commit_string = xim_commit_string,
-        .disconnected = xim_disconnected,
-    };
-}
-
-
-static void xim_logger(const char *fmt, ...) {
-    va_list argp;
+    va_list argp, argp2;
     va_start(argp, fmt);
-    vprintf(fmt, argp);
+    va_copy(argp2,argp);
+    int len = vsnprintf(NULL, 0, fmt, argp);
+    char *buf = (char *)malloc(len + 1);
+    vsnprintf(buf, len + 1, fmt, argp2);
+    SLOG_STMI() <<"xim_logger:"<< buf;
+    free(buf);
     va_end(argp);
 }
 
-static void xim_create_ic_callback(xcb_xim_t *im, xcb_xic_t new_ic, void *user_data) {
-    HIMC hIMC = (HIMC)user_data;
+void SConnection::xim_create_ic_callback(xcb_xim_t *im, xcb_xic_t new_ic, void *user_data)
+{
+    HWND hWnd = (HWND)user_data;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return;
+    HIMC hIMC = ImmGetContext(hWnd);
     hIMC->xic = new_ic;
-    hIMC->AddRef();
-    if(new_ic && GetFocus() == hIMC->hWnd){
+    if (new_ic && wndObj->mConnection->GetFocus() == hWnd)
+    {
         //delay set ic focus
         xcb_xim_set_ic_focus(im, new_ic);
-        SLOG_STMI()<<"set windows "<<hIMC->hWnd<<" icid="<<new_ic;
+        SLOG_STMI()<<"set windows "<<hWnd<<" icid="<<new_ic;
     }
 }
 
-static void xim_open_callback(xcb_xim_t *im, void *user_data) {
+void SConnection::xim_open_callback(xcb_xim_t *im, void *user_data)
+{
+    HWND hWnd = (HWND)user_data;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return;
     uint32_t input_style = XCB_IM_PreeditPosition | XCB_IM_StatusArea;
     xcb_point_t spot;
-    spot.x = 0;
-    spot.y = 0;
-    HIMC hIMC = (HIMC)user_data;
-    xcb_xim_nested_list nested =
-        xcb_xim_create_nested_list(im, XCB_XIM_XNSpotLocation, &spot, NULL);
+    spot.x = wndObj->mConnection->m_caretInfo.x;
+    spot.y = wndObj->mConnection->m_caretInfo.y + wndObj->mConnection->m_caretInfo.nHeight;
+    HIMC hIMC = ImmGetContext(hWnd);
+    if(!hIMC)
+        return;
+    xcb_xim_nested_list nested = xcb_xim_create_nested_list(im, XCB_XIM_XNSpotLocation, &spot, NULL);
+    xcb_window_t wnd = hWnd;
     xcb_xim_create_ic(im, xim_create_ic_callback, user_data, XCB_XIM_XNInputStyle,
-                      &input_style, XCB_XIM_XNClientWindow, &hIMC->hWnd,
-                      XCB_XIM_XNFocusWindow, &hIMC->hWnd, XCB_XIM_XNPreeditAttributes,
+                      &input_style, XCB_XIM_XNClientWindow, &wnd,
+                      XCB_XIM_XNFocusWindow, &wnd, XCB_XIM_XNPreeditAttributes,
                       &nested, NULL);
     free(nested.data);
 }
@@ -284,15 +299,17 @@ SConnection::SConnection(int screenNum)
     m_evtSync = CreateEventA(nullptr, FALSE, FALSE, nullptr);
     m_trdEvtReader = std::move(std::thread(std::bind(&readProc, this)));
 
+    xcb_compound_text_init();
     m_xim = xcb_xim_create(connection, screenNum, NULL);
 
+    xcb_xim_im_callback xim_callback = {
+        .forward_event = &SConnection::xim_forward_event,
+        .commit_string = &SConnection::xim_commit_string,
+    };
     xcb_xim_set_im_callback(m_xim, &xim_callback, this);
     xcb_xim_set_log_handler(m_xim, xim_logger);
     xcb_xim_set_use_compound_text(m_xim, true);
     xcb_xim_set_use_utf8_string(m_xim, true);
-
-    // Open connection to XIM server.
-    xcb_xim_open(m_xim, xim_open_callback, true, this);
 
     m_keyboard = new SKeyboard(this);
     m_trayIconMgr = new STrayIconMgr(this);
@@ -445,14 +462,16 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
                 m_clipboard->incrTransactionPeeker(it, accepted);
             if (!accepted)
             {
-                pushEvent(it);
-                if (!xcb_xim_filter_event(m_xim, it)) {
-                    // Forward event to input method if IC is created.
-                    HIMC hIMC = ImmGetContext(m_hFocus);
-                    if (hIMC && hIMC->xic && (((it->response_type & ~0x80) == XCB_KEY_PRESS) ||
-                               ((it->response_type & ~0x80) == XCB_KEY_RELEASE))) {
-                        xcb_xim_forward_event(m_xim, hIMC->xic, (xcb_key_press_event_t *)it);
+                if (!xcb_xim_filter_event(m_xim, it)){
+                    bool bForward=false;
+                    if((it->response_type & ~0x80) == XCB_KEY_PRESS || (it->response_type & ~0x80) == XCB_KEY_RELEASE){
+                        HIMC hIMC = ImmGetContext(m_hFocus);
+                        if (hIMC && hIMC->xic) {
+                            bForward=xcb_xim_forward_event(m_xim, hIMC->xic, (xcb_key_press_event_t *)it);
+                        }
                     }
+                    if(!bForward)
+                        pushEvent(it);
                 }
             }    
             free(it);
@@ -957,10 +976,21 @@ BOOL SConnection::HideCaret(HWND hWnd)
     return TRUE;
 }
 
+
 BOOL SConnection::SetCaretPos(int X, int Y)
 {
+    if(!m_hFocus)
+        return FALSE;
     m_caretInfo.x = X;
     m_caretInfo.y = Y;
+    HIMC hIMC = ImmGetContext(m_hFocus);
+    if(hIMC && hIMC->xic){
+        xcb_point_t spot={(int16_t)X,(int16_t)(Y+m_caretInfo.nHeight)};
+        xcb_xim_nested_list nested = xcb_xim_create_nested_list(m_xim, XCB_XIM_XNSpotLocation, &spot, NULL);
+        xcb_xim_set_ic_values(m_xim, hIMC->xic, nullptr,nullptr,XCB_XIM_XNPreeditAttributes, &nested, nullptr);
+        free(nested.data);    
+    }
+    ImmReleaseContext(m_hFocus,hIMC);
     return TRUE;
 }
 
@@ -1234,7 +1264,10 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs,int depth)
         xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms._XEMBED_INFO, atoms._XEMBED_INFO, 32, 2, (void *)data);
     }
     if(!(pWnd->dwStyle & WS_EX_TOOLWINDOW) && wndCls == XCB_WINDOW_CLASS_INPUT_OUTPUT)
-        pWnd->hIMC = new IMContext(hWnd,m_xim);
+    {
+        pWnd->hIMC = ImmCreateContext();
+        pWnd->hIMC->xim = m_xim;
+    }    
     
     xcb_flush(connection);
     return hWnd;
@@ -1259,7 +1292,10 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
     {
         m_hWndActive = 0;
     }
-
+    if(wnd->hIMC){
+        ImmDestroyContext(wnd->hIMC);
+        wnd->hIMC=nullptr;
+    }
     m_wndCursor.erase(hWnd);
     xcb_destroy_window(connection, hWnd);
     if(wnd->cmap){
@@ -1371,6 +1407,20 @@ void SConnection::SetWindowMsgTransparent(HWND hWnd,_Window * wndObj, BOOL bTran
         wndObj->dwExStyle |= WS_EX_TRANSPARENT;
     else
         wndObj->dwExStyle &= ~WS_EX_TRANSPARENT;
+}
+
+void SConnection::AssociateHIMC(HWND hWnd,_Window *wndObj, HIMC hIMC)
+{
+    wndObj->hIMC=hIMC;
+    if(hIMC){
+        hIMC->xim = m_xim;
+    }
+    if(GetFocus() == hWnd){
+        if(hIMC->xic)
+            xcb_xim_set_ic_focus(m_xim,hIMC->xic);
+        else
+            xcb_xim_open(m_xim, xim_open_callback, true, (void*)hWnd);
+    }
 }
 
 void SConnection::BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -1995,7 +2045,6 @@ HWND SConnection::SetFocus(HWND hWnd)
         if(hIMC){
             if(hIMC->xic){
                 xcb_xim_set_ic_focus(m_xim, 0);
-                hIMC->xic = 0;
             }
             xcb_xim_close(m_xim);
             
@@ -2006,7 +2055,12 @@ HWND SConnection::SetFocus(HWND hWnd)
     if(hWnd){
         HIMC hIMC = ImmGetContext(hWnd);
         if(hIMC){
-            xcb_xim_open(m_xim, xim_open_callback, true, (void*)hIMC);
+            if(hIMC->xic){
+                xcb_xim_set_ic_focus(m_xim, hIMC->xic);
+            }else
+            {
+                xcb_xim_open(m_xim, xim_open_callback, true, (void*)hWnd);
+            }
             ImmReleaseContext(m_hFocus,hIMC);
         }
         xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd, XCB_CURRENT_TIME);
