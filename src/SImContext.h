@@ -9,11 +9,11 @@ extern "C"{
 #include "SUnkImpl.h"
 
 typedef struct _IMContext : SUnkImpl<IUnknown>{
-    xcb_window_t hWnd;
+
     xcb_xim_t* xim;
     xcb_xic_t xic;
 
-    _IMContext(HWND _hWnd,xcb_xim_t *_xim):hWnd(_hWnd),xim(_xim){
+    _IMContext():xim(nullptr),xic(0){
 
     }
 

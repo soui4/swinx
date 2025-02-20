@@ -212,6 +212,7 @@ public:
       void SetParent(HWND hWnd, _Window *wnd,HWND parent);
       void SendExposeEvent(HWND hWnd);
       void SetWindowMsgTransparent(HWND hWnd,_Window * wndObj,BOOL bTransparent);
+      void AssociateHIMC(HWND hWnd,_Window *wndObj,HIMC hIMC);
   public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);
@@ -255,6 +256,15 @@ public:
 
     void updateWorkArea();
     xcb_cursor_t getXcbCursor(HCURSOR cursor);
+  private:
+    static void xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, char *str,
+      uint32_t length, uint32_t *keysym, size_t nKeySym,
+      void *user_data);
+    static void xim_forward_event(xcb_xim_t *im, xcb_xic_t ic, xcb_key_press_event_t *event,
+        void *user_data);
+    static void xim_open_callback(xcb_xim_t *im, void *user_data);
+    static void xim_create_ic_callback(xcb_xim_t *im, xcb_xic_t new_ic, void *user_data);
+    static void xim_logger(const char *fmt, ...);
   private:
     std::mutex m_mutex4Evt;
     std::list<xcb_generic_event_t *> m_evtQueue;
