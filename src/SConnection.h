@@ -242,6 +242,7 @@ public:
     void readXResources();
     void initializeXFixes();
     bool event2Msg(bool bTimeout, int elapse, uint64_t ts);
+    void OnSetFocus(HWND hWnd);
     xcb_cursor_t createXcbCursor(HCURSOR cursor);
     uint32_t netWmStates(HWND hWnd);
 

@@ -3,6 +3,8 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <assert.h>
@@ -946,10 +948,244 @@ int GetSystemMetrics(int nIndex)
     return ret * GetSystemScale() / 100;
 }
 
-BOOL ShellExecute(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd)
-{
-    return FALSE;
+BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd){
+    if(lpOperation && stricmp(lpOperation,"open")==0){
+        int len = strlen(lpFile);
+        char *cmd = new char[len+50];
+        if(len<4 || strncmp(lpFile,"http",4)!=0)
+            sprintf(cmd, "xdg-open https://%s", lpFile);
+        else
+            sprintf(cmd, "xdg-open %s", lpFile);
+        system(cmd);
+        return TRUE; 
+    }else{
+        PROCESS_INFORMATION procInfo={0};
+        char *params=lpParameters?strdup(lpParameters):NULL;
+        BOOL bRet = CreateProcessA(lpFile,params,NULL,NULL,FALSE,0,NULL,lpDirectory,NULL,&procInfo);
+        if(params) free(params);
+        if(bRet){
+            CloseHandle(procInfo.hProcess);
+            CloseHandle(procInfo.hThread);
+        }
+        return bRet;
+    }
 }
+
+BOOL WINAPI ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd){
+    std::string strOp,strFile,strParam,strDir;
+    tostring(lpOperation,-1,strOp);
+    tostring(lpFile,-1,strFile);
+    tostring(lpParameters,-1,strParam);
+    tostring(lpDirectory,-1,strDir);
+    return ShellExecuteA(hwnd,lpOperation?strOp.c_str():NULL,
+    lpFile?strFile.c_str():NULL,
+    lpParameters?strParam.c_str():NULL,
+    lpDirectory?strDir.c_str():NULL,
+    nShowCmd
+    );
+}
+
+
+static void sigchld_handler(int signo) {
+    pid_t pid;
+    int status;
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
+        //notify child process was stopped.
+        char szName[100];
+        sprintf(szName,"proc_event_%u",pid);
+        HANDLE hEvent = CreateEventA(NULL,TRUE,FALSE,szName);
+        SetEvent(hEvent);
+        CloseHandle(hEvent);
+    }
+}
+
+static std::mutex s_mutex_sigchild;
+static bool       s_sigchild_flag = false;
+int install_sigchld_handler() {
+    std::unique_lock<std::mutex> lock(s_mutex_sigchild);
+    if(s_sigchild_flag)
+        return 0;
+    s_sigchild_flag=true;
+    struct sigaction sa;
+    sa.sa_handler = sigchld_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART | SA_NOCLDSTOP; // 选项可以根据需要调整
+    sigaction(SIGCHLD, &sa, NULL);
+    return 1;
+}
+
+BOOL WINAPI CreateProcessAsUserA(
+    HANDLE hToken,
+    LPCSTR lpApplicationName,
+    LPSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles,
+    DWORD dwCreationFlags,
+    LPVOID lpEnvironment,
+    LPCSTR lpCurrentDirectory,
+    LPSTARTUPINFO lpStartupInfo,
+    LPPROCESS_INFORMATION lpProcessInformation
+  ){
+    if(!lpApplicationName){
+        if(!lpCommandLine)
+            return FALSE;
+        lpApplicationName = lpCommandLine;
+        if(lpApplicationName[0]=='\"')
+            lpCommandLine = strstr(lpCommandLine,"\" ");
+        else
+            lpCommandLine = strchr(lpCommandLine,' ');
+        if(lpCommandLine){
+            lpCommandLine += lpApplicationName[0]=='\"'?2:1;
+        }
+    }
+    install_sigchld_handler();
+
+    pid_t pid = fork();
+    char szDir[MAX_PATH];
+    GetCurrentDirectoryA(MAX_PATH,szDir);
+    if(lpCurrentDirectory){
+        SetCurrentDirectoryA(lpCurrentDirectory);
+    }
+    if (pid == -1) {
+        // fork 失败
+        perror("fork failed");
+        exit(EXIT_FAILURE);
+    }
+    else if(pid == 0){
+        //prepare env
+        if(lpEnvironment){
+            if(dwCreationFlags & CREATE_UNICODE_ENVIRONMENT){
+                LPCWSTR pszEnv = (LPCWSTR)lpEnvironment;
+                while(*pszEnv){
+                    size_t len =wcslen(pszEnv);
+                    LPCWSTR strEqual=wcschr(pszEnv,L'=');
+                    if(strEqual){
+                        std::wstring entry(pszEnv,(strEqual-pszEnv));
+                        std::wstring value(strEqual+1,(len-1-(strEqual-pszEnv)));
+                        SetEnvironmentVariableW(entry.c_str(),value.c_str());
+                    }
+                    pszEnv+=len+1;
+                }
+                
+            }else{
+                LPCSTR pszEnv = (LPCSTR)lpEnvironment;
+                while(*pszEnv){
+                    size_t len =strlen(pszEnv);
+                    LPCSTR strEqual=strchr(pszEnv,'=');
+                    if(strEqual){
+                        std::string entry(pszEnv,(strEqual-pszEnv));
+                        std::string value(strEqual+1,(len-1-(strEqual-pszEnv)));
+                        SetEnvironmentVariableA(entry.c_str(),value.c_str());
+                    }
+                    pszEnv+=len+1;
+                }
+            }
+        }
+        
+        //child process
+        std::list<char *> lstArg;
+        lstArg.push_back((char*)lpApplicationName);
+        while(lpCommandLine){
+            lstArg.push_back(lpCommandLine);
+            char * pArgEnd = nullptr;
+            if(lpCommandLine[0]=='\"')
+            {
+                pArgEnd=strstr(lpCommandLine,"\" ");
+                if(pArgEnd){
+                    pArgEnd[1]=0;
+                    pArgEnd+=2;
+                }
+            }else{
+                pArgEnd=strchr(lpCommandLine,' ');
+                if(pArgEnd){
+                    pArgEnd[0]=0;
+                    pArgEnd++;
+                }
+            }
+            lpCommandLine=pArgEnd;
+        }
+        char ** args = new char*[lstArg.size()];
+        size_t i = 0;
+        for(auto it = lstArg.begin();it!=lstArg.end();it++,i++){
+            args[i]=*it;
+        }
+        execvp(args[0], args);       // 替换子进程的代码为新程序
+        delete []args;
+        perror("execvp failed");    // 如果 execvp 失败，打印错误信息
+        exit(EXIT_FAILURE);          // 子进程退出
+    }else{
+        if(lpCurrentDirectory){
+            SetCurrentDirectoryA(szDir);
+        }
+        if(lpProcessInformation){
+            char szName[100];
+            sprintf(szName,"proc_event_%u",pid);
+            lpProcessInformation->hProcess = CreateEventA(NULL,TRUE,FALSE,szName);
+            lpProcessInformation->hThread=INVALID_HANDLE_VALUE;
+            lpProcessInformation->dwProcessId = pid;
+            lpProcessInformation->dwThreadId = 0;
+        }
+        return TRUE;
+    }
+  }
+
+BOOL WINAPI CreateProcessAsUserW(
+    HANDLE hToken,
+    LPCWSTR lpApplicationName,
+    LPWSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles,
+    DWORD dwCreationFlags,
+    LPVOID lpEnvironment,
+    LPCWSTR lpCurrentDirectory,
+    LPSTARTUPINFO lpStartupInfo,
+    LPPROCESS_INFORMATION lpProcessInformation
+  ){
+    std::string strApp,strCmd,strDir;
+    tostring(lpApplicationName,-1,strApp);
+    tostring(lpCommandLine,-1,strCmd);
+    tostring(lpCurrentDirectory,-1,strDir);
+    return CreateProcessAsUserA(hToken,lpApplicationName?strApp.c_str():nullptr,lpCommandLine?(char*)strCmd.c_str():nullptr,
+        lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,
+        lpCurrentDirectory?strDir.c_str():nullptr,
+        lpStartupInfo,
+        lpProcessInformation
+    );
+  }
+
+
+  BOOL WINAPI CreateProcessA(
+    LPCSTR lpApplicationName,
+    LPSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles,
+    DWORD dwCreationFlags,
+    LPVOID lpEnvironment,
+    LPCSTR lpCurrentDirectory,
+    LPSTARTUPINFO lpStartupInfo,
+    LPPROCESS_INFORMATION lpProcessInformation
+  ){
+    return CreateProcessAsUserA(0,lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation);
+  }
+
+  BOOL WINAPI CreateProcessW(
+    LPCWSTR lpApplicationName,
+    LPWSTR lpCommandLine,
+    LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    BOOL bInheritHandles,
+    DWORD dwCreationFlags,
+    LPVOID lpEnvironment,
+    LPCWSTR lpCurrentDirectory,
+    LPSTARTUPINFO lpStartupInfo,
+    LPPROCESS_INFORMATION lpProcessInformation
+  ){
+    return CreateProcessAsUserW(0,lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation);
+  }
+
 
 BOOL GetKeyboardState(PBYTE lpKeyState)
 {
