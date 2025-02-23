@@ -83,6 +83,96 @@ extern "C"
 #define StrToIntEx   StrToIntExA
 #endif // UNICODE
 
+
+
+typedef struct _SECURITY_ATTRIBUTES
+{
+    DWORD nLength;
+    LPVOID lpSecurityDescriptor;
+    BOOL bInheritHandle;
+} SECURITY_ATTRIBUTES, *PSECURITY_ATTRIBUTES, *LPSECURITY_ATTRIBUTES;
+
+typedef struct _STARTUPINFO{
+}STARTUPINFO, * LPSTARTUPINFO;
+typedef struct _PROCESS_INFORMATION {
+    HANDLE hProcess;  
+    HANDLE hThread;  
+    DWORD dwProcessId;  
+    tid_t dwThreadId;
+} PROCESS_INFORMATION,  *LPPROCESS_INFORMATION;
+
+#define __in
+#define __out
+BOOL WINAPI CreateProcessAsUserA(
+    __in          HANDLE hToken,
+    __in          LPCSTR lpApplicationName,
+    __in          LPSTR lpCommandLine,
+    __in          LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    __in          LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    __in          BOOL bInheritHandles,
+    __in          DWORD dwCreationFlags,
+    __in          LPVOID lpEnvironment,
+    __in          LPCSTR lpCurrentDirectory,
+    __in          LPSTARTUPINFO lpStartupInfo,
+    __out         LPPROCESS_INFORMATION lpProcessInformation
+  );
+
+BOOL WINAPI CreateProcessAsUserW(
+    __in          HANDLE hToken,
+    __in          LPCWSTR lpApplicationName,
+    __in          LPWSTR lpCommandLine,
+    __in          LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    __in          LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    __in          BOOL bInheritHandles,
+    __in          DWORD dwCreationFlags,
+    __in          LPVOID lpEnvironment,
+    __in          LPCWSTR lpCurrentDirectory,
+    __in          LPSTARTUPINFO lpStartupInfo,
+    __out         LPPROCESS_INFORMATION lpProcessInformation
+  );
+
+  BOOL WINAPI CreateProcessA(
+    __in          LPCSTR lpApplicationName,
+    __in          LPSTR lpCommandLine,
+    __in          LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    __in          LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    __in          BOOL bInheritHandles,
+    __in          DWORD dwCreationFlags,
+    __in          LPVOID lpEnvironment,
+    __in          LPCSTR lpCurrentDirectory,
+    __in          LPSTARTUPINFO lpStartupInfo,
+    __out         LPPROCESS_INFORMATION lpProcessInformation
+  );
+  BOOL WINAPI CreateProcessW(
+    __in          LPCWSTR lpApplicationName,
+    __in          LPWSTR lpCommandLine,
+    __in          LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    __in          LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    __in          BOOL bInheritHandles,
+    __in          DWORD dwCreationFlags,
+    __in          LPVOID lpEnvironment,
+    __in          LPCWSTR lpCurrentDirectory,
+    __in          LPSTARTUPINFO lpStartupInfo,
+    __out         LPPROCESS_INFORMATION lpProcessInformation
+  );
+
+  BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd);
+
+  BOOL WINAPI ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd);
+
+  #undef __in
+  #undef __out
+
+#ifdef UNICODE
+#define CreateProcessAsUser CreateProcessAsUserW
+#define CreateProcess CreateProcessW
+#define ShellExecute ShellExecuteW
+#else
+#define CreateProcessAsUser CreateProcessAsUserA
+#define CreateProcess   CreateProcessA
+#define ShellExecute    ShellExecuteA
+#endif//UNICODE
+
     void GetLocalTime(SYSTEMTIME *pSysTime);
     void GetSystemTime(SYSTEMTIME *lpSystemTime);
 
@@ -109,7 +199,6 @@ extern "C"
 
     HCURSOR SetCursor(HCURSOR hCursor);
     HCURSOR GetCursor(VOID);
-    BOOL ShellExecute(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd);
 
     SHORT GetKeyState(int nVirtKey);
 
@@ -289,12 +378,6 @@ typedef int(WINAPI *PROC)();
         return (FARPROC)dlsym(hModule, lpProcName);
     }
 
-    typedef struct _SECURITY_ATTRIBUTES
-    {
-        DWORD nLength;
-        LPVOID lpSecurityDescriptor;
-        BOOL bInheritHandle;
-    } SECURITY_ATTRIBUTES, *PSECURITY_ATTRIBUTES, *LPSECURITY_ATTRIBUTES;
 
     HANDLE WINAPI CreateSemaphoreA(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCSTR name);
 

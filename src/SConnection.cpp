@@ -131,27 +131,28 @@ void SConnection::xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, 
                    uint32_t length, uint32_t *keysym, size_t nKeySym,
                    void *user_data) {
     SConnection *conn = (SConnection *)user_data;
+    const char *utf8 = nullptr;
     if (xcb_xim_get_encoding(im) == XCB_XIM_UTF8_STRING) {
-        SLOG_FMTI("key commit utf8: %.*s\n", length, str);
+        utf8 = str;
     } else if (xcb_xim_get_encoding(im) == XCB_XIM_COMPOUND_TEXT) {
         size_t newLength = 0;
-        char *utf8 = xcb_compound_text_to_utf8(str, length, &newLength);
-        if (utf8) {
-            int l = newLength;
-            SLOG_FMTI("key commit: %.*s\n", l, utf8);
-            std::wstring buf;
-            towstring(utf8,newLength,buf);
-            for(int i=0;i<buf.length();i++){
-                SLOG_STMI()<<"commit text "<< i<<" is "<<buf.c_str()[i];
-                Msg * pMsg = new Msg;
-                pMsg->hwnd = conn->m_hFocus;
-                pMsg->message = WM_IME_CHAR;
-                pMsg->wParam = buf.c_str()[i];
-                pMsg->lParam = 0;
-                pMsg->time = GetTickCount();
-                std::unique_lock<std::recursive_mutex> lock(conn->m_mutex4Msg);
-                conn->m_msgQueue.push_back(pMsg);
-            }
+        utf8 = xcb_compound_text_to_utf8(str, length, &newLength);
+        length = newLength;
+    }
+    if (utf8) {
+        //SLOG_FMTI("key commit: %.*s\n", l, utf8);
+        std::wstring buf;
+        towstring(utf8,length,buf);
+        for(int i=0;i<buf.length();i++){
+            SLOG_STMI()<<"commit text "<< i<<" is "<<buf.c_str()[i];
+            Msg * pMsg = new Msg;
+            pMsg->hwnd = conn->m_hFocus;
+            pMsg->message = WM_IME_CHAR;
+            pMsg->wParam = buf.c_str()[i];
+            pMsg->lParam = 0;
+            pMsg->time = GetTickCount();
+            std::unique_lock<std::recursive_mutex> lock(conn->m_mutex4Msg);
+            conn->m_msgQueue.push_back(pMsg);
         }
     }
 }
@@ -164,7 +165,7 @@ void SConnection::xim_logger(const char *fmt, ...)
     int len = vsnprintf(NULL, 0, fmt, argp);
     char *buf = (char *)malloc(len + 1);
     vsnprintf(buf, len + 1, fmt, argp2);
-    SLOG_STMI() <<"xim_logger:"<< buf;
+    SLOG_STMD() <<"xim_logger:"<< buf;
     free(buf);
     va_end(argp);
 }
@@ -176,12 +177,13 @@ void SConnection::xim_create_ic_callback(xcb_xim_t *im, xcb_xic_t new_ic, void *
     if (!wndObj)
         return;
     HIMC hIMC = ImmGetContext(hWnd);
+    
     hIMC->xic = new_ic;
     if (new_ic && wndObj->mConnection->GetFocus() == hWnd)
     {
         //delay set ic focus
         xcb_xim_set_ic_focus(im, new_ic);
-        SLOG_STMI()<<"set windows "<<hWnd<<" icid="<<new_ic;
+        SLOG_STMI()<<"xcb_xim_set_ic_focus set windows "<<hWnd<<" xic="<<new_ic;
     }
 }
 
@@ -199,11 +201,20 @@ void SConnection::xim_open_callback(xcb_xim_t *im, void *user_data)
     if(!hIMC)
         return;
     xcb_xim_nested_list nested = xcb_xim_create_nested_list(im, XCB_XIM_XNSpotLocation, &spot, NULL);
-    xcb_window_t wnd = hWnd;
-    xcb_xim_create_ic(im, xim_create_ic_callback, user_data, XCB_XIM_XNInputStyle,
-                      &input_style, XCB_XIM_XNClientWindow, &wnd,
-                      XCB_XIM_XNFocusWindow, &wnd, XCB_XIM_XNPreeditAttributes,
-                      &nested, NULL);
+    xcb_window_t wnd = (xcb_window_t)hWnd;
+    if(0 && hIMC->xic){
+        xcb_xim_set_ic_values(im, hIMC->xic, nullptr, NULL,XCB_XIM_XNInputStyle,
+            &input_style, XCB_XIM_XNClientWindow, &wnd,
+            XCB_XIM_XNFocusWindow, &wnd,
+            XCB_XIM_XNPreeditAttributes, &nested, NULL);
+        xcb_xim_set_ic_focus(im, hIMC->xic);
+    }else
+    {
+        xcb_xim_create_ic(im, xim_create_ic_callback, user_data, XCB_XIM_XNInputStyle,
+            &input_style, XCB_XIM_XNClientWindow, &wnd,
+            XCB_XIM_XNFocusWindow, &wnd, XCB_XIM_XNPreeditAttributes,
+            &nested, NULL);
+    }
     free(nested.data);
 }
 
@@ -1416,10 +1427,7 @@ void SConnection::AssociateHIMC(HWND hWnd,_Window *wndObj, HIMC hIMC)
         hIMC->xim = m_xim;
     }
     if(GetFocus() == hWnd){
-        if(hIMC->xic)
-            xcb_xim_set_ic_focus(m_xim,hIMC->xic);
-        else
-            xcb_xim_open(m_xim, xim_open_callback, true, (void*)hWnd);
+        xcb_xim_open(m_xim, xim_open_callback, true, (void*)hWnd);
     }
 }
 
@@ -2033,41 +2041,58 @@ HKL SConnection::ActivateKeyboardLayout(HKL hKl)
     return ret;
 }
 
+void SConnection::OnSetFocus(HWND hWnd)
+{
+    if (hWnd == m_hFocus)
+        return;
+    SLOG_STMI() << "OnSetFocus, oldFocus=" << m_hFocus << " newFocus=" << hWnd;
+    if (m_hFocus)
+    {
+        HIMC hIMC = ImmGetContext(m_hFocus);
+        if (hIMC)
+        {
+            if (hIMC->xic)
+            {
+                xcb_xim_close(m_xim);
+            }
+            ImmReleaseContext(m_hFocus, hIMC);
+        }
+        Msg *pMsg = new Msg;
+        pMsg->hwnd = m_hFocus;
+        pMsg->message = WM_KILLFOCUS;
+        pMsg->wParam = (WPARAM)hWnd;
+        pMsg->lParam = 0;
+        m_msgQueue.push_back(pMsg);
+    }
+    HWND hOldFocus = m_hFocus;
+    m_hFocus = hWnd;
+    if (hWnd)
+    {
+        HIMC hIMC = ImmGetContext(hWnd);
+        if (hIMC)
+        {
+            xcb_xim_open(m_xim, xim_open_callback, true, (void *)hWnd);
+            ImmReleaseContext(hWnd, hIMC);
+        }
+        Msg *pMsg = new Msg;
+        pMsg->hwnd = m_hFocus;
+        pMsg->message = WM_SETFOCUS;
+        pMsg->wParam = (WPARAM)hOldFocus;
+        pMsg->lParam = 0;
+        m_msgQueue.push_back(pMsg);
+    }
+}
+
 HWND SConnection::SetFocus(HWND hWnd)
 {
     if (hWnd == m_hFocus)
     {
         return hWnd;
     }
-    HWND ret = m_hFocus;
-    if(m_hFocus){
-        HIMC hIMC = ImmGetContext(m_hFocus);
-        if(hIMC){
-            if(hIMC->xic){
-                xcb_xim_set_ic_focus(m_xim, 0);
-            }
-            xcb_xim_close(m_xim);
-            
-            ImmReleaseContext(m_hFocus,hIMC);
-        }
-    }
-    m_hFocus = hWnd;
-    if(hWnd){
-        HIMC hIMC = ImmGetContext(hWnd);
-        if(hIMC){
-            if(hIMC->xic){
-                xcb_xim_set_ic_focus(m_xim, hIMC->xic);
-            }else
-            {
-                xcb_xim_open(m_xim, xim_open_callback, true, (void*)hWnd);
-            }
-            ImmReleaseContext(m_hFocus,hIMC);
-        }
-        xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd, XCB_CURRENT_TIME);
-    }
-
+    xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd, XCB_CURRENT_TIME);
     xcb_flush(connection);
-    return ret;
+    SLOG_STMI() << "SetFocus, oldFocus=" << m_hFocus << " newFocus=" << hWnd;
+    return m_hFocus;
 }
 
 uint32_t SConnection::netWmStates(HWND hWnd)
@@ -2200,7 +2225,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         uint32_t tst = (scanCode << 16);
         int cn = m_keyboard->getRepeatCount();
         pMsg->lParam = (scanCode << 16) | m_keyboard->getRepeatCount();
-        // SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
+        //SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
         break;
     }
     case XCB_KEY_RELEASE:
@@ -2619,28 +2644,15 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_FOCUS_IN:
     {
         xcb_focus_in_event_t *e2 = (xcb_focus_in_event_t *)event;
-        pMsg = new Msg;
-        pMsg->hwnd = e2->event;
-        pMsg->message = WM_SETFOCUS;
-        if (m_hFocus != pMsg->hwnd)
-        {
-            pMsg->wParam = (WPARAM)m_hFocus;
-            m_hFocus = e2->event;
-        }
-        pMsg->lParam = 0;
+        OnSetFocus(e2->event);
         break;
     }
     case XCB_FOCUS_OUT:
     {
         xcb_focus_out_event_t *e2 = (xcb_focus_out_event_t *)event;
-        pMsg = new Msg;
-        pMsg->hwnd = e2->event;
-        pMsg->message = WM_KILLFOCUS;
-        pMsg->wParam = (WPARAM)m_hFocus;
-        pMsg->lParam = 0;
         if (e2->event == m_hFocus)
         {
-            m_hFocus = 0;
+            OnSetFocus(0);
         }
         break;
     }
