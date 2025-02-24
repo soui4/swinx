@@ -9,11 +9,12 @@
 #include <signal.h>
 #include <assert.h>
 #include <iconv.h>
+#include <setjmp.h>
 #include "SConnection.h"
 #include "wnd.h"
 #include "uimsg.h"
 #include "uniconv.h"
-#include <setjmp.h>
+#include "synhandle.h"
 #include "tostring.hpp"
 #include "debug.h"
 #define kLogTag "sysapi"
@@ -1784,4 +1785,99 @@ DWORD WINAPI GetEnvironmentVariableW(LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSiz
         return len + 1;
     wcscpy(lpBuffer, wstr.c_str());
     return len;
+}
+
+//-----------------------------------------------------------
+struct FdHandle : _SynHandle{
+    int fd;
+    FdHandle(int _fd):fd(_fd){
+        type = HFdHandle;
+    }
+
+    ~FdHandle()
+    {
+    }
+
+    int getReadFd() override
+    {
+        return fd;
+    }
+
+    int getWriteFd() override
+    {
+        return fd;
+    }
+
+    bool init(LPCSTR pszName, void *initData) override
+    {
+        return false;
+    }
+    void lock() override {}
+    void unlock() override {}
+    void *getData() override {return nullptr;}
+};
+
+class SOsHandleMgr{
+    enum{
+        kSpan_CheckFd=1000, //time interval for check fd
+    };
+public:
+SOsHandleMgr():m_ts(0){
+
+}
+
+~SOsHandleMgr(){
+    std::unique_lock<std::mutex> lock(m_mutex);
+    auto it=m_fdMap.begin();
+    while(it != m_fdMap.end()){
+        CloseHandle(it->second);
+        it++;
+    }
+    m_fdMap.clear();
+}
+
+bool isValidFd(int fd){
+    int new_fd = dup(fd);
+    if (new_fd == -1) {
+        return false;
+    }else{
+        close(new_fd); 
+        return true;
+    }
+}
+
+HANDLE fd2Handle(int fd){
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    uint64_t now = GetTickCount64();
+    if(m_ts!= 0 && now-m_ts > kSpan_CheckFd){
+        m_ts = now;
+        //time for check fd validation.
+        auto it=m_fdMap.begin();
+        while(it != m_fdMap.end()){
+            auto it_bk = it++;
+            if(!isValidFd(it_bk->first)){
+                CloseHandle(it_bk->second);
+                m_fdMap.erase(it_bk);
+            }
+        }
+    }
+    auto it = m_fdMap.find(fd);
+    if(it!= m_fdMap.end())
+        return it->second;
+    HANDLE hRet = NewSynHandle(new FdHandle(fd));
+    m_fdMap.insert(std::make_pair(fd,hRet));
+    return hRet;
+}
+
+private:
+std::map<int,HANDLE> m_fdMap;
+std::mutex m_mutex;
+uint64_t m_ts;
+};
+
+static SOsHandleMgr s_osHandleMgr;
+
+HANDLE WINAPI _get_osfhandle(int fd){
+    return s_osHandleMgr.fd2Handle(fd);
 }

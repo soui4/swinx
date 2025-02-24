@@ -1,5 +1,7 @@
 #include "sharedmem.h"
 #include <sys/mman.h>
+#include "log.h"
+#define kLogTag "sharememory"
 
 SharedMemory::~SharedMemory()
 {
@@ -11,7 +13,7 @@ SharedMemory::~SharedMemory()
     munmap(&nRef, m_dwSize + sizeof(uint32_t));
     close(shmid);
     delete m_rwlock;
-    printf("close share memory, name=%s, bUnlink=%d\n", m_name.c_str(), bUnlink);
+    SLOG_FMTD("close share memory, name=%s, bUnlink=%d", m_name.c_str(), bUnlink);
 
     if (bUnlink && !m_bDetached)
     {
@@ -77,7 +79,7 @@ SharedMemory::InitStat SharedMemory::init(const char *name, uint32_t size)
     m_dwSize = size;
     m_name = name;
     m_bDetached = false;
-    printf("open share memory, name=%s, ret=%d\n", name, ret);
+    SLOG_FMTD("open share memory, name=%s, ret=%d\n", name, ret);
     return ret;
 }
 
