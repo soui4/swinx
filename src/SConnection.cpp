@@ -659,45 +659,45 @@ xcb_generic_event_t *SConnection::checkEvent(IEventChecker *checker)
 
 int SConnection::_waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD to, DWORD dwWaitMask)
 {
-    UINT timeOut = INFINITE;
-    if (!m_bBlockTimer)
-    {
-        std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
-        for (auto &it : m_lstTimer)
+    for(;;){
+        UINT timeOut = to;
+        if (!m_bBlockTimer)
         {
-            timeOut = std::min(timeOut, it.fireRemain);
+            std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+            for (auto &it : m_lstTimer)
+            {
+                timeOut = std::min(timeOut, it.fireRemain);
+            }
+        }
+        
+        uint64_t ts1 = GetTickCount64();
+        int ret = WaitForMultipleObjects(nCount, handles, FALSE, timeOut);
+        uint64_t ts2 = GetTickCount64();
+        UINT elapse = ts2 - ts1;
+        if (ret == WAIT_TIMEOUT || ret == WAIT_OBJECT_0 + nCount - 1)
+        {
+            // the last handle is m_evtSync
+            if (m_bQuit)
+                return WAIT_FAILED;
+            event2Msg(ret == WAIT_TIMEOUT, elapse, ts2);
+            if (dwWaitMask != 0)
+            {
+                if (GetQueueStatus(dwWaitMask))
+                    return WAIT_OBJECT_0 + nCount - 1;
+            }
+            if (to != INFINITE)
+            {
+                if (to <= elapse)
+                    return WAIT_TIMEOUT;
+                to -= elapse;
+            }
+        }
+        else
+        {
+            return ret;
         }
     }
-    if (timeOut != INFINITE && timeOut > to)
-        timeOut = to;
 
-    uint64_t ts1 = GetTickCount64();
-    int ret = WaitForMultipleObjects(nCount, handles, FALSE, timeOut);
-    uint64_t ts2 = GetTickCount64();
-    UINT elapse = ts2 - ts1;
-    if (ret == WAIT_TIMEOUT || ret == WAIT_OBJECT_0 + nCount - 1)
-    {
-        // the last handle is m_evtSync
-        if (m_bQuit)
-            return WAIT_FAILED;
-        event2Msg(ret == WAIT_TIMEOUT, elapse, ts2);
-        if (dwWaitMask != 0)
-        {
-            if (GetQueueStatus(dwWaitMask))
-                return WAIT_OBJECT_0 + nCount - 1;
-        }
-        if (to != INFINITE)
-        {
-            if (to <= elapse)
-                return WAIT_TIMEOUT;
-            to -= elapse;
-        }
-        return _waitMutliObjectAndMsg(handles, nCount, to, dwWaitMask);
-    }
-    else
-    {
-        return ret;
-    }
 }
 
 int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD to, BOOL fWaitAll, DWORD dwWaitMask)
