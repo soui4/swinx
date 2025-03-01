@@ -1793,13 +1793,15 @@ BOOL SConnection::DestroyCursor(HCURSOR cursor)
 
 static uint32_t TsSpan(uint32_t t1, uint32_t t2)
 {
+    if(t2==-1u)
+        return -1u;
     if (t1 > t2)
     {
         return t1 - t2;
     }
     else
     {
-        return t1 + (0xffffffff - t2);
+        return t1 + (-1u - t2);
     }
 }
 
@@ -1813,7 +1815,7 @@ static WPARAM ButtonState2Mask(uint16_t state)
     if (state & XCB_BUTTON_MASK_1)
         wp |= MK_LBUTTON;
     if (state & XCB_BUTTON_MASK_2)
-        wp |= MK_RBUTTON;
+        wp |= MK_MBUTTON;
     if (state & XCB_BUTTON_MASK_3)
         wp |= MK_RBUTTON;
     return wp;
@@ -2091,7 +2093,7 @@ HWND SConnection::SetFocus(HWND hWnd)
     }
     xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd, XCB_CURRENT_TIME);
     xcb_flush(connection);
-    SLOG_STMI() << "SetFocus, oldFocus=" << m_hFocus << " newFocus=" << hWnd;
+    //SLOG_STMI() << "SetFocus, oldFocus=" << m_hFocus << " newFocus=" << hWnd;
     return m_hFocus;
 }
 
@@ -2507,13 +2509,16 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             switch (e2->detail)
             {
             case XCB_BUTTON_INDEX_1: // left button
-                pMsg->message = TsSpan(e2->time, m_tsPrevPress) > m_tsDoubleSpan ? WM_LBUTTONDOWN : WM_LBUTTONDBLCLK;
+                pMsg->message = TsSpan(e2->time, m_tsPrevPress[0]) > m_tsDoubleSpan ? WM_LBUTTONDOWN : WM_LBUTTONDBLCLK;
+                m_tsPrevPress[0] = e2->time;
                 break;
             case XCB_BUTTON_INDEX_2:
-                pMsg->message = TsSpan(e2->time, m_tsPrevPress) > m_tsDoubleSpan ? WM_MBUTTONDOWN : WM_MBUTTONDBLCLK;
+                pMsg->message = TsSpan(e2->time, m_tsPrevPress[1]) > m_tsDoubleSpan ? WM_MBUTTONDOWN : WM_MBUTTONDBLCLK;
+                m_tsPrevPress[1] = e2->time;
                 break;
             case XCB_BUTTON_INDEX_3:
-                pMsg->message = TsSpan(e2->time, m_tsPrevPress) > m_tsDoubleSpan ? WM_RBUTTONDOWN : WM_RBUTTONDBLCLK;
+                pMsg->message = TsSpan(e2->time, m_tsPrevPress[2]) > m_tsDoubleSpan ? WM_RBUTTONDOWN : WM_RBUTTONDBLCLK;
+                m_tsPrevPress[2] = e2->time;
                 break;
             }
             if (e2->detail <= XCB_BUTTON_INDEX_3)
@@ -2534,7 +2539,6 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                 m_keyboard->setKeyState(vk, 0x80);
             }
             pMsg->wParam = ButtonState2Mask(e2->state);
-            m_tsPrevPress = e2->time;
         }
         else if (e2->detail == XCB_BUTTON_INDEX_4 || e2->detail == XCB_BUTTON_INDEX_5)
         {

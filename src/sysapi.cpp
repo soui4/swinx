@@ -277,6 +277,63 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
 #endif
 }
 
+HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
+{
+    if(!lpFileName)
+        return NULL;
+    HMODULE ret = 0;
+    do{
+        ret = dlopen(lpFileName, RTLD_NOW);
+        if(ret) 
+            break;
+        if(strchr(lpFileName,'/')!=NULL)
+            break;
+        //search app dir
+        char szPath[MAX_PATH]={0};
+        GetModuleFileNameA(NULL,szPath,MAX_PATH);
+        char * p = strrchr(szPath,'/');
+        assert(p);
+        p++;
+        strcpy(p,lpFileName);
+        ret = dlopen(szPath,RTLD_NOW);
+        if(ret)
+            break;
+        GetCurrentDirectoryA(MAX_PATH,szPath);
+        int len = strlen(szPath);
+        if(szPath[len-1]!='/'){
+            szPath[len++]='/';
+            szPath[len]=0;
+        }
+        p = szPath+len;
+        strcpy(p,lpFileName);
+        ret = dlopen(szPath,RTLD_NOW);
+        if(!ret){
+            const char *ext = strrchr(lpFileName,'.');
+            if(!ext){
+                //no ext, add so as the extend name
+                sprintf(szPath,"%s.so",lpFileName);
+            }else if(stricmp(ext,".dll")==0){
+                //windows dll name pattern, change to libxxx.so
+                sprintf(szPath,"lib%s",lpFileName);
+                strcpy(szPath+3+(ext-lpFileName),".so");
+            }else
+            {
+                break;
+            }
+            ret = LoadLibraryA(szPath);
+        }
+    }while(false);
+    return ret;
+}
+
+HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName)
+{
+    char szName[MAX_PATH];
+    if (0 == WideCharToMultiByte(CP_UTF8, 0, lpFileName, -1, szName, MAX_PATH, NULL, NULL))
+        return 0;
+    return LoadLibraryA(szName);
+}
+
 #define STIF_DEFAULT     0x00000000L
 #define STIF_SUPPORT_HEX 0x00000001L
 
@@ -949,15 +1006,38 @@ int GetSystemMetrics(int nIndex)
     return ret * GetSystemScale() / 100;
 }
 
+static int is_executable(const char* filename) {
+    struct stat file_stat;
+
+    // 获取文件状态
+    if (stat(filename, &file_stat) == -1) {
+        return -1;  // 获取文件状态失败
+    }
+
+    // 检查文件权限是否包含执行权限
+    if (file_stat.st_mode & S_IXUSR) {
+        return 1;  // 文件对用户可执行
+    } else if (file_stat.st_mode & S_IXGRP) {
+        return 2;  // 文件对组可执行
+    } else if (file_stat.st_mode & S_IXOTH) {
+        return 3;  // 文件对其他用户可执行
+    }
+
+    return 0;  // 文件不可执行
+}
+
 BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd){
-    if(lpOperation && stricmp(lpOperation,"open")==0){
+    if(!lpOperation || stricmp(lpOperation,"open")!=0)
+        return FALSE;
+    int exe = is_executable(lpFile);
+    if(exe == -1)
+        return FALSE;
+    if(exe == 0){
         int len = strlen(lpFile);
-        char *cmd = new char[len+50];
-        if(len<4 || strncmp(lpFile,"http",4)!=0)
-            sprintf(cmd, "xdg-open https://%s", lpFile);
-        else
-            sprintf(cmd, "xdg-open %s", lpFile);
+        char *cmd = new char[len+10];
+        sprintf(cmd, "xdg-open %s", lpFile);
         system(cmd);
+        delete []cmd;
         return TRUE; 
     }else{
         PROCESS_INFORMATION procInfo={0};
@@ -1042,12 +1122,39 @@ BOOL WINAPI CreateProcessAsUserA(
     }
     install_sigchld_handler();
 
-    pid_t pid = fork();
-    char szDir[MAX_PATH];
-    GetCurrentDirectoryA(MAX_PATH,szDir);
-    if(lpCurrentDirectory){
-        SetCurrentDirectoryA(lpCurrentDirectory);
+    std::list<char *> lstArg;
+    lstArg.push_back((char*)lpApplicationName);
+    while(lpCommandLine){
+        char * pArgEnd = nullptr;
+        if(lpCommandLine[0]=='\"')
+        {
+            lstArg.push_back(lpCommandLine+1);
+            pArgEnd=strstr(lpCommandLine+1,"\" ");
+            if(pArgEnd){
+                pArgEnd[0]=0;
+                pArgEnd+=2;
+            }else{
+                pArgEnd=strrchr(lpCommandLine+1,'\"');
+                if(pArgEnd){
+                    //for last param
+                    pArgEnd[0]=0;
+                    pArgEnd=NULL;
+                }
+            }
+        }else{
+            lstArg.push_back(lpCommandLine);
+            pArgEnd=strchr(lpCommandLine,' ');
+            if(pArgEnd){
+                pArgEnd[0]=0;
+                pArgEnd++;
+            }
+        }
+        lpCommandLine=pArgEnd;
     }
+    if(lstArg.size()>100)
+        return FALSE;          // 子进程退出
+
+    pid_t pid = fork();
     if (pid == -1) {
         // fork 失败
         perror("fork failed");
@@ -1055,6 +1162,9 @@ BOOL WINAPI CreateProcessAsUserA(
     }
     else if(pid == 0){
         //prepare env
+        if(lpCurrentDirectory){
+            SetCurrentDirectoryA(lpCurrentDirectory);
+        }
         if(lpEnvironment){
             if(dwCreationFlags & CREATE_UNICODE_ENVIRONMENT){
                 LPCWSTR pszEnv = (LPCWSTR)lpEnvironment;
@@ -1083,51 +1193,39 @@ BOOL WINAPI CreateProcessAsUserA(
                 }
             }
         }
-        
-        //child process
-        std::list<char *> lstArg;
-        lstArg.push_back((char*)lpApplicationName);
-        while(lpCommandLine){
-            lstArg.push_back(lpCommandLine);
-            char * pArgEnd = nullptr;
-            if(lpCommandLine[0]=='\"')
-            {
-                pArgEnd=strstr(lpCommandLine,"\" ");
-                if(pArgEnd){
-                    pArgEnd[1]=0;
-                    pArgEnd+=2;
-                }
-            }else{
-                pArgEnd=strchr(lpCommandLine,' ');
-                if(pArgEnd){
-                    pArgEnd[0]=0;
-                    pArgEnd++;
-                }
-            }
-            lpCommandLine=pArgEnd;
-        }
-        char ** args = new char*[lstArg.size()];
+        //notify parent that child process 
+        char szName[100];
+        sprintf(szName,"proc_event_%u",getpid());
+        HANDLE hProcess = CreateEventA(NULL,TRUE,FALSE,szName);
+        SetEvent(hProcess);
+        CloseHandle(hProcess);
+
+
+        char * args[100]={0};
         size_t i = 0;
         for(auto it = lstArg.begin();it!=lstArg.end();it++,i++){
             args[i]=*it;
         }
+        //child process
         execvp(args[0], args);       // 替换子进程的代码为新程序
-        delete []args;
         perror("execvp failed");    // 如果 execvp 失败，打印错误信息
         exit(EXIT_FAILURE);          // 子进程退出
     }else{
-        if(lpCurrentDirectory){
-            SetCurrentDirectoryA(szDir);
+        char szName[100];
+        sprintf(szName,"proc_event_%u",pid);
+        HANDLE hProcess = CreateEventA(NULL,TRUE,FALSE,szName);
+        BOOL bRet = WaitForSingleObject(hProcess,100)==WAIT_OBJECT_0;
+        if(bRet){
+            if(lpProcessInformation){
+                lpProcessInformation->hProcess = hProcess;
+                lpProcessInformation->hThread=INVALID_HANDLE_VALUE;
+                lpProcessInformation->dwProcessId = pid;
+                lpProcessInformation->dwThreadId = 0;
+            }
+        }else{
+            CloseHandle(hProcess);
         }
-        if(lpProcessInformation){
-            char szName[100];
-            sprintf(szName,"proc_event_%u",pid);
-            lpProcessInformation->hProcess = CreateEventA(NULL,TRUE,FALSE,szName);
-            lpProcessInformation->hThread=INVALID_HANDLE_VALUE;
-            lpProcessInformation->dwProcessId = pid;
-            lpProcessInformation->dwThreadId = 0;
-        }
-        return TRUE;
+        return bRet;
     }
   }
 

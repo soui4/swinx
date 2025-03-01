@@ -98,6 +98,41 @@ extern "C"
 #define Shell_NotifyIcon Shell_NotifyIconA
 #endif
 
+// Flags for PathMatchSpecEx
+#define PMSF_NORMAL            0x00000000  //The pszSpec parameter consists of a single specification to be matched.
+#define PMSF_MULTIPLE          0x00000001  //The pszSpec parameter consists of a semicolon-delimited list of specifications to be matched.
+#define PMSF_DONT_STRIP_SPACES 0x00010000  // modifies either of the above
+
+BOOL WINAPI PathMatchSpecExW(
+    LPCWSTR pszFile,
+    LPCWSTR pszSpec,
+    DWORD   dwFlags
+  );
+
+BOOL WINAPI PathMatchSpecExA(
+    LPCSTR pszFile,
+    LPCSTR pszSpec,
+    DWORD   dwFlags
+  );
+
+BOOL WINAPI PathMatchSpecW(
+    LPCWSTR pszFile,
+    LPCWSTR pszSpec
+  );
+
+BOOL WINAPI PathMatchSpecA(
+    LPCSTR pszFile,
+    LPCSTR pszSpec
+  );
+
+#ifdef UNICODE
+#define PathMatchSpec   PathMatchSpecW
+#define PathMatchSpecEx PathMatchSpecExW
+#else
+#define PathMatchSpec   PathMatchSpecA
+#define PathMatchSpecEx PathMatchSpecExA
+#endif
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus
