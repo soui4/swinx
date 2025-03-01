@@ -4,6 +4,8 @@
 #include <list>
 #include <map>
 #include <assert.h>
+#include <fnmatch.h>
+#include <algorithm>
 #include "SConnection.h"
 #include "shellapi.h"
 #include "SUnkImpl.h"
@@ -241,3 +243,91 @@ BOOL WINAPI Shell_NotifyIconW(DWORD dwMessage, PNOTIFYICONDATAW lpData)
         return FALSE;
     return Shell_NotifyIconA(dwMessage, &dataA);
 }
+
+
+BOOL WINAPI PathMatchSpecExW(
+    LPCWSTR pszFile,
+    LPCWSTR pszSpec,
+    DWORD   dwFlags
+  ){
+    std::string strFile,strSpec;
+    tostring(pszFile,-1,strFile);
+    tostring(pszSpec,-1,strSpec);
+    return PathMatchSpecExA(strFile.c_str(),strSpec.c_str(),dwFlags);
+  }
+
+  // 实现 trim 函数
+static void str_trim(std::string& str) {
+    // 定义空白字符集合
+    const std::string whitespace = " \t\n\r\f\v";
+    // 找到第一个非空白字符的位置
+    size_t start = str.find_first_not_of(whitespace);
+    if (start == std::string::npos) {
+        str = "";
+        return ;  // 如果字符串全是空白字符，返回空字符串
+    }
+
+    // 找到最后一个非空白字符的位置
+    size_t end = str.find_last_not_of(whitespace);
+
+    // 返回去除首尾空白字符的子字符串
+    str = str.substr(start, end - start + 1);
+}
+
+static int myfnmatch(LPCSTR pszFile,LPCSTR pszSpec,BOOL bStrip){
+    std::string strFile(pszFile),strSpec(pszSpec);
+    std::transform(strFile.begin(), strFile.end(), strFile.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    std::transform(strSpec.begin(), strSpec.end(), strSpec.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+        if(!bStrip)
+            return fnmatch(strSpec.c_str(),strFile.c_str(),FNM_NOESCAPE);
+        else{
+            str_trim(strSpec);
+            if(strSpec.empty())
+                return FALSE;
+            return fnmatch(strSpec.c_str(),strFile.c_str(),FNM_NOESCAPE);
+        }
+    }
+
+BOOL WINAPI PathMatchSpecExA(
+    LPCSTR pszFile,
+    LPCSTR pszSpec,
+    DWORD   dwFlags
+  ){
+    if(dwFlags & PMSF_MULTIPLE){
+        char* patterns = strdup(pszSpec);  // 复制模式字符串
+        if (!patterns) {
+            perror("strdup");
+            return FALSE;
+        }
+
+        char* token = strtok(patterns, ";");  // 使用分号分隔模式
+        while (token) {
+            if (myfnmatch(pszFile,token, !(dwFlags & PMSF_DONT_STRIP_SPACES)) == 0) {
+                free(patterns);
+                return TRUE;  // 匹配成功
+            }
+            token = strtok(NULL, ";");
+        }
+
+        free(patterns);
+        return FALSE;  // 未匹配
+    }else{
+        return myfnmatch(pszFile,pszSpec,!(dwFlags & PMSF_DONT_STRIP_SPACES)) == 0;
+    }
+  }
+
+BOOL WINAPI PathMatchSpecW(
+    LPCWSTR pszFile,
+    LPCWSTR pszSpec
+  ){
+    return PathMatchSpecExW(pszFile,pszSpec,0);
+  }
+
+BOOL WINAPI PathMatchSpecA(
+    LPCSTR pszFile,
+    LPCSTR pszSpec
+  ){
+    return PathMatchSpecExA(pszFile,pszSpec,0);
+  }

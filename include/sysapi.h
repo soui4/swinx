@@ -349,18 +349,9 @@ typedef int(NEAR WINAPI *NEARPROC)();
 typedef int(WINAPI *PROC)();
 #endif // __x86_64__
 
-    static inline HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
-    {
-        return dlopen(lpFileName, RTLD_NOW);
-    }
+    HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName);
 
-    static inline HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName)
-    {
-        char szName[MAX_PATH];
-        if (0 == WideCharToMultiByte(CP_UTF8, 0, lpFileName, -1, szName, MAX_PATH, NULL, NULL))
-            return 0;
-        return LoadLibraryA(szName);
-    }
+    HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName);
 
 #ifdef _UNICODE
 #define LoadLibrary LoadLibraryW
