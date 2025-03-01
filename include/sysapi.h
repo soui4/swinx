@@ -652,6 +652,8 @@ typedef int(WINAPI *PROC)();
 #define GetModuleHandle        GetModuleHandleA
 #endif // UNICODE
 
+    HANDLE WINAPI _get_osfhandle(int fd);
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus
