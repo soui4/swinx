@@ -1266,3 +1266,28 @@ BOOL WINAPI UnmapViewOfFile(LPCVOID lpBaseAddress)
     s_fmviewMap.erase(it);
     return TRUE;
 }
+
+BOOL GetHandleName(HANDLE h,char szName[1001]){
+    _SynHandle *pData =  GetSynHandle(h);
+    if(!pData)
+        return FALSE;
+    int index = -1;
+    if(pData->type == HNamedEvent){
+        NamedEventObj * pEvent = (NamedEventObj*)pData;
+        index = pEvent->index;
+    }else if(pData->type == HNamedMutex){
+        NamedMutexObj * pMutex = (NamedMutexObj*)pData;
+        index = pMutex->index;
+    }else if(pData->type == HNamedSemaphore){
+        NamedSemaphoreObj * pSemaphore = (NamedSemaphoreObj *)pData;
+        index = pSemaphore->index;
+    }
+    if(index == -1){
+        return FALSE;
+    }
+    s_globalHandleTable.getRwLock()->lockShared();
+    HandleData *pHandleData = s_globalHandleTable.getHandleData(index);
+    strcpy(szName,pHandleData->szNick);
+    s_globalHandleTable.getRwLock()->unlockShared();
+    return TRUE;
+}

@@ -209,9 +209,11 @@ typedef struct _SHELLEXECUTEINFOW {
 
 
 #ifdef UNICODE
+#define SHELLEXECUTEINFO    SHELLEXECUTEINFOW
 #define ShellExecute ShellExecuteW
 #define ShellExecuteEx ShellExecuteExW
 #else
+#define SHELLEXECUTEINFO SHELLEXECUTEINFOA
 #define ShellExecute    ShellExecuteA
 #define ShellExecuteEx ShellExecuteExA
 #endif//UNICODE

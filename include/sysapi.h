@@ -172,8 +172,9 @@ BOOL WINAPI CreateProcessAsUserW(
 #else
 #define CreateProcessAsUser CreateProcessAsUserA
 #define CreateProcess   CreateProcessA
-
 #endif//UNICODE
+
+    BOOL WINAPI GetExitCodeProcess(HANDLE hProcess, LPDWORD lpExitCode);
 
     void GetLocalTime(SYSTEMTIME *pSysTime);
     void GetSystemTime(SYSTEMTIME *lpSystemTime);
@@ -427,6 +428,8 @@ typedef int(WINAPI *PROC)();
     DWORD WINAPI WaitForMultipleObjects(DWORD nCount, const HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds);
 
     DWORD WINAPI MsgWaitForMultipleObjects(DWORD nCount, const HANDLE *pHandles, BOOL fWaitAll, DWORD dwMilliseconds, DWORD dwWakeMask);
+
+    BOOL WINAPI GetHandleName(HANDLE h,char szName[1001]); 
 
     VOID WINAPI Sleep(DWORD dwMilliseconds);
 
