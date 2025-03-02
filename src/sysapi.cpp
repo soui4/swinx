@@ -1008,11 +1008,18 @@ int GetSystemMetrics(int nIndex)
 
 #define PROC_EVENT_FMT "proc_event_E23A140E-2711-44CE-AE4E-67D55217FF7A_%u"
 
+std::map<pid_t,int> s_child_status;
+
 static void sigchld_handler(int signo) {
     pid_t pid;
     int status;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
         //notify child process was stopped.
+        if (WIFEXITED(status)) {
+            s_child_status[pid] = WEXITSTATUS(status);
+        } else if (WIFSIGNALED(status)) {
+            s_child_status[pid] = WTERMSIG(status);
+        }
         char szName[100];
         sprintf(szName,PROC_EVENT_FMT,pid);
         HANDLE hEvent = CreateEventA(NULL,TRUE,FALSE,szName);
@@ -1034,6 +1041,29 @@ int install_sigchld_handler() {
     sa.sa_flags = SA_RESTART | SA_NOCLDSTOP; // 选项可以根据需要调整
     sigaction(SIGCHLD, &sa, NULL);
     return 1;
+}
+
+BOOL WINAPI GetExitCodeProcess(HANDLE hProcess,LPDWORD lpExitCode){
+    if(!lpExitCode)
+        return FALSE;
+    char szName[1001];
+    if(!GetHandleName(hProcess,szName))
+        return FALSE;
+    pid_t pid;
+    if(1!=sscanf(szName,PROC_EVENT_FMT,&pid))
+        return FALSE;
+    
+    auto it = s_child_status.find(pid);
+    if(it == s_child_status.end())
+        return FALSE;
+    int status = it->second;
+
+    if (WIFEXITED(status)) {
+        *lpExitCode = WEXITSTATUS(status);
+    } else if (WIFSIGNALED(status)) {
+        *lpExitCode = -1;
+    }
+    return TRUE;
 }
 
 BOOL WINAPI CreateProcessAsUserA(
