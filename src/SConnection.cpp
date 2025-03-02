@@ -2881,3 +2881,26 @@ void SConnection::changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom
 
     xcb_send_event(connection, 0, screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
 }
+
+
+BOOL SConnection::SetWindowText(HWND hWnd, _Window* wndObj,  LPCSTR lpszString)
+{
+    wndObj->title = lpszString ? lpszString : "";
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_NAME, atoms.UTF8_STRING, 8, wndObj->title.length(), wndObj->title.c_str());
+
+    if (!(wndObj->dwStyle & WS_CHILD) && !wndObj->title.empty())
+    {
+        char szPath[MAX_PATH];
+        GetModuleFileName(nullptr, szPath, MAX_PATH);
+        char *szName = strrchr(szPath, '/') + 1;
+        int nNameLen = strlen(szName);
+        int nLen = nNameLen + 1 + wndObj->title.length() + 1;
+        char *pszCls = new char[nLen];
+        strcpy(pszCls, szName);
+        strcpy(pszCls + nNameLen + 1, wndObj->title.c_str());
+        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_CLASS, XCB_ATOM_STRING, 8, nLen, pszCls);
+        delete[] pszCls;
+    }
+    xcb_flush(connection);
+    return TRUE;
+}

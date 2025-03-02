@@ -2758,25 +2758,7 @@ static HBRUSH DEFWND_ControlColor(HDC hDC, UINT ctlType)
 
 LRESULT OnSetWindowText(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
 {
-    LPCSTR lpszString = (LPCSTR)lp;
-    wndObj->title = lpszString ? lpszString : "";
-    xcb_change_property(wndObj->mConnection->connection, XCB_PROP_MODE_REPLACE, hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, wndObj->title.length(), wndObj->title.c_str());
-
-    if (!wndObj->parent && !wndObj->title.empty())
-    {
-        char szPath[MAX_PATH];
-        GetModuleFileName(nullptr, szPath, MAX_PATH);
-        char *szName = strrchr(szPath, '/') + 1;
-        int nNameLen = strlen(szName);
-        int nLen = nNameLen + 1 + wndObj->title.length() + 1;
-        char *pszCls = new char[nLen];
-        strcpy(pszCls, szName);
-        strcpy(pszCls + nNameLen + 1, wndObj->title.c_str());
-        xcb_change_property(wndObj->mConnection->connection, XCB_PROP_MODE_REPLACE, hWnd, wndObj->mConnection->atoms.WM_CLASS, XCB_ATOM_STRING, 8, nLen, pszCls);
-        delete[] pszCls;
-    }
-    xcb_flush(wndObj->mConnection->connection);
-    return TRUE;
+    return wndObj->mConnection->SetWindowText(hWnd,wndObj.data(),(LPCSTR)lp);
 }
 
 LRESULT OnMsgW2A(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
