@@ -331,3 +331,122 @@ BOOL WINAPI PathMatchSpecA(
   ){
     return PathMatchSpecExA(pszFile,pszSpec,0);
   }
+
+
+
+static int is_executable(const char* filename) {
+    struct stat file_stat;
+
+    // 获取文件状态
+    if (stat(filename, &file_stat) == -1) {
+        return -1;  // 获取文件状态失败
+    }
+
+    // 检查文件权限是否包含执行权限
+    if (file_stat.st_mode & S_IXUSR) {
+        return 1;  // 文件对用户可执行
+    } else if (file_stat.st_mode & S_IXGRP) {
+        return 2;  // 文件对组可执行
+    } else if (file_stat.st_mode & S_IXOTH) {
+        return 3;  // 文件对其他用户可执行
+    }
+
+    return 0;  // 文件不可执行
+}
+
+BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd){
+    if(!lpOperation || stricmp(lpOperation,"open")!=0)
+        return FALSE;
+    int exe = is_executable(lpFile);
+    if(exe == -1)
+        return FALSE;
+    if(exe == 0){
+        int len = strlen(lpFile);
+        char *cmd = new char[len+10];
+        sprintf(cmd, "xdg-open %s", lpFile);
+        system(cmd);
+        delete []cmd;
+        return TRUE; 
+    }else{
+        PROCESS_INFORMATION procInfo={0};
+        char *params=lpParameters?strdup(lpParameters):NULL;
+        BOOL bRet = CreateProcessA(lpFile,params,NULL,NULL,FALSE,0,NULL,lpDirectory,NULL,&procInfo);
+        if(params) free(params);
+        if(bRet){
+            CloseHandle(procInfo.hProcess);
+            CloseHandle(procInfo.hThread);
+        }
+        return bRet;
+    }
+}
+
+BOOL WINAPI ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd){
+    std::string strOp,strFile,strParam,strDir;
+    tostring(lpOperation,-1,strOp);
+    tostring(lpFile,-1,strFile);
+    tostring(lpParameters,-1,strParam);
+    tostring(lpDirectory,-1,strDir);
+    return ShellExecuteA(hwnd,lpOperation?strOp.c_str():NULL,
+    lpFile?strFile.c_str():NULL,
+    lpParameters?strParam.c_str():NULL,
+    lpDirectory?strDir.c_str():NULL,
+    nShowCmd
+    );
+}
+
+BOOL WINAPI ShellExecuteExA(LPSHELLEXECUTEINFOA lpExecInfo){
+    LPCSTR lpOperation = lpExecInfo->lpVerb;
+    if(!lpOperation)
+        return FALSE;
+    UINT_PTR verb = Verb_Unknown;
+    if(stricmp(lpOperation,"open")==0)
+        verb = Verb_Open;
+    else if(stricmp(lpOperation,"runas"))
+        verb = Verb_RunAs;
+    if(verb == Verb_Unknown)
+        return FALSE;
+    LPCSTR lpFile = lpExecInfo->lpFile;
+    int exe = is_executable(lpFile);
+    if(exe == -1)
+        return FALSE;
+    if(exe == 0){
+        int len = strlen(lpFile);
+        char *cmd = new char[len+10];
+        sprintf(cmd, "xdg-open %s", lpFile);
+        system(cmd);
+        delete []cmd;
+        return TRUE; 
+    }else{
+        LPCSTR lpParameters = lpExecInfo->lpParameters;
+        PROCESS_INFORMATION procInfo={0};
+        char *params=lpParameters?strdup(lpParameters):NULL;
+        BOOL bRet = CreateProcessAsUserA((HANDLE)verb,lpFile,params,NULL,NULL,FALSE,0,NULL,lpExecInfo->lpDirectory,NULL,&procInfo);
+        if(params) free(params);
+        if(bRet){
+            if(lpExecInfo->fMask & SEE_MASK_NOCLOSEPROCESS)
+                lpExecInfo->hProcess = procInfo.hProcess;
+            else
+                CloseHandle(procInfo.hProcess);
+            CloseHandle(procInfo.hThread);
+        }
+        return bRet;
+    }
+}
+
+BOOL WINAPI ShellExecuteExW(LPSHELLEXECUTEINFOW lpExecInfo){
+    SHELLEXECUTEINFOA infoA;
+    infoA.cbSize = sizeof(infoA);
+    infoA.fMask = lpExecInfo->fMask;
+    std::string strVerb,strFile,strParam,strDir;
+    tostring(lpExecInfo->lpVerb,-1,strVerb);
+    tostring(lpExecInfo->lpFile,-1,strFile);
+    tostring(lpExecInfo->lpParameters,-1,strParam);
+    tostring(lpExecInfo->lpDirectory,-1,strDir);
+    infoA.lpVerb = strVerb.c_str();
+    infoA.lpFile = strFile.c_str();
+    infoA.lpParameters = strParam.c_str();
+    infoA.lpDirectory = strDir.c_str();
+    BOOL bRet = ShellExecuteExA(&infoA);
+    lpExecInfo->hProcess = infoA.hProcess;
+    return bRet;
+}
