@@ -112,7 +112,7 @@ BOOL STrayIconMgr::ModifyIcon(PNOTIFYICONDATAA lpData)
         strcpy_s(icon->szTip, 128, lpData->szTip);
         if (icon->hTray)
         {
-            xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, icon->hTray->m_hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(icon->szTip), icon->szTip);
+            xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, icon->hTray->m_hWnd, XCB_ATOM_WM_NAME, m_pConn->atoms.UTF8_STRING, 8, strlen(icon->szTip), icon->szTip);
         }
     }
     if (lpData->uFlags & NIF_INFO)

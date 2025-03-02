@@ -150,15 +150,17 @@ class SConnection {
 
     BOOL FlashWindowEx(PFLASHWINFO info);
     void changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom_t two);
+    BOOL SetWindowText(HWND hWnd, _Window* wndObj,  LPCSTR lpszString);
   public:
-      struct CaretInfo {
-          HWND hOwner;
-          HBITMAP hBmp;
-          int nWidth;
-          int nHeight;
-          int x;
-          int y;
-          int  nVisible;
+    struct CaretInfo
+    {
+        HWND hOwner;
+        HBITMAP hBmp;
+        int nWidth;
+        int nHeight;
+        int x;
+        int y;
+        int nVisible;
       };
     BOOL CreateCaret(HWND hWnd, HBITMAP hBitmap, int nWidth, int nHeight);
     BOOL DestroyCaret();
