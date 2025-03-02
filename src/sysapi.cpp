@@ -1006,66 +1006,7 @@ int GetSystemMetrics(int nIndex)
     return ret * GetSystemScale() / 100;
 }
 
-static int is_executable(const char* filename) {
-    struct stat file_stat;
-
-    // 获取文件状态
-    if (stat(filename, &file_stat) == -1) {
-        return -1;  // 获取文件状态失败
-    }
-
-    // 检查文件权限是否包含执行权限
-    if (file_stat.st_mode & S_IXUSR) {
-        return 1;  // 文件对用户可执行
-    } else if (file_stat.st_mode & S_IXGRP) {
-        return 2;  // 文件对组可执行
-    } else if (file_stat.st_mode & S_IXOTH) {
-        return 3;  // 文件对其他用户可执行
-    }
-
-    return 0;  // 文件不可执行
-}
-
-BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd){
-    if(!lpOperation || stricmp(lpOperation,"open")!=0)
-        return FALSE;
-    int exe = is_executable(lpFile);
-    if(exe == -1)
-        return FALSE;
-    if(exe == 0){
-        int len = strlen(lpFile);
-        char *cmd = new char[len+10];
-        sprintf(cmd, "xdg-open %s", lpFile);
-        system(cmd);
-        delete []cmd;
-        return TRUE; 
-    }else{
-        PROCESS_INFORMATION procInfo={0};
-        char *params=lpParameters?strdup(lpParameters):NULL;
-        BOOL bRet = CreateProcessA(lpFile,params,NULL,NULL,FALSE,0,NULL,lpDirectory,NULL,&procInfo);
-        if(params) free(params);
-        if(bRet){
-            CloseHandle(procInfo.hProcess);
-            CloseHandle(procInfo.hThread);
-        }
-        return bRet;
-    }
-}
-
-BOOL WINAPI ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd){
-    std::string strOp,strFile,strParam,strDir;
-    tostring(lpOperation,-1,strOp);
-    tostring(lpFile,-1,strFile);
-    tostring(lpParameters,-1,strParam);
-    tostring(lpDirectory,-1,strDir);
-    return ShellExecuteA(hwnd,lpOperation?strOp.c_str():NULL,
-    lpFile?strFile.c_str():NULL,
-    lpParameters?strParam.c_str():NULL,
-    lpDirectory?strDir.c_str():NULL,
-    nShowCmd
-    );
-}
-
+#define PROC_EVENT_FMT "proc_event_E23A140E-2711-44CE-AE4E-67D55217FF7A_%u"
 
 static void sigchld_handler(int signo) {
     pid_t pid;
@@ -1073,7 +1014,7 @@ static void sigchld_handler(int signo) {
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
         //notify child process was stopped.
         char szName[100];
-        sprintf(szName,"proc_event_%u",pid);
+        sprintf(szName,PROC_EVENT_FMT,pid);
         HANDLE hEvent = CreateEventA(NULL,TRUE,FALSE,szName);
         SetEvent(hEvent);
         CloseHandle(hEvent);
@@ -1195,7 +1136,7 @@ BOOL WINAPI CreateProcessAsUserA(
         }
         //notify parent that child process 
         char szName[100];
-        sprintf(szName,"proc_event_%u",getpid());
+        sprintf(szName,PROC_EVENT_FMT,getpid());
         HANDLE hProcess = CreateEventA(NULL,TRUE,FALSE,szName);
         SetEvent(hProcess);
         CloseHandle(hProcess);
@@ -1203,8 +1144,12 @@ BOOL WINAPI CreateProcessAsUserA(
 
         char * args[100]={0};
         size_t i = 0;
-        for(auto it = lstArg.begin();it!=lstArg.end();it++,i++){
-            args[i]=*it;
+        char pkexec[]="pkexec";
+        if((UINT_PTR)hToken == Verb_RunAs){
+            args[i++] = pkexec;   //use pkexec ro ask for root permission.
+        }
+        for(auto it = lstArg.begin();it!=lstArg.end();it++){
+            args[i++]=*it;
         }
         //child process
         execvp(args[0], args);       // 替换子进程的代码为新程序
