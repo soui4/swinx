@@ -2,6 +2,7 @@
 #include <gdi.h>
 #include <cairo/cairo.h>
 #include <cairo/cairo-xcb.h>
+#include <fontconfig/fontconfig.h>
 #include <xcb/xcb_aux.h>
 #include <math.h>
 #include <png.h>
@@ -16,6 +17,7 @@
 #include "uniconv.h"
 #include "log.h"
 #define kLogTag "gdi"
+
 
 static bool DumpBmp(HBITMAP bmp, const char *path)
 {
@@ -3419,3 +3421,43 @@ HDC WINAPI CreateICW(LPCWSTR lpszDriver,   // driver name
     tostring(lpszOutput, -1, strOutput);
     return CreateICA(strDriver.c_str(), strDevice.c_str(), strOutput.c_str(), lpdvmInit);
 }
+
+int AddFontResource(  LPCSTR lpszFilename  ){
+    return AddFontResourceEx(lpszFilename,0,0);
+}
+
+int AddFontResourceEx(  LPCSTR lpszFilename, // font file name
+  DWORD fl,             // font characteristics
+  PVOID pdv             // reserved
+  ){
+    int ret = 0;
+    do{
+        // 初始化 Fontconfig
+        if (!FcInit()) {
+            SLOG_STMW()<<"Failed to initialize Fontconfig";
+            break;
+        }
+
+        // 获取当前的 Fontconfig 配置
+        FcConfig* config = FcConfigGetCurrent();
+        if (!config) {
+            SLOG_STMW()<<"Failed to get current Fontconfig configuration";
+            break;
+        }
+
+        // 添加字体File
+        if (!FcConfigAppFontAddFile(config, (const FcChar8*)lpszFilename)) {
+            SLOG_STMW()<<"Failed to add font directory:"<<lpszFilename;
+            break;
+        }
+
+        // 应用新的配置
+        FcConfigSetCurrent(config);
+
+        // 更新字体缓存
+        FcConfigBuildFonts(config);
+        ret = 1;
+    }while (false);
+    
+    return ret;    
+  }
