@@ -3,7 +3,7 @@
 project(swinx)
 
 option(USING_GTK3_DLG "Using GTK3 to show common dialog" ON)
-set(USING_GTK3_DLG OFF)
+#set(USING_GTK3_DLG OFF)
 if(USING_GTK3_DLG)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK3 REQUIRED gtk+-3.0)  # 检查 GTK 3.0 版本
