@@ -140,7 +140,7 @@ typedef LPOPENFILENAMEA LPOPENFILENAME;
 #define GetSaveFileName GetSaveFileNameA
 #endif // !UNICODE
 
-#ifndef _MAC
+
     typedef struct tagCHOOSECOLORA
     {
         DWORD lStructSize;
@@ -165,54 +165,14 @@ typedef LPOPENFILENAMEA LPOPENFILENAME;
         LPCCHOOKPROC lpfnHook;
         LPCWSTR lpTemplateName;
     } CHOOSECOLORW, *LPCHOOSECOLORW;
-#ifdef UNICODE
-    typedef CHOOSECOLORW CHOOSECOLOR;
-    typedef LPCHOOSECOLORW LPCHOOSECOLOR;
-#else
-    typedef CHOOSECOLORA CHOOSECOLOR;
-    typedef LPCHOOSECOLORA LPCHOOSECOLOR;
-#endif // UNICODE
-#else
-typedef struct tagCHOOSECOLORA
-{
-    DWORD lStructSize;
-    HWND hwndOwner;
-    HWND hInstance;
-    COLORREF rgbResult;
-    COLORREF *lpCustColors;
-    DWORD Flags;
-    LPARAM lCustData;
-    LPCCHOOKPROC lpfnHook;
-    LPCSTR lpTemplateName;
-    LPEDITMENU lpEditInfo;
-} CHOOSECOLORA, *LPCHOOSECOLORA;
-typedef struct tagCHOOSECOLORW
-{
-    DWORD lStructSize;
-    HWND hwndOwner;
-    HWND hInstance;
-    COLORREF rgbResult;
-    COLORREF *lpCustColors;
-    DWORD Flags;
-    LPARAM lCustData;
-    LPCCHOOKPROC lpfnHook;
-    LPCWSTR lpTemplateName;
-    LPEDITMENU lpEditInfo;
-} CHOOSECOLORW, *LPCHOOSECOLORW;
-#ifdef UNICODE
-typedef CHOOSECOLORW CHOOSECOLOR;
-typedef LPCHOOSECOLORW LPCHOOSECOLOR;
-#else
-typedef CHOOSECOLORA CHOOSECOLOR;
-typedef LPCHOOSECOLORA LPCHOOSECOLOR;
-#endif // UNICODE
-#endif //_MAC
 
     BOOL ChooseColorA(LPCHOOSECOLORA);
     BOOL ChooseColorW(LPCHOOSECOLORW);
 #ifdef UNICODE
+#define CHOOSECOLOR CHOOSECOLORW
 #define ChooseColor ChooseColorW
 #else
+#define CHOOSECOLOR CHOOSECOLORA
 #define ChooseColor ChooseColorA
 #endif // !UNICODE
 
@@ -227,6 +187,53 @@ typedef LPCHOOSECOLORA LPCHOOSECOLOR;
 #define CC_SOLIDCOLOR 0x00000080
 #define CC_ANYCOLOR   0x00000100
 #endif /* WINVER >= 0x0400 */
+
+
+
+//-------------------------------------------------------------------------
+//
+// PickFolder API
+//
+//
+//-------------------------------------------------------------------------
+
+typedef struct _browseinfoA {
+    HWND        hwndOwner;
+    LPCSTR strlRoot;
+    LPSTR        pszDisplayName;        // Return display name of item selected.
+    LPCSTR       lpszTitle;                     // text to go in the banner over the tree.
+    LPSTR        lpszPath;
+    int          nMaxPath;
+} BROWSEINFOA, *PBROWSEINFOA, *LPBROWSEINFOA;
+
+typedef struct _browseinfoW {
+    HWND        hwndOwner;
+    LPCWSTR strlRoot;
+    LPWSTR       pszDisplayName;        // Return display name of item selected.
+    LPCWSTR      lpszTitle;                     // text to go in the banner over the tree.
+    LPWSTR        lpszPath;
+    int          nMaxPath;
+} BROWSEINFOW, *PBROWSEINFOW, *LPBROWSEINFOW;
+
+BOOL WINAPI PickFolderA(_In_ LPBROWSEINFOA lpbi);
+BOOL WINAPI PickFolderW(_In_ LPBROWSEINFOW lpbi);
+
+#ifdef UNICODE
+#define BROWSEINFO      BROWSEINFOW
+#define PBROWSEINFO     PBROWSEINFOW
+#define LPBROWSEINFO    LPBROWSEINFOW
+#else
+#define BROWSEINFO      BROWSEINFOA
+#define PBROWSEINFO     PBROWSEINFOA
+#define LPBROWSEINFO    LPBROWSEINFOA
+#endif
+
+
+#ifdef UNICODE
+#define PickFolder   PickFolderW
+#else
+#define PickFolder   PickFolderA
+#endif
 
 #ifdef __cplusplus
 }
