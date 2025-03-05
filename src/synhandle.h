@@ -85,6 +85,8 @@ static HANDLE NewSynHandle(_SynHandle *synObj)
 
 static _SynHandle *GetSynHandle(HANDLE h)
 {
+    if(h == INVALID_HANDLE_VALUE)
+        return nullptr;
     if (h->type != SYN_OBJ)
         return nullptr;
     return (_SynHandle *)h->ptr;

@@ -1113,6 +1113,8 @@ pid_t WINAPI GetCurrentProcessId(){
 }
 
 pid_t WINAPI GetProcessId( HANDLE hProcess){
+    if(hProcess == INVALID_HANDLE_VALUE)
+        return getpid();
     char szName[1001];
     if(!GetHandleName(hProcess,szName))
         return 0;
@@ -1122,6 +1124,9 @@ pid_t WINAPI GetProcessId( HANDLE hProcess){
     return pid;
 }
 
+HANDLE WINAPI GetCurrentProcess(void){
+    return INVALID_HANDLE_VALUE;//return a pseudo handle
+}
 
 BOOL WINAPI CreateProcessAsUserA(
     HANDLE hToken,
@@ -1534,13 +1539,6 @@ BOOL WINAPI IsBadStringPtrW(LPCWSTR lpsz, UINT_PTR ucchMax)
         }
     }
     return IsBadReadPtr(lpsz, ucchMax * sizeof(wchar_t));
-}
-
-HANDLE
-WINAPI
-GetCurrentProcess(VOID)
-{
-    return 0;
 }
 
 DWORD GetModuleFileNameA(HMODULE hModule, LPSTR lpFilename, DWORD nSize)

@@ -182,6 +182,7 @@ BOOL WINAPI CreateProcessAsUserW(
     pid_t WINAPI GetCurrentProcessId();
 
     pid_t WINAPI GetProcessId( HANDLE Process);
+    HANDLE WINAPI GetCurrentProcess(void);
 
     void GetLocalTime(SYSTEMTIME *pSysTime);
     void GetSystemTime(SYSTEMTIME *lpSystemTime);
