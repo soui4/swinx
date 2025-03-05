@@ -176,6 +176,13 @@ BOOL WINAPI CreateProcessAsUserW(
 
     BOOL WINAPI GetExitCodeProcess(HANDLE hProcess, LPDWORD lpExitCode);
 
+    // 读取指定PID的进程状态文件，获取其有效用户ID, 0-root, -1-failed.
+    int WINAPI get_process_uid(int pid);
+
+    pid_t WINAPI GetCurrentProcessId();
+
+    pid_t WINAPI GetProcessId( HANDLE Process);
+
     void GetLocalTime(SYSTEMTIME *pSysTime);
     void GetSystemTime(SYSTEMTIME *lpSystemTime);
 
@@ -658,9 +665,6 @@ typedef int(WINAPI *PROC)();
 #endif // UNICODE
 
     HANDLE WINAPI _get_osfhandle(int fd);
-
-    // 读取指定PID的进程状态文件，获取其有效用户ID, 0-root, -1-failed.
-    int WINAPI get_process_uid(int pid);
 
 #ifdef __cplusplus
 }

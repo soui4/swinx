@@ -1008,18 +1008,41 @@ int GetSystemMetrics(int nIndex)
 
 #define PROC_EVENT_FMT "proc_event_E23A140E-2711-44CE-AE4E-67D55217FF7A_%u"
 
-std::map<pid_t,int> s_child_status;
+class ChildStatusMgr {
+public:
+    ChildStatusMgr(){}
+
+    void setPidCode(pid_t pid,int status){
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_child_status[pid]=status;
+    }
+
+    BOOL getExitCode(pid_t pid,LPDWORD lpExitCode){
+        std::unique_lock<std::mutex> lock(m_mutex);
+        auto it = m_child_status.find(pid);
+        if(it == m_child_status.end())
+            return FALSE;
+        int status = it->second;
+
+        if (WIFEXITED(status)) {
+            *lpExitCode = WEXITSTATUS(status);
+        } else if (WIFSIGNALED(status)) {
+            *lpExitCode = -1;
+        }
+        return TRUE;
+    }
+
+private:
+std::map<pid_t,int> m_child_status;
+std::mutex m_mutex;
+} s_child_status_mgr;
 
 static void sigchld_handler(int signo) {
     pid_t pid;
     int status;
     while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
         //notify child process was stopped.
-        if (WIFEXITED(status)) {
-            s_child_status[pid] = WEXITSTATUS(status);
-        } else if (WIFSIGNALED(status)) {
-            s_child_status[pid] = WTERMSIG(status);
-        }
+        s_child_status_mgr.setPidCode(pid,status);
         char szName[100];
         sprintf(szName,PROC_EVENT_FMT,pid);
         HANDLE hEvent = CreateEventA(NULL,TRUE,FALSE,szName);
@@ -1046,25 +1069,59 @@ int install_sigchld_handler() {
 BOOL WINAPI GetExitCodeProcess(HANDLE hProcess,LPDWORD lpExitCode){
     if(!lpExitCode)
         return FALSE;
+
+    pid_t pid = GetProcessId(hProcess);
+    if(!pid)
+        return FALSE;
+    return s_child_status_mgr.getExitCode(pid,lpExitCode);
+}
+
+
+#define PROC_STATUS "/proc/%d/status"
+// 读取指定PID的进程状态文件，获取其有效用户ID
+int WINAPI get_process_uid(int pid) {
+    char filename[64];
+    FILE *file;
+    char line[256];
+    int uid = -1;
+
+    // 构造状态文件路径
+    snprintf(filename, sizeof(filename), PROC_STATUS, pid);
+
+    // 打开状态文件
+    file = fopen(filename, "r");
+    if (!file) {
+        perror("无法打开进程状态文件");
+        return -1;
+    }
+
+    // 逐行读取文件内容，查找Uid字段
+    while (fgets(line, sizeof(line), file)) {
+        if (strncmp(line, "Uid:", 4) == 0) {
+            // 解析Uid字段，获取有效用户ID
+            sscanf(line, "Uid:\t%d", &uid);
+            break;
+        }
+    }
+
+    fclose(file);
+    return uid;
+}
+
+pid_t WINAPI GetCurrentProcessId(){
+    return getpid();
+}
+
+pid_t WINAPI GetProcessId( HANDLE hProcess){
     char szName[1001];
     if(!GetHandleName(hProcess,szName))
-        return FALSE;
+        return 0;
     pid_t pid;
     if(1!=sscanf(szName,PROC_EVENT_FMT,&pid))
-        return FALSE;
-    
-    auto it = s_child_status.find(pid);
-    if(it == s_child_status.end())
-        return FALSE;
-    int status = it->second;
-
-    if (WIFEXITED(status)) {
-        *lpExitCode = WEXITSTATUS(status);
-    } else if (WIFSIGNALED(status)) {
-        *lpExitCode = -1;
-    }
-    return TRUE;
+        return 0;
+    return pid;
 }
+
 
 BOOL WINAPI CreateProcessAsUserA(
     HANDLE hToken,
@@ -1955,34 +2012,3 @@ HANDLE WINAPI _get_osfhandle(int fd){
     return s_osHandleMgr.fd2Handle(fd);
 }
 
-
-#define PROC_STATUS "/proc/%d/status"
-// 读取指定PID的进程状态文件，获取其有效用户ID
-int WINAPI get_process_uid(int pid) {
-    char filename[64];
-    FILE *file;
-    char line[256];
-    int uid = -1;
-
-    // 构造状态文件路径
-    snprintf(filename, sizeof(filename), PROC_STATUS, pid);
-
-    // 打开状态文件
-    file = fopen(filename, "r");
-    if (!file) {
-        perror("无法打开进程状态文件");
-        return -1;
-    }
-
-    // 逐行读取文件内容，查找Uid字段
-    while (fgets(line, sizeof(line), file)) {
-        if (strncmp(line, "Uid:", 4) == 0) {
-            // 解析Uid字段，获取有效用户ID
-            sscanf(line, "Uid:\t%d", &uid);
-            break;
-        }
-    }
-
-    fclose(file);
-    return uid;
-}
