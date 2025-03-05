@@ -659,6 +659,9 @@ typedef int(WINAPI *PROC)();
 
     HANDLE WINAPI _get_osfhandle(int fd);
 
+    // 读取指定PID的进程状态文件，获取其有效用户ID, 0-root, -1-failed.
+    int WINAPI get_process_uid(int pid);
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus

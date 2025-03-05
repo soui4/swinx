@@ -1954,3 +1954,35 @@ static SOsHandleMgr s_osHandleMgr;
 HANDLE WINAPI _get_osfhandle(int fd){
     return s_osHandleMgr.fd2Handle(fd);
 }
+
+
+#define PROC_STATUS "/proc/%d/status"
+// 读取指定PID的进程状态文件，获取其有效用户ID
+int WINAPI get_process_uid(int pid) {
+    char filename[64];
+    FILE *file;
+    char line[256];
+    int uid = -1;
+
+    // 构造状态文件路径
+    snprintf(filename, sizeof(filename), PROC_STATUS, pid);
+
+    // 打开状态文件
+    file = fopen(filename, "r");
+    if (!file) {
+        perror("无法打开进程状态文件");
+        return -1;
+    }
+
+    // 逐行读取文件内容，查找Uid字段
+    while (fgets(line, sizeof(line), file)) {
+        if (strncmp(line, "Uid:", 4) == 0) {
+            // 解析Uid字段，获取有效用户ID
+            sscanf(line, "Uid:\t%d", &uid);
+            break;
+        }
+    }
+
+    fclose(file);
+    return uid;
+}
