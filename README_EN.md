@@ -17,4 +17,5 @@ SwinX is an evolving project, and we welcome interested developers to contribute
 While this project is open-source, it is not free. Contributors who actively participate and provide quality contributions will receive a lifetime free license for SwinX (refer to Contributors.md). Significant contributors may also receive a share of project profits based on predetermined criteria (author's discretion).
 
 # Version
+## 1.0 - March 11, 2025
 ## 0.1 - January 12, 2025
