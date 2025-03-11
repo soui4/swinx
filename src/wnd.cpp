@@ -330,15 +330,10 @@ BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
     if (IsRectEmpty(lpRect))
         return FALSE;
     HRGN rgn = CreateRectRgnIndirect(lpRect);
-    BOOL isWaitingPaint = RgnComplexity(wndObj->invalid.hRgn) != NULLREGION;
     CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, rgn, RGN_OR);
     DeleteObject(rgn);
-
     wndObj->invalid.bErase = wndObj->invalid.bErase || bErase;
-    if (!isWaitingPaint)
-    {
-        wndObj->mConnection->SendExposeEvent(hWnd);
-    }
+    wndObj->mConnection->SendExposeEvent(hWnd);
     return TRUE;
 }
 
@@ -644,7 +639,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     if (!(htCode >= HTCAPTION && htCode <= HTBOTTOMRIGHT) || htCode == HTVSCROLL || htCode == HTHSCROLL)
         return -2;
 
-    SLOG_STMI() << "HandleNcTestCode,code=" << htCode;
+//    SLOG_STMI() << "HandleNcTestCode,code=" << htCode;
     wndObj->mConnection->SetTimerBlock(true);
     RECT rcWnd = wndObj->rc;
     BOOL bQuit = FALSE;
@@ -667,7 +662,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
             }
             else if (msg.message == WM_LBUTTONUP)
             {
-                SLOG_STMI() << "HandleNcTestCode,WM_LBUTTONUP";
+                //SLOG_STMI() << "HandleNcTestCode,WM_LBUTTONUP";
                 bQuit = TRUE;
                 break;
             }
@@ -757,7 +752,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     ReleaseCapture();
 
     wndObj->mConnection->SetTimerBlock(false);
-    SLOG_STMI() << "HandleNcTestCode,Quit";
+    //SLOG_STMI() << "HandleNcTestCode,Quit";
 
     return 0;
 }

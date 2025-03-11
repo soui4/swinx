@@ -183,7 +183,7 @@ void SConnection::xim_create_ic_callback(xcb_xim_t *im, xcb_xic_t new_ic, void *
     {
         //delay set ic focus
         xcb_xim_set_ic_focus(im, new_ic);
-        SLOG_STMI()<<"xcb_xim_set_ic_focus set windows "<<hWnd<<" xic="<<new_ic;
+//        SLOG_STMI()<<"xcb_xim_set_ic_focus set windows "<<hWnd<<" xic="<<new_ic;
     }
 }
 
@@ -2047,7 +2047,7 @@ void SConnection::OnSetFocus(HWND hWnd)
 {
     if (hWnd == m_hFocus)
         return;
-    SLOG_STMI() << "OnSetFocus, oldFocus=" << m_hFocus << " newFocus=" << hWnd;
+//    SLOG_STMI() << "OnSetFocus, oldFocus=" << m_hFocus << " newFocus=" << hWnd;
     if (m_hFocus)
     {
         HIMC hIMC = ImmGetContext(m_hFocus);
@@ -2716,7 +2716,7 @@ void SConnection::_readProc()
         {
             m_bQuit = true;
             SetEvent(m_evtSync);
-            SLOG_STMI() << "recv WM_DISCONN, quit event reading thread";
+//            SLOG_STMI() << "recv WM_DISCONN, quit event reading thread";
             break;
         }
         {
