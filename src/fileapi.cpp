@@ -845,12 +845,10 @@ int CopyDirW(const wchar_t *src_dir, const wchar_t *dest_dir){
     return CopyDirA(strFrom.c_str(),strTo.c_str());
 }
 
-// 递归复制目录
-int CopyDirA(const char *src_dir, const char *dest_dir) {
+static int CopyDirPattern(const char * src_dir, const char *pattern, const char *dest_dir){
     DIR *dir;
     struct dirent *entry;
     struct stat stat_buf;
-
     // 打开源目录
     if ((dir = opendir(src_dir)) == NULL) {
         return -1;
@@ -871,8 +869,77 @@ int CopyDirA(const char *src_dir, const char *dest_dir) {
             continue;
         }
 
+        if(fnmatch(pattern, entry->d_name, 0)!=0)
+        {
+            continue;
+        }
         // 构造完整路径
         snprintf(src_path, sizeof(src_path), "%s/%s", src_dir, entry->d_name);
+        snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, entry->d_name);
+
+        // 获取文件状态
+        if (stat(src_path, &stat_buf) == -1) {
+            continue;
+        }
+
+        // 递归处理目录
+        if (S_ISDIR(stat_buf.st_mode)) {
+            if (CopyDirPattern(src_path, pattern, dest_path) == -1) {
+                closedir(dir);
+                return -1;
+            }
+        } else {
+            // 复制文件
+            if (!CopyFileA(src_path, dest_path,FALSE)) {
+                closedir(dir);
+                return -1;
+            }
+        }
+    }
+
+    closedir(dir);
+    return 0;
+}
+
+// 递归复制目录
+int CopyDirA(const char *src_dir_0, const char *dest_dir) {
+    DIR *dir;
+    struct dirent *entry;
+    struct stat stat_buf;
+    std::string strSrc(src_dir_0);
+    // 打开源目录
+    if ((dir = opendir(strSrc.c_str())) == NULL) {
+        //in case of src_dir appended with *.*
+        char *pattern = (char*)strrchr(strSrc.c_str(),'/');
+        if(!pattern)
+            return -1;
+        pattern[0]=0;
+        pattern++;
+        if(strcmp(pattern,"*.*")==0)
+        {
+            return CopyDirA(strSrc.c_str(),dest_dir);
+        }else{
+            return CopyDirPattern(strSrc.c_str(),pattern,dest_dir);
+        }
+    }
+
+    // 创建目标目录
+    if (mkdir(dest_dir, 0755) == -1 && errno != EEXIST) {
+        closedir(dir);
+        return -1;
+    }
+
+    // 遍历目录内容
+    while ((entry = readdir(dir)) != NULL) {
+        char src_path[MAX_PATH], dest_path[MAX_PATH];
+
+        // 忽略 `.` 和 `..`
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        // 构造完整路径
+        snprintf(src_path, sizeof(src_path), "%s/%s", strSrc.c_str(), entry->d_name);
         snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, entry->d_name);
 
         // 获取文件状态
