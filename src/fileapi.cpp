@@ -4,8 +4,12 @@
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <dirent.h>
-#include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
+#include <time.h>
+#include <errno.h>
+#include <libgen.h>
+
 #include "handle.h"
 #include "tostring.hpp"
 #include "debug.h"
@@ -511,18 +515,6 @@ DWORD GetFileAttributesW(LPCWSTR lpFileName)
     return GetFileAttributesA(str.c_str());
 }
 
-BOOL WINAPI DeleteFileA(LPCSTR lpFileName)
-{
-    return unlink(lpFileName) == 0;
-}
-
-BOOL WINAPI DeleteFileW(LPCWSTR lpFileName)
-{
-    std::string str;
-    tostring(lpFileName, -1, str);
-    return DeleteFileA(str.c_str());
-}
-
 BOOL WINAPI SetCurrentDirectoryA(LPCSTR lpPathName)
 {
     std::string strPath = lpPathName;
@@ -788,4 +780,283 @@ HANDLE WINAPI FindFirstFileExA(LPCSTR filename, FINDEX_INFO_LEVELS level, LPVOID
     HANDLE hFind = (HANDLE)info;
     FindNextFileA(hFind, (LPWIN32_FIND_DATAA)data);
     return hFind;
+}
+
+
+BOOL WINAPI CopyFileW(
+    LPCWSTR lpExistingFileName,
+    LPCWSTR lpNewFileName,
+    BOOL bFailIfExists
+){
+    std::string strFrom,strTo;
+    tostring(lpExistingFileName,-1,strFrom);
+    tostring(lpNewFileName,-1,strTo);
+    return CopyFileA(strFrom.c_str(),strTo.c_str(),bFailIfExists);
+}
+
+#define BUFFER_SIZE 4096
+BOOL WINAPI CopyFileA(
+    LPCSTR lpExistingFileName,
+    LPCSTR lpNewFileName,
+    BOOL bFailIfExists
+){
+    int src_fd, dest_fd;
+    size_t bytes_read, bytes_written;
+    char buffer[BUFFER_SIZE];
+
+    if(bFailIfExists){
+        if(DWORD attr = GetFileAttributesA(lpNewFileName)!=INVALID_FILE_ATTRIBUTES){
+            if(attr & FILE_ATTRIBUTE_NORMAL)
+                return FALSE;
+        }
+    }
+    // 打开源文件
+    if ((src_fd = open(lpExistingFileName, O_RDONLY)) == -1) {
+        return FALSE;
+    }
+    
+    // 创建目标文件
+    if ((dest_fd = open(lpNewFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644)) == -1) {
+        close(src_fd);
+        return FALSE;
+    }
+
+    // 读取并写入数据
+    while ((bytes_read = read(src_fd, buffer, BUFFER_SIZE)) > 0) {
+        bytes_written = write(dest_fd, buffer, bytes_read);
+        if (bytes_written != bytes_read) {
+            close(src_fd);
+            close(dest_fd);
+            return FALSE;
+        }
+    }
+
+    // 关闭文件
+    close(src_fd);
+    close(dest_fd);
+
+    return bytes_read != -1;
+}
+
+int CopyDirW(const wchar_t *src_dir, const wchar_t *dest_dir){
+    std::string strFrom,strTo;
+    tostring(src_dir,-1,strFrom);
+    tostring(dest_dir,-1,strTo);
+    return CopyDirA(strFrom.c_str(),strTo.c_str());
+}
+
+// 递归复制目录
+int CopyDirA(const char *src_dir, const char *dest_dir) {
+    DIR *dir;
+    struct dirent *entry;
+    struct stat stat_buf;
+
+    // 打开源目录
+    if ((dir = opendir(src_dir)) == NULL) {
+        return -1;
+    }
+
+    // 创建目标目录
+    if (mkdir(dest_dir, 0755) == -1 && errno != EEXIST) {
+        closedir(dir);
+        return -1;
+    }
+
+    // 遍历目录内容
+    while ((entry = readdir(dir)) != NULL) {
+        char src_path[MAX_PATH], dest_path[MAX_PATH];
+
+        // 忽略 `.` 和 `..`
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        // 构造完整路径
+        snprintf(src_path, sizeof(src_path), "%s/%s", src_dir, entry->d_name);
+        snprintf(dest_path, sizeof(dest_path), "%s/%s", dest_dir, entry->d_name);
+
+        // 获取文件状态
+        if (stat(src_path, &stat_buf) == -1) {
+            continue;
+        }
+
+        // 递归处理目录
+        if (S_ISDIR(stat_buf.st_mode)) {
+            if (CopyDirA(src_path, dest_path) == -1) {
+                closedir(dir);
+                return -1;
+            }
+        } else {
+            // 复制文件
+            if (!CopyFileA(src_path, dest_path,FALSE)) {
+                closedir(dir);
+                return -1;
+            }
+        }
+    }
+
+    closedir(dir);
+    return 0;
+}
+
+
+#define TRASH_DIR_FILES  "/.local/share/Trash/files/"
+#define TRASH_DIR_INFO   "/.local/share/Trash/info/"
+
+// 获取当前用户的 HOME 目录
+static const char *get_home_dir() {
+    const char *home = getenv("HOME");
+    return home ? home : ".";
+}
+
+// 生成唯一的目标路径（防止命名冲突）
+static void generate_unique_filename(const char *trash_path, char *unique_path, size_t size) {
+    struct stat st;
+    snprintf(unique_path, size, "%s", trash_path);
+    int count = 1;
+
+    while (stat(unique_path, &st) == 0) {
+        snprintf(unique_path, size, "%s_%d", trash_path, count++);
+    }
+}
+
+// 获取当前时间的 ISO 8601 格式
+static void get_iso_time(char *buffer, size_t size) {
+    time_t now = time(NULL);
+    struct tm *timeinfo = localtime(&now);
+    strftime(buffer, size, "%Y-%m-%dT%H:%M:%S", timeinfo);
+}
+
+// 移动文件或目录到回收站
+static int move_to_trash(const char *path) {
+    struct stat st;
+    if (stat(path, &st) == -1) {
+        perror("stat");
+        return -1;
+    }
+
+    const char *home = get_home_dir();
+    char trash_path[1024], info_path[1024], unique_trash_path[1024];
+
+    // 目标回收站路径
+    snprintf(trash_path, sizeof(trash_path), "%s%s%s", home, TRASH_DIR_FILES, basename((char *)path));
+    generate_unique_filename(trash_path, unique_trash_path, sizeof(unique_trash_path));
+
+    // 移动文件或文件夹
+    if (rename(path, unique_trash_path) == -1) {
+        perror("rename");
+        return -1;
+    }
+
+    // 创建 .trashinfo 记录
+    snprintf(info_path, sizeof(info_path), "%s%s%s.trashinfo", home, TRASH_DIR_INFO, basename((char *)path));
+    FILE *info_file = fopen(info_path, "w");
+    if (!info_file) {
+        perror("fopen");
+        return -1;
+    }
+
+    char iso_time[32];
+    get_iso_time(iso_time, sizeof(iso_time));
+
+    fprintf(info_file, "[Trash Info]\n");
+    fprintf(info_file, "Path=%s\n", path);
+    fprintf(info_file, "DeletionDate=%s\n", iso_time);
+    fclose(info_file);
+
+    printf("Moved to trash: %s -> %s\n", path, unique_trash_path);
+    return 0;
+}
+
+BOOL WINAPI DeleteFileA(
+      LPCSTR lpFileName
+){
+    return remove(lpFileName) == 0;
+}
+
+BOOL WINAPI DeleteFileW(
+      LPCWSTR lpFileName
+){
+    std::string str;
+    tostring(lpFileName,-1,str);
+    return DeleteFileA(str.c_str());
+}
+
+// 删除文件或空目录
+static int delete_file_or_dir(const char *path) {
+    struct stat st;
+    if (stat(path, &st) == -1) {
+        return -1;
+    }
+
+    if (S_ISDIR(st.st_mode)) {  // 如果是目录
+        return rmdir(path);     // 删除空目录
+    } else {                    // 如果是文件
+        return remove(path);    // 删除文件
+    }
+}
+
+// 递归删除非空目录
+static int delete_non_empty_dir(const char *dir_path) {
+    DIR *dir;
+    struct dirent *entry;
+    char full_path[MAX_PATH];
+    int ret = 0;
+
+    // 打开目录
+    dir = opendir(dir_path);
+    if (!dir) {
+        return -1;
+    }
+
+    // 遍历目录中的每个条目
+    while ((entry = readdir(dir)) != NULL && ret == 0) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;  // 跳过 "." 和 ".."
+        }
+
+        // 构造完整路径
+        snprintf(full_path, sizeof(full_path), "%s/%s", dir_path, entry->d_name);
+
+        struct stat st;
+        if (stat(full_path, &st) == -1) {
+            ret = -1;
+            break;
+        }
+
+        if (S_ISDIR(st.st_mode)) {
+            // 递归删除子目录或删除文件
+            ret =  delete_non_empty_dir(full_path);
+        } else {                    // 如果是文件
+            ret =  remove(full_path);    // 删除文件
+        }
+    }
+
+    // 关闭目录
+    closedir(dir);
+    if(ret == 0){
+        ret = rmdir(dir_path);
+    }
+    return ret;
+}
+
+int WINAPI DelDirA(const char *path, BOOL bAllowUndo){
+    if(bAllowUndo)
+    {
+        return move_to_trash(path);
+    }else{
+        DWORD attr = GetFileAttributesA(path);
+        if(attr == INVALID_FILE_ATTRIBUTES)
+            return -1;
+        if(attr & FILE_ATTRIBUTE_DIRECTORY)
+            return delete_non_empty_dir(path);
+        else
+            return remove(path);
+    }
+}
+
+int WINAPI DelDirW(const wchar_t *src_dir, BOOL bAllowUndo){
+    std::string str;
+    tostring(src_dir,-1,str);
+    return DelDirA(str.c_str(),bAllowUndo);
 }
