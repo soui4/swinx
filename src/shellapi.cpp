@@ -401,7 +401,7 @@ BOOL WINAPI ShellExecuteExA(LPSHELLEXECUTEINFOA lpExecInfo){
     UINT_PTR verb = Verb_Unknown;
     if(stricmp(lpOperation,"open")==0)
         verb = Verb_Open;
-    else if(stricmp(lpOperation,"runas"))
+    else if(stricmp(lpOperation,"runas")==0)
         verb = Verb_RunAs;
     if(verb == Verb_Unknown)
         return FALSE;
