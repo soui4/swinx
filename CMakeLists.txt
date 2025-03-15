@@ -8,17 +8,17 @@ if(USING_GTK3_DLG)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK3 REQUIRED gtk+-3.0)  # 检查 GTK 3.0 版本
 # 如果找到 GTK，则设置相关变量
-if(GTK_FOUND)
-    message(STATUS "GTK version ${GTK_VERSION} found. Enabling GTK support. ")
+if(GTK3_FOUND)
+    message(STATUS "GTK version ${GTK3_VERSION} found. Enabling GTK support.  ")
     add_definitions(-DENABLE_GTK) 
     # 设置包含目录和链接目录
     include_directories(${GTK3_INCLUDE_DIRS})
     link_directories(${GTK3_LIBRARY_DIRS})
 else()
     message(STATUS "GTK not found. Disabling GTK support.")
-endif(GTK_FOUND)
+endif(GTK3_FOUND)
 else()
-set(GTK_FOUND OFF)
+set(GTK3_FOUND OFF)
 endif(USING_GTK3_DLG)
 
 add_subdirectory(thirdparty/xkbcommon)
@@ -40,9 +40,9 @@ file(GLOB SRCS
     src/cmnctl32/*.c
     )
 file(GLOB GTK_DEPS src/gtk/*.*)
-if(GTK_FOUND)
+if(GTK3_FOUND)
 set(SRCS ${SRCS} ${GTK_DEPS})
-endif(GTK_FOUND)
+endif(GTK3_FOUND)
 
 source_group("Header Files" FILES ${HEADERS})
 source_group("Source Files" FILES ${SRCS})
@@ -50,7 +50,7 @@ source_group("Source Files" FILES ${SRCS})
 if (NOT ENABLE_SOUI_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
     
-    if(GTK_FOUND)
+    if(GTK3_FOUND)
         target_link_libraries(swinx 
         cairo uuid xkbcommon xcb-imdkit ${GTK3_LIBRARIES})
     else()

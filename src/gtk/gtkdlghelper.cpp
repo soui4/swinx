@@ -9,7 +9,12 @@ namespace Gtk{
 class GtkInit{
 public:
 GtkInit(){
-    gtk_init(nullptr,nullptr);
+    int argc=1;
+    char arg0[10]="swinx";
+    char** args = new char*[1];
+    args[0]=arg0;
+    gtk_init(&argc,&args);
+    delete []args;
 }
 };
 static GtkInit s_gtkInit;
