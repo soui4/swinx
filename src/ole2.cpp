@@ -59,48 +59,31 @@ HRESULT WINAPI DoDragDrop(IDataObject *pDataObject, /* [in] ptr to the data obj 
 
 HRESULT WINAPI OleSetClipboard(IDataObject *pdo)
 {
-    if (!OpenClipboard(0))
-        return E_UNEXPECTED;
-    EmptyClipboard();
-    IEnumFORMATETC *enum_fmt;
-    HRESULT hr = pdo->EnumFormatEtc(DATADIR_GET, &enum_fmt);
-    if (FAILED(hr))
-        return hr;
-    FORMATETC fmt;
-    while (enum_fmt->Next(1, &fmt, NULL) == S_OK)
-    {
-        STGMEDIUM storage;
-        hr = pdo->GetData(&fmt, &storage);
-        if (hr != S_OK)
-            break;
-        if (storage.tymed == TYMED_HGLOBAL)
-        {
-            SetClipboardData(fmt.cfFormat, storage.hGlobal);
-        }
-    }
-    enum_fmt->Release();
+    if(!OpenClipboard(0))
+        return CLIPBRD_E_CANT_OPEN;
+    SConnection *pconn = SConnMgr::instance()->getConnection();
+    pconn->getClipboard()->setDataObject(pdo,FALSE);
     CloseClipboard();
-    return hr;
+    return S_OK;
 }
 
 HRESULT WINAPI OleFlushClipboard(void)
 {
-    return E_NOTIMPL;
+    SConnection *pconn = SConnMgr::instance()->getConnection();
+    pconn->getClipboard()->flushClipboard();
+    return S_OK;
 }
 
 HRESULT WINAPI OleIsCurrentClipboard(IDataObject *pdo)
 {
     SConnection *pconn = SConnMgr::instance()->getConnection();
-    if (pdo == pconn->getClipboard()->getDataObject(FALSE))
-        return S_OK;
-    return E_UNEXPECTED;
+    return pconn->getClipboard()->isCurrentClipboard(pdo)?S_OK:S_FALSE;
 }
 
 HRESULT WINAPI OleGetClipboard(IDataObject **ppdo)
 {
     SConnection *pconn = SConnMgr::instance()->getConnection();
     *ppdo = pconn->getClipboard()->getDataObject(FALSE);
-    (*ppdo)->AddRef();
     return S_OK;
 }
 

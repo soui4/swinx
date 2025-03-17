@@ -1184,9 +1184,8 @@ BOOL WINAPI CreateProcessAsUserA(
         }
         lpCommandLine=pArgEnd;
     }
-    if(lstArg.size()>100)
+    if(lstArg.size()>1000)
         return FALSE;          // 子进程退出
-
     pid_t pid = fork();
     if (pid == -1) {
         // fork 失败
@@ -1195,6 +1194,23 @@ BOOL WINAPI CreateProcessAsUserA(
     }
     else if(pid == 0){
         //prepare env
+        std::list<std::string> lstEnv;
+        char szDisplay[200];
+        char szAuth[200];
+        GetEnvironmentVariableA("DISPLAY",szDisplay,200);
+        GetEnvironmentVariableA("XAUTHORITY",szAuth,200);
+        std::string strDisplay,strAuth;
+        {
+        std::stringstream ss;
+        ss<<"DISPLAY="<<szDisplay;
+        strDisplay = ss.str();
+        }
+        {
+            std::stringstream ss;
+            ss<<"XAUTHORITY="<<szAuth;
+            strAuth = ss.str();
+        }
+
         if(lpCurrentDirectory){
             SetCurrentDirectoryA(lpCurrentDirectory);
         }
@@ -1203,12 +1219,9 @@ BOOL WINAPI CreateProcessAsUserA(
                 LPCWSTR pszEnv = (LPCWSTR)lpEnvironment;
                 while(*pszEnv){
                     size_t len =wcslen(pszEnv);
-                    LPCWSTR strEqual=wcschr(pszEnv,L'=');
-                    if(strEqual){
-                        std::wstring entry(pszEnv,(strEqual-pszEnv));
-                        std::wstring value(strEqual+1,(len-1-(strEqual-pszEnv)));
-                        SetEnvironmentVariableW(entry.c_str(),value.c_str());
-                    }
+                    std::string strEnv;
+                    tostring(pszEnv,-1,strEnv);
+                    lstEnv.push_back(strEnv);
                     pszEnv+=len+1;
                 }
                 
@@ -1216,12 +1229,7 @@ BOOL WINAPI CreateProcessAsUserA(
                 LPCSTR pszEnv = (LPCSTR)lpEnvironment;
                 while(*pszEnv){
                     size_t len =strlen(pszEnv);
-                    LPCSTR strEqual=strchr(pszEnv,'=');
-                    if(strEqual){
-                        std::string entry(pszEnv,(strEqual-pszEnv));
-                        std::string value(strEqual+1,(len-1-(strEqual-pszEnv)));
-                        SetEnvironmentVariableA(entry.c_str(),value.c_str());
-                    }
+                    lstEnv.push_back(pszEnv);
                     pszEnv+=len+1;
                 }
             }
@@ -1234,17 +1242,47 @@ BOOL WINAPI CreateProcessAsUserA(
         CloseHandle(hProcess);
 
 
-        char * args[100]={0};
+        char * args[1024]={0};
         size_t i = 0;
-        char pkexec[]="pkexec";
+        std::string command;
         if((UINT_PTR)hToken == Verb_RunAs){
-            args[i++] = pkexec;   //use pkexec ro ask for root permission.
+            const char *hosts[]={
+                "/usr/bin/pkexec",
+                "/usr/bin/kdesu",
+                "/usr/bin/gksu"
+            };
+            for(int j=0;j<ARRAYSIZE(hosts);j++){
+                if (GetFileAttributes(hosts[j])!=INVALID_FILE_ATTRIBUTES){
+                    command = hosts[j];
+                    break;
+                }
+            }
+            if(command.empty()){
+                perror("no host found!");
+                exit(EXIT_FAILURE);
+            }
+            args[i++] = (char*)command.c_str(); 
+            static char szEnv[]="env";
+            args[i++] = szEnv;
+            args[i++] = (char*)strDisplay.c_str();
+            args[i++] = (char*)strAuth.c_str();
         }
         for(auto it = lstArg.begin();it!=lstArg.end();it++){
             args[i++]=*it;
         }
+        char *envs[1001]={0};
+        i=0;
+        if((UINT_PTR)hToken != Verb_RunAs){
+            envs[i++] = (char*)strDisplay.c_str();
+            envs[i++] = (char*)strAuth.c_str();
+        }
+        for(auto it =lstEnv.begin();it!=lstEnv.end();it++){
+            envs[i++]=(char*)(*it).c_str();
+            if(i>=1000)
+                break;
+        }
         //child process
-        execvp(args[0], args);       // 替换子进程的代码为新程序
+        execve(args[0], args, envs);       // 替换子进程的代码为新程序
         perror("execvp failed");    // 如果 execvp 失败，打印错误信息
         exit(EXIT_FAILURE);          // 子进程退出
     }else{
@@ -1709,12 +1747,6 @@ BOOL WINAPI IsClipboardFormatAvailable(_In_ UINT format)
 
 BOOL WINAPI OpenClipboard(_In_opt_ HWND hWndNewOwner)
 {
-    if (hWndNewOwner)
-    {
-        tid_t tid = GetWindowThreadProcessId(hWndNewOwner, NULL);
-        if (tid != GetCurrentThreadId())
-            return FALSE;
-    }
     SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->OpenClipboard(hWndNewOwner);
 }

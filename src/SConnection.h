@@ -206,7 +206,7 @@ public:
       void SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect);
       xcb_atom_t clipFormat2Atom(UINT uFormat);
       uint32_t atom2ClipFormat(xcb_atom_t atom);
-      std::shared_ptr< std::vector<char>> readXdndSelection(uint32_t fmt);
+      std::shared_ptr< std::vector<char>> readSelection(bool bXdnd,uint32_t fmt);
 
       HWND OnWindowCreate(_Window *wnd,CREATESTRUCT *cs,int depth);
       void OnWindowDestroy(HWND hWnd,_Window *wnd);

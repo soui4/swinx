@@ -296,7 +296,7 @@ HRESULT SDragDrop::DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource
         return E_OUTOFMEMORY;
 
     {
-        conn->getClipboard()->setSelDataObject(pDataObject);
+        conn->getClipboard()->setDataObject(pDataObject,TRUE);
         SLOG_STMI() << "DoDragDrop start";
 
         msg.message = 0;
@@ -336,7 +336,7 @@ HRESULT SDragDrop::DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource
                 DispatchMessage(&msg);
             }
         }
-        conn->getClipboard()->setSelDataObject(NULL);
+        conn->getClipboard()->setDataObject(NULL,TRUE);
         /* re-post the quit message to outer message loop */
         if (msg.message == WM_QUIT)
             PostQuitMessage(msg.wParam);
@@ -352,9 +352,8 @@ HRESULT SDragDrop::DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource
 }
 
 //-------------------------------------------------------
-SDataObjectProxy::SDataObjectProxy(SConnection *conn, HWND hWnd, const uint32_t data32[5])
-    : m_conn(conn)
-    , m_hSource(hWnd)
+XDndDataObjectProxy::XDndDataObjectProxy(SConnection *conn, HWND hWnd, const uint32_t data32[5])
+    : SDataObjectProxy(conn,hWnd)
 {
     m_targetTime = XCB_CURRENT_TIME;
     m_dwEffect = 0;
@@ -362,7 +361,7 @@ SDataObjectProxy::SDataObjectProxy(SConnection *conn, HWND hWnd, const uint32_t 
     initTypeList(data32);
 }
 
-void SDataObjectProxy::initTypeList(const uint32_t data32[5])
+void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
 {
     if (data32[1] & 1)
     {
@@ -409,21 +408,3 @@ void SDataObjectProxy::initTypeList(const uint32_t data32[5])
     }
 }
 
-HRESULT SDataObjectProxy::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
-{
-    if (QueryGetData(pformatetcIn) != S_OK)
-    {
-        return DV_E_FORMATETC;
-    }
-    std::shared_ptr<std::vector<char>> buf = m_conn->readXdndSelection(pformatetcIn->cfFormat);
-    if (!buf)
-        return DV_E_DVASPECT;
-    size_t bufLen = buf->size();
-    pmedium->hGlobal = GlobalAlloc(0, bufLen);
-    if (!pmedium->hGlobal)
-        return STG_E_MEDIUMFULL;
-    void *dst = GlobalLock(pmedium->hGlobal);
-    memcpy(dst, buf->data(), bufLen);
-    GlobalUnlock(pmedium->hGlobal);
-    return S_OK;
-}

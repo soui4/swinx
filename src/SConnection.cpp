@@ -1098,9 +1098,9 @@ uint32_t SConnection::atom2ClipFormat(xcb_atom_t atom)
         return CF_MAX + atom; // for registed format
 }
 
-std::shared_ptr<std::vector<char>> SConnection::readXdndSelection(uint32_t fmt)
+std::shared_ptr<std::vector<char>> SConnection::readSelection(bool bXdnd,uint32_t fmt)
 {
-    return m_clipboard->getDataInFormat(atoms.XdndSelection, clipFormat2Atom(fmt));
+    return m_clipboard->getDataInFormat(bXdnd?atoms.XdndSelection:atoms.CLIPBOARD, clipFormat2Atom(fmt));
 }
 
 
@@ -2221,7 +2221,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg = new Msg;
         pMsg->hwnd = e2->child == XCB_NONE ? e2->event : e2->child;
         UINT vk = m_keyboard->onKeyEvent(true, e2->detail, e2->state, e2->time);
-        pMsg->message = vk < VK_NUMLOCK ? WM_KEYDOWN : WM_SYSKEYDOWN;
+        pMsg->message = (vk < VK_NUMLOCK ||(vk>=VK_OEM_1 && vk<=VK_OEM_8)) ? WM_KEYDOWN : WM_SYSKEYDOWN;
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
         uint32_t tst = (scanCode << 16);
@@ -2414,7 +2414,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             int version = (int)(e2->data.data32[1] >> 24);
             if (version > SDragDrop::xdnd_version)
                 break;
-            SDataObjectProxy *pData = new SDataObjectProxy(this, pMsg2->hFrom, e2->data.data32);
+            XDndDataObjectProxy *pData = new XDndDataObjectProxy(this, pMsg2->hFrom, e2->data.data32);
             SLOG_STMI() << "####drag enter, init dragData";
             wndObj->dragData = pData;
 
@@ -2440,7 +2440,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             WndObj wndObj = WndMgr::fromHwnd(e2->window);
             if (!wndObj || !wndObj->dragData)
                 break;
-            SDataObjectProxy *pData = (SDataObjectProxy *)wndObj->dragData;
+            XDndDataObjectProxy *pData = (XDndDataObjectProxy *)wndObj->dragData;
             if (pData->getSource() != e2->data.data32[0])
                 break;
             if (e2->data.data32[3] != XCB_NONE)

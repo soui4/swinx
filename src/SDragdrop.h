@@ -4,91 +4,16 @@
 #include "SUnkImpl.h"
 #include <vector>
 #include "uimsg.h"
+#include "SClipboard.h"
 
 class SConnection;
-class SDataObjectProxy : public SUnkImpl<IDataObject>{
+class XDndDataObjectProxy : public SDataObjectProxy{
     void initTypeList(const uint32_t data32[5]);
 public:
-    SDataObjectProxy(SConnection* conn, HWND hWnd,const uint32_t data32[5]);
+    XDndDataObjectProxy(SConnection* conn, HWND hWnd,const uint32_t data32[5]);
 
-    HWND getSource() const {
-        return m_hSource;
-    }
-
+    bool isXdnd() const override{ return true;}
 public:
-    virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetData(
-        /* [annotation][unique][in] */
-        _In_  FORMATETC* pformatetcIn,
-        /* [annotation][out] */
-        _Out_  STGMEDIUM* pmedium);
-
-    virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetDataHere(
-        /* [annotation][unique][in] */
-        _In_  FORMATETC* pformatetc,
-        /* [annotation][out][in] */
-        _Inout_  STGMEDIUM* pmedium) {
-        return E_NOTIMPL;
-    }
-
-    virtual HRESULT STDMETHODCALLTYPE QueryGetData(
-        /* [unique][in] */ __RPC__in_opt FORMATETC* pformatetc) {
-        for (auto it : m_lstTypes) {
-            if (it == pformatetc->cfFormat)
-            {
-                if (pformatetc->tymed != TYMED_HGLOBAL)
-                    return DV_E_TYMED;
-                else
-                    return S_OK;
-            }
-        }
-        return DV_E_FORMATETC;
-    }
-
-    virtual HRESULT STDMETHODCALLTYPE GetCanonicalFormatEtc(
-        /* [unique][in] */ __RPC__in_opt FORMATETC* pformatectIn,
-        /* [out] */ __RPC__out FORMATETC* pformatetcOut) {
-        return E_NOTIMPL;
-    }
-
-    virtual /* [local] */ HRESULT STDMETHODCALLTYPE SetData(
-        /* [annotation][unique][in] */
-        _In_  FORMATETC* pformatetc,
-        /* [annotation][unique][in] */
-        _In_  STGMEDIUM* pmedium,
-        /* [in] */ BOOL fRelease) {
-        return E_NOTIMPL;
-    }
-
-    virtual HRESULT STDMETHODCALLTYPE EnumFormatEtc(
-        /* [in] */ DWORD dwDirection,
-        /* [out] */ __RPC__deref_out_opt IEnumFORMATETC** ppenumFormatEtc) {
-        return E_NOTIMPL;
-    }
-
-    virtual HRESULT STDMETHODCALLTYPE DAdvise(
-        /* [in] */ __RPC__in FORMATETC* pformatetc,
-        /* [in] */ DWORD advf,
-        /* [unique][in] */ __RPC__in_opt IAdviseSink* pAdvSink,
-        /* [out] */ __RPC__out DWORD* pdwConnection) {
-        return E_NOTIMPL;
-    }
-
-    virtual HRESULT STDMETHODCALLTYPE DUnadvise(
-        /* [in] */ DWORD dwConnection) {
-        return E_NOTIMPL;
-    }
-
-    virtual HRESULT STDMETHODCALLTYPE EnumDAdvise(
-        /* [out] */ __RPC__deref_out_opt IEnumSTATDATA** ppenumAdvise) {
-        return E_NOTIMPL;
-    }
-public:
-    IUNKNOWN_BEGIN(IDataObject)
-        IUNKNOWN_END()
-public:
-    SConnection* m_conn;
-    HWND m_hSource;
-    std::vector<uint32_t> m_lstTypes;
     xcb_timestamp_t m_targetTime;
     DWORD m_dwEffect;
     DWORD m_dwKeyState;

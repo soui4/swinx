@@ -4,17 +4,16 @@
 #include <gdk/gdkx.h>
 #include <gtk/gtkfilechooser.h>
 
+#include "../log.h"
+#define kLogTag "gtk"
 namespace Gtk{
 
 class GtkInit{
 public:
 GtkInit(){
-    int argc=1;
-    char arg0[10]="swinx";
-    char** args = new char*[1];
-    args[0]=arg0;
-    gtk_init(&argc,&args);
-    delete []args;
+    int argc=0;
+    gtk_init(&argc,nullptr);
+    SLOG_STMI()<<"init gtk done";
 }
 };
 static GtkInit s_gtkInit;

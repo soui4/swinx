@@ -1,7 +1,7 @@
 #include "keyboard.h"
 #include "SConnection.h"
 #include "debug.h"
-
+#include <algorithm>
 #define kLogTag "keyboard"
 
 #define qWarning  WARN
@@ -12,8 +12,15 @@ struct KeyMap
     xcb_keysym_t keysym;
     uint32_t vk;
 };
+
+static int KeyMapComp(const void *p1,const void* p2){
+    const KeyMap * km1=(const KeyMap *)p1;
+    const KeyMap * km2=(const KeyMap *)p2;
+    return (int)km1->keysym-(int)km2->keysym;
+}
+
 // keyboard mapping table
-static const KeyMap KeyTbl[] = {
+static KeyMap KeyTbl[] = {
 
     // misc keys
 
@@ -68,6 +75,11 @@ static const KeyMap KeyTbl[] = {
 
     // Japanese keyboard support
     XK_Kanji, VK_KANJI,
+
+    XK_plus, VK_OEM_PLUS,
+    XK_comma,VK_OEM_COMMA,
+    XK_minus,VK_OEM_MINUS,
+    XK_period,VK_OEM_PERIOD,
 
 //    XK_Muhenkan,                Qt::Key_Muhenkan,
 // XK_Henkan_Mode,           Qt::Key_Henkan_Mode,
@@ -139,6 +151,21 @@ static const KeyMap KeyTbl[] = {
     // XK_dead_hook,               Qt::Key_Dead_Hook,
     // XK_dead_horn,               Qt::Key_Dead_Horn,
 };
+
+class SKeyMap{
+public:
+    SKeyMap(){
+        qsort(KeyTbl,ARRAYSIZE(KeyTbl),sizeof(KeyMap),KeyMapComp);
+    }
+
+    uint32_t Keysym2Vk(xcb_keysym_t sym) const{
+        KeyMap *p=(KeyMap *)bsearch(&sym,KeyTbl,ARRAYSIZE(KeyTbl),sizeof(KeyMap),KeyMapComp);
+        if(!p) return 0;
+        return p->vk;
+    }
+};
+
+static SKeyMap s_keyMap;
 
 SKeyboard::SKeyboard(SConnection *conn)
     : m_conn(conn)
@@ -435,12 +462,7 @@ uint32_t SKeyboard::translateModifiers(int s) const
 
 int SKeyboard::lookVkMap(xcb_keysym_t key) const
 {
-    for (int i = 0; i < ARRAYSIZE(KeyTbl); i++)
-    {
-        if (key == KeyTbl[i].keysym)
-            return KeyTbl[i].vk;
-    }
-    return 0;
+    return s_keyMap.Keysym2Vk(key);
 }
 
 char SKeyboard::scanCodeToAscii(xcb_keycode_t code)
@@ -454,7 +476,9 @@ char SKeyboard::scanCodeToAscii(xcb_keycode_t code)
 
 int SKeyboard::keySymToVk(xcb_keysym_t keysym, UINT modifiers) const
 {
-    int code = 0;
+    int code = lookVkMap(keysym);
+    if(code != 0)
+        return code;
     if (keysym < 128)
     {
         code = isprint(keysym) ? toupper(keysym) : 0;
@@ -471,17 +495,7 @@ int SKeyboard::keySymToVk(xcb_keysym_t keysym, UINT modifiers) const
             // numeric keypad keys
             code = VK_NUMPAD0 + ((int)keysym - XK_KP_0);
         }
-        else
-        {
-            code = lookVkMap(keysym);
-        }
     }
-    else
-    {
-        // any other keys
-        code = lookVkMap(keysym);
-    }
-
     return code;
 }
 
