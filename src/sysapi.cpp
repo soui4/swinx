@@ -1138,7 +1138,7 @@ BOOL WINAPI CreateProcessAsUserA(
     DWORD dwCreationFlags,
     LPVOID lpEnvironment,
     LPCSTR lpCurrentDirectory,
-    LPSTARTUPINFO lpStartupInfo,
+    LPSTARTUPINFOA lpStartupInfo,
     LPPROCESS_INFORMATION lpProcessInformation
   ){
     if(!lpApplicationName){
@@ -1314,17 +1314,42 @@ BOOL WINAPI CreateProcessAsUserW(
     DWORD dwCreationFlags,
     LPVOID lpEnvironment,
     LPCWSTR lpCurrentDirectory,
-    LPSTARTUPINFO lpStartupInfo,
+    LPSTARTUPINFOW lpStartupInfo,
     LPPROCESS_INFORMATION lpProcessInformation
   ){
     std::string strApp,strCmd,strDir;
     tostring(lpApplicationName,-1,strApp);
     tostring(lpCommandLine,-1,strCmd);
     tostring(lpCurrentDirectory,-1,strDir);
+    std::string strDesktop,strTitle;
+    if(lpStartupInfo->lpDesktop)
+        tostring(lpStartupInfo->lpDesktop,-1,strDesktop);
+    if(lpStartupInfo->lpTitle)
+        tostring(lpStartupInfo->lpTitle,-1,strTitle);
+    STARTUPINFOA startupINfoA;
+    startupINfoA.cb = sizeof(startupINfoA);
+    startupINfoA.lpReserved=NULL;
+    startupINfoA.lpDesktop = lpStartupInfo->lpDesktop?(char*)strDesktop.c_str():nullptr;
+    startupINfoA.lpTitle = lpStartupInfo->lpTitle?(char*)strTitle.c_str():nullptr;
+    startupINfoA.dwX=lpStartupInfo->dwX;
+    startupINfoA.dwY=lpStartupInfo->dwY;
+    startupINfoA.dwXSize=lpStartupInfo->dwXSize;
+    startupINfoA.dwYSize=lpStartupInfo->dwYSize;
+    startupINfoA.dwXCountChars=lpStartupInfo->dwXCountChars;
+    startupINfoA.dwYCountChars=lpStartupInfo->dwYCountChars;
+    startupINfoA.dwFillAttribute=lpStartupInfo->dwFillAttribute;
+    startupINfoA.dwFlags=lpStartupInfo->dwFlags;
+    startupINfoA.wShowWindow=lpStartupInfo->wShowWindow;
+    startupINfoA.cbReserved2=0;
+    startupINfoA.lpReserved2=nullptr;
+    startupINfoA.hStdInput = lpStartupInfo->hStdInput;
+    startupINfoA.hStdOutput=lpStartupInfo->hStdOutput;
+    startupINfoA.hStdError = lpStartupInfo->hStdError;   
+
     return CreateProcessAsUserA(hToken,lpApplicationName?strApp.c_str():nullptr,lpCommandLine?(char*)strCmd.c_str():nullptr,
         lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,
         lpCurrentDirectory?strDir.c_str():nullptr,
-        lpStartupInfo,
+        &startupINfoA,
         lpProcessInformation
     );
   }
@@ -1339,7 +1364,7 @@ BOOL WINAPI CreateProcessAsUserW(
     DWORD dwCreationFlags,
     LPVOID lpEnvironment,
     LPCSTR lpCurrentDirectory,
-    LPSTARTUPINFO lpStartupInfo,
+    LPSTARTUPINFOA lpStartupInfo,
     LPPROCESS_INFORMATION lpProcessInformation
   ){
     return CreateProcessAsUserA(0,lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation);
@@ -1354,7 +1379,7 @@ BOOL WINAPI CreateProcessAsUserW(
     DWORD dwCreationFlags,
     LPVOID lpEnvironment,
     LPCWSTR lpCurrentDirectory,
-    LPSTARTUPINFO lpStartupInfo,
+    LPSTARTUPINFOW lpStartupInfo,
     LPPROCESS_INFORMATION lpProcessInformation
   ){
     return CreateProcessAsUserW(0,lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation);
@@ -2042,3 +2067,30 @@ HANDLE WINAPI _get_osfhandle(int fd){
     return s_osHandleMgr.fd2Handle(fd);
 }
 
+
+LPSTR WINAPI GetCommandLineA(void){
+    static char cmdline[1024]={0};
+    if(cmdline[0]!=0)
+        return cmdline;
+    FILE *file = fopen("/proc/self/cmdline", "r");
+    if (!file) {
+        perror("Failed to open cmdline file");
+        return cmdline;
+    }
+    if (fgets(cmdline, sizeof(cmdline), file)) {
+        for (char *p = cmdline; *p; p++) {
+            if (*p == '\0') *p = ' ';
+        }
+    }
+    fclose(file);
+    return cmdline;
+}
+
+LPWSTR WINAPI GetCommandLineW(void){
+    static wchar_t cmdline[1024]={0};
+    if(cmdline[0]!=0) 
+        return cmdline;
+    char * tmp = GetCommandLineA();
+    MultiByteToWideChar(CP_UTF8,0,tmp,-1,cmdline,1024);
+    return cmdline;
+}

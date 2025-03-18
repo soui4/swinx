@@ -92,8 +92,60 @@ typedef struct _SECURITY_ATTRIBUTES
     BOOL bInheritHandle;
 } SECURITY_ATTRIBUTES, *PSECURITY_ATTRIBUTES, *LPSECURITY_ATTRIBUTES;
 
-typedef struct _STARTUPINFO{
-}STARTUPINFO, * LPSTARTUPINFO;
+#define STARTF_USESHOWWINDOW       0x00000001
+#define STARTF_USESIZE             0x00000002
+#define STARTF_USEPOSITION         0x00000004
+#define STARTF_USECOUNTCHARS       0x00000008
+#define STARTF_USEFILLATTRIBUTE    0x00000010
+#define STARTF_RUNFULLSCREEN       0x00000020  // ignored for non-x86 platforms
+#define STARTF_FORCEONFEEDBACK     0x00000040
+#define STARTF_FORCEOFFFEEDBACK    0x00000080
+#define STARTF_USESTDHANDLES       0x00000100
+
+
+typedef struct _STARTUPINFOA{
+DWORD cb;
+LPSTR lpReserved;
+LPSTR lpDesktop;
+LPSTR lpTitle;
+DWORD dwX;
+DWORD dwY;
+DWORD dwXSize;
+DWORD dwYSize;
+DWORD dwXCountChars;
+DWORD dwYCountChars;
+DWORD dwFillAttribute;
+DWORD dwFlags;
+WORD wShowWindow;
+WORD cbReserved2;
+LPBYTE lpReserved2;
+HANDLE hStdInput;
+HANDLE hStdOutput;
+HANDLE hStdError;    
+}STARTUPINFOA, * LPSTARTUPINFOA;
+
+
+typedef struct _STARTUPINFOW{
+DWORD cb;
+LPWSTR lpReserved;
+LPWSTR lpDesktop;
+LPWSTR lpTitle;
+DWORD dwX;
+DWORD dwY;
+DWORD dwXSize;
+DWORD dwYSize;
+DWORD dwXCountChars;
+DWORD dwYCountChars;
+DWORD dwFillAttribute;
+DWORD dwFlags;
+WORD wShowWindow;
+WORD cbReserved2;
+LPBYTE lpReserved2;
+HANDLE hStdInput;
+HANDLE hStdOutput;
+HANDLE hStdError;    
+}STARTUPINFOW, * LPSTARTUPINFOW;
+
 typedef struct _PROCESS_INFORMATION {
     HANDLE hProcess;  
     HANDLE hThread;  
@@ -120,7 +172,7 @@ BOOL WINAPI CreateProcessAsUserA(
     __in          DWORD dwCreationFlags,
     __in          LPVOID lpEnvironment,
     __in          LPCSTR lpCurrentDirectory,
-    __in          LPSTARTUPINFO lpStartupInfo,
+    __in          LPSTARTUPINFOA lpStartupInfo,
     __out         LPPROCESS_INFORMATION lpProcessInformation
   );
 
@@ -134,7 +186,7 @@ BOOL WINAPI CreateProcessAsUserW(
     __in          DWORD dwCreationFlags,
     __in          LPVOID lpEnvironment,
     __in          LPCWSTR lpCurrentDirectory,
-    __in          LPSTARTUPINFO lpStartupInfo,
+    __in          LPSTARTUPINFOW lpStartupInfo,
     __out         LPPROCESS_INFORMATION lpProcessInformation
   );
 
@@ -147,7 +199,7 @@ BOOL WINAPI CreateProcessAsUserW(
     __in          DWORD dwCreationFlags,
     __in          LPVOID lpEnvironment,
     __in          LPCSTR lpCurrentDirectory,
-    __in          LPSTARTUPINFO lpStartupInfo,
+    __in          LPSTARTUPINFOA lpStartupInfo,
     __out         LPPROCESS_INFORMATION lpProcessInformation
   );
   BOOL WINAPI CreateProcessW(
@@ -159,7 +211,7 @@ BOOL WINAPI CreateProcessAsUserW(
     __in          DWORD dwCreationFlags,
     __in          LPVOID lpEnvironment,
     __in          LPCWSTR lpCurrentDirectory,
-    __in          LPSTARTUPINFO lpStartupInfo,
+    __in          LPSTARTUPINFOW lpStartupInfo,
     __out         LPPROCESS_INFORMATION lpProcessInformation
   );
 
@@ -167,9 +219,11 @@ BOOL WINAPI CreateProcessAsUserW(
   #undef __out
 
 #ifdef UNICODE
+#define STARTUPINFO STARTUPINFOW
 #define CreateProcessAsUser CreateProcessAsUserW
 #define CreateProcess CreateProcessW
 #else
+#define STARTUPINFO STARTUPINFOA
 #define CreateProcessAsUser CreateProcessAsUserA
 #define CreateProcess   CreateProcessA
 #endif//UNICODE
@@ -666,6 +720,15 @@ typedef int(WINAPI *PROC)();
 #endif // UNICODE
 
     HANDLE WINAPI _get_osfhandle(int fd);
+
+    LPSTR WINAPI GetCommandLineA(void);
+    LPWSTR WINAPI GetCommandLineW(void);
+
+    #ifdef UNICODE
+    #define GetCommandLine GetCommandLineW
+    #else
+    #define GetCommandLine GetCommandLineA
+    #endif // UNICODE
 
 #ifdef __cplusplus
 }
