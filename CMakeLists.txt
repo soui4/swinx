@@ -91,7 +91,7 @@ install(TARGETS swinx
     ARCHIVE DESTINATION lib/Debug
 )
 
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION swinx)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION include/swinx)
 
 
 
