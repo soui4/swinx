@@ -17,16 +17,16 @@
 
 struct _FileData
 {
-    int f;
+    int fd;
     _FileData()
-        : f(-1)
+        : fd(-1)
     {
     }
     ~_FileData()
     {
-        if (f != -1)
+        if (fd != -1)
         {
-            close(f);
+            close(fd);
         }
     }
 };
@@ -62,8 +62,8 @@ CreateFileA(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECUR
     }
     else if (dwCreationDisposition == TRUNCATE_EXISTING)
         mode |= O_TRUNC;
-    fd->f = open(lpFileName, mode, 0644);
-    if (fd->f == -1)
+    fd->fd = open(lpFileName, mode, 0644);
+    if (fd->fd == -1)
     {
         delete fd;
         return INVALID_HANDLE_VALUE;
@@ -91,7 +91,9 @@ BOOL WINAPI GetFileSizeEx(HANDLE hFile, PLARGE_INTEGER lpFileSize)
     _FileData *fd = GetFD(hFile);
     if (!fd)
         return FALSE;
-    lpFileSize->QuadPart = lseek(fd->f, 0, SEEK_CUR);
+    off_t pos = lseek(fd->fd, 0, SEEK_CUR);
+    lpFileSize->QuadPart = lseek(fd->fd, 0, SEEK_END);
+    lseek(fd->fd,pos,SEEK_SET);
     return TRUE;
 }
 
@@ -125,7 +127,7 @@ BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLa
         struct timespec st_ctim; /* Time of last status change.  */
 
         struct stat64 st;
-        if (0 != fstat64(fd->f, &st))
+        if (0 != fstat64(fd->fd, &st))
             return FALSE;
         TimeSpec2FileTime(st.st_ctim, lpCreationTime);
         TimeSpec2FileTime(st.st_mtim, lpLastWriteTime);
@@ -142,9 +144,9 @@ BOOL ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD
 {
     if (_FileData *fd = GetFD(hFile))
     {
-        if (fd->f == -1)
+        if (fd->fd == -1)
             return FALSE;
-        int readed = read(fd->f, lpBuffer, nNumberOfBytesToRead);
+        int readed = read(fd->fd, lpBuffer, nNumberOfBytesToRead);
         if (lpNumberOfBytesRead)
             *lpNumberOfBytesRead = readed;
         return readed == nNumberOfBytesToRead;
@@ -156,14 +158,21 @@ BOOL WINAPI WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrit
 {
     if (_FileData *fd = GetFD(hFile))
     {
-        if (fd->f == -1)
+        if (fd->fd == -1)
             return FALSE;
-        int writed = write(fd->f, lpBuffer, nNumberOfBytesToWrite);
+        int writed = write(fd->fd, lpBuffer, nNumberOfBytesToWrite);
         if (lpNumberOfBytesWritten)
             *lpNumberOfBytesWritten = writed;
         return writed == nNumberOfBytesToWrite;
     }
     return FALSE;
+}
+
+int _open_osfhandle(HANDLE hFile,int flags ){
+    _FileData *fd = GetFD(hFile);
+    if(!fd)
+        return -1;
+    return fd->fd;
 }
 
 /* extend a file beyond the current end of file */
@@ -216,36 +225,41 @@ static bool set_fd_eof(int fd, uint64_t eof)
  */
 DWORD WINAPI SetFilePointer(HANDLE file, LONG distance, LONG *highword, DWORD method)
 {
-    _FileData *fd = GetFD(file);
+    LARGE_INTEGER dist, pos;
+    dist.QuadPart = (LONGLONG)distance;
+    if(!SetFilePointerEx(file,dist,&pos,method))
+        return 0;
+    if(highword) *highword = pos.HighPart;
+    return pos.LowPart;
+}
+
+BOOL WINAPI SetFilePointerEx(
+            HANDLE hFile,
+            LARGE_INTEGER dist,
+            PLARGE_INTEGER lpNewFilePointer,
+            DWORD method
+){
+    _FileData *fd = GetFD(hFile);
     if (!fd)
     {
-        return 0;
+        return FALSE;
     }
-    LARGE_INTEGER dist, newpos;
-
-    if (highword)
-    {
-        dist.u.LowPart = distance;
-        dist.u.HighPart = *highword;
-    }
-    else
-        dist.QuadPart = distance;
-
-    newpos = dist;
+    LARGE_INTEGER newpos = dist;
     switch (method)
     {
     case FILE_BEGIN:
         newpos.QuadPart = dist.QuadPart;
         break;
     case FILE_CURRENT:
-        newpos.QuadPart = dist.QuadPart + lseek(fd->f, 0, SEEK_CUR);
+        newpos.QuadPart = dist.QuadPart + lseek(fd->fd, 0, SEEK_CUR);
         break;
     case FILE_END:
     {
         struct stat st = { 0 };
-        if (fstat(fd->f, &st) == -1)
+        if (fstat(fd->fd, &st) == -1)
         {
-            return INVALID_SET_FILE_POINTER;
+            SetLastError(INVALID_SET_FILE_POINTER);
+            return FALSE;
         }
         newpos.QuadPart = dist.QuadPart + st.st_size;
         break;
@@ -257,14 +271,15 @@ DWORD WINAPI SetFilePointer(HANDLE file, LONG distance, LONG *highword, DWORD me
         return FALSE;
     }
 
-    if (lseek(fd->f, newpos.QuadPart, SEEK_SET) == (off_t)-1)
-        return INVALID_SET_FILE_POINTER;
-
-    if (highword)
-        *highword = newpos.u.HighPart;
-    if (newpos.u.LowPart == INVALID_SET_FILE_POINTER)
-        SetLastError(0);
-    return newpos.u.LowPart;
+    off_t nowPos = lseek(fd->fd, newpos.QuadPart, SEEK_SET);
+     if(nowPos == (off_t)-1){
+        SetLastError(INVALID_SET_FILE_POINTER);
+        return FALSE;
+     }
+    if(lpNewFilePointer){
+        lpNewFilePointer->QuadPart = nowPos;
+    }
+    return TRUE;
 }
 
 /**************************************************************************
@@ -278,8 +293,8 @@ BOOL WINAPI SetEndOfFile(HANDLE file)
         return 0;
     }
     LARGE_INTEGER pos;
-    pos.QuadPart = lseek(fd->f, 0, SEEK_CUR);
-    return set_fd_eof(fd->f, pos.QuadPart) != -1;
+    pos.QuadPart = lseek(fd->fd, 0, SEEK_CUR);
+    return set_fd_eof(fd->fd, pos.QuadPart) != -1;
 }
 
 typedef short CSHORT;

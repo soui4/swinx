@@ -547,6 +547,7 @@ typedef MutexOp<NamedMutex> NamedMutexObj;
 struct FileMapObject
 {
     int index;
+    HandleData localFmd;
     GlobalMutex mutex;
     int fd;
     void *ptr;
@@ -581,17 +582,28 @@ struct FileMapObject
 
     void lock()
     {
-        mutex.lock();
+        if(index !=-1)
+            mutex.lock();
     }
     void unlock()
     {
-        mutex.unlock();
+        if(index !=-1)
+            mutex.unlock();
+    }
+
+    void init3(int fd_,FileMapData fmd){
+        fd = fd_;
+        localFmd.data.fmData = fmd;
     }
 
     HandleData *handleData()
     {
-        assert(index != -1);
-        return s_globalHandleTable.getHandleData(index);
+        if(index==-1)
+        {
+            return &localFmd;
+        }else{
+            return s_globalHandleTable.getHandleData(index);
+        }
     }
 
     bool init2(int idx)
@@ -1167,14 +1179,43 @@ HANDLE OpenFileMappingW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpNa
 HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCSTR lpName)
 {
     if (hFile != INVALID_HANDLE_VALUE)
-        return INVALID_HANDLE_VALUE;
+    {
+        int fd = _open_osfhandle(hFile,0);
+        if(fd==-1)
+        {
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return INVALID_HANDLE_VALUE;
+        }
+        LARGE_INTEGER fsize={0};
+        GetFileSizeEx(hFile,&fsize);
+        if(dwMaximumSizeHigh!=0 || dwMaximumSizeLow!=0){
+            if(fsize.LowPart != dwMaximumSizeLow || fsize.HighPart!= dwMaximumSizeHigh)
+            {
+                fsize.LowPart = dwMaximumSizeLow;
+                fsize.HighPart = dwMaximumSizeHigh;
+                if(SetFilePointerEx(hFile,fsize,NULL,SEEK_SET) || SetEndOfFile(hFile))
+                {
+                    return INVALID_HANDLE_VALUE;
+                }
+            }
+        }
+        //create file map from fd.
+        FileMapObject *fmObj = new FileMapObject();
+        FileMapData fmData;
+        fmData.uFlags = flProtect;
+        fmData.mappedSize.QuadPart = 0;
+        fmData.offset.QuadPart = 0;
+        fmData.size=fsize;
+        fmObj->init3(fd,fmData);
+        return NewFmHandle(fmObj);
+    }
     FileMapData fmData;
     fmData.uFlags = flProtect;
     fmData.mappedSize.QuadPart = 0;
     fmData.offset.QuadPart = 0;
     fmData.size.HighPart = dwMaximumSizeHigh;
     fmData.size.LowPart = dwMaximumSizeLow;
-    std::string name(lpName);
+    std::string name(lpName?lpName:"");
     if (name.empty())
     {
         // generate random name.
@@ -1202,8 +1243,49 @@ HANDLE WINAPI CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttribute
     return CreateFileMappingA(hFile, lpAttributes, flProtect, dwMaximumSizeHigh, dwMaximumSizeLow, szPath);
 }
 
-static std::mutex s_mutex4fmview;
-static std::map<void *, HANDLE> s_fmviewMap;
+class MapViewMgr{
+public:
+MapViewMgr(){
+
+}
+
+~MapViewMgr(){
+    std::unique_lock<std::mutex> lock(m_mutex);
+    for(auto it : m_fmviewMap){
+        CloseHandle(it.second);
+    }
+    m_fmviewMap.clear();
+}
+
+void addMapView(const void * ptr,HANDLE handle){
+    std::unique_lock<std::mutex> lock(m_mutex);
+    m_fmviewMap.insert(std::make_pair(ptr, handle));
+    AddHandleRef(handle);
+}
+
+HANDLE getViewHandle(const void *ptr){
+    std::unique_lock<std::mutex> lock(m_mutex);
+    auto it = m_fmviewMap.find(ptr);
+    if(it == m_fmviewMap.end())
+        return INVALID_HANDLE_VALUE;
+    return it->second;
+}
+
+void removeMapView(const void *ptr){
+    std::unique_lock<std::mutex> lock(m_mutex);
+    auto it = m_fmviewMap.find(ptr);
+    if(it == m_fmviewMap.end())
+        return;
+    CloseHandle(it->second);
+    m_fmviewMap.erase(it);
+}
+
+protected:
+std::mutex m_mutex;
+std::map<const void *, HANDLE> m_fmviewMap;
+};
+
+static MapViewMgr s_mapViewMgr;
 
 LPVOID WINAPI MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, size_t dwNumberOfBytesToMap)
 {
@@ -1236,12 +1318,9 @@ LPVOID WINAPI MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DW
     {
         fmData.offset = offset;
         fmData.mappedSize.QuadPart = dwNumberOfBytesToMap;
-
-        std::unique_lock<std::mutex> lock(s_mutex4fmview);
-        s_fmviewMap.insert(std::make_pair(ret, hFileMappingObject));
+        s_mapViewMgr.addMapView(ret,hFileMappingObject);
     }
     fmObj->ptr = ret;
-
 end:
     fmObj->unlock();
     return ret;
@@ -1251,11 +1330,10 @@ BOOL WINAPI UnmapViewOfFile(LPCVOID lpBaseAddress)
 {
     if (lpBaseAddress == nullptr)
         return FALSE;
-    std::unique_lock<std::mutex> lock(s_mutex4fmview);
-    auto it = s_fmviewMap.find((void *)lpBaseAddress);
-    if (it == s_fmviewMap.end())
+    HANDLE hMemMap = s_mapViewMgr.getViewHandle(lpBaseAddress);
+    if(hMemMap == INVALID_HANDLE_VALUE)
         return FALSE;
-    FileMapObject *fmObj = (FileMapObject *)it->second->ptr;
+    FileMapObject *fmObj = (FileMapObject *)hMemMap->ptr;
     fmObj->lock();
     assert(fmObj->ptr == lpBaseAddress);
     FileMapData &fmData = fmObj->handleData()->data.fmData;
@@ -1263,7 +1341,7 @@ BOOL WINAPI UnmapViewOfFile(LPCVOID lpBaseAddress)
     fmObj->ptr = nullptr;
     fmData.mappedSize.QuadPart = 0;
     fmObj->unlock();
-    s_fmviewMap.erase(it);
+    s_mapViewMgr.removeMapView(lpBaseAddress);
     return TRUE;
 }
 

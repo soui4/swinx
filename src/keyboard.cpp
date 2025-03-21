@@ -80,7 +80,7 @@ static KeyMap KeyTbl[] = {
     XK_comma,VK_OEM_COMMA,
     XK_minus,VK_OEM_MINUS,
     XK_period,VK_OEM_PERIOD,
-
+    XK_apostrophe, VK_OEM_7,    
 //    XK_Muhenkan,                Qt::Key_Muhenkan,
 // XK_Henkan_Mode,           Qt::Key_Henkan_Mode,
 // XK_Henkan_Mode,             Qt::Key_Henkan,

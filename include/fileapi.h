@@ -90,6 +90,7 @@ extern "C"
 
     HANDLE WINAPI CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
 
+    int WINAPI _open_osfhandle(HANDLE hFile,int flags );
 #ifdef UNICODE
 #define CreateFile CreateFileW
 #else
@@ -131,6 +132,13 @@ extern "C"
     BOOL WINAPI WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped);
 
     DWORD WINAPI SetFilePointer(HANDLE file, LONG distance, LONG *highword, DWORD method);
+    BOOL WINAPI SetFilePointerEx(
+            HANDLE hFile,
+            LARGE_INTEGER liDistanceToMove,
+            PLARGE_INTEGER lpNewFilePointer,
+            DWORD dwMoveMethod
+    );
+
     BOOL WINAPI SetEndOfFile(HANDLE file);
     BOOL WINAPI DosDateTimeToFileTime(WORD fatdate, WORD fattime, FILETIME *ft);
     BOOL WINAPI FileTimeToDosDateTime(const FILETIME *ft, WORD *fatdate, WORD *fattime);

@@ -8,6 +8,7 @@
 #include "sharedmem.h"
 #include <uuid/uuid.h>
 #include <xcb/xproto.h>
+#include "log.h"
 
 enum _MsgType
 {
@@ -301,11 +302,13 @@ struct IpcMsg : Msg
             cds.cbData = *(DWORD *)extra;
             cds.lpData = extra + sizeof(DWORD);
             lParam = (LPARAM)&cds;
+            //LOG_STMI("msg")<<"recv copydata msg, dwData="<<cds.dwData<<" cbData="<<cds.cbData;
         }
         else
         {
             wParam = msgLayout->wp;
             lParam = msgLayout->lp;
+            //LOG_STMI("msg")<<"recv ipc msg="<<message<<" wp="<<wParam<<" lp="<<lParam;
         }
     }
 

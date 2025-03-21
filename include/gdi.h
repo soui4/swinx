@@ -271,6 +271,7 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #define CreateFontIndirect CreateFontIndirectA
 #endif // UNICODE
 
+#pragma pack(push,1)
     /* Bitmap Header Definition */
     typedef struct tagBITMAP
     {
@@ -399,6 +400,8 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
         BITMAPCOREHEADER bmciHeader;
         RGBTRIPLE bmciColors[1];
     } BITMAPCOREINFO, *PBITMAPCOREINFO, *LPBITMAPCOREINFO;
+
+#pragma pack(pop)
 
 /* constants for the biCompression field */
 #define BI_RGB       0L

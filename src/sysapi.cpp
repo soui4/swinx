@@ -577,12 +577,12 @@ static void shortsort_s(char *lo, char *hi, size_t width, int(__cdecl *comp)(voi
 
 static void swap(char *p, char *q, size_t width);
 
-LONG InterlockedDecrement(LONG *v)
+LONG InterlockedDecrement(LONG volatile *v)
 {
     return __atomic_fetch_sub(v, 1, __ATOMIC_SEQ_CST) - 1;
 }
 
-LONG InterlockedIncrement(LONG *v)
+LONG InterlockedIncrement(LONG volatile *v)
 {
     return __atomic_fetch_add(v, 1, __ATOMIC_SEQ_CST) + 1;
 }
@@ -1151,6 +1151,7 @@ BOOL WINAPI CreateProcessAsUserA(
             lpCommandLine = strchr(lpCommandLine,' ');
         if(lpCommandLine){
             lpCommandLine += lpApplicationName[0]=='\"'?2:1;
+            lpCommandLine[-1]='\0';
         }
     }
     install_sigchld_handler();

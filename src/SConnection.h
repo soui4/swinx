@@ -125,6 +125,8 @@ class SConnection {
     HWND GetWindow(HWND hWnd, int code) const;
 
     HWND WindowFromPoint(POINT pt, HWND hWnd) const;
+    
+    BOOL IsWindow(HWND hWnd) const;
 
     BOOL GetCursorPos(LPPOINT ppt) const;
 

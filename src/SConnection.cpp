@@ -1356,21 +1356,26 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
 
 void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
 {
-    if (!hParent)
-    {
-        if (m_hWndActive)
-            hWnd = m_hWndActive;
-        else
-            hParent = screen->root;
-    }
+    if(wndObj){
+        if (!hParent)
+        {
+            if (m_hWndActive)
+                hWnd = m_hWndActive;
+            else
+                hParent = screen->root;
+        }
 
-    if (!(wndObj->dwStyle & WS_CHILD))
-    {
-        xcb_icccm_set_wm_transient_for(connection, hWnd, hParent);
-    }
-    else if (hParent)
-    {
-        xcb_reparent_window(connection, hWnd, hParent, 0, 0);
+        if (!(wndObj->dwStyle & WS_CHILD))
+        {
+            xcb_icccm_set_wm_transient_for(connection, hWnd, hParent);
+        }
+        else if (hParent)
+        {
+            xcb_reparent_window(connection, hWnd, hParent, 0, 0);
+        }
+    }else{
+        //hwnd for other process.
+        xcb_reparent_window(connection, hWnd, hParent?hParent:screen->root, 0, 0);
     }
     xcb_flush(connection);
 }
@@ -1883,6 +1888,15 @@ HWND SConnection::GetWindow(HWND hWnd, int code) const
     }
     free(tree_reply);
     return ret;
+}
+
+BOOL SConnection::IsWindow(HWND hWnd) const{
+    xcb_get_geometry_cookie_t cookie = xcb_get_geometry(connection, hWnd);
+    xcb_get_geometry_reply_t *reply = xcb_get_geometry_reply(connection, cookie, NULL);
+    if (!reply)
+        return FALSE;
+    free(reply);
+    return TRUE;
 }
 
 HWND SConnection::WindowFromPoint(POINT pt, HWND hWnd) const

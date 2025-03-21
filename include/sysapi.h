@@ -47,9 +47,9 @@ extern "C"
 
     VOID WINAPI ReleaseSRWLockShared(PSRWLOCK SRWLock);
 
-    LONG WINAPI InterlockedDecrement(LONG *v);
+    LONG WINAPI InterlockedDecrement(LONG volatile *v);
 
-    LONG WINAPI InterlockedIncrement(LONG *v);
+    LONG WINAPI InterlockedIncrement(LONG volatile *v);
 
     void qsort_s(void *_Base, size_t _NumOfElements, size_t _SizeOfElements, int(__cdecl *_PtFuncCompare)(void *, const void *, const void *), void *_Context);
 

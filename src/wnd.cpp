@@ -509,10 +509,20 @@ int GetClassNameW(HWND hWnd, LPWSTR lpClassName, int nMaxCount)
 
 BOOL WINAPI DestroyWindow(HWND hWnd)
 {
-    if (!IsWindow(hWnd))
-        return FALSE;
-    SendMessage(hWnd, WM_DESTROY, 0, 0);
-    return TRUE;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (wndObj)
+    {
+        if(!wndObj->bDestroyed){
+            SendMessage(hWnd, WM_DESTROY, 0, 0);
+        }
+        return TRUE; 
+    }else{
+        SConnection *conn = SConnMgr::instance()->getConnection();
+        if(!conn->IsWindow(hWnd))
+            return FALSE;
+        PostMessage(hWnd,WM_DESTROY,0,0);
+        return TRUE;
+    }
 }
 
 BOOL WINAPI IsWindow(HWND hWnd)
@@ -523,12 +533,7 @@ BOOL WINAPI IsWindow(HWND hWnd)
         return !wndObj->bDestroyed;
     }
     SConnection *conn = SConnMgr::instance()->getConnection();
-    xcb_get_geometry_cookie_t cookie = xcb_get_geometry(conn->connection, hWnd);
-    xcb_get_geometry_reply_t *reply = xcb_get_geometry_reply(conn->connection, cookie, NULL);
-    if (!reply)
-        return FALSE;
-    free(reply);
-    return TRUE;
+    return conn->IsWindow(hWnd);
 }
 
 BOOL ClientToScreen(HWND hWnd, LPPOINT ppt)
@@ -1255,7 +1260,13 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         HWND hChild = GetWindow(hWnd, GW_CHILDLAST);
         while (hChild)
         {
-            DestroyWindow(hChild);
+            WndObj child = WndMgr::fromHwnd(hChild);
+            if(child){
+                DestroyWindow(hChild);
+            }else{
+                //other process window, set it's parent to screen root
+                wndObj->mConnection->SetParent(hChild,nullptr,0);
+            }
             hChild = GetWindow(hWnd, GW_CHILDLAST);
         }
         CallWindowObjProc(wndObj, proc, hWnd, WM_NCDESTROY, 0, 0);
@@ -1271,12 +1282,8 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 
 SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, HANDLE &hEvt)
 {
-    xcb_get_geometry_cookie_t cookie = xcb_get_geometry(connCur->connection, hWnd);
-    xcb_get_geometry_reply_t *reply = xcb_get_geometry_reply(connCur->connection, cookie, NULL);
-    if (!reply)
+    if(!connCur->IsWindow(hWnd))
         return nullptr;
-    free(reply);
-
     uuid_t uuid;
     uuid_generate_random(uuid);
     std::string strName = IpcMsg::get_share_mem_name(uuid);
@@ -1295,7 +1302,7 @@ SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM w
         MsgLayout *ptr = (MsgLayout *)shareMem->buffer();
         ptr->ret = 0;
         ptr->wp = wp;
-        ptr->lp = cds->cbData;
+        ptr->lp = cds->dwData;
         DWORD *buf = (DWORD *)(ptr + 1);
         *buf = cds->cbData;
         if (cds->cbData > 0)
@@ -1362,16 +1369,21 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         }
         else
         {
-            MSG msg;
+            MSG msg2;
             for (;;)
             {
                 ret = connCur->waitMutliObjectAndMsg(&hEvt, 1, uTimeout, FALSE, QS_ALLINPUT);
                 if (ret == WAIT_OBJECT_0 + 1)
                 {
-                    if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+                    if (PeekMessage(&msg2, 0, 0, 0, PM_REMOVE))
                     {
-                        TranslateMessage(&msg);
-                        DispatchMessage(&msg);
+                        if(msg2.message == WM_QUIT)
+                        {
+                            connCur->postMsg(msg2.hwnd,msg2.message,msg2.wParam,msg2.lParam);
+                            break;
+                        }
+                        TranslateMessage(&msg2);
+                        DispatchMessage(&msg2);
                     }
                 }
                 else
@@ -1383,7 +1395,8 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         if (ret == WAIT_OBJECT_0)
         {
             MsgLayout *ptr = (MsgLayout *)shareMem->buffer();
-            *lpdwResult = ptr->ret;
+            if(lpdwResult)
+                *lpdwResult = ptr->ret;
         }
 
         delete shareMem;
@@ -2237,8 +2250,19 @@ BOOL UpdateWindow(HWND hWnd)
 BOOL GetClientRect(HWND hWnd, RECT *pRc)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return FALSE;
+    if (!wndObj){
+        //hWnd is owned by other process.
+        SConnection *conn = SConnMgr::instance()->getConnection();
+        xcb_get_geometry_cookie_t cookie = xcb_get_geometry(conn->connection, hWnd);
+        xcb_get_geometry_reply_t* reply = xcb_get_geometry_reply(conn->connection, cookie, NULL);
+        if(!reply)
+            return FALSE;
+        pRc->left = pRc->top = 0;
+        pRc->right = reply->width;
+        pRc->bottom = reply->height;
+        free(reply);
+        return TRUE;
+    }
     *pRc = wndObj->rc;
     OffsetRect(pRc, -pRc->left, -pRc->top);
     if (wndObj->dwStyle & WS_BORDER)
@@ -3148,11 +3172,21 @@ BOOL ShowWindow(HWND hWnd, int nCmdShow)
     if (!wndObj)
         return FALSE;
     BOOL bVisible = IsWindowVisible(hWnd);
-    BOOL bNew = nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNOACTIVATE || nCmdShow == SW_SHOWNORMAL || nCmdShow == SW_SHOWNA;
+    BOOL bNew = nCmdShow == SW_SHOW 
+            || nCmdShow == SW_SHOWNOACTIVATE 
+            || nCmdShow == SW_SHOWNORMAL 
+            || nCmdShow == SW_SHOWNA
+            || nCmdShow == SW_MAXIMIZE
+            || nCmdShow == SW_MINIMIZE;
     if (bVisible == bNew)
         return TRUE;
     wndObj->mConnection->SetWindowVisible(hWnd, wndObj.data(), bNew, nCmdShow);
     SendMessage(hWnd, WM_SHOWWINDOW, bNew, 0);
+    if(nCmdShow == SW_MAXIMIZE){
+        SendMessage(hWnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+    }else if(nCmdShow == SW_MINIMIZE){
+        SendMessage(hWnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+    }
     return TRUE;
 }
 

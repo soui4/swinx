@@ -583,12 +583,15 @@ int GetObjectA(HGDIOBJ h, int c, LPVOID pv)
             case CAIRO_FORMAT_ARGB32:
                 bm->bmBitsPixel = 32;
                 break;
+            case CAIRO_FORMAT_RGB24:
+                bm->bmBitsPixel = 24;
+                break;
             default:
                 assert(0);
                 break;
             }
 
-            bm->bmWidthBytes = bm->bmWidth * bm->bmBitsPixel / 8;
+            bm->bmWidthBytes = ((bm->bmWidth * bm->bmBitsPixel)/ 8 +3)/4 * 4;
             bm->bmType = BI_RGB;
             bm->bmBits = cairo_image_surface_get_data(pixmap);
             ret = sizeof(BITMAP);
@@ -682,7 +685,8 @@ HBITMAP CreateDIBitmap(HDC hdc, const BITMAPINFOHEADER *pbmih, DWORD flInit, con
     HBITMAP bmp = CreateDIBSection(hdc, pbmi, 0, nullptr, 0, 0);
     if (bmp)
     {
-        UpdateDIBPixmap(bmp, pbmi->bmiHeader.biWidth, pbmi->bmiHeader.biHeight, pbmi->bmiHeader.biBitCount, pbmi->bmiHeader.biWidth * pbmi->bmiHeader.biBitCount / 8, pjBits);
+        int stride = ((pbmi->bmiHeader.biWidth * pbmi->bmiHeader.biBitCount / 8)+3)/4 *4;
+        UpdateDIBPixmap(bmp, pbmi->bmiHeader.biWidth, pbmi->bmiHeader.biHeight, pbmi->bmiHeader.biBitCount, stride, pjBits);
     }
     return bmp;
 }
@@ -761,6 +765,9 @@ HBITMAP CreateDIBSection(HDC hdc, const BITMAPINFO *lpbmi, UINT usage, VOID **pp
     case 32:
         fmt = CAIRO_FORMAT_ARGB32;
         break;
+    case 24:
+        fmt = CAIRO_FORMAT_RGB24;
+        break;
     }
     if (fmt == CAIRO_FORMAT_INVALID)
         return 0;
@@ -788,10 +795,51 @@ BOOL UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, C
         return FALSE;
     if (bm.bmWidth != wid || bm.bmHeight != hei || bm.bmBitsPixel != bitsPixel)
         return FALSE;
+    int surfaceStride = cairo_image_surface_get_stride((cairo_surface_t*)GetGdiObjPtr(bmp));
     if (pjBits)
-        memcpy(bm.bmBits, pjBits, hei * stride);
+    {
+        if(stride == surfaceStride)
+            memcpy(bm.bmBits, pjBits, hei * stride);
+        else{
+            char * src = (char*)pjBits;
+            char * dst = (char*)bm.bmBits;
+            int fmt = cairo_image_surface_get_format((cairo_surface_t*)GetGdiObjPtr(bmp));
+            if(bitsPixel == 24 && fmt == CAIRO_FORMAT_RGB24){
+                for(int i=0;i<hei;i++){
+                    char * lsrc = src;
+                    char * ldst = dst;
+                    for(int j=0;j<wid;j++){
+                        memcpy(ldst,lsrc,3);
+                        ldst+=4;
+                        lsrc+=3;
+                    }
+                    dst += surfaceStride;
+                    src += stride;
+                }
+            }else if(bitsPixel == 1 && fmt == CAIRO_FORMAT_A1){
+                //copy from kimi
+                for (int y = 0; y < hei; y++) {
+                    for (int x = 0; x < wid; x++) {
+                        int bitmap_index = (y * ((wid + 7) / 8) + (x / 8));
+                        int cairo_index = (y * surfaceStride + (x / 8));
+                        uint8_t bitmap_bit = (src[bitmap_index] >> (7 - (x % 8))) & 1;
+                        uint8_t cairo_bit = (dst[cairo_index] >> (7 - (x % 8))) & 1;
+
+                        if (bitmap_bit) {
+                            dst[cairo_index] |= (1 << (7 - (x % 8)));
+                        } else {
+                            dst[cairo_index] &= ~(1 << (7 - (x % 8)));
+                        }
+                    }
+                }
+            }else{
+                SLOG_STMW()<<"invalid pixel map";
+            }
+            
+        }
+    }   
     else
-        memset(bm.bmBits, 0, hei * stride);
+        memset(bm.bmBits, 0, hei * surfaceStride);
     MarkPixmapDirty(bmp);
     return TRUE;
 }

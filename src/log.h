@@ -4,7 +4,7 @@
 #include <string>
 #include <sstream>
 #include <strapi.h>
-typedef void (*SWinxLogCallback)(const char* pLogStr, int level);
+#include <logdef.h>
 
 namespace swinx
 {
@@ -67,24 +67,6 @@ namespace swinx
             MAX_TAGLEN = 100,
             MAX_LOGLEN = 1024,
         };
-        enum LogPriority {
-            /** For internal use only.  */
-            LOG_UNKNOWN = 0,
-            /** The default priority, for internal use only.  */
-            LOG_DEFAULT, /* only for SetMinPriority() */
-            /** Verbose logging. Should typically be disabled for a release apk. */
-            LOG_VERBOSE,
-            /** Debug logging. Should typically be disabled for a release apk. */
-            LOG_DEBUG,
-            /** Informational logging. Should typically be disabled for a release apk. */
-            LOG_INFO,
-            /** Warning logging. For use with recoverable failures. */
-            LOG_WARN,
-            /** Error logging. For use with unrecoverable failures. */
-            LOG_ERROR,
-            /** Fatal logging. For use when aborting. */
-            LOG_FATAL,
-        };
     public:
         Log(const char *tag, int level,const char * filename, const char *funname,int lineIndex);
 
@@ -127,29 +109,29 @@ std::stringstream& operator <<(std::stringstream& dst, const wchar_t* src);
         }                                                                   \
     }while(false);
 
-#define LOG_STMD(tag) LOG_STM(tag,swinx::Log::LOG_DEBUG)
-#define LOG_STMI(tag) LOG_STM(tag,swinx::Log::LOG_INFO)
-#define LOG_STMW(tag) LOG_STM(tag,swinx::Log::LOG_WARN)
-#define LOG_STME(tag) LOG_STM(tag,swinx::Log::LOG_ERROR)
-#define LOG_STMF(tag) LOG_STM(tag,swinx::Log::LOG_FATAL)
+#define LOG_STMD(tag) LOG_STM(tag,SLOG_DEBUG)
+#define LOG_STMI(tag) LOG_STM(tag,SLOG_INFO)
+#define LOG_STMW(tag) LOG_STM(tag,SLOG_WARN)
+#define LOG_STME(tag) LOG_STM(tag,SLOG_ERROR)
+#define LOG_STMF(tag) LOG_STM(tag,SLOG_FATAL)
 
-#define LOG_FMTD(tag,logformat, ...) LOG_FMT(tag,swinx::Log::LOG_DEBUG,logformat,##__VA_ARGS__)
-#define LOG_FMTI(tag,logformat, ...) LOG_FMT(tag,swinx::Log::LOG_INFO,logformat,##__VA_ARGS__)
-#define LOG_FMTW(tag,logformat, ...) LOG_FMT(tag,swinx::Log::LOG_WARN,logformat,##__VA_ARGS__)
-#define LOG_FMTE(tag,logformat, ...) LOG_FMT(tag,swinx::Log::LOG_ERROR,logformat,##__VA_ARGS__)
-#define LOG_FMTF(tag,logformat, ...) LOG_FMT(tag,swinx::Log::LOG_FATAL,logformat,##__VA_ARGS__)
+#define LOG_FMTD(tag,logformat, ...) LOG_FMT(tag,SLOG_DEBUG,logformat,##__VA_ARGS__)
+#define LOG_FMTI(tag,logformat, ...) LOG_FMT(tag,SLOG_INFO,logformat,##__VA_ARGS__)
+#define LOG_FMTW(tag,logformat, ...) LOG_FMT(tag,SLOG_WARN,logformat,##__VA_ARGS__)
+#define LOG_FMTE(tag,logformat, ...) LOG_FMT(tag,SLOG_ERROR,logformat,##__VA_ARGS__)
+#define LOG_FMTF(tag,logformat, ...) LOG_FMT(tag,SLOG_FATAL,logformat,##__VA_ARGS__)
 
-#define SLOG_STMD() LOG_STM(kLogTag,swinx::Log::LOG_DEBUG)
-#define SLOG_STMI() LOG_STM(kLogTag,swinx::Log::LOG_INFO)
-#define SLOG_STMW() LOG_STM(kLogTag,swinx::Log::LOG_WARN)
-#define SLOG_STME() LOG_STM(kLogTag,swinx::Log::LOG_ERROR)
-#define SLOG_STMF() LOG_STM(kLogTag,swinx::Log::LOG_FATAL)
+#define SLOG_STMD() LOG_STM(kLogTag,SLOG_DEBUG)
+#define SLOG_STMI() LOG_STM(kLogTag,SLOG_INFO)
+#define SLOG_STMW() LOG_STM(kLogTag,SLOG_WARN)
+#define SLOG_STME() LOG_STM(kLogTag,SLOG_ERROR)
+#define SLOG_STMF() LOG_STM(kLogTag,SLOG_FATAL)
 
-#define SLOG_FMTD(logformat, ...) LOG_FMT(kLogTag,swinx::Log::LOG_DEBUG,logformat,##__VA_ARGS__)
-#define SLOG_FMTI(logformat, ...) LOG_FMT(kLogTag,swinx::Log::LOG_INFO,logformat,##__VA_ARGS__)
-#define SLOG_FMTW(logformat, ...) LOG_FMT(kLogTag,swinx::Log::LOG_WARN,logformat,##__VA_ARGS__)
-#define SLOG_FMTE(logformat, ...) LOG_FMT(kLogTag,swinx::Log::LOG_ERROR,logformat,##__VA_ARGS__)
-#define SLOG_FMTF(logformat, ...) LOG_FMT(kLogTag,swinx::Log::LOG_FATAL,logformat,##__VA_ARGS__)
+#define SLOG_FMTD(logformat, ...) LOG_FMT(kLogTag,SLOG_DEBUG,logformat,##__VA_ARGS__)
+#define SLOG_FMTI(logformat, ...) LOG_FMT(kLogTag,SLOG_INFO,logformat,##__VA_ARGS__)
+#define SLOG_FMTW(logformat, ...) LOG_FMT(kLogTag,SLOG_WARN,logformat,##__VA_ARGS__)
+#define SLOG_FMTE(logformat, ...) LOG_FMT(kLogTag,SLOG_ERROR,logformat,##__VA_ARGS__)
+#define SLOG_FMTF(logformat, ...) LOG_FMT(kLogTag,SLOG_FATAL,logformat,##__VA_ARGS__)
 
 
 #endif//_LOG_H_

@@ -223,7 +223,7 @@ SLogStream &SLogStream::operator<<(const void *t)
 
 ////////////////////////////////////////////////////////////////////////
 static SWinxLogCallback gs_LogFunc = NULL;
-static int gs_level = Log::LOG_INFO;
+static int gs_level = SLOG_INFO;
 
 Log::Log(const char *tag, int level, const char *filename, const char *funname, int lineIndex)
     : m_stream(m_logbuf, MAX_LOGLEN + 100)
@@ -243,9 +243,9 @@ Log::~Log()
     tid_t tid = GetCurrentThreadId();
     if (gs_LogFunc != NULL)
     {
-        const char *kLevelStr[] = { "unknown", "default", "verbose", "debug", "info", "warn", "error", "fatal" };
+        const char *kLevelStr[] = { "verbose", "debug", "info", "warn", "error", "fatal" };
         char buf[MAX_LOGLEN] = { 0 };
-        const char *levelStr = (m_level >= LOG_UNKNOWN && m_level <= LOG_FATAL) ? kLevelStr[m_level] : "invalid";
+        const char *levelStr = (m_level >= SLOG_VERBOSE && m_level <= SLOG_FATAL) ? kLevelStr[m_level] : "invalid";
 #ifdef NDEBUG
         snprintf(buf, sizeof(buf), "tid=%ld,%s,%s,%s", tid, m_tag, levelStr, m_logbuf);
 #else
@@ -296,6 +296,7 @@ void Log::setLogCallback(::SWinxLogCallback logCallback)
 
 void Log::setLogLevel(int level)
 {
+    gs_level = level;
 }
 
 } // namespace swinx
@@ -308,4 +309,9 @@ std::stringstream &operator<<(std::stringstream &dst, const wchar_t *src)
         dst << szTmp;
     }
     return dst;
+}
+
+void WINAPI SetSwinxLogCallback(SWinxLogCallback cb,int level){
+    swinx::Log::setLogCallback(cb);
+    swinx::Log::setLogLevel(level);
 }
