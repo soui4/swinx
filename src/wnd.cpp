@@ -1623,7 +1623,12 @@ BOOL SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int x, int y, int cx, int cy,
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
-        return FALSE;
+    {
+        SConnection *conn = SConnMgr::instance()->getConnection();
+        if(!conn)
+            return FALSE;
+        return conn->MoveWindow(hWnd,x,y,cx,cy);
+    }    
     WINDOWPOS wndPos;
     wndPos.hwnd = hWnd;
     wndPos.hwndInsertAfter = hWndInsertAfter;
@@ -3082,8 +3087,7 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         {
             if ((wndPos.x != rc.left || wndPos.y != rc.top))
             {
-                const uint32_t coords[] = { static_cast<uint32_t>(wndPos.x), static_cast<uint32_t>(wndPos.y) };
-                xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, coords);
+                wndObj->mConnection->SetWindowPos(hWnd,wndPos.x,wndPos.y);
             }
             SendMessage(hWnd, WM_MOVE, 0, MAKELPARAM(wndPos.x, wndPos.y));
         }
@@ -3091,10 +3095,7 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         {
             if ((wndPos.cx != rc.right - rc.left || wndPos.cy != rc.bottom - rc.top))
             {
-                uint32_t coords[] = { static_cast<uint32_t>(wndPos.cx), static_cast<uint32_t>(wndPos.cy) };
-                coords[0] = std::max<uint32_t>(coords[0], 1);
-                coords[1] = std::max<uint32_t>(coords[1], 1);
-                xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, coords);
+                wndObj->mConnection->SetWindowSize(hWnd,wndPos.cx,wndPos.cy);
             }
             SendMessage(hWnd, WM_SIZE, 0, MAKELPARAM(wndPos.cx, wndPos.cy));
         }

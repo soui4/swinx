@@ -128,6 +128,11 @@ class SConnection {
     
     BOOL IsWindow(HWND hWnd) const;
 
+    void SetWindowPos(HWND hWnd,int x,int y) const;
+    void SetWindowSize(HWND hWnd,int cx,int cy) const;
+    
+    BOOL MoveWindow(HWND hWnd, int x, int y, int cx, int cy) const;
+
     BOOL GetCursorPos(LPPOINT ppt) const;
 
     int GetDpi(BOOL bx) const;

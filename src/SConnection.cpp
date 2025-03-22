@@ -1899,6 +1899,29 @@ BOOL SConnection::IsWindow(HWND hWnd) const{
     return TRUE;
 }
 
+void SConnection::SetWindowPos(HWND hWnd, int x, int y) const
+{
+    uint32_t coords[] = { static_cast<uint32_t>(x), static_cast<uint32_t>(y) };
+    xcb_configure_window(connection, hWnd, XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y, coords);
+}
+
+void SConnection::SetWindowSize(HWND hWnd, int cx, int cy) const
+{
+    if(cx<1) cx=1;
+    if(cy<1) cy=1;
+    uint32_t coords[] = { static_cast<uint32_t>(cx), static_cast<uint32_t>(cy) };
+    xcb_configure_window(connection, hWnd, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, coords);
+}
+
+BOOL SConnection::MoveWindow(HWND hWnd,int x,int y,int cx,int cy) const{
+    if(!IsWindow(hWnd))
+        return FALSE;
+    SetWindowPos(hWnd,x,y);
+    SetWindowSize(hWnd,cx,cy);
+    xcb_flush(connection);
+    return TRUE;
+}
+
 HWND SConnection::WindowFromPoint(POINT pt, HWND hWnd) const
 {
     if (!hWnd)
