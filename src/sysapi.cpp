@@ -1695,8 +1695,17 @@ LONG CompareFileTime(const FILETIME *ft1, const FILETIME *ft2)
 
 BOOL WINAPI SystemParametersInfoA(UINT action, UINT val, void *ptr, UINT winini)
 {
-    // todo:hjx
-    return FALSE;
+    //todo:hjx
+    switch(action){
+        case SPI_GETWHEELSCROLLLINES:
+        {
+            unsigned int *pv = (unsigned int*)ptr;
+            *pv = 3;
+            return TRUE;
+        }
+        default:
+            return FALSE;
+    }
 }
 
 BOOL WINAPI SystemParametersInfoW(UINT action, UINT val, void *ptr, UINT winini)
