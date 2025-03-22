@@ -364,7 +364,7 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
         int len = strlen(lpFile);
         char *cmd = new char[len+10];
         sprintf(cmd, "xdg-open %s", lpFile);
-        system(cmd);
+        int ret = system(cmd);
         delete []cmd;
         return TRUE; 
     }else{
@@ -413,7 +413,7 @@ BOOL WINAPI ShellExecuteExA(LPSHELLEXECUTEINFOA lpExecInfo){
         int len = strlen(lpFile);
         char *cmd = new char[len+10];
         sprintf(cmd, "xdg-open %s", lpFile);
-        system(cmd);
+        int ret = system(cmd);
         delete []cmd;
         return TRUE; 
     }else{

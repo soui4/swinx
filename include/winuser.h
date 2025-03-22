@@ -226,6 +226,10 @@ extern "C"
 #define WM_CTLCOLORSTATIC    0x0138
 #define MN_GETHMENU          0x01E1
 
+#define GET_KEYSTATE_WPARAM(wParam)     (LOWORD(wParam))
+#define GET_NCHITTEST_WPARAM(wParam)    ((short)LOWORD(wParam))
+#define GET_XBUTTON_WPARAM(wParam)      (HIWORD(wParam))
+
 /* Value for rolling one detent */
 #define WHEEL_DELTA                    120
 #define GET_WHEEL_DELTA_WPARAM(wParam) ((short)HIWORD(wParam))

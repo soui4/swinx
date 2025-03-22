@@ -949,7 +949,7 @@ HANDLE SClipboard::setClipboardData(UINT uFormat, HANDLE hMem)
         uFormat = CF_TEXT;
     }
     IDataObject *pDo = getDataObject(FALSE);
-    FORMATETC formatetc = {uFormat,nullptr,0,0,TYMED_HGLOBAL};  //Pointer to the FORMATETC structure
+    FORMATETC formatetc = {(CLIPFORMAT)uFormat,nullptr,0,0,TYMED_HGLOBAL};  //Pointer to the FORMATETC structure
     STGMEDIUM medium;
     pDo->SetData(&formatetc,&medium,TRUE);
     pDo->Release();

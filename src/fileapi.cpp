@@ -190,8 +190,7 @@ static int grow_file(int unix_fd, uint64_t new_size)
     /* this should work around ftruncate implementations that can't extend files */
     if (pwrite(unix_fd, &zero, 1, size) != -1)
     {
-        ftruncate(unix_fd, size);
-        return 1;
+        return ftruncate(unix_fd, size)==0?1:0;
     }
     return 0;
 }

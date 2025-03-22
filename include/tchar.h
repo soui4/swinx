@@ -48,6 +48,12 @@
 #define _tcschr    wcschr
 #define _tcscat    wcscat
 #define _tstoi     _wtoi
+#define _istdigit  iswdigit
+#define _istspace  iswspace
+#define _istalnum  iswalnum
+#define _istprint  iswprint
+#define _istalpha  iswalpha
+
 #else
 #define lstrlen    lstrlenA
 #define lstrcpy    lstrcpyA
@@ -71,6 +77,12 @@
 #define _tcschr    strchr
 #define _tcscat    strcat
 #define _tstoi     atoi
+#define _istdigit  isdigit
+#define _istspace  isspace
+#define _istalnum  isalnum
+#define _istprint  isprint
+#define _istalpha  isalpha
+
 #endif
 
 #endif //__TCHAR_H_
