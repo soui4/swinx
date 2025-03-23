@@ -2128,10 +2128,25 @@ HWND SConnection::SetFocus(HWND hWnd)
     {
         return hWnd;
     }
-    xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd, XCB_CURRENT_TIME);
+    uint8_t revert_to = XCB_INPUT_FOCUS_POINTER_ROOT;
+    if(!hWnd)
+        revert_to = XCB_INPUT_FOCUS_NONE;
+    else{
+        if(!IsWindowVisible(hWnd))
+            return m_hFocus;
+    }
+    HWND hRet = m_hFocus;
+    xcb_void_cookie_t cookie = xcb_set_input_focus_checked(connection, revert_to, hWnd, XCB_CURRENT_TIME);
+    xcb_generic_error_t* error = xcb_request_check(connection, cookie);
     xcb_flush(connection);
-    //SLOG_STMI() << "SetFocus, oldFocus=" << m_hFocus << " newFocus=" << hWnd;
-    return m_hFocus;
+    if (error) {
+        SLOG_STMI()<<"SetFocus error, code="<<(int)error->error_code<<" hWnd="<<hWnd;        
+        free(error);
+    }else{
+        SLOG_STMI() << "SetFocus, oldFocus=" << hRet << " newFocus=" << hWnd;
+        OnSetFocus(hWnd);
+    }
+    return hRet;
 }
 
 uint32_t SConnection::netWmStates(HWND hWnd)
