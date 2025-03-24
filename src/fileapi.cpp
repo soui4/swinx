@@ -81,6 +81,8 @@ HANDLE WINAPI CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwSha
 
 static _FileData *GetFD(HANDLE h)
 {
+    if(h == INVALID_HANDLE_VALUE)
+        return nullptr;
     if (h->type == FILE_OBJ)
         return (_FileData *)h->ptr;
     return nullptr;

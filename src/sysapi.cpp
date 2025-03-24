@@ -1128,6 +1128,15 @@ HANDLE WINAPI GetCurrentProcess(void){
     return INVALID_HANDLE_VALUE;//return a pseudo handle
 }
 
+static void RedirectFd(HANDLE h,int fd2){
+    if(!h)
+        return;
+    int fd = _open_osfhandle(h,0);
+    if(fd == -1)
+        return;
+    dup2(fd,fd2);
+}
+
 BOOL WINAPI CreateProcessAsUserA(
     HANDLE hToken,
     LPCSTR lpApplicationName,
@@ -1282,6 +1291,14 @@ BOOL WINAPI CreateProcessAsUserA(
             if(i>=1000)
                 break;
         }
+        if(lpStartupInfo)
+        {
+            //redirect stdin/out/err
+            RedirectFd(lpStartupInfo->hStdInput,STDIN_FILENO);
+            RedirectFd(lpStartupInfo->hStdOutput,STDOUT_FILENO);
+            RedirectFd(lpStartupInfo->hStdError,STDERR_FILENO);
+        }
+
         //child process
         execve(args[0], args, envs);       // 替换子进程的代码为新程序
         perror("execvp failed");    // 如果 execvp 失败，打印错误信息
@@ -1323,34 +1340,37 @@ BOOL WINAPI CreateProcessAsUserW(
     tostring(lpCommandLine,-1,strCmd);
     tostring(lpCurrentDirectory,-1,strDir);
     std::string strDesktop,strTitle;
-    if(lpStartupInfo->lpDesktop)
-        tostring(lpStartupInfo->lpDesktop,-1,strDesktop);
-    if(lpStartupInfo->lpTitle)
-        tostring(lpStartupInfo->lpTitle,-1,strTitle);
     STARTUPINFOA startupINfoA;
-    startupINfoA.cb = sizeof(startupINfoA);
-    startupINfoA.lpReserved=NULL;
-    startupINfoA.lpDesktop = lpStartupInfo->lpDesktop?(char*)strDesktop.c_str():nullptr;
-    startupINfoA.lpTitle = lpStartupInfo->lpTitle?(char*)strTitle.c_str():nullptr;
-    startupINfoA.dwX=lpStartupInfo->dwX;
-    startupINfoA.dwY=lpStartupInfo->dwY;
-    startupINfoA.dwXSize=lpStartupInfo->dwXSize;
-    startupINfoA.dwYSize=lpStartupInfo->dwYSize;
-    startupINfoA.dwXCountChars=lpStartupInfo->dwXCountChars;
-    startupINfoA.dwYCountChars=lpStartupInfo->dwYCountChars;
-    startupINfoA.dwFillAttribute=lpStartupInfo->dwFillAttribute;
-    startupINfoA.dwFlags=lpStartupInfo->dwFlags;
-    startupINfoA.wShowWindow=lpStartupInfo->wShowWindow;
-    startupINfoA.cbReserved2=0;
-    startupINfoA.lpReserved2=nullptr;
-    startupINfoA.hStdInput = lpStartupInfo->hStdInput;
-    startupINfoA.hStdOutput=lpStartupInfo->hStdOutput;
-    startupINfoA.hStdError = lpStartupInfo->hStdError;   
-
+    STARTUPINFOA * pStartInfoA=nullptr;
+    if(lpStartupInfo){
+        pStartInfoA = &startupINfoA;
+        if(lpStartupInfo->lpDesktop)
+            tostring(lpStartupInfo->lpDesktop,-1,strDesktop);
+        if(lpStartupInfo->lpTitle)
+            tostring(lpStartupInfo->lpTitle,-1,strTitle);
+        startupINfoA.cb = sizeof(startupINfoA);
+        startupINfoA.lpReserved=NULL;
+        startupINfoA.lpDesktop = lpStartupInfo->lpDesktop?(char*)strDesktop.c_str():nullptr;
+        startupINfoA.lpTitle = lpStartupInfo->lpTitle?(char*)strTitle.c_str():nullptr;
+        startupINfoA.dwX=lpStartupInfo->dwX;
+        startupINfoA.dwY=lpStartupInfo->dwY;
+        startupINfoA.dwXSize=lpStartupInfo->dwXSize;
+        startupINfoA.dwYSize=lpStartupInfo->dwYSize;
+        startupINfoA.dwXCountChars=lpStartupInfo->dwXCountChars;
+        startupINfoA.dwYCountChars=lpStartupInfo->dwYCountChars;
+        startupINfoA.dwFillAttribute=lpStartupInfo->dwFillAttribute;
+        startupINfoA.dwFlags=lpStartupInfo->dwFlags;
+        startupINfoA.wShowWindow=lpStartupInfo->wShowWindow;
+        startupINfoA.cbReserved2=0;
+        startupINfoA.lpReserved2=nullptr;
+        startupINfoA.hStdInput = lpStartupInfo->hStdInput;
+        startupINfoA.hStdOutput=lpStartupInfo->hStdOutput;
+        startupINfoA.hStdError = lpStartupInfo->hStdError;   
+    }
     return CreateProcessAsUserA(hToken,lpApplicationName?strApp.c_str():nullptr,lpCommandLine?(char*)strCmd.c_str():nullptr,
         lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,
         lpCurrentDirectory?strDir.c_str():nullptr,
-        &startupINfoA,
+        pStartInfoA,
         lpProcessInformation
     );
   }
