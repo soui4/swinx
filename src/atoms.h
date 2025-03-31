@@ -85,9 +85,11 @@ class SAtoms {
 
     //use defined atom
     WM_WIN4XCB_IPC,
-    SO_SELECTION,
-    WM_DISCONN;
-     
+    WM_DISCONN,
+
+    SO_SELECTION;
+
+
     const char **AtomNames(int &atoms)
     {
         static const char *kAtomNames[] = {
@@ -168,9 +170,8 @@ class SAtoms {
             "_NET_SYSTEM_TRAY_VISUAL",
             // use defined atom
             "WM_WIN4XCB_IPC",
-            "SO_SELECTION",
-
             "WM_DISCONN",
+            "SO_SELECTION",
         };
         atoms = sizeof(kAtomNames) / sizeof(kAtomNames[0]);
         return kAtomNames;

@@ -308,12 +308,13 @@ struct IpcMsg : Msg
         {
             wParam = msgLayout->wp;
             lParam = msgLayout->lp;
-            //LOG_STMI("msg")<<"recv ipc msg="<<message<<" wp="<<wParam<<" lp="<<lParam;
+            LOG_STMI("msg")<<"recv ipc msg="<<message<<" wp="<<wParam<<" lp="<<lParam;
         }
     }
 
     ~IpcMsg()
     {
+        LOG_STMI("msg")<<"ipc msg release";
         if (!hasResult)
         {
             SetEvent(synEvt);
@@ -324,6 +325,7 @@ struct IpcMsg : Msg
 
     virtual void SetResult(LRESULT res)
     {
+        LOG_STMI("msg")<<"ipc msg SetResult "<<res;
         hasResult = true;
         MsgLayout *msgLayout = (MsgLayout *)shareMem->buffer();
         msgLayout->ret = res;

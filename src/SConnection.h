@@ -157,7 +157,15 @@ class SConnection {
 
     BOOL FlashWindowEx(PFLASHWINFO info);
     void changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom_t two);
-    BOOL SetWindowText(HWND hWnd, _Window* wndObj,  LPCSTR lpszString);
+    int OnGetClassName(HWND hWnd, LPSTR lpClassName, int nMaxCount);
+    BOOL OnSetWindowText(HWND hWnd, _Window *wndObj, LPCSTR lpszString);
+    int OnGetWindowTextLengthA(HWND hWnd);
+    int OnGetWindowTextLengthW(HWND hWnd);
+    int OnGetWindowTextA(HWND hWnd, char *buf, int bufLen);
+    int OnGetWindowTextW(HWND hWnd,wchar_t *buf,int bufLen);
+    HWND OnFindWindowEx(HWND hParent, HWND hChildAfter, LPCSTR lpClassName, LPCSTR lpWindowName);
+    BOOL OnEnumWindows(HWND hParent, HWND hChildAfter,WNDENUMPROC lpEnumFunc, LPARAM lParam);
+
   public:
     struct CaretInfo
     {

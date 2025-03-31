@@ -23,6 +23,7 @@ enum
 
 static const char *kFifoRoot = "/tmp";
 static const char *kFifoNameTemplate = "/tmp/soui-2BACFFE6-9ED7-4AC8-B699-A95AB24431E1.%d";
+static const char *kFileMapNameTemplate = "/shm-soui-2BACFFE6-9ED7-4AC8-B699-A95AB24431E1.%d";
 static const char *kGlobalShareMemName = "/share_mem_soui-2BACFFE6-9ED7-4AC8-B699-A95AB24431E7";
 
 struct EventData
@@ -171,7 +172,7 @@ class GLobalHandleTable {
     int findAvailableHandleDataIndex()
     {
         HandleData *data = getHandleData(0);
-        for (uint32_t i = 0, maxObj = getHeader()->totalSize; i < maxObj; i++, data++)
+        for (uint32_t i = 0, maxObj = getHeader()->totalSize; i < maxObj; i++)
         {
             if (data->type == HUnknown)
             {
@@ -253,6 +254,10 @@ struct NoNameWaitbleObj : _SynHandle
         return true;
     }
     virtual void onInit(HandleData *pData, void *initData) = 0;
+
+    virtual LPCSTR getName() const {
+        return nullptr;
+    }
 };
 
 struct NamedWaitbleObj : _SynHandle
@@ -368,6 +373,15 @@ struct NamedWaitbleObj : _SynHandle
     }
 
     virtual void onInit(HandleData *pData, void *initData) = 0;
+
+    virtual LPCSTR getName() const {
+        if(index == -1){
+            return nullptr;
+        }else{
+            HandleData *pData = s_globalHandleTable.getHandleData(index);
+            return pData->szNick;
+        }
+    }
 };
 
 struct NoNameEvent
@@ -622,14 +636,17 @@ struct FileMapObject
             flag = O_RDWR;
             break;
         }
-        int fd = shm_open(pData->szName, O_CREAT | O_EXCL | flag, 0666);
-        if (fd == -1)
-            return false;
-        if (ftruncate(fd, fmData.size.QuadPart) == -1)
-        {
-            close(fd);
-            perror("ftruncate");
-            return false;
+        int fd = shm_open(pData->szName, flag, 0666);
+        if(fd == -1){
+            fd = shm_open(pData->szName, O_CREAT | flag, 0666);
+            if (fd == -1)
+                return false;
+            if (ftruncate(fd, fmData.size.QuadPart) == -1)
+            {
+                close(fd);
+                perror("ftruncate");
+                return false;
+            } 
         }
         this->fd = fd;
 
@@ -652,7 +669,7 @@ struct FileMapObject
             assert(index != -1);
             HandleData *pData = s_globalHandleTable.getHandleData(index);
             strcpy(pData->szNick, pszName);
-            sprintf(pData->szName, kFifoNameTemplate, index);
+            sprintf(pData->szName, kFileMapNameTemplate, index);
             pData->type = HFileMap;
             pData->nRef = 0;
             memcpy(&pData->data.fmData, initData, sizeof(FileMapData));

@@ -2030,6 +2030,7 @@ struct FdHandle : _SynHandle{
     void lock() override {}
     void unlock() override {}
     void *getData() override {return nullptr;}
+    LPCSTR getName() const override {return nullptr;}
 };
 
 class SOsHandleMgr{

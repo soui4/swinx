@@ -157,19 +157,3 @@ BOOL WndMgr::insertWindow(HWND hWnd, _Window *pWnd)
     auto res = map_wnd.insert(std::make_pair(hWnd, pWnd));
     return res.second;
 }
-
-BOOL WndMgr::enumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam)
-{
-    std::unique_lock<std::recursive_mutex> lock(mutex_wnd);
-    auto map_copy(map_wnd);
-    for (auto &it : map_copy)
-    {
-        if (map_wnd.find(it.first) == map_wnd.end())
-            continue;
-        if (GetWindowLongA(it.first, GWL_STYLE) & WS_CHILD)
-            continue;
-        if (!lpEnumFunc(it.first, lParam))
-            return FALSE;
-    }
-    return TRUE;
-}

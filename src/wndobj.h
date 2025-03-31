@@ -205,6 +205,5 @@ public:
     static WndObj fromHwnd(HWND hWnd);
     static BOOL freeWindow(HWND hWnd);
     static BOOL insertWindow(HWND hWnd, _Window* pWnd);
-    static BOOL enumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam);
 };
 #endif//_WINDOBJ_H_

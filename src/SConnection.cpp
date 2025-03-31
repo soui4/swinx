@@ -717,7 +717,10 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
     {
         ret = _waitMutliObjectAndMsg(hs, nCount + 1, to, dwWaitMask);
         if (!fWaitAll)
+        {
+            SLOG_STMI()<<"_waitMutliObjectAndMsg return:"<<ret;
             break;
+        }
         if (ret == WAIT_TIMEOUT || ret == WAIT_FAILED)
             break;
         if (ret == WAIT_OBJECT_0 + nCount)
@@ -1267,6 +1270,21 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs,int depth)
     uint32_t pid = getpid();
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms._NET_WM_PID, XCB_ATOM_CARDINAL, 32, 1, &pid);
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
+    
+    {//set window clas
+        char szPath[MAX_PATH];
+        GetModuleFileName(nullptr, szPath, MAX_PATH);
+        char *szName = strrchr(szPath, '/') + 1;
+        int nNameLen = strlen(szName);
+        char szClassName[MAX_PATH+1]={0};
+        int clsLen = GetAtomNameA(pWnd->clsAtom, szClassName, MAX_PATH);
+        int nLen = nNameLen + 1 + clsLen + 1;
+        char *pszCls = new char[nLen];
+        strcpy(pszCls, szName);
+        strcpy(pszCls + nNameLen + 1, szClassName);
+        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_CLASS, XCB_ATOM_STRING, 8, nLen, pszCls);
+        delete[] pszCls;
+    }
 
     setMotifWindowFlags(this,hWnd, pWnd->dwStyle, pWnd->dwExStyle);
     {
@@ -2935,24 +2953,193 @@ void SConnection::changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom
 }
 
 
-BOOL SConnection::SetWindowText(HWND hWnd, _Window* wndObj,  LPCSTR lpszString)
+int SConnection::OnGetClassName(HWND hWnd, LPSTR lpClassName, int nMaxCount){
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (wndObj){
+        return GetAtomNameA(wndObj->clsAtom, lpClassName, nMaxCount);
+    }else{
+        int ret = 0;
+        xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_class(connection,hWnd);
+        xcb_get_property_reply_t* reply =  xcb_get_property_reply(connection,cookie,NULL);
+        if(reply){
+            xcb_icccm_get_wm_class_reply_t clsReply={0};
+            xcb_icccm_get_wm_class_from_reply(&clsReply,reply);
+            if(clsReply.class_name){
+                int len = strlen(clsReply.class_name);
+                if(len<=nMaxCount){
+                    ret = len;
+                    memcpy(lpClassName,clsReply.class_name,len);
+                    if(len<nMaxCount){
+                        lpClassName[len]=0;
+                        ret++;
+                    }
+                }else{
+                    SetLastError(ERROR_INSUFFICIENT_BUFFER);
+                }
+            }
+            free(reply);
+        }
+        return ret;
+    }
+}
+
+BOOL SConnection::OnSetWindowText(HWND hWnd, _Window* wndObj,  LPCSTR lpszString)
 {
     wndObj->title = lpszString ? lpszString : "";
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_NAME, atoms.UTF8_STRING, 8, wndObj->title.length(), wndObj->title.c_str());
-
-    if (!(wndObj->dwStyle & WS_CHILD) && !wndObj->title.empty())
-    {
-        char szPath[MAX_PATH];
-        GetModuleFileName(nullptr, szPath, MAX_PATH);
-        char *szName = strrchr(szPath, '/') + 1;
-        int nNameLen = strlen(szName);
-        int nLen = nNameLen + 1 + wndObj->title.length() + 1;
-        char *pszCls = new char[nLen];
-        strcpy(pszCls, szName);
-        strcpy(pszCls + nNameLen + 1, wndObj->title.c_str());
-        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_CLASS, XCB_ATOM_STRING, 8, nLen, pszCls);
-        delete[] pszCls;
-    }
     xcb_flush(connection);
+    return TRUE;
+}
+
+int SConnection::OnGetWindowTextLengthA(HWND hWnd){
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (wndObj){
+        return wndObj->title.length();
+    }else{
+        int ret = 0;
+        xcb_get_property_cookie_t cookie = xcb_get_property(connection,0,hWnd,atoms.WM_NAME,atoms.UTF8_STRING,0,UINT_MAX);
+        xcb_get_property_reply_t* reply =  xcb_get_property_reply(connection,cookie,NULL);
+        if(reply){
+            ret = xcb_get_property_value_length(reply);
+            free(reply);
+        }
+        return ret;
+    }
+}
+
+int SConnection::OnGetWindowTextLengthW(HWND hWnd){
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (wndObj){
+        return MultiByteToWideChar(CP_UTF8,0,wndObj->title.c_str(),wndObj->title.length(),nullptr,0);
+    }else{
+        int ret = 0;
+        xcb_get_property_cookie_t cookie = xcb_get_property(connection,0,hWnd,atoms.WM_NAME,atoms.UTF8_STRING,0,UINT_MAX);
+        xcb_get_property_reply_t* reply =  xcb_get_property_reply(connection,cookie,NULL);
+        if(reply){
+            int len = xcb_get_property_value_length(reply);
+            const char * text = (const char*)xcb_get_property_value(reply);
+            ret = MultiByteToWideChar(CP_UTF8,0,text,len,nullptr,0);
+            free(reply);
+        }
+        return ret;
+    }
+}
+
+int SConnection::OnGetWindowTextA(HWND hWnd, char *buf, int bufLen)
+{
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (wndObj){
+        if(bufLen<wndObj->title.length()){
+            SetLastError(ERROR_INSUFFICIENT_BUFFER);
+            return 0;
+        }
+        strcpy(buf,wndObj->title.c_str());
+        return wndObj->title.length();
+    }else{
+        int ret = 0;
+        xcb_get_property_cookie_t cookie = xcb_get_property(connection,0,hWnd,atoms.WM_NAME,atoms.UTF8_STRING,0,UINT_MAX);
+        xcb_get_property_reply_t* reply =  xcb_get_property_reply(connection,cookie,NULL);
+        if(reply){
+            int len = xcb_get_property_value_length(reply);
+            if(len<=bufLen){
+                const char * text = (const char*)xcb_get_property_value(reply);
+                memcpy(buf,text,len);
+                ret = len;
+                if(len<bufLen){
+                    buf[len] = 0;
+                }
+            }
+            free(reply);
+        }
+        return ret;
+    }
+}
+
+int SConnection::OnGetWindowTextW(HWND hWnd, wchar_t *buf, int bufLen)
+{
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (wndObj){
+        return MultiByteToWideChar(CP_UTF8,0,wndObj->title.c_str(),wndObj->title.length(),buf,bufLen);
+    }else{
+        int ret = 0;
+        xcb_get_property_cookie_t cookie = xcb_get_property(connection,0,hWnd,atoms.WM_NAME,atoms.UTF8_STRING,0,UINT_MAX);
+        xcb_get_property_reply_t* reply =  xcb_get_property_reply(connection,cookie,NULL);
+        if(reply){
+            int len = xcb_get_property_value_length(reply);
+            if(len<=bufLen){
+                const char * text = (const char*)xcb_get_property_value(reply);
+                ret = MultiByteToWideChar(CP_UTF8,0,text,len,buf,bufLen);
+            }
+            free(reply);
+        }
+        return ret;
+    }
+}
+
+struct StFindWindow{
+    SConnection * conn;
+    LPCSTR lpClassName;
+    LPCSTR lpWindowName;
+    HWND hRet;
+};
+
+static BOOL CALLBACK CbFindWindow(HWND hWnd, LPARAM lp){
+    StFindWindow *param=(StFindWindow*)lp;
+    BOOL bMatch = TRUE;
+    if(param->lpWindowName){
+        char szTxt[1000];
+        if(param->conn->OnGetWindowTextA(hWnd,szTxt,1000)){
+            bMatch = strcmp(param->lpWindowName,szTxt)==0;
+        }else{
+            bMatch = FALSE;
+        }
+//        SLOG_STMI()<<"OnGetWindowText for "<<hWnd<<" got "<<szTxt;
+    }
+    if(bMatch && param->lpClassName){
+        char szCls[1000];
+        if(param->conn->OnGetClassName(hWnd,szCls,1000)){
+            bMatch = strcmp(szCls,param->lpClassName) == 0;
+        }else{
+            bMatch = FALSE;
+        }
+    }
+    if(bMatch){
+        param->hRet = hWnd;
+    }
+    return !bMatch;
+}
+
+HWND SConnection::OnFindWindowEx(HWND hParent, HWND hChildAfter, LPCSTR lpClassName,LPCSTR lpWindowName){
+    char szTstCls[1000]={0};
+    if(lpClassName && IS_INTRESOURCE(lpClassName)){
+        GetAtomNameA((int)(intptr_t)lpClassName,szTstCls,1000);
+        lpClassName = szTstCls;
+    }
+    StFindWindow param={this,lpClassName,lpWindowName,0};
+    OnEnumWindows(hParent,hChildAfter,CbFindWindow,(LPARAM)&param);
+    return param.hRet;
+}
+
+BOOL SConnection::OnEnumWindows(HWND hParent,HWND hChildAfter,WNDENUMPROC lpEnumFunc, LPARAM lParam)
+{
+    if(!hParent) hParent = screen->root;
+    xcb_query_tree_cookie_t tree_cookie = xcb_query_tree(connection, hParent);
+    xcb_query_tree_reply_t *tree_reply = xcb_query_tree_reply(connection, tree_cookie, NULL);
+    if (!tree_reply)
+        return FALSE;
+    xcb_window_t *children = xcb_query_tree_children(tree_reply);
+    int i=0;
+    if(hChildAfter){
+        while(i<tree_reply->children_len){
+            if(children[i] == hChildAfter)
+                break;
+            i++;
+        }
+    }
+    BOOL bContinue = TRUE;
+    for(;bContinue && i<tree_reply->children_len;i++){
+        bContinue = lpEnumFunc(children[i],lParam);
+    }
+    free(tree_reply);
     return TRUE;
 }

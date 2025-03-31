@@ -25,6 +25,7 @@
 #include "wndobj.h"
 #include "debug.h"
 #include "SDragdrop.h"
+#include "synhandle.h"
 
 #define kLogTag "wnd"
 
@@ -493,10 +494,8 @@ HWND WINAPI CreateWindowExA(DWORD exStyle, LPCSTR className, LPCSTR windowName, 
 
 int GetClassNameA(HWND hWnd, LPSTR lpClassName, int nMaxCount)
 {
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return 0;
-    return GetAtomNameA(wndObj->clsAtom, lpClassName, nMaxCount);
+    SConnection *conn = SConnMgr::instance()->getConnection();
+    return conn->OnGetClassName(hWnd,lpClassName,nMaxCount);
 }
 
 int GetClassNameW(HWND hWnd, LPWSTR lpClassName, int nMaxCount)
@@ -1345,27 +1344,46 @@ SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM w
     return shareMem;
 }
 
+#define kMaxSendMsgStack 20
+thread_local static int s_nCallStack = 0;
+class CallStackCount{
+public:
+CallStackCount(){
+    s_nCallStack ++;
+}
+~CallStackCount(){
+    s_nCallStack--;
+}
+};
+
 static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, UINT fuFlags, UINT uTimeout, PDWORD_PTR lpdwResult)
 {
+    CallStackCount stackCount;
+    if(s_nCallStack>kMaxSendMsgStack)
+        return -2;
     SConnection *connCur = SConnMgr::instance()->getConnection();
     WndObj pWnd = WndMgr::fromHwnd(hWnd);
     if (!pWnd)
     { // not the same process. send ipc message
         if (bWideChar)
         {
-            TRACE("ipc msg not support wide char api! msg=%u\n", msg);
+            SLOG_STME()<<"ipc msg not support wide char api! msg="<< msg;
             return 0;
         }
         HANDLE hEvt = INVALID_HANDLE_VALUE;
         SharedMemory *shareMem = PostIpcMessage(connCur, hWnd, msg, wp, lp, hEvt);
+        
         if (!shareMem)
         {
-            return -1;
+            return 0;
         }
+        if(uTimeout!=-1) uTimeout=1000;
+        _SynHandle * handle= GetSynHandle(hEvt);
+        SLOG_STMI()<<"ipc event name="<<handle->getName();
         int ret = WAIT_FAILED;
         if (fuFlags & SMTO_BLOCK)
         {
-            WaitForSingleObject(hEvt, uTimeout);
+            ret = WaitForSingleObject(hEvt, uTimeout);
         }
         else
         {
@@ -1394,19 +1412,25 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         }
         if (ret == WAIT_OBJECT_0)
         {
+            _SynHandle * handle2= GetSynHandle(hEvt);
+            SLOG_STMI()<<"ipc return event name="<<handle2->getName();
+
             MsgLayout *ptr = (MsgLayout *)shareMem->buffer();
+            SLOG_STMW()<<"PostIpcMessage ret 0, result:"<<ptr->ret<<" timeout:"<<uTimeout;
             if(lpdwResult)
                 *lpdwResult = ptr->ret;
+        }else{
+            SLOG_STMW()<<"PostIpcMessage ret:"<<ret<<" timeout:"<<uTimeout;
         }
 
         delete shareMem;
         CloseHandle(hEvt);
-        return -1;
+        return ret == WAIT_OBJECT_0;
     }
 
     SConnection *connWnd = SConnMgr::instance()->getConnection(pWnd->tid);
     if (!connWnd)
-        return -1;
+        return 0;
     if (connWnd == connCur)
     {
         // same thread,call wndproc directly.
@@ -1428,20 +1452,20 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
     }
     else
     {
-
-        HANDLE hEvt = CreateEventA(nullptr, FALSE, FALSE, nullptr); // todo:hjx no name event, only for inter thread msg now
+        int ret = 0;
+        HANDLE hEvt = CreateEventA(nullptr, FALSE, FALSE, nullptr);
         SendReply *reply = new SendReply(hEvt);
         connWnd->postMsg2(bWideChar, hWnd, msg, wp, lp, reply);
         if (fuFlags & SMTO_BLOCK)
         {
-            WaitForSingleObject(hEvt, uTimeout);
+            ret = WaitForSingleObject(hEvt, uTimeout);
         }
         else
         {
             MSG msg;
             for (;;)
             {
-                int ret = connCur->waitMutliObjectAndMsg(&hEvt, 1, uTimeout, FALSE, QS_ALLINPUT);
+                ret = connCur->waitMutliObjectAndMsg(&hEvt, 1, uTimeout, FALSE, QS_ALLINPUT);
                 if (ret == WAIT_OBJECT_0 + 1)
                 {
                     connCur->getMsg(&msg, hWnd, 0, 0);
@@ -1458,7 +1482,7 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         *lpdwResult = reply->ret;
         reply->Release();
         CloseHandle(hEvt);
-        return 1;
+        return ret == WAIT_OBJECT_0;
     }
 }
 
@@ -2780,9 +2804,9 @@ static HBRUSH DEFWND_ControlColor(HDC hDC, UINT ctlType)
     return GetSysColorBrush(COLOR_WINDOW);
 }
 
-LRESULT OnSetWindowText(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
+static LRESULT OnSetWindowText(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
 {
-    return wndObj->mConnection->SetWindowText(hWnd,wndObj.data(),(LPCSTR)lp);
+    return wndObj->mConnection->OnSetWindowText(hWnd,wndObj.data(),(LPCSTR)lp);
 }
 
 LRESULT OnMsgW2A(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
@@ -3228,49 +3252,26 @@ BOOL IsIconic(HWND hWnd)
 
 int GetWindowTextW(HWND hWnd, LPWSTR lpszStringBuf, int nMaxCount)
 {
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return FALSE;
-    int nLen = MultiByteToWideChar(CP_UTF8, 0, wndObj->title.c_str(), wndObj->title.length(), nullptr, 0);
-    wchar_t *buf = new wchar_t[nLen + 1];
-    MultiByteToWideChar(CP_UTF8, 0, wndObj->title.c_str(), wndObj->title.length(), buf, nLen + 1);
-
-    int nRet = 0;
-    if (nMaxCount > nLen)
-        wcscpy(lpszStringBuf, buf), nRet = nLen;
-    else
-        wcsncpy(lpszStringBuf, buf, nMaxCount), nRet = nMaxCount;
-    delete[] buf;
-    return nRet;
+    SConnection *pConn = SConnMgr::instance()->getConnection();
+    return pConn->OnGetWindowTextW(hWnd,lpszStringBuf,nMaxCount);
 }
 
 int GetWindowTextA(HWND hWnd, LPSTR lpszStringBuf, int nMaxCount)
 {
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return FALSE;
-    int nRet = 0;
-    if (nMaxCount > wndObj->title.length())
-        strcpy(lpszStringBuf, wndObj->title.c_str()), nRet = wndObj->title.length();
-    else
-        strncpy(lpszStringBuf, wndObj->title.c_str(), nMaxCount), nRet = nMaxCount;
-    return nRet;
+    SConnection *pConn = SConnMgr::instance()->getConnection();
+    return pConn->OnGetWindowTextA(hWnd,lpszStringBuf,nMaxCount);
 }
 
 int GetWindowTextLengthW(HWND hWnd)
 {
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return 0;
-    return MultiByteToWideChar(CP_UTF8, 0, wndObj->title.c_str(), wndObj->title.length(), nullptr, 0);
+    SConnection *pConn = SConnMgr::instance()->getConnection();
+    return pConn->OnGetWindowTextLengthW(hWnd);
 }
 
 int GetWindowTextLengthA(HWND hWnd)
 {
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return 0;
-    return wndObj->title.length();
+    SConnection *pConn = SConnMgr::instance()->getConnection();
+    return pConn->OnGetWindowTextLengthA(hWnd);
 }
 
 BOOL SetWindowTextW(HWND hWnd, LPCWSTR lpszString)
@@ -3897,7 +3898,8 @@ BOOL WINAPI IsWindowUnicode(HWND hWnd)
 
 BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam)
 {
-    return WndMgr::enumWindows(lpEnumFunc, lParam);
+    SConnection *pConn = SConnMgr::instance()->getConnection();
+    return pConn->OnEnumWindows(0,0,lpEnumFunc,lParam);
 }
 
 BOOL WINAPI FlashWindowEx(PFLASHWINFO pfwi)
@@ -3928,4 +3930,29 @@ BOOL WINAPI AnimateWindow(HWND hwnd, DWORD time, DWORD flags)
     // todo: hjx
     ShowWindow(hwnd, (flags & AW_HIDE) ? SW_HIDE : ((flags & AW_ACTIVATE) ? SW_SHOW : SW_SHOWNA));
     return TRUE;
+}
+
+
+HWND WINAPI FindWindowA(LPCSTR lpClassName,LPCSTR lpWindowName){
+    return FindWindowExA(0,0,lpClassName,lpWindowName);
+}
+
+HWND WINAPI FindWindowW(LPCWSTR lpClassName,LPCWSTR lpWindowName){
+    return FindWindowExW(0,0,lpClassName,lpWindowName);
+}
+
+HWND WINAPI FindWindowExA(HWND hParent, HWND hChildAfter,LPCSTR lpClassName,LPCSTR lpWindowName){
+    SConnection *pConn = SConnMgr::instance()->getConnection();
+    return pConn->OnFindWindowEx(hParent, hChildAfter,lpClassName,lpWindowName);
+}
+
+HWND WINAPI FindWindowExW(HWND hParent, HWND hChildAfter,LPCWSTR lpClassName,LPCWSTR lpWindowName){
+    std::string strCls,strWnd;
+    tostring(lpWindowName,-1,strWnd);
+    if(IS_INTRESOURCE(lpClassName)){
+        return FindWindowExA(hParent,hChildAfter,(LPCSTR)lpClassName,lpWindowName?strWnd.c_str():nullptr);
+    }else{
+        tostring(lpClassName,-1,strCls);
+        return FindWindowExA(hParent,hChildAfter,strCls.c_str(),lpWindowName?strWnd.c_str():nullptr);    
+    }
 }
