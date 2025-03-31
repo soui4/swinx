@@ -62,9 +62,6 @@ struct _SynHandle
         {
             char buffer[2] = { 0 };
             ssize_t len = read(fd, buffer, 1);
-            if(type == HNamedEvent){
-                LOG_STMI("")<<" clear signal named event "<<buffer<<" fd:"<<fd <<" name="<<getName();
-            }
         }
         if (bLock)
             unlock();
@@ -73,12 +70,7 @@ struct _SynHandle
     bool writeSignal()
     {
         int fd = getWriteFd();
-        char buf='a';
-        if(type == HNamedEvent){
-            buf+=rand()%26;
-            LOG_STMI("")<<" signal named event "<<buf<<" fd:"<<fd <<" name="<<getName();
-        }
-        return write(fd, &buf, 1) == 1;
+        return write(fd, "a", 1) == 1;
     }
 };
 

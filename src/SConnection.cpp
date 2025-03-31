@@ -718,7 +718,6 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
         ret = _waitMutliObjectAndMsg(hs, nCount + 1, to, dwWaitMask);
         if (!fWaitAll)
         {
-            SLOG_STMI()<<"_waitMutliObjectAndMsg return:"<<ret;
             break;
         }
         if (ret == WAIT_TIMEOUT || ret == WAIT_FAILED)
