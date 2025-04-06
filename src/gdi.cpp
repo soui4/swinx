@@ -18,7 +18,6 @@
 #include "log.h"
 #define kLogTag "gdi"
 
-
 static bool DumpBmp(HBITMAP bmp, const char *path)
 {
     if (!bmp)
@@ -591,7 +590,7 @@ int GetObjectA(HGDIOBJ h, int c, LPVOID pv)
                 break;
             }
 
-            bm->bmWidthBytes = ((bm->bmWidth * bm->bmBitsPixel)/ 8 +3)/4 * 4;
+            bm->bmWidthBytes = ((bm->bmWidth * bm->bmBitsPixel) / 8 + 3) / 4 * 4;
             bm->bmType = BI_RGB;
             bm->bmBits = cairo_image_surface_get_data(pixmap);
             ret = sizeof(BITMAP);
@@ -685,7 +684,7 @@ HBITMAP CreateDIBitmap(HDC hdc, const BITMAPINFOHEADER *pbmih, DWORD flInit, con
     HBITMAP bmp = CreateDIBSection(hdc, pbmi, 0, nullptr, 0, 0);
     if (bmp)
     {
-        int stride = ((pbmi->bmiHeader.biWidth * pbmi->bmiHeader.biBitCount / 8)+3)/4 *4;
+        int stride = ((pbmi->bmiHeader.biWidth * pbmi->bmiHeader.biBitCount / 8) + 3) / 4 * 4;
         UpdateDIBPixmap(bmp, pbmi->bmiHeader.biWidth, pbmi->bmiHeader.biHeight, pbmi->bmiHeader.biBitCount, stride, pjBits);
     }
     return bmp;
@@ -795,49 +794,61 @@ BOOL UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, C
         return FALSE;
     if (bm.bmWidth != wid || bm.bmHeight != hei || bm.bmBitsPixel != bitsPixel)
         return FALSE;
-    int surfaceStride = cairo_image_surface_get_stride((cairo_surface_t*)GetGdiObjPtr(bmp));
+    int surfaceStride = cairo_image_surface_get_stride((cairo_surface_t *)GetGdiObjPtr(bmp));
     if (pjBits)
     {
-        if(stride == surfaceStride)
+        if (stride == surfaceStride)
             memcpy(bm.bmBits, pjBits, hei * stride);
-        else{
-            char * src = (char*)pjBits;
-            char * dst = (char*)bm.bmBits;
-            int fmt = cairo_image_surface_get_format((cairo_surface_t*)GetGdiObjPtr(bmp));
-            if(bitsPixel == 24 && fmt == CAIRO_FORMAT_RGB24){
-                for(int i=0;i<hei;i++){
-                    char * lsrc = src;
-                    char * ldst = dst;
-                    for(int j=0;j<wid;j++){
-                        memcpy(ldst,lsrc,3);
-                        ldst+=4;
-                        lsrc+=3;
+        else
+        {
+            char *src = (char *)pjBits;
+            char *dst = (char *)bm.bmBits;
+            int fmt = cairo_image_surface_get_format((cairo_surface_t *)GetGdiObjPtr(bmp));
+            if (bitsPixel == 24 && fmt == CAIRO_FORMAT_RGB24)
+            {
+                for (int i = 0; i < hei; i++)
+                {
+                    char *lsrc = src;
+                    char *ldst = dst;
+                    for (int j = 0; j < wid; j++)
+                    {
+                        memcpy(ldst, lsrc, 3);
+                        ldst += 4;
+                        lsrc += 3;
                     }
                     dst += surfaceStride;
                     src += stride;
                 }
-            }else if(bitsPixel == 1 && fmt == CAIRO_FORMAT_A1){
-                //copy from kimi
-                for (int y = 0; y < hei; y++) {
-                    for (int x = 0; x < wid; x++) {
+            }
+            else if (bitsPixel == 1 && fmt == CAIRO_FORMAT_A1)
+            {
+                // copy from kimi
+                for (int y = 0; y < hei; y++)
+                {
+                    for (int x = 0; x < wid; x++)
+                    {
                         int bitmap_index = (y * ((wid + 7) / 8) + (x / 8));
                         int cairo_index = (y * surfaceStride + (x / 8));
                         uint8_t bitmap_bit = (src[bitmap_index] >> (7 - (x % 8))) & 1;
                         uint8_t cairo_bit = (dst[cairo_index] >> (7 - (x % 8))) & 1;
 
-                        if (bitmap_bit) {
+                        if (bitmap_bit)
+                        {
                             dst[cairo_index] |= (1 << (7 - (x % 8)));
-                        } else {
+                        }
+                        else
+                        {
                             dst[cairo_index] &= ~(1 << (7 - (x % 8)));
                         }
                     }
                 }
-            }else{
-                SLOG_STMW()<<"invalid pixel map";
             }
-            
+            else
+            {
+                SLOG_STMW() << "invalid pixel map";
+            }
         }
-    }   
+    }
     else
         memset(bm.bmBits, 0, hei * surfaceStride);
     MarkPixmapDirty(bmp);
@@ -3470,32 +3481,38 @@ HDC WINAPI CreateICW(LPCWSTR lpszDriver,   // driver name
     return CreateICA(strDriver.c_str(), strDevice.c_str(), strOutput.c_str(), lpdvmInit);
 }
 
-int AddFontResource(  LPCSTR lpszFilename  ){
-    return AddFontResourceEx(lpszFilename,0,0);
+int AddFontResource(LPCSTR lpszFilename)
+{
+    return AddFontResourceEx(lpszFilename, 0, 0);
 }
 
-int AddFontResourceEx(  LPCSTR lpszFilename, // font file name
-  DWORD fl,             // font characteristics
-  PVOID pdv             // reserved
-  ){
+int AddFontResourceEx(LPCSTR lpszFilename, // font file name
+                      DWORD fl,            // font characteristics
+                      PVOID pdv            // reserved
+)
+{
     int ret = 0;
-    do{
+    do
+    {
         // 初始化 Fontconfig
-        if (!FcInit()) {
-            SLOG_STMW()<<"Failed to initialize Fontconfig";
+        if (!FcInit())
+        {
+            SLOG_STMW() << "Failed to initialize Fontconfig";
             break;
         }
 
         // 获取当前的 Fontconfig 配置
-        FcConfig* config = FcConfigGetCurrent();
-        if (!config) {
-            SLOG_STMW()<<"Failed to get current Fontconfig configuration";
+        FcConfig *config = FcConfigGetCurrent();
+        if (!config)
+        {
+            SLOG_STMW() << "Failed to get current Fontconfig configuration";
             break;
         }
 
         // 添加字体File
-        if (!FcConfigAppFontAddFile(config, (const FcChar8*)lpszFilename)) {
-            SLOG_STMW()<<"Failed to add font directory:"<<lpszFilename;
+        if (!FcConfigAppFontAddFile(config, (const FcChar8 *)lpszFilename))
+        {
+            SLOG_STMW() << "Failed to add font directory:" << lpszFilename;
             break;
         }
 
@@ -3505,7 +3522,7 @@ int AddFontResourceEx(  LPCSTR lpszFilename, // font file name
         // 更新字体缓存
         FcConfigBuildFonts(config);
         ret = 1;
-    }while (false);
-    
-    return ret;    
-  }
+    } while (false);
+
+    return ret;
+}

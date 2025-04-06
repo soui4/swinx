@@ -13,10 +13,11 @@ struct KeyMap
     uint32_t vk;
 };
 
-static int KeyMapComp(const void *p1,const void* p2){
-    const KeyMap * km1=(const KeyMap *)p1;
-    const KeyMap * km2=(const KeyMap *)p2;
-    return (int)km1->keysym-(int)km2->keysym;
+static int KeyMapComp(const void *p1, const void *p2)
+{
+    const KeyMap *km1 = (const KeyMap *)p1;
+    const KeyMap *km2 = (const KeyMap *)p2;
+    return (int)km1->keysym - (int)km2->keysym;
 }
 
 // keyboard mapping table
@@ -76,11 +77,7 @@ static KeyMap KeyTbl[] = {
     // Japanese keyboard support
     XK_Kanji, VK_KANJI,
 
-    XK_plus, VK_OEM_PLUS,
-    XK_comma,VK_OEM_COMMA,
-    XK_minus,VK_OEM_MINUS,
-    XK_period,VK_OEM_PERIOD,
-    XK_apostrophe, VK_OEM_7,    
+    XK_plus, VK_OEM_PLUS, XK_comma, VK_OEM_COMMA, XK_minus, VK_OEM_MINUS, XK_period, VK_OEM_PERIOD, XK_apostrophe, VK_OEM_7,
 //    XK_Muhenkan,                Qt::Key_Muhenkan,
 // XK_Henkan_Mode,           Qt::Key_Henkan_Mode,
 // XK_Henkan_Mode,             Qt::Key_Henkan,
@@ -152,15 +149,18 @@ static KeyMap KeyTbl[] = {
     // XK_dead_horn,               Qt::Key_Dead_Horn,
 };
 
-class SKeyMap{
-public:
-    SKeyMap(){
-        qsort(KeyTbl,ARRAYSIZE(KeyTbl),sizeof(KeyMap),KeyMapComp);
+class SKeyMap {
+  public:
+    SKeyMap()
+    {
+        qsort(KeyTbl, ARRAYSIZE(KeyTbl), sizeof(KeyMap), KeyMapComp);
     }
 
-    uint32_t Keysym2Vk(xcb_keysym_t sym) const{
-        KeyMap *p=(KeyMap *)bsearch(&sym,KeyTbl,ARRAYSIZE(KeyTbl),sizeof(KeyMap),KeyMapComp);
-        if(!p) return 0;
+    uint32_t Keysym2Vk(xcb_keysym_t sym) const
+    {
+        KeyMap *p = (KeyMap *)bsearch(&sym, KeyTbl, ARRAYSIZE(KeyTbl), sizeof(KeyMap), KeyMapComp);
+        if (!p)
+            return 0;
         return p->vk;
     }
 };
@@ -477,7 +477,7 @@ char SKeyboard::scanCodeToAscii(xcb_keycode_t code)
 int SKeyboard::keySymToVk(xcb_keysym_t keysym, UINT modifiers) const
 {
     int code = lookVkMap(keysym);
-    if(code != 0)
+    if (code != 0)
         return code;
     if (keysym < 128)
     {

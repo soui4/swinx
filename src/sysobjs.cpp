@@ -14,7 +14,6 @@
 #include "synhandle.h"
 #include "uimsg.h"
 
-
 enum
 {
     kKey_SharedMem = 0x00110207, // key for shared memory
@@ -209,7 +208,6 @@ struct GlobalMutex : TSemRwLock<1>
     }
 };
 
-
 struct NoNameWaitbleObj : _SynHandle
 {
     std::recursive_mutex mutex;
@@ -255,7 +253,8 @@ struct NoNameWaitbleObj : _SynHandle
     }
     virtual void onInit(HandleData *pData, void *initData) = 0;
 
-    virtual LPCSTR getName() const {
+    virtual LPCSTR getName() const
+    {
         return nullptr;
     }
 };
@@ -374,10 +373,14 @@ struct NamedWaitbleObj : _SynHandle
 
     virtual void onInit(HandleData *pData, void *initData) = 0;
 
-    virtual LPCSTR getName() const {
-        if(index == -1){
+    virtual LPCSTR getName() const
+    {
+        if (index == -1)
+        {
             return nullptr;
-        }else{
+        }
+        else
+        {
             HandleData *pData = s_globalHandleTable.getHandleData(index);
             return pData->szNick;
         }
@@ -596,26 +599,29 @@ struct FileMapObject
 
     void lock()
     {
-        if(index !=-1)
+        if (index != -1)
             mutex.lock();
     }
     void unlock()
     {
-        if(index !=-1)
+        if (index != -1)
             mutex.unlock();
     }
 
-    void init3(int fd_,FileMapData fmd){
+    void init3(int fd_, FileMapData fmd)
+    {
         fd = fd_;
         localFmd.data.fmData = fmd;
     }
 
     HandleData *handleData()
     {
-        if(index==-1)
+        if (index == -1)
         {
             return &localFmd;
-        }else{
+        }
+        else
+        {
             return s_globalHandleTable.getHandleData(index);
         }
     }
@@ -637,7 +643,8 @@ struct FileMapObject
             break;
         }
         int fd = shm_open(pData->szName, flag, 0666);
-        if(fd == -1){
+        if (fd == -1)
+        {
             fd = shm_open(pData->szName, O_CREAT | flag, 0666);
             if (fd == -1)
                 return false;
@@ -646,7 +653,7 @@ struct FileMapObject
                 close(fd);
                 perror("ftruncate");
                 return false;
-            } 
+            }
         }
         this->fd = fd;
 
@@ -1197,33 +1204,34 @@ HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWOR
 {
     if (hFile != INVALID_HANDLE_VALUE)
     {
-        int fd = _open_osfhandle(hFile,0);
-        if(fd==-1)
+        int fd = _open_osfhandle(hFile, 0);
+        if (fd == -1)
         {
             SetLastError(ERROR_INVALID_PARAMETER);
             return INVALID_HANDLE_VALUE;
         }
-        LARGE_INTEGER fsize={0};
-        GetFileSizeEx(hFile,&fsize);
-        if(dwMaximumSizeHigh!=0 || dwMaximumSizeLow!=0){
-            if(fsize.LowPart != dwMaximumSizeLow || fsize.HighPart!= dwMaximumSizeHigh)
+        LARGE_INTEGER fsize = { 0 };
+        GetFileSizeEx(hFile, &fsize);
+        if (dwMaximumSizeHigh != 0 || dwMaximumSizeLow != 0)
+        {
+            if (fsize.LowPart != dwMaximumSizeLow || fsize.HighPart != dwMaximumSizeHigh)
             {
                 fsize.LowPart = dwMaximumSizeLow;
                 fsize.HighPart = dwMaximumSizeHigh;
-                if(SetFilePointerEx(hFile,fsize,NULL,SEEK_SET) || SetEndOfFile(hFile))
+                if (SetFilePointerEx(hFile, fsize, NULL, SEEK_SET) || SetEndOfFile(hFile))
                 {
                     return INVALID_HANDLE_VALUE;
                 }
             }
         }
-        //create file map from fd.
+        // create file map from fd.
         FileMapObject *fmObj = new FileMapObject();
         FileMapData fmData;
         fmData.uFlags = flProtect;
         fmData.mappedSize.QuadPart = 0;
         fmData.offset.QuadPart = 0;
-        fmData.size=fsize;
-        fmObj->init3(fd,fmData);
+        fmData.size = fsize;
+        fmObj->init3(fd, fmData);
         return NewFmHandle(fmObj);
     }
     FileMapData fmData;
@@ -1232,7 +1240,7 @@ HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWOR
     fmData.offset.QuadPart = 0;
     fmData.size.HighPart = dwMaximumSizeHigh;
     fmData.size.LowPart = dwMaximumSizeLow;
-    std::string name(lpName?lpName:"");
+    std::string name(lpName ? lpName : "");
     if (name.empty())
     {
         // generate random name.
@@ -1260,46 +1268,51 @@ HANDLE WINAPI CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttribute
     return CreateFileMappingA(hFile, lpAttributes, flProtect, dwMaximumSizeHigh, dwMaximumSizeLow, szPath);
 }
 
-class MapViewMgr{
-public:
-MapViewMgr(){
-
-}
-
-~MapViewMgr(){
-    std::unique_lock<std::mutex> lock(m_mutex);
-    for(auto it : m_fmviewMap){
-        CloseHandle(it.second);
+class MapViewMgr {
+  public:
+    MapViewMgr()
+    {
     }
-    m_fmviewMap.clear();
-}
 
-void addMapView(const void * ptr,HANDLE handle){
-    std::unique_lock<std::mutex> lock(m_mutex);
-    m_fmviewMap.insert(std::make_pair(ptr, handle));
-    AddHandleRef(handle);
-}
+    ~MapViewMgr()
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        for (auto it : m_fmviewMap)
+        {
+            CloseHandle(it.second);
+        }
+        m_fmviewMap.clear();
+    }
 
-HANDLE getViewHandle(const void *ptr){
-    std::unique_lock<std::mutex> lock(m_mutex);
-    auto it = m_fmviewMap.find(ptr);
-    if(it == m_fmviewMap.end())
-        return INVALID_HANDLE_VALUE;
-    return it->second;
-}
+    void addMapView(const void *ptr, HANDLE handle)
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_fmviewMap.insert(std::make_pair(ptr, handle));
+        AddHandleRef(handle);
+    }
 
-void removeMapView(const void *ptr){
-    std::unique_lock<std::mutex> lock(m_mutex);
-    auto it = m_fmviewMap.find(ptr);
-    if(it == m_fmviewMap.end())
-        return;
-    CloseHandle(it->second);
-    m_fmviewMap.erase(it);
-}
+    HANDLE getViewHandle(const void *ptr)
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        auto it = m_fmviewMap.find(ptr);
+        if (it == m_fmviewMap.end())
+            return INVALID_HANDLE_VALUE;
+        return it->second;
+    }
 
-protected:
-std::mutex m_mutex;
-std::map<const void *, HANDLE> m_fmviewMap;
+    void removeMapView(const void *ptr)
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        auto it = m_fmviewMap.find(ptr);
+        if (it == m_fmviewMap.end())
+            return;
+        CloseHandle(it->second);
+        m_fmviewMap.erase(it);
+    }
+
+  protected:
+    std::mutex m_mutex;
+    std::map<const void *, HANDLE> m_fmviewMap;
 };
 
 static MapViewMgr s_mapViewMgr;
@@ -1335,7 +1348,7 @@ LPVOID WINAPI MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DW
     {
         fmData.offset = offset;
         fmData.mappedSize.QuadPart = dwNumberOfBytesToMap;
-        s_mapViewMgr.addMapView(ret,hFileMappingObject);
+        s_mapViewMgr.addMapView(ret, hFileMappingObject);
     }
     fmObj->ptr = ret;
 end:
@@ -1348,7 +1361,7 @@ BOOL WINAPI UnmapViewOfFile(LPCVOID lpBaseAddress)
     if (lpBaseAddress == nullptr)
         return FALSE;
     HANDLE hMemMap = s_mapViewMgr.getViewHandle(lpBaseAddress);
-    if(hMemMap == INVALID_HANDLE_VALUE)
+    if (hMemMap == INVALID_HANDLE_VALUE)
         return FALSE;
     FileMapObject *fmObj = (FileMapObject *)hMemMap->ptr;
     fmObj->lock();
@@ -1362,27 +1375,34 @@ BOOL WINAPI UnmapViewOfFile(LPCVOID lpBaseAddress)
     return TRUE;
 }
 
-BOOL GetHandleName(HANDLE h,char szName[1001]){
-    _SynHandle *pData =  GetSynHandle(h);
-    if(!pData)
+BOOL GetHandleName(HANDLE h, char szName[1001])
+{
+    _SynHandle *pData = GetSynHandle(h);
+    if (!pData)
         return FALSE;
     int index = -1;
-    if(pData->type == HNamedEvent){
-        NamedEventObj * pEvent = (NamedEventObj*)pData;
+    if (pData->type == HNamedEvent)
+    {
+        NamedEventObj *pEvent = (NamedEventObj *)pData;
         index = pEvent->index;
-    }else if(pData->type == HNamedMutex){
-        NamedMutexObj * pMutex = (NamedMutexObj*)pData;
+    }
+    else if (pData->type == HNamedMutex)
+    {
+        NamedMutexObj *pMutex = (NamedMutexObj *)pData;
         index = pMutex->index;
-    }else if(pData->type == HNamedSemaphore){
-        NamedSemaphoreObj * pSemaphore = (NamedSemaphoreObj *)pData;
+    }
+    else if (pData->type == HNamedSemaphore)
+    {
+        NamedSemaphoreObj *pSemaphore = (NamedSemaphoreObj *)pData;
         index = pSemaphore->index;
     }
-    if(index == -1){
+    if (index == -1)
+    {
         return FALSE;
     }
     s_globalHandleTable.getRwLock()->lockShared();
     HandleData *pHandleData = s_globalHandleTable.getHandleData(index);
-    strcpy(szName,pHandleData->szNick);
+    strcpy(szName, pHandleData->szNick);
     s_globalHandleTable.getRwLock()->unlockShared();
     return TRUE;
 }

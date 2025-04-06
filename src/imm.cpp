@@ -10,10 +10,11 @@ HIMC WINAPI ImmCreateContext(void)
 
 BOOL ImmDestroyContext(HIMC hIMC)
 {
-    if(!hIMC)
+    if (!hIMC)
         return FALSE;
-    if(hIMC->xic){
-        xcb_xim_destroy_ic(hIMC->xim,hIMC->xic,nullptr,nullptr);
+    if (hIMC->xic)
+    {
+        xcb_xim_destroy_ic(hIMC->xim, hIMC->xic, nullptr, nullptr);
         hIMC->xic = 0;
     }
 
@@ -24,24 +25,24 @@ BOOL ImmDestroyContext(HIMC hIMC)
 HIMC WINAPI ImmGetContext(HWND hWnd)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if(!wndObj)
+    if (!wndObj)
         return 0;
     else
     {
-        if(wndObj->hIMC)
+        if (wndObj->hIMC)
             wndObj->hIMC->AddRef();
         return wndObj->hIMC;
-    }    
+    }
 }
 
 BOOL ImmReleaseContext(HWND hWnd, HIMC hIMC)
 {
-    if(!hIMC)
+    if (!hIMC)
         return FALSE;
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if(!wndObj || ! wndObj->hIMC)
+    if (!wndObj || !wndObj->hIMC)
         return FALSE;
-    if(wndObj->hIMC != hIMC)
+    if (wndObj->hIMC != hIMC)
         return FALSE;
     wndObj->hIMC->Release();
     return TRUE;
@@ -50,10 +51,10 @@ BOOL ImmReleaseContext(HWND hWnd, HIMC hIMC)
 HIMC ImmAssociateContext(HWND hWnd, HIMC hIMC)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if(!wndObj)
+    if (!wndObj)
         return nullptr;
     HIMC hRet = wndObj->hIMC;
-    wndObj->mConnection->AssociateHIMC(hWnd,wndObj.data(),hIMC);
+    wndObj->mConnection->AssociateHIMC(hWnd, wndObj.data(), hIMC);
     return hRet;
 }
 

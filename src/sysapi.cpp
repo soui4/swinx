@@ -21,103 +21,123 @@
 
 using namespace swinx;
 
-#define ICONV_UTF32LE   "UTF32LE"
-#define ICONV_UTF16LE   "UTF16LE"
-#define ICONV_WINDOWS_936     	"WINDOWS-936"
-#define ICONV_WINDOWS_1250    	"WINDOWS-1250"
-#define ICONV_WINDOWS_1251    	"WINDOWS-1251"
-#define ICONV_WINDOWS_1252    	"WINDOWS-1252"
-#define ICONV_WINDOWS_1253    	"WINDOWS-1253"
-#define ICONV_WINDOWS_1254    	"WINDOWS-1254"
-#define ICONV_WINDOWS_1255    	"WINDOWS-1255"
-#define ICONV_WINDOWS_1256    	"WINDOWS-1256"
-#define ICONV_WINDOWS_1257    	"WINDOWS-1257"
-#define ICONV_WINDOWS_1258    	"WINDOWS-1258"
+#define ICONV_UTF32LE      "UTF32LE"
+#define ICONV_UTF16LE      "UTF16LE"
+#define ICONV_WINDOWS_936  "WINDOWS-936"
+#define ICONV_WINDOWS_1250 "WINDOWS-1250"
+#define ICONV_WINDOWS_1251 "WINDOWS-1251"
+#define ICONV_WINDOWS_1252 "WINDOWS-1252"
+#define ICONV_WINDOWS_1253 "WINDOWS-1253"
+#define ICONV_WINDOWS_1254 "WINDOWS-1254"
+#define ICONV_WINDOWS_1255 "WINDOWS-1255"
+#define ICONV_WINDOWS_1256 "WINDOWS-1256"
+#define ICONV_WINDOWS_1257 "WINDOWS-1257"
+#define ICONV_WINDOWS_1258 "WINDOWS-1258"
 
-
-const char * Cp2IConvCode(int codePage){
-    switch(codePage){
-        case 936: return ICONV_WINDOWS_936;
-        case 1250: return ICONV_WINDOWS_1250;
-        case 1251: return ICONV_WINDOWS_1251;
-        case 1252: return ICONV_WINDOWS_1252;
-        case 1253: return ICONV_WINDOWS_1253;
-        case 1254: return ICONV_WINDOWS_1254;
-        case 1255: return ICONV_WINDOWS_1255;
-        case 1256: return ICONV_WINDOWS_1256;
-        case 1257: return ICONV_WINDOWS_1257;
-        case 1258: return ICONV_WINDOWS_1258;
-        default: return NULL;
+const char *Cp2IConvCode(int codePage)
+{
+    switch (codePage)
+    {
+    case 936:
+        return ICONV_WINDOWS_936;
+    case 1250:
+        return ICONV_WINDOWS_1250;
+    case 1251:
+        return ICONV_WINDOWS_1251;
+    case 1252:
+        return ICONV_WINDOWS_1252;
+    case 1253:
+        return ICONV_WINDOWS_1253;
+    case 1254:
+        return ICONV_WINDOWS_1254;
+    case 1255:
+        return ICONV_WINDOWS_1255;
+    case 1256:
+        return ICONV_WINDOWS_1256;
+    case 1257:
+        return ICONV_WINDOWS_1257;
+    case 1258:
+        return ICONV_WINDOWS_1258;
+    default:
+        return NULL;
     }
-    
 }
 
-int to_mb(const wchar_t *input, size_t input_len,int codePage, std::string &out){
+int to_mb(const wchar_t *input, size_t input_len, int codePage, std::string &out)
+{
     const char *toCode = Cp2IConvCode(codePage);
-    if(!toCode)
+    if (!toCode)
         return 0;
-    #if WCHAR_SIZE==4
-    iconv_t cd = iconv_open(toCode,ICONV_UTF32LE);
-    #else
-    iconv_t cd = iconv_open(toCode,ICONV_UTF16LE);
-    #endif
-    if (cd == (iconv_t)-1) {
-        SLOG_STMW()<<"iconv_open failed, codePage="<<codePage;
+#if WCHAR_SIZE == 4
+    iconv_t cd = iconv_open(toCode, ICONV_UTF32LE);
+#else
+    iconv_t cd = iconv_open(toCode, ICONV_UTF16LE);
+#endif
+    if (cd == (iconv_t)-1)
+    {
+        SLOG_STMW() << "iconv_open failed, codePage=" << codePage;
         return 0;
     }
-    size_t output_len = (input_len+1) * 4; // UTF-32 字符一般比 GBK 长
-        out.resize(output_len);
-        char *output = (char*)out.c_str();
-        char *inbuf = (char *)input;
-        char *outbuf = output;
-        size_t inbytesleft = input_len*sizeof(wchar_t);
-        size_t outbytesleft = output_len;
-        
-        size_t ret = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft) ;
-        if(ret != -1){
-            out.resize(output_len-outbytesleft);
-            //out = out.substr(0,output_len-outbytesleft);
-        }else{
-            out.clear();
-        }
+    size_t output_len = (input_len + 1) * 4; // UTF-32 字符一般比 GBK 长
+    out.resize(output_len);
+    char *output = (char *)out.c_str();
+    char *inbuf = (char *)input;
+    char *outbuf = output;
+    size_t inbytesleft = input_len * sizeof(wchar_t);
+    size_t outbytesleft = output_len;
+
+    size_t ret = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
+    if (ret != -1)
+    {
+        out.resize(output_len - outbytesleft);
+        // out = out.substr(0,output_len-outbytesleft);
+    }
+    else
+    {
+        out.clear();
+    }
 
     iconv_close(cd);
     return out.length();
 }
 
-int to_unicode(const char *input, size_t input_len,int codePage, std::wstring &out) {
+int to_unicode(const char *input, size_t input_len, int codePage, std::wstring &out)
+{
     const char *fromCode = Cp2IConvCode(codePage);
-    if(!fromCode)
+    if (!fromCode)
         return 0;
-    #if WCHAR_SIZE==4
+#if WCHAR_SIZE == 4
     iconv_t cd = iconv_open(ICONV_UTF32LE, fromCode);
-    #else
+#else
     iconv_t cd = iconv_open(ICONV_UTF16LE, fromCode);
-    #endif
-    if (cd == (iconv_t)-1) {
-        SLOG_STMW()<<"iconv_open failed, codePage="<<codePage;
+#endif
+    if (cd == (iconv_t)-1)
+    {
+        SLOG_STMW() << "iconv_open failed, codePage=" << codePage;
         return 0;
     }
-    size_t output_len = (input_len+1) * sizeof(wchar_t); // UTF-32 字符一般比 GBK 长
-        out.resize(output_len);
-        char *output = (char*)out.c_str();
-        char *inbuf = (char *)input;
-        char *outbuf = output;
-        size_t inbytesleft = input_len;
-        size_t outbytesleft = output_len;
-        
-        size_t ret = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft) ;
-        if(ret != -1){
-            out.resize((output_len-outbytesleft)/sizeof(wchar_t));
-            //out=out.substr(0,(output_len-outbytesleft)/sizeof(wchar_t));
-        }else{
-            out.clear();
-        }
+    size_t output_len = (input_len + 1) * sizeof(wchar_t); // UTF-32 字符一般比 GBK 长
+    out.resize(output_len);
+    char *output = (char *)out.c_str();
+    char *inbuf = (char *)input;
+    char *outbuf = output;
+    size_t inbytesleft = input_len;
+    size_t outbytesleft = output_len;
+
+    size_t ret = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
+    if (ret != -1)
+    {
+        out.resize((output_len - outbytesleft) / sizeof(wchar_t));
+        // out=out.substr(0,(output_len-outbytesleft)/sizeof(wchar_t));
+    }
+    else
+    {
+        out.clear();
+    }
 
     iconv_close(cd);
     return out.length();
 }
-
 
 FILE *_wfopen(const wchar_t *path, const wchar_t *mode)
 {
@@ -158,25 +178,28 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
     assert(src);
     if (cp == CP_OEMCP)
         cp = CP_UTF8; // todo:hjx
-    
+
     if (len < 0)
-        len = strlen(src)+1;
+        len = strlen(src) + 1;
     if (cp != CP_ACP && cp != CP_UTF8)
     {
         std::wstring str;
-        int ret = to_unicode(src,len,cp,str);//using iconv to support 936
-        if(!dst)
+        int ret = to_unicode(src, len, cp, str); // using iconv to support 936
+        if (!dst)
             return str.length();
-        else if(dstLen<ret){
+        else if (dstLen < ret)
+        {
             SetLastError(ERROR_INSUFFICIENT_BUFFER);
             return 0;
-        }else{
-            memcpy(dst,str.c_str(),ret*sizeof(wchar_t));
-            if(ret<dstLen)
-                dst[ret]=0;
+        }
+        else
+        {
+            memcpy(dst, str.c_str(), ret * sizeof(wchar_t));
+            if (ret < dstLen)
+                dst[ret] = 0;
             return ret;
         }
-    }    
+    }
 
 #if (WCHAR_SIZE == 2)
     assert(sizeof(wchar_t) == 2);
@@ -222,7 +245,7 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
     assert(src);
     const wchar_t *ptr = src;
     if (len < 0)
-        len = wcslen(src)+1;
+        len = wcslen(src) + 1;
     const wchar_t *stop = src + len;
     size_t i = 0;
     if (cp == CP_OEMCP)
@@ -230,18 +253,19 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
     if (cp != CP_ACP && cp != CP_UTF8)
     {
         std::string str;
-        int ret = to_mb(src,len,cp,str);
-        if(ret == 0)
+        int ret = to_mb(src, len, cp, str);
+        if (ret == 0)
             return 0;
-        if(ret>dstLen){
+        if (ret > dstLen)
+        {
             SetLastError(ERROR_INSUFFICIENT_BUFFER);
             return 0;
         }
-        memcpy(dst,str.c_str(),ret);
-        if(ret<dstLen)
-            dst[ret]=0;
+        memcpy(dst, str.c_str(), ret);
+        if (ret < dstLen)
+            dst[ret] = 0;
         return ret;
-    }    
+    }
 
 #if (WCHAR_SIZE == 2)
     assert(sizeof(wchar_t) == 2);
@@ -270,7 +294,8 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
         SetLastError(ERROR_INSUFFICIENT_BUFFER);
         return 0;
     }
-    else{
+    else
+    {
         SetLastError(NO_ERROR);
         return UTF8FromUTF32((const uint32_t *)src, len, dst, dstLen);
     }
@@ -279,50 +304,57 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
 
 HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
 {
-    if(!lpFileName)
+    if (!lpFileName)
         return NULL;
     HMODULE ret = 0;
-    do{
+    do
+    {
         ret = dlopen(lpFileName, RTLD_NOW);
-        if(ret) 
+        if (ret)
             break;
-        if(strchr(lpFileName,'/')!=NULL)
+        if (strchr(lpFileName, '/') != NULL)
             break;
-        //search app dir
-        char szPath[MAX_PATH]={0};
-        GetModuleFileNameA(NULL,szPath,MAX_PATH);
-        char * p = strrchr(szPath,'/');
+        // search app dir
+        char szPath[MAX_PATH] = { 0 };
+        GetModuleFileNameA(NULL, szPath, MAX_PATH);
+        char *p = strrchr(szPath, '/');
         assert(p);
         p++;
-        strcpy(p,lpFileName);
-        ret = dlopen(szPath,RTLD_NOW);
-        if(ret)
+        strcpy(p, lpFileName);
+        ret = dlopen(szPath, RTLD_NOW);
+        if (ret)
             break;
-        GetCurrentDirectoryA(MAX_PATH,szPath);
+        GetCurrentDirectoryA(MAX_PATH, szPath);
         int len = strlen(szPath);
-        if(szPath[len-1]!='/'){
-            szPath[len++]='/';
-            szPath[len]=0;
+        if (szPath[len - 1] != '/')
+        {
+            szPath[len++] = '/';
+            szPath[len] = 0;
         }
-        p = szPath+len;
-        strcpy(p,lpFileName);
-        ret = dlopen(szPath,RTLD_NOW);
-        if(!ret){
-            const char *ext = strrchr(lpFileName,'.');
-            if(!ext){
-                //no ext, add so as the extend name
-                sprintf(szPath,"%s.so",lpFileName);
-            }else if(stricmp(ext,".dll")==0){
-                //windows dll name pattern, change to libxxx.so
-                sprintf(szPath,"lib%s",lpFileName);
-                strcpy(szPath+3+(ext-lpFileName),".so");
-            }else
+        p = szPath + len;
+        strcpy(p, lpFileName);
+        ret = dlopen(szPath, RTLD_NOW);
+        if (!ret)
+        {
+            const char *ext = strrchr(lpFileName, '.');
+            if (!ext)
+            {
+                // no ext, add so as the extend name
+                sprintf(szPath, "%s.so", lpFileName);
+            }
+            else if (stricmp(ext, ".dll") == 0)
+            {
+                // windows dll name pattern, change to libxxx.so
+                sprintf(szPath, "lib%s", lpFileName);
+                strcpy(szPath + 3 + (ext - lpFileName), ".so");
+            }
+            else
             {
                 break;
             }
             ret = LoadLibraryA(szPath);
         }
-    }while(false);
+    } while (false);
     return ret;
 }
 
@@ -1009,55 +1041,65 @@ int GetSystemMetrics(int nIndex)
 #define PROC_EVENT_FMT "proc_event_E23A140E-2711-44CE-AE4E-67D55217FF7A_%u"
 
 class ChildStatusMgr {
-public:
-    ChildStatusMgr(){}
-
-    void setPidCode(pid_t pid,int status){
-        std::unique_lock<std::mutex> lock(m_mutex);
-        m_child_status[pid]=status;
+  public:
+    ChildStatusMgr()
+    {
     }
 
-    BOOL getExitCode(pid_t pid,LPDWORD lpExitCode){
+    void setPidCode(pid_t pid, int status)
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        m_child_status[pid] = status;
+    }
+
+    BOOL getExitCode(pid_t pid, LPDWORD lpExitCode)
+    {
         std::unique_lock<std::mutex> lock(m_mutex);
         auto it = m_child_status.find(pid);
-        if(it == m_child_status.end())
+        if (it == m_child_status.end())
             return FALSE;
         int status = it->second;
 
-        if (WIFEXITED(status)) {
+        if (WIFEXITED(status))
+        {
             *lpExitCode = WEXITSTATUS(status);
-        } else if (WIFSIGNALED(status)) {
+        }
+        else if (WIFSIGNALED(status))
+        {
             *lpExitCode = -1;
         }
         return TRUE;
     }
 
-private:
-std::map<pid_t,int> m_child_status;
-std::mutex m_mutex;
+  private:
+    std::map<pid_t, int> m_child_status;
+    std::mutex m_mutex;
 } s_child_status_mgr;
 
-static void sigchld_handler(int signo) {
+static void sigchld_handler(int signo)
+{
     pid_t pid;
     int status;
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0) {
-        //notify child process was stopped.
-        s_child_status_mgr.setPidCode(pid,status);
+    while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+    {
+        // notify child process was stopped.
+        s_child_status_mgr.setPidCode(pid, status);
         char szName[100];
-        sprintf(szName,PROC_EVENT_FMT,pid);
-        HANDLE hEvent = CreateEventA(NULL,TRUE,FALSE,szName);
+        sprintf(szName, PROC_EVENT_FMT, pid);
+        HANDLE hEvent = CreateEventA(NULL, TRUE, FALSE, szName);
         SetEvent(hEvent);
         CloseHandle(hEvent);
     }
 }
 
 static std::mutex s_mutex_sigchild;
-static bool       s_sigchild_flag = false;
-int install_sigchld_handler() {
+static bool s_sigchild_flag = false;
+int install_sigchld_handler()
+{
     std::unique_lock<std::mutex> lock(s_mutex_sigchild);
-    if(s_sigchild_flag)
+    if (s_sigchild_flag)
         return 0;
-    s_sigchild_flag=true;
+    s_sigchild_flag = true;
     struct sigaction sa;
     sa.sa_handler = sigchld_handler;
     sigemptyset(&sa.sa_mask);
@@ -1066,20 +1108,21 @@ int install_sigchld_handler() {
     return 1;
 }
 
-BOOL WINAPI GetExitCodeProcess(HANDLE hProcess,LPDWORD lpExitCode){
-    if(!lpExitCode)
+BOOL WINAPI GetExitCodeProcess(HANDLE hProcess, LPDWORD lpExitCode)
+{
+    if (!lpExitCode)
         return FALSE;
 
     pid_t pid = GetProcessId(hProcess);
-    if(!pid)
+    if (!pid)
         return FALSE;
-    return s_child_status_mgr.getExitCode(pid,lpExitCode);
+    return s_child_status_mgr.getExitCode(pid, lpExitCode);
 }
-
 
 #define PROC_STATUS "/proc/%d/status"
 // 读取指定PID的进程状态文件，获取其有效用户ID
-int WINAPI get_process_uid(int pid) {
+int WINAPI get_process_uid(int pid)
+{
     char filename[64];
     FILE *file;
     char line[256];
@@ -1090,14 +1133,17 @@ int WINAPI get_process_uid(int pid) {
 
     // 打开状态文件
     file = fopen(filename, "r");
-    if (!file) {
+    if (!file)
+    {
         perror("无法打开进程状态文件");
         return -1;
     }
 
     // 逐行读取文件内容，查找Uid字段
-    while (fgets(line, sizeof(line), file)) {
-        if (strncmp(line, "Uid:", 4) == 0) {
+    while (fgets(line, sizeof(line), file))
+    {
+        if (strncmp(line, "Uid:", 4) == 0)
+        {
             // 解析Uid字段，获取有效用户ID
             sscanf(line, "Uid:\t%d", &uid);
             break;
@@ -1108,304 +1154,286 @@ int WINAPI get_process_uid(int pid) {
     return uid;
 }
 
-pid_t WINAPI GetCurrentProcessId(){
+pid_t WINAPI GetCurrentProcessId()
+{
     return getpid();
 }
 
-pid_t WINAPI GetProcessId( HANDLE hProcess){
-    if(hProcess == INVALID_HANDLE_VALUE)
+pid_t WINAPI GetProcessId(HANDLE hProcess)
+{
+    if (hProcess == INVALID_HANDLE_VALUE)
         return getpid();
     char szName[1001];
-    if(!GetHandleName(hProcess,szName))
+    if (!GetHandleName(hProcess, szName))
         return 0;
     pid_t pid;
-    if(1!=sscanf(szName,PROC_EVENT_FMT,&pid))
+    if (1 != sscanf(szName, PROC_EVENT_FMT, &pid))
         return 0;
     return pid;
 }
 
-HANDLE WINAPI GetCurrentProcess(void){
-    return INVALID_HANDLE_VALUE;//return a pseudo handle
+HANDLE WINAPI GetCurrentProcess(void)
+{
+    return INVALID_HANDLE_VALUE; // return a pseudo handle
 }
 
-static void RedirectFd(HANDLE h,int fd2){
-    if(!h)
+static void RedirectFd(HANDLE h, int fd2)
+{
+    if (!h)
         return;
-    int fd = _open_osfhandle(h,0);
-    if(fd == -1)
+    int fd = _open_osfhandle(h, 0);
+    if (fd == -1)
         return;
-    dup2(fd,fd2);
+    dup2(fd, fd2);
 }
 
-BOOL WINAPI CreateProcessAsUserA(
-    HANDLE hToken,
-    LPCSTR lpApplicationName,
-    LPSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    BOOL bInheritHandles,
-    DWORD dwCreationFlags,
-    LPVOID lpEnvironment,
-    LPCSTR lpCurrentDirectory,
-    LPSTARTUPINFOA lpStartupInfo,
-    LPPROCESS_INFORMATION lpProcessInformation
-  ){
-    if(!lpApplicationName){
-        if(!lpCommandLine)
+BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)
+{
+    if (!lpApplicationName)
+    {
+        if (!lpCommandLine)
             return FALSE;
         lpApplicationName = lpCommandLine;
-        if(lpApplicationName[0]=='\"')
-            lpCommandLine = strstr(lpCommandLine,"\" ");
+        if (lpApplicationName[0] == '\"')
+            lpCommandLine = strstr(lpCommandLine, "\" ");
         else
-            lpCommandLine = strchr(lpCommandLine,' ');
-        if(lpCommandLine){
-            lpCommandLine += lpApplicationName[0]=='\"'?2:1;
-            lpCommandLine[-1]='\0';
+            lpCommandLine = strchr(lpCommandLine, ' ');
+        if (lpCommandLine)
+        {
+            lpCommandLine += lpApplicationName[0] == '\"' ? 2 : 1;
+            lpCommandLine[-1] = '\0';
         }
     }
     install_sigchld_handler();
 
     std::list<char *> lstArg;
-    lstArg.push_back((char*)lpApplicationName);
-    while(lpCommandLine){
-        char * pArgEnd = nullptr;
-        if(lpCommandLine[0]=='\"')
+    lstArg.push_back((char *)lpApplicationName);
+    while (lpCommandLine)
+    {
+        char *pArgEnd = nullptr;
+        if (lpCommandLine[0] == '\"')
         {
-            lstArg.push_back(lpCommandLine+1);
-            pArgEnd=strstr(lpCommandLine+1,"\" ");
-            if(pArgEnd){
-                pArgEnd[0]=0;
-                pArgEnd+=2;
-            }else{
-                pArgEnd=strrchr(lpCommandLine+1,'\"');
-                if(pArgEnd){
-                    //for last param
-                    pArgEnd[0]=0;
-                    pArgEnd=NULL;
+            lstArg.push_back(lpCommandLine + 1);
+            pArgEnd = strstr(lpCommandLine + 1, "\" ");
+            if (pArgEnd)
+            {
+                pArgEnd[0] = 0;
+                pArgEnd += 2;
+            }
+            else
+            {
+                pArgEnd = strrchr(lpCommandLine + 1, '\"');
+                if (pArgEnd)
+                {
+                    // for last param
+                    pArgEnd[0] = 0;
+                    pArgEnd = NULL;
                 }
             }
-        }else{
+        }
+        else
+        {
             lstArg.push_back(lpCommandLine);
-            pArgEnd=strchr(lpCommandLine,' ');
-            if(pArgEnd){
-                pArgEnd[0]=0;
+            pArgEnd = strchr(lpCommandLine, ' ');
+            if (pArgEnd)
+            {
+                pArgEnd[0] = 0;
                 pArgEnd++;
             }
         }
-        lpCommandLine=pArgEnd;
+        lpCommandLine = pArgEnd;
     }
-    if(lstArg.size()>1000)
-        return FALSE;          // 子进程退出
+    if (lstArg.size() > 1000)
+        return FALSE; // 子进程退出
     pid_t pid = fork();
-    if (pid == -1) {
+    if (pid == -1)
+    {
         // fork 失败
         perror("fork failed");
         exit(EXIT_FAILURE);
     }
-    else if(pid == 0){
-        //prepare env
+    else if (pid == 0)
+    {
+        // prepare env
         std::list<std::string> lstEnv;
         char szDisplay[200];
         char szAuth[200];
-        GetEnvironmentVariableA("DISPLAY",szDisplay,200);
-        GetEnvironmentVariableA("XAUTHORITY",szAuth,200);
-        std::string strDisplay,strAuth;
+        GetEnvironmentVariableA("DISPLAY", szDisplay, 200);
+        GetEnvironmentVariableA("XAUTHORITY", szAuth, 200);
+        std::string strDisplay, strAuth;
         {
-        std::stringstream ss;
-        ss<<"DISPLAY="<<szDisplay;
-        strDisplay = ss.str();
+            std::stringstream ss;
+            ss << "DISPLAY=" << szDisplay;
+            strDisplay = ss.str();
         }
         {
             std::stringstream ss;
-            ss<<"XAUTHORITY="<<szAuth;
+            ss << "XAUTHORITY=" << szAuth;
             strAuth = ss.str();
         }
 
-        if(lpCurrentDirectory){
+        if (lpCurrentDirectory)
+        {
             SetCurrentDirectoryA(lpCurrentDirectory);
         }
-        if(lpEnvironment){
-            if(dwCreationFlags & CREATE_UNICODE_ENVIRONMENT){
+        if (lpEnvironment)
+        {
+            if (dwCreationFlags & CREATE_UNICODE_ENVIRONMENT)
+            {
                 LPCWSTR pszEnv = (LPCWSTR)lpEnvironment;
-                while(*pszEnv){
-                    size_t len =wcslen(pszEnv);
+                while (*pszEnv)
+                {
+                    size_t len = wcslen(pszEnv);
                     std::string strEnv;
-                    tostring(pszEnv,-1,strEnv);
+                    tostring(pszEnv, -1, strEnv);
                     lstEnv.push_back(strEnv);
-                    pszEnv+=len+1;
+                    pszEnv += len + 1;
                 }
-                
-            }else{
+            }
+            else
+            {
                 LPCSTR pszEnv = (LPCSTR)lpEnvironment;
-                while(*pszEnv){
-                    size_t len =strlen(pszEnv);
+                while (*pszEnv)
+                {
+                    size_t len = strlen(pszEnv);
                     lstEnv.push_back(pszEnv);
-                    pszEnv+=len+1;
+                    pszEnv += len + 1;
                 }
             }
         }
-        //notify parent that child process 
+        // notify parent that child process
         char szName[100];
-        sprintf(szName,PROC_EVENT_FMT,getpid());
-        HANDLE hProcess = CreateEventA(NULL,TRUE,FALSE,szName);
+        sprintf(szName, PROC_EVENT_FMT, getpid());
+        HANDLE hProcess = CreateEventA(NULL, TRUE, FALSE, szName);
         SetEvent(hProcess);
         CloseHandle(hProcess);
 
-
-        char * args[1024]={0};
+        char *args[1024] = { 0 };
         size_t i = 0;
         std::string command;
-        if((UINT_PTR)hToken == Verb_RunAs){
-            const char *hosts[]={
-                "/usr/bin/pkexec",
-                "/usr/bin/kdesu",
-                "/usr/bin/gksu"
-            };
-            for(int j=0;j<ARRAYSIZE(hosts);j++){
-                if (GetFileAttributes(hosts[j])!=INVALID_FILE_ATTRIBUTES){
+        if ((UINT_PTR)hToken == Verb_RunAs)
+        {
+            const char *hosts[] = { "/usr/bin/pkexec", "/usr/bin/kdesu", "/usr/bin/gksu" };
+            for (int j = 0; j < ARRAYSIZE(hosts); j++)
+            {
+                if (GetFileAttributes(hosts[j]) != INVALID_FILE_ATTRIBUTES)
+                {
                     command = hosts[j];
                     break;
                 }
             }
-            if(command.empty()){
+            if (command.empty())
+            {
                 perror("no host found!");
                 exit(EXIT_FAILURE);
             }
-            args[i++] = (char*)command.c_str(); 
-            static char szEnv[]="env";
+            args[i++] = (char *)command.c_str();
+            static char szEnv[] = "env";
             args[i++] = szEnv;
-            args[i++] = (char*)strDisplay.c_str();
-            args[i++] = (char*)strAuth.c_str();
+            args[i++] = (char *)strDisplay.c_str();
+            args[i++] = (char *)strAuth.c_str();
         }
-        for(auto it = lstArg.begin();it!=lstArg.end();it++){
-            args[i++]=*it;
+        for (auto it = lstArg.begin(); it != lstArg.end(); it++)
+        {
+            args[i++] = *it;
         }
-        char *envs[1001]={0};
-        i=0;
-        if((UINT_PTR)hToken != Verb_RunAs){
-            envs[i++] = (char*)strDisplay.c_str();
-            envs[i++] = (char*)strAuth.c_str();
+        char *envs[1001] = { 0 };
+        i = 0;
+        if ((UINT_PTR)hToken != Verb_RunAs)
+        {
+            envs[i++] = (char *)strDisplay.c_str();
+            envs[i++] = (char *)strAuth.c_str();
         }
-        for(auto it =lstEnv.begin();it!=lstEnv.end();it++){
-            envs[i++]=(char*)(*it).c_str();
-            if(i>=1000)
+        for (auto it = lstEnv.begin(); it != lstEnv.end(); it++)
+        {
+            envs[i++] = (char *)(*it).c_str();
+            if (i >= 1000)
                 break;
         }
-        if(lpStartupInfo)
+        if (lpStartupInfo)
         {
-            //redirect stdin/out/err
-            RedirectFd(lpStartupInfo->hStdInput,STDIN_FILENO);
-            RedirectFd(lpStartupInfo->hStdOutput,STDOUT_FILENO);
-            RedirectFd(lpStartupInfo->hStdError,STDERR_FILENO);
+            // redirect stdin/out/err
+            RedirectFd(lpStartupInfo->hStdInput, STDIN_FILENO);
+            RedirectFd(lpStartupInfo->hStdOutput, STDOUT_FILENO);
+            RedirectFd(lpStartupInfo->hStdError, STDERR_FILENO);
         }
 
-        //child process
-        execve(args[0], args, envs);       // 替换子进程的代码为新程序
-        perror("execvp failed");    // 如果 execvp 失败，打印错误信息
+        // child process
+        execve(args[0], args, envs); // 替换子进程的代码为新程序
+        perror("execvp failed");     // 如果 execvp 失败，打印错误信息
         exit(EXIT_FAILURE);          // 子进程退出
-    }else{
+    }
+    else
+    {
         char szName[100];
-        sprintf(szName,"proc_event_%u",pid);
-        HANDLE hProcess = CreateEventA(NULL,TRUE,FALSE,szName);
-        BOOL bRet = WaitForSingleObject(hProcess,100)==WAIT_OBJECT_0;
-        if(bRet){
-            if(lpProcessInformation){
+        sprintf(szName, "proc_event_%u", pid);
+        HANDLE hProcess = CreateEventA(NULL, TRUE, FALSE, szName);
+        BOOL bRet = WaitForSingleObject(hProcess, 100) == WAIT_OBJECT_0;
+        if (bRet)
+        {
+            if (lpProcessInformation)
+            {
                 lpProcessInformation->hProcess = hProcess;
-                lpProcessInformation->hThread=INVALID_HANDLE_VALUE;
+                lpProcessInformation->hThread = INVALID_HANDLE_VALUE;
                 lpProcessInformation->dwProcessId = pid;
                 lpProcessInformation->dwThreadId = 0;
             }
-        }else{
+        }
+        else
+        {
             CloseHandle(hProcess);
         }
         return bRet;
     }
-  }
+}
 
-BOOL WINAPI CreateProcessAsUserW(
-    HANDLE hToken,
-    LPCWSTR lpApplicationName,
-    LPWSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    BOOL bInheritHandles,
-    DWORD dwCreationFlags,
-    LPVOID lpEnvironment,
-    LPCWSTR lpCurrentDirectory,
-    LPSTARTUPINFOW lpStartupInfo,
-    LPPROCESS_INFORMATION lpProcessInformation
-  ){
-    std::string strApp,strCmd,strDir;
-    tostring(lpApplicationName,-1,strApp);
-    tostring(lpCommandLine,-1,strCmd);
-    tostring(lpCurrentDirectory,-1,strDir);
-    std::string strDesktop,strTitle;
+BOOL WINAPI CreateProcessAsUserW(HANDLE hToken, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)
+{
+    std::string strApp, strCmd, strDir;
+    tostring(lpApplicationName, -1, strApp);
+    tostring(lpCommandLine, -1, strCmd);
+    tostring(lpCurrentDirectory, -1, strDir);
+    std::string strDesktop, strTitle;
     STARTUPINFOA startupINfoA;
-    STARTUPINFOA * pStartInfoA=nullptr;
-    if(lpStartupInfo){
+    STARTUPINFOA *pStartInfoA = nullptr;
+    if (lpStartupInfo)
+    {
         pStartInfoA = &startupINfoA;
-        if(lpStartupInfo->lpDesktop)
-            tostring(lpStartupInfo->lpDesktop,-1,strDesktop);
-        if(lpStartupInfo->lpTitle)
-            tostring(lpStartupInfo->lpTitle,-1,strTitle);
+        if (lpStartupInfo->lpDesktop)
+            tostring(lpStartupInfo->lpDesktop, -1, strDesktop);
+        if (lpStartupInfo->lpTitle)
+            tostring(lpStartupInfo->lpTitle, -1, strTitle);
         startupINfoA.cb = sizeof(startupINfoA);
-        startupINfoA.lpReserved=NULL;
-        startupINfoA.lpDesktop = lpStartupInfo->lpDesktop?(char*)strDesktop.c_str():nullptr;
-        startupINfoA.lpTitle = lpStartupInfo->lpTitle?(char*)strTitle.c_str():nullptr;
-        startupINfoA.dwX=lpStartupInfo->dwX;
-        startupINfoA.dwY=lpStartupInfo->dwY;
-        startupINfoA.dwXSize=lpStartupInfo->dwXSize;
-        startupINfoA.dwYSize=lpStartupInfo->dwYSize;
-        startupINfoA.dwXCountChars=lpStartupInfo->dwXCountChars;
-        startupINfoA.dwYCountChars=lpStartupInfo->dwYCountChars;
-        startupINfoA.dwFillAttribute=lpStartupInfo->dwFillAttribute;
-        startupINfoA.dwFlags=lpStartupInfo->dwFlags;
-        startupINfoA.wShowWindow=lpStartupInfo->wShowWindow;
-        startupINfoA.cbReserved2=0;
-        startupINfoA.lpReserved2=nullptr;
+        startupINfoA.lpReserved = NULL;
+        startupINfoA.lpDesktop = lpStartupInfo->lpDesktop ? (char *)strDesktop.c_str() : nullptr;
+        startupINfoA.lpTitle = lpStartupInfo->lpTitle ? (char *)strTitle.c_str() : nullptr;
+        startupINfoA.dwX = lpStartupInfo->dwX;
+        startupINfoA.dwY = lpStartupInfo->dwY;
+        startupINfoA.dwXSize = lpStartupInfo->dwXSize;
+        startupINfoA.dwYSize = lpStartupInfo->dwYSize;
+        startupINfoA.dwXCountChars = lpStartupInfo->dwXCountChars;
+        startupINfoA.dwYCountChars = lpStartupInfo->dwYCountChars;
+        startupINfoA.dwFillAttribute = lpStartupInfo->dwFillAttribute;
+        startupINfoA.dwFlags = lpStartupInfo->dwFlags;
+        startupINfoA.wShowWindow = lpStartupInfo->wShowWindow;
+        startupINfoA.cbReserved2 = 0;
+        startupINfoA.lpReserved2 = nullptr;
         startupINfoA.hStdInput = lpStartupInfo->hStdInput;
-        startupINfoA.hStdOutput=lpStartupInfo->hStdOutput;
-        startupINfoA.hStdError = lpStartupInfo->hStdError;   
+        startupINfoA.hStdOutput = lpStartupInfo->hStdOutput;
+        startupINfoA.hStdError = lpStartupInfo->hStdError;
     }
-    return CreateProcessAsUserA(hToken,lpApplicationName?strApp.c_str():nullptr,lpCommandLine?(char*)strCmd.c_str():nullptr,
-        lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,
-        lpCurrentDirectory?strDir.c_str():nullptr,
-        pStartInfoA,
-        lpProcessInformation
-    );
-  }
+    return CreateProcessAsUserA(hToken, lpApplicationName ? strApp.c_str() : nullptr, lpCommandLine ? (char *)strCmd.c_str() : nullptr, lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment, lpCurrentDirectory ? strDir.c_str() : nullptr, pStartInfoA, lpProcessInformation);
+}
 
+BOOL WINAPI CreateProcessA(LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)
+{
+    return CreateProcessAsUserA(0, lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
+}
 
-  BOOL WINAPI CreateProcessA(
-    LPCSTR lpApplicationName,
-    LPSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    BOOL bInheritHandles,
-    DWORD dwCreationFlags,
-    LPVOID lpEnvironment,
-    LPCSTR lpCurrentDirectory,
-    LPSTARTUPINFOA lpStartupInfo,
-    LPPROCESS_INFORMATION lpProcessInformation
-  ){
-    return CreateProcessAsUserA(0,lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation);
-  }
-
-  BOOL WINAPI CreateProcessW(
-    LPCWSTR lpApplicationName,
-    LPWSTR lpCommandLine,
-    LPSECURITY_ATTRIBUTES lpProcessAttributes,
-    LPSECURITY_ATTRIBUTES lpThreadAttributes,
-    BOOL bInheritHandles,
-    DWORD dwCreationFlags,
-    LPVOID lpEnvironment,
-    LPCWSTR lpCurrentDirectory,
-    LPSTARTUPINFOW lpStartupInfo,
-    LPPROCESS_INFORMATION lpProcessInformation
-  ){
-    return CreateProcessAsUserW(0,lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation);
-  }
-
+BOOL WINAPI CreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)
+{
+    return CreateProcessAsUserW(0, lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
+}
 
 BOOL GetKeyboardState(PBYTE lpKeyState)
 {
@@ -1715,16 +1743,17 @@ LONG CompareFileTime(const FILETIME *ft1, const FILETIME *ft2)
 
 BOOL WINAPI SystemParametersInfoA(UINT action, UINT val, void *ptr, UINT winini)
 {
-    //todo:hjx
-    switch(action){
-        case SPI_GETWHEELSCROLLLINES:
-        {
-            unsigned int *pv = (unsigned int*)ptr;
-            *pv = 3;
-            return TRUE;
-        }
-        default:
-            return FALSE;
+    // todo:hjx
+    switch (action)
+    {
+    case SPI_GETWHEELSCROLLLINES:
+    {
+        unsigned int *pv = (unsigned int *)ptr;
+        *pv = 3;
+        return TRUE;
+    }
+    default:
+        return FALSE;
     }
 }
 
@@ -2003,9 +2032,12 @@ DWORD WINAPI GetEnvironmentVariableW(LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSiz
 }
 
 //-----------------------------------------------------------
-struct FdHandle : _SynHandle{
+struct FdHandle : _SynHandle
+{
     int fd;
-    FdHandle(int _fd):fd(_fd){
+    FdHandle(int _fd)
+        : fd(_fd)
+    {
         type = HFdHandle;
     }
 
@@ -2027,101 +2059,130 @@ struct FdHandle : _SynHandle{
     {
         return false;
     }
-    void lock() override {}
-    void unlock() override {}
-    void *getData() override {return nullptr;}
-    LPCSTR getName() const override {return nullptr;}
+    void lock() override
+    {
+    }
+    void unlock() override
+    {
+    }
+    void *getData() override
+    {
+        return nullptr;
+    }
+    LPCSTR getName() const override
+    {
+        return nullptr;
+    }
 };
 
-class SOsHandleMgr{
-    enum{
-        kSpan_CheckFd=1000, //time interval for check fd
+class SOsHandleMgr {
+    enum
+    {
+        kSpan_CheckFd = 1000, // time interval for check fd
     };
-public:
-SOsHandleMgr():m_ts(0){
 
-}
-
-~SOsHandleMgr(){
-    std::unique_lock<std::mutex> lock(m_mutex);
-    auto it=m_fdMap.begin();
-    while(it != m_fdMap.end()){
-        CloseHandle(it->second);
-        it++;
+  public:
+    SOsHandleMgr()
+        : m_ts(0)
+    {
     }
-    m_fdMap.clear();
-}
 
-bool isValidFd(int fd){
-    int new_fd = dup(fd);
-    if (new_fd == -1) {
-        return false;
-    }else{
-        close(new_fd); 
-        return true;
+    ~SOsHandleMgr()
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        auto it = m_fdMap.begin();
+        while (it != m_fdMap.end())
+        {
+            CloseHandle(it->second);
+            it++;
+        }
+        m_fdMap.clear();
     }
-}
 
-HANDLE fd2Handle(int fd){
-    std::unique_lock<std::mutex> lock(m_mutex);
-
-    uint64_t now = GetTickCount64();
-    if(m_ts!= 0 && now-m_ts > kSpan_CheckFd){
-        m_ts = now;
-        //time for check fd validation.
-        auto it=m_fdMap.begin();
-        while(it != m_fdMap.end()){
-            auto it_bk = it++;
-            if(!isValidFd(it_bk->first)){
-                CloseHandle(it_bk->second);
-                m_fdMap.erase(it_bk);
-            }
+    bool isValidFd(int fd)
+    {
+        int new_fd = dup(fd);
+        if (new_fd == -1)
+        {
+            return false;
+        }
+        else
+        {
+            close(new_fd);
+            return true;
         }
     }
-    auto it = m_fdMap.find(fd);
-    if(it!= m_fdMap.end())
-        return it->second;
-    HANDLE hRet = NewSynHandle(new FdHandle(fd));
-    m_fdMap.insert(std::make_pair(fd,hRet));
-    return hRet;
-}
 
-private:
-std::map<int,HANDLE> m_fdMap;
-std::mutex m_mutex;
-uint64_t m_ts;
+    HANDLE fd2Handle(int fd)
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        uint64_t now = GetTickCount64();
+        if (m_ts != 0 && now - m_ts > kSpan_CheckFd)
+        {
+            m_ts = now;
+            // time for check fd validation.
+            auto it = m_fdMap.begin();
+            while (it != m_fdMap.end())
+            {
+                auto it_bk = it++;
+                if (!isValidFd(it_bk->first))
+                {
+                    CloseHandle(it_bk->second);
+                    m_fdMap.erase(it_bk);
+                }
+            }
+        }
+        auto it = m_fdMap.find(fd);
+        if (it != m_fdMap.end())
+            return it->second;
+        HANDLE hRet = NewSynHandle(new FdHandle(fd));
+        m_fdMap.insert(std::make_pair(fd, hRet));
+        return hRet;
+    }
+
+  private:
+    std::map<int, HANDLE> m_fdMap;
+    std::mutex m_mutex;
+    uint64_t m_ts;
 };
 
 static SOsHandleMgr s_osHandleMgr;
 
-HANDLE WINAPI _get_osfhandle(int fd){
+HANDLE WINAPI _get_osfhandle(int fd)
+{
     return s_osHandleMgr.fd2Handle(fd);
 }
 
-
-LPSTR WINAPI GetCommandLineA(void){
-    static char cmdline[1024]={0};
-    if(cmdline[0]!=0)
+LPSTR WINAPI GetCommandLineA(void)
+{
+    static char cmdline[1024] = { 0 };
+    if (cmdline[0] != 0)
         return cmdline;
     FILE *file = fopen("/proc/self/cmdline", "r");
-    if (!file) {
+    if (!file)
+    {
         perror("Failed to open cmdline file");
         return cmdline;
     }
-    if (fgets(cmdline, sizeof(cmdline), file)) {
-        for (char *p = cmdline; *p; p++) {
-            if (*p == '\0') *p = ' ';
+    if (fgets(cmdline, sizeof(cmdline), file))
+    {
+        for (char *p = cmdline; *p; p++)
+        {
+            if (*p == '\0')
+                *p = ' ';
         }
     }
     fclose(file);
     return cmdline;
 }
 
-LPWSTR WINAPI GetCommandLineW(void){
-    static wchar_t cmdline[1024]={0};
-    if(cmdline[0]!=0) 
+LPWSTR WINAPI GetCommandLineW(void)
+{
+    static wchar_t cmdline[1024] = { 0 };
+    if (cmdline[0] != 0)
         return cmdline;
-    char * tmp = GetCommandLineA();
-    MultiByteToWideChar(CP_UTF8,0,tmp,-1,cmdline,1024);
+    char *tmp = GetCommandLineA();
+    MultiByteToWideChar(CP_UTF8, 0, tmp, -1, cmdline, 1024);
     return cmdline;
 }

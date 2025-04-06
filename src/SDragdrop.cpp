@@ -296,7 +296,7 @@ HRESULT SDragDrop::DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource
         return E_OUTOFMEMORY;
 
     {
-        conn->getClipboard()->setDataObject(pDataObject,TRUE);
+        conn->getClipboard()->setDataObject(pDataObject, TRUE);
         SLOG_STMI() << "DoDragDrop start";
 
         msg.message = 0;
@@ -336,7 +336,7 @@ HRESULT SDragDrop::DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource
                 DispatchMessage(&msg);
             }
         }
-        conn->getClipboard()->setDataObject(NULL,TRUE);
+        conn->getClipboard()->setDataObject(NULL, TRUE);
         /* re-post the quit message to outer message loop */
         if (msg.message == WM_QUIT)
             PostQuitMessage(msg.wParam);
@@ -353,7 +353,7 @@ HRESULT SDragDrop::DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource
 
 //-------------------------------------------------------
 XDndDataObjectProxy::XDndDataObjectProxy(SConnection *conn, HWND hWnd, const uint32_t data32[5])
-    : SDataObjectProxy(conn,hWnd)
+    : SDataObjectProxy(conn, hWnd)
 {
     m_targetTime = XCB_CURRENT_TIME;
     m_dwEffect = 0;
@@ -407,4 +407,3 @@ void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
         }
     }
 }
-

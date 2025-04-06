@@ -121,31 +121,35 @@ static uint32_t GetDoubleClickSpan(xcb_connection_t *connection, xcb_screen_t *s
     return ret;
 }
 
-void SConnection::xim_forward_event(xcb_xim_t *im, xcb_xic_t ic, xcb_key_press_event_t *event,
-                   void *user_data) {
-    SConnection *conn = (SConnection*)user_data;
-    conn->pushEvent((xcb_generic_event_t*)event);
+void SConnection::xim_forward_event(xcb_xim_t *im, xcb_xic_t ic, xcb_key_press_event_t *event, void *user_data)
+{
+    SConnection *conn = (SConnection *)user_data;
+    conn->pushEvent((xcb_generic_event_t *)event);
 }
 
-void SConnection::xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, char *str,
-                   uint32_t length, uint32_t *keysym, size_t nKeySym,
-                   void *user_data) {
+void SConnection::xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, char *str, uint32_t length, uint32_t *keysym, size_t nKeySym, void *user_data)
+{
     SConnection *conn = (SConnection *)user_data;
     const char *utf8 = nullptr;
-    if (xcb_xim_get_encoding(im) == XCB_XIM_UTF8_STRING) {
+    if (xcb_xim_get_encoding(im) == XCB_XIM_UTF8_STRING)
+    {
         utf8 = str;
-    } else if (xcb_xim_get_encoding(im) == XCB_XIM_COMPOUND_TEXT) {
+    }
+    else if (xcb_xim_get_encoding(im) == XCB_XIM_COMPOUND_TEXT)
+    {
         size_t newLength = 0;
         utf8 = xcb_compound_text_to_utf8(str, length, &newLength);
         length = newLength;
     }
-    if (utf8) {
-        //SLOG_FMTI("key commit: %.*s\n", l, utf8);
+    if (utf8)
+    {
+        // SLOG_FMTI("key commit: %.*s\n", l, utf8);
         std::wstring buf;
-        towstring(utf8,length,buf);
-        for(int i=0;i<buf.length();i++){
-            SLOG_STMI()<<"commit text "<< i<<" is "<<buf.c_str()[i];
-            Msg * pMsg = new Msg;
+        towstring(utf8, length, buf);
+        for (int i = 0; i < buf.length(); i++)
+        {
+            SLOG_STMI() << "commit text " << i << " is " << buf.c_str()[i];
+            Msg *pMsg = new Msg;
             pMsg->hwnd = conn->m_hFocus;
             pMsg->message = WM_IME_CHAR;
             pMsg->wParam = buf.c_str()[i];
@@ -161,11 +165,11 @@ void SConnection::xim_logger(const char *fmt, ...)
 {
     va_list argp, argp2;
     va_start(argp, fmt);
-    va_copy(argp2,argp);
+    va_copy(argp2, argp);
     int len = vsnprintf(NULL, 0, fmt, argp);
     char *buf = (char *)malloc(len + 1);
     vsnprintf(buf, len + 1, fmt, argp2);
-    SLOG_STMD() <<"xim_logger:"<< buf;
+    SLOG_STMD() << "xim_logger:" << buf;
     free(buf);
     va_end(argp);
 }
@@ -177,13 +181,13 @@ void SConnection::xim_create_ic_callback(xcb_xim_t *im, xcb_xic_t new_ic, void *
     if (!wndObj)
         return;
     HIMC hIMC = ImmGetContext(hWnd);
-    
+
     hIMC->xic = new_ic;
     if (new_ic && wndObj->mConnection->GetFocus() == hWnd)
     {
-        //delay set ic focus
+        // delay set ic focus
         xcb_xim_set_ic_focus(im, new_ic);
-//        SLOG_STMI()<<"xcb_xim_set_ic_focus set windows "<<hWnd<<" xic="<<new_ic;
+        //        SLOG_STMI()<<"xcb_xim_set_ic_focus set windows "<<hWnd<<" xic="<<new_ic;
     }
 }
 
@@ -198,22 +202,18 @@ void SConnection::xim_open_callback(xcb_xim_t *im, void *user_data)
     spot.x = wndObj->mConnection->m_caretInfo.x;
     spot.y = wndObj->mConnection->m_caretInfo.y + wndObj->mConnection->m_caretInfo.nHeight;
     HIMC hIMC = ImmGetContext(hWnd);
-    if(!hIMC)
+    if (!hIMC)
         return;
     xcb_xim_nested_list nested = xcb_xim_create_nested_list(im, XCB_XIM_XNSpotLocation, &spot, NULL);
     xcb_window_t wnd = (xcb_window_t)hWnd;
-    if(0 && hIMC->xic){
-        xcb_xim_set_ic_values(im, hIMC->xic, nullptr, NULL,XCB_XIM_XNInputStyle,
-            &input_style, XCB_XIM_XNClientWindow, &wnd,
-            XCB_XIM_XNFocusWindow, &wnd,
-            XCB_XIM_XNPreeditAttributes, &nested, NULL);
-        xcb_xim_set_ic_focus(im, hIMC->xic);
-    }else
+    if (0 && hIMC->xic)
     {
-        xcb_xim_create_ic(im, xim_create_ic_callback, user_data, XCB_XIM_XNInputStyle,
-            &input_style, XCB_XIM_XNClientWindow, &wnd,
-            XCB_XIM_XNFocusWindow, &wnd, XCB_XIM_XNPreeditAttributes,
-            &nested, NULL);
+        xcb_xim_set_ic_values(im, hIMC->xic, nullptr, NULL, XCB_XIM_XNInputStyle, &input_style, XCB_XIM_XNClientWindow, &wnd, XCB_XIM_XNFocusWindow, &wnd, XCB_XIM_XNPreeditAttributes, &nested, NULL);
+        xcb_xim_set_ic_focus(im, hIMC->xic);
+    }
+    else
+    {
+        xcb_xim_create_ic(im, xim_create_ic_callback, user_data, XCB_XIM_XNInputStyle, &input_style, XCB_XIM_XNClientWindow, &wnd, XCB_XIM_XNFocusWindow, &wnd, XCB_XIM_XNPreeditAttributes, &nested, NULL);
     }
     free(nested.data);
 }
@@ -333,7 +333,8 @@ SConnection::~SConnection()
     {
         return;
     }
-    if(m_xim){
+    if (m_xim)
+    {
         xcb_xim_close(m_xim);
         xcb_xim_destroy(m_xim);
         m_xim = nullptr;
@@ -473,18 +474,21 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
                 m_clipboard->incrTransactionPeeker(it, accepted);
             if (!accepted)
             {
-                if (!xcb_xim_filter_event(m_xim, it)){
-                    bool bForward=false;
-                    if((it->response_type & ~0x80) == XCB_KEY_PRESS || (it->response_type & ~0x80) == XCB_KEY_RELEASE){
+                if (!xcb_xim_filter_event(m_xim, it))
+                {
+                    bool bForward = false;
+                    if ((it->response_type & ~0x80) == XCB_KEY_PRESS || (it->response_type & ~0x80) == XCB_KEY_RELEASE)
+                    {
                         HIMC hIMC = ImmGetContext(m_hFocus);
-                        if (hIMC && hIMC->xic) {
-                            bForward=xcb_xim_forward_event(m_xim, hIMC->xic, (xcb_key_press_event_t *)it);
+                        if (hIMC && hIMC->xic)
+                        {
+                            bForward = xcb_xim_forward_event(m_xim, hIMC->xic, (xcb_key_press_event_t *)it);
                         }
                     }
-                    if(!bForward)
+                    if (!bForward)
                         pushEvent(it);
                 }
-            }    
+            }
             free(it);
         }
         bRet = !m_evtQueue.empty();
@@ -659,7 +663,8 @@ xcb_generic_event_t *SConnection::checkEvent(IEventChecker *checker)
 
 int SConnection::_waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD to, DWORD dwWaitMask)
 {
-    for(;;){
+    for (;;)
+    {
         UINT timeOut = to;
         if (!m_bBlockTimer)
         {
@@ -669,7 +674,7 @@ int SConnection::_waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD
                 timeOut = std::min(timeOut, it.fireRemain);
             }
         }
-        
+
         uint64_t ts1 = GetTickCount64();
         int ret = WaitForMultipleObjects(nCount, handles, FALSE, timeOut);
         uint64_t ts2 = GetTickCount64();
@@ -697,7 +702,6 @@ int SConnection::_waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD
             return ret;
         }
     }
-
 }
 
 int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD to, BOOL fWaitAll, DWORD dwWaitMask)
@@ -989,21 +993,21 @@ BOOL SConnection::HideCaret(HWND hWnd)
     return TRUE;
 }
 
-
 BOOL SConnection::SetCaretPos(int X, int Y)
 {
-    if(!m_hFocus)
+    if (!m_hFocus)
         return FALSE;
     m_caretInfo.x = X;
     m_caretInfo.y = Y;
     HIMC hIMC = ImmGetContext(m_hFocus);
-    if(hIMC && hIMC->xic){
-        xcb_point_t spot={(int16_t)X,(int16_t)(Y+m_caretInfo.nHeight)};
+    if (hIMC && hIMC->xic)
+    {
+        xcb_point_t spot = { (int16_t)X, (int16_t)(Y + m_caretInfo.nHeight) };
         xcb_xim_nested_list nested = xcb_xim_create_nested_list(m_xim, XCB_XIM_XNSpotLocation, &spot, NULL);
-        xcb_xim_set_ic_values(m_xim, hIMC->xic, nullptr,nullptr,XCB_XIM_XNPreeditAttributes, &nested, nullptr);
-        free(nested.data);    
+        xcb_xim_set_ic_values(m_xim, hIMC->xic, nullptr, nullptr, XCB_XIM_XNPreeditAttributes, &nested, nullptr);
+        free(nested.data);
     }
-    ImmReleaseContext(m_hFocus,hIMC);
+    ImmReleaseContext(m_hFocus, hIMC);
     return TRUE;
 }
 
@@ -1100,12 +1104,10 @@ uint32_t SConnection::atom2ClipFormat(xcb_atom_t atom)
         return CF_MAX + atom; // for registed format
 }
 
-std::shared_ptr<std::vector<char>> SConnection::readSelection(bool bXdnd,uint32_t fmt)
+std::shared_ptr<std::vector<char>> SConnection::readSelection(bool bXdnd, uint32_t fmt)
 {
-    return m_clipboard->getDataInFormat(bXdnd?atoms.XdndSelection:atoms.CLIPBOARD, clipFormat2Atom(fmt));
+    return m_clipboard->getDataInFormat(bXdnd ? atoms.XdndSelection : atoms.CLIPBOARD, clipFormat2Atom(fmt));
 }
-
-
 
 struct MotifWmHints
 {
@@ -1142,13 +1144,11 @@ enum
     MWM_INPUT_FULL_APPLICATION_MODAL = 3L
 };
 
-
 enum QX11EmbedInfoFlags
 {
     XEMBED_VERSION = 0,
     XEMBED_MAPPED = (1 << 0),
 };
-
 
 static MotifWmHints getMotifWmHints(SConnection *c, HWND window)
 {
@@ -1223,7 +1223,7 @@ static void setMotifWindowFlags(SConnection *c, HWND hWnd, DWORD dwStyle, DWORD 
     setMotifWmHints(c, hWnd, mwmhints);
 }
 
-HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs,int depth)
+HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
 {
     HWND hWnd = xcb_generate_id(connection);
 
@@ -1269,13 +1269,13 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs,int depth)
     uint32_t pid = getpid();
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms._NET_WM_PID, XCB_ATOM_CARDINAL, 32, 1, &pid);
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
-    
-    {//set window clas
+
+    { // set window clas
         char szPath[MAX_PATH];
         GetModuleFileName(nullptr, szPath, MAX_PATH);
         char *szName = strrchr(szPath, '/') + 1;
         int nNameLen = strlen(szName);
-        char szClassName[MAX_PATH+1]={0};
+        char szClassName[MAX_PATH + 1] = { 0 };
         int clsLen = GetAtomNameA(pWnd->clsAtom, szClassName, MAX_PATH);
         int nLen = nNameLen + 1 + clsLen + 1;
         char *pszCls = new char[nLen];
@@ -1285,18 +1285,18 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs,int depth)
         delete[] pszCls;
     }
 
-    setMotifWindowFlags(this,hWnd, pWnd->dwStyle, pWnd->dwExStyle);
+    setMotifWindowFlags(this, hWnd, pWnd->dwStyle, pWnd->dwExStyle);
     {
         /* Add XEMBED info; this operation doesn't initiate the embedding. */
         uint32_t data[] = { XEMBED_VERSION, XEMBED_MAPPED };
         xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms._XEMBED_INFO, atoms._XEMBED_INFO, 32, 2, (void *)data);
     }
-    if(!(pWnd->dwStyle & WS_EX_TOOLWINDOW) && wndCls == XCB_WINDOW_CLASS_INPUT_OUTPUT)
+    if (!(pWnd->dwStyle & WS_EX_TOOLWINDOW) && wndCls == XCB_WINDOW_CLASS_INPUT_OUTPUT)
     {
         pWnd->hIMC = ImmCreateContext();
         pWnd->hIMC->xim = m_xim;
-    }    
-    
+    }
+
     xcb_flush(connection);
     return hWnd;
 }
@@ -1320,13 +1320,15 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
     {
         m_hWndActive = 0;
     }
-    if(wnd->hIMC){
+    if (wnd->hIMC)
+    {
         ImmDestroyContext(wnd->hIMC);
-        wnd->hIMC=nullptr;
+        wnd->hIMC = nullptr;
     }
     m_wndCursor.erase(hWnd);
     xcb_destroy_window(connection, hWnd);
-    if(wnd->cmap){
+    if (wnd->cmap)
+    {
         xcb_free_colormap(connection, wnd->cmap);
         wnd->cmap = 0;
     }
@@ -1373,7 +1375,8 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
 
 void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
 {
-    if(wndObj){
+    if (wndObj)
+    {
         if (!hParent)
         {
             if (m_hWndActive)
@@ -1390,9 +1393,11 @@ void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
         {
             xcb_reparent_window(connection, hWnd, hParent, 0, 0);
         }
-    }else{
-        //hwnd for other process.
-        xcb_reparent_window(connection, hWnd, hParent?hParent:screen->root, 0, 0);
+    }
+    else
+    {
+        // hwnd for other process.
+        xcb_reparent_window(connection, hWnd, hParent ? hParent : screen->root, 0, 0);
     }
     xcb_flush(connection);
 }
@@ -1410,7 +1415,7 @@ void SConnection::SendExposeEvent(HWND hWnd)
     xcb_flush(connection);
 }
 
-void SConnection::SetWindowMsgTransparent(HWND hWnd,_Window * wndObj, BOOL bTransparent)
+void SConnection::SetWindowMsgTransparent(HWND hWnd, _Window *wndObj, BOOL bTransparent)
 {
     BOOL transparent = (wndObj->dwExStyle & WS_EX_TRANSPARENT) != 0;
     if (!(transparent ^ bTransparent) || !wndObj->mConnection->hasXFixes())
@@ -1442,14 +1447,16 @@ void SConnection::SetWindowMsgTransparent(HWND hWnd,_Window * wndObj, BOOL bTran
         wndObj->dwExStyle &= ~WS_EX_TRANSPARENT;
 }
 
-void SConnection::AssociateHIMC(HWND hWnd,_Window *wndObj, HIMC hIMC)
+void SConnection::AssociateHIMC(HWND hWnd, _Window *wndObj, HIMC hIMC)
 {
-    wndObj->hIMC=hIMC;
-    if(hIMC){
+    wndObj->hIMC = hIMC;
+    if (hIMC)
+    {
         hIMC->xim = m_xim;
     }
-    if(GetFocus() == hWnd){
-        xcb_xim_open(m_xim, xim_open_callback, true, (void*)hWnd);
+    if (GetFocus() == hWnd)
+    {
+        xcb_xim_open(m_xim, xim_open_callback, true, (void *)hWnd);
     }
 }
 
@@ -1815,7 +1822,7 @@ BOOL SConnection::DestroyCursor(HCURSOR cursor)
 
 static uint32_t TsSpan(uint32_t t1, uint32_t t2)
 {
-    if(t2==-1u)
+    if (t2 == -1u)
         return -1u;
     if (t1 > t2)
     {
@@ -1907,7 +1914,8 @@ HWND SConnection::GetWindow(HWND hWnd, int code) const
     return ret;
 }
 
-BOOL SConnection::IsWindow(HWND hWnd) const{
+BOOL SConnection::IsWindow(HWND hWnd) const
+{
     xcb_get_geometry_cookie_t cookie = xcb_get_geometry(connection, hWnd);
     xcb_get_geometry_reply_t *reply = xcb_get_geometry_reply(connection, cookie, NULL);
     if (!reply)
@@ -1924,17 +1932,20 @@ void SConnection::SetWindowPos(HWND hWnd, int x, int y) const
 
 void SConnection::SetWindowSize(HWND hWnd, int cx, int cy) const
 {
-    if(cx<1) cx=1;
-    if(cy<1) cy=1;
+    if (cx < 1)
+        cx = 1;
+    if (cy < 1)
+        cy = 1;
     uint32_t coords[] = { static_cast<uint32_t>(cx), static_cast<uint32_t>(cy) };
     xcb_configure_window(connection, hWnd, XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT, coords);
 }
 
-BOOL SConnection::MoveWindow(HWND hWnd,int x,int y,int cx,int cy) const{
-    if(!IsWindow(hWnd))
+BOOL SConnection::MoveWindow(HWND hWnd, int x, int y, int cx, int cy) const
+{
+    if (!IsWindow(hWnd))
         return FALSE;
-    SetWindowPos(hWnd,x,y);
-    SetWindowSize(hWnd,cx,cy);
+    SetWindowPos(hWnd, x, y);
+    SetWindowSize(hWnd, cx, cy);
     xcb_flush(connection);
     return TRUE;
 }
@@ -2101,7 +2112,7 @@ void SConnection::OnSetFocus(HWND hWnd)
 {
     if (hWnd == m_hFocus)
         return;
-//    SLOG_STMI() << "OnSetFocus, oldFocus=" << m_hFocus << " newFocus=" << hWnd;
+    //    SLOG_STMI() << "OnSetFocus, oldFocus=" << m_hFocus << " newFocus=" << hWnd;
     if (m_hFocus)
     {
         HIMC hIMC = ImmGetContext(m_hFocus);
@@ -2146,20 +2157,24 @@ HWND SConnection::SetFocus(HWND hWnd)
         return hWnd;
     }
     uint8_t revert_to = XCB_INPUT_FOCUS_POINTER_ROOT;
-    if(!hWnd)
+    if (!hWnd)
         revert_to = XCB_INPUT_FOCUS_NONE;
-    else{
-        if(!IsWindowVisible(hWnd))
+    else
+    {
+        if (!IsWindowVisible(hWnd))
             return m_hFocus;
     }
     HWND hRet = m_hFocus;
     xcb_void_cookie_t cookie = xcb_set_input_focus_checked(connection, revert_to, hWnd, XCB_CURRENT_TIME);
-    xcb_generic_error_t* error = xcb_request_check(connection, cookie);
+    xcb_generic_error_t *error = xcb_request_check(connection, cookie);
     xcb_flush(connection);
-    if (error) {
-        SLOG_STMI()<<"SetFocus error, code="<<(int)error->error_code<<" hWnd="<<hWnd;        
+    if (error)
+    {
+        SLOG_STMI() << "SetFocus error, code=" << (int)error->error_code << " hWnd=" << hWnd;
         free(error);
-    }else{
+    }
+    else
+    {
         SLOG_STMI() << "SetFocus, oldFocus=" << hRet << " newFocus=" << hWnd;
         OnSetFocus(hWnd);
     }
@@ -2290,13 +2305,13 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg = new Msg;
         pMsg->hwnd = e2->child == XCB_NONE ? e2->event : e2->child;
         UINT vk = m_keyboard->onKeyEvent(true, e2->detail, e2->state, e2->time);
-        pMsg->message = (vk < VK_NUMLOCK ||(vk>=VK_OEM_1 && vk<=VK_OEM_8)) ? WM_KEYDOWN : WM_SYSKEYDOWN;
+        pMsg->message = (vk < VK_NUMLOCK || (vk >= VK_OEM_1 && vk <= VK_OEM_8)) ? WM_KEYDOWN : WM_SYSKEYDOWN;
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
         uint32_t tst = (scanCode << 16);
         int cn = m_keyboard->getRepeatCount();
         pMsg->lParam = (scanCode << 16) | m_keyboard->getRepeatCount();
-        //SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
+        // SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
         break;
     }
     case XCB_KEY_RELEASE:
@@ -2785,7 +2800,7 @@ void SConnection::_readProc()
         {
             m_bQuit = true;
             SetEvent(m_evtSync);
-//            SLOG_STMI() << "recv WM_DISCONN, quit event reading thread";
+            //            SLOG_STMI() << "recv WM_DISCONN, quit event reading thread";
             break;
         }
         {
@@ -2951,28 +2966,37 @@ void SConnection::changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom
     xcb_send_event(connection, 0, screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
 }
 
-
-int SConnection::OnGetClassName(HWND hWnd, LPSTR lpClassName, int nMaxCount){
+int SConnection::OnGetClassName(HWND hWnd, LPSTR lpClassName, int nMaxCount)
+{
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (wndObj){
+    if (wndObj)
+    {
         return GetAtomNameA(wndObj->clsAtom, lpClassName, nMaxCount);
-    }else{
+    }
+    else
+    {
         int ret = 0;
-        xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_class(connection,hWnd);
-        xcb_get_property_reply_t* reply =  xcb_get_property_reply(connection,cookie,NULL);
-        if(reply){
-            xcb_icccm_get_wm_class_reply_t clsReply={0};
-            xcb_icccm_get_wm_class_from_reply(&clsReply,reply);
-            if(clsReply.class_name){
+        xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_class(connection, hWnd);
+        xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+        if (reply)
+        {
+            xcb_icccm_get_wm_class_reply_t clsReply = { 0 };
+            xcb_icccm_get_wm_class_from_reply(&clsReply, reply);
+            if (clsReply.class_name)
+            {
                 int len = strlen(clsReply.class_name);
-                if(len<=nMaxCount){
+                if (len <= nMaxCount)
+                {
                     ret = len;
-                    memcpy(lpClassName,clsReply.class_name,len);
-                    if(len<nMaxCount){
-                        lpClassName[len]=0;
+                    memcpy(lpClassName, clsReply.class_name, len);
+                    if (len < nMaxCount)
+                    {
+                        lpClassName[len] = 0;
                         ret++;
                     }
-                }else{
+                }
+                else
+                {
                     SetLastError(ERROR_INSUFFICIENT_BUFFER);
                 }
             }
@@ -2982,7 +3006,7 @@ int SConnection::OnGetClassName(HWND hWnd, LPSTR lpClassName, int nMaxCount){
     }
 }
 
-BOOL SConnection::OnSetWindowText(HWND hWnd, _Window* wndObj,  LPCSTR lpszString)
+BOOL SConnection::OnSetWindowText(HWND hWnd, _Window *wndObj, LPCSTR lpszString)
 {
     wndObj->title = lpszString ? lpszString : "";
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_NAME, atoms.UTF8_STRING, 8, wndObj->title.length(), wndObj->title.c_str());
@@ -2990,15 +3014,20 @@ BOOL SConnection::OnSetWindowText(HWND hWnd, _Window* wndObj,  LPCSTR lpszString
     return TRUE;
 }
 
-int SConnection::OnGetWindowTextLengthA(HWND hWnd){
+int SConnection::OnGetWindowTextLengthA(HWND hWnd)
+{
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (wndObj){
+    if (wndObj)
+    {
         return wndObj->title.length();
-    }else{
+    }
+    else
+    {
         int ret = 0;
-        xcb_get_property_cookie_t cookie = xcb_get_property(connection,0,hWnd,atoms.WM_NAME,atoms.UTF8_STRING,0,UINT_MAX);
-        xcb_get_property_reply_t* reply =  xcb_get_property_reply(connection,cookie,NULL);
-        if(reply){
+        xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, hWnd, atoms.WM_NAME, atoms.UTF8_STRING, 0, UINT_MAX);
+        xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+        if (reply)
+        {
             ret = xcb_get_property_value_length(reply);
             free(reply);
         }
@@ -3006,18 +3035,23 @@ int SConnection::OnGetWindowTextLengthA(HWND hWnd){
     }
 }
 
-int SConnection::OnGetWindowTextLengthW(HWND hWnd){
+int SConnection::OnGetWindowTextLengthW(HWND hWnd)
+{
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (wndObj){
-        return MultiByteToWideChar(CP_UTF8,0,wndObj->title.c_str(),wndObj->title.length(),nullptr,0);
-    }else{
+    if (wndObj)
+    {
+        return MultiByteToWideChar(CP_UTF8, 0, wndObj->title.c_str(), wndObj->title.length(), nullptr, 0);
+    }
+    else
+    {
         int ret = 0;
-        xcb_get_property_cookie_t cookie = xcb_get_property(connection,0,hWnd,atoms.WM_NAME,atoms.UTF8_STRING,0,UINT_MAX);
-        xcb_get_property_reply_t* reply =  xcb_get_property_reply(connection,cookie,NULL);
-        if(reply){
+        xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, hWnd, atoms.WM_NAME, atoms.UTF8_STRING, 0, UINT_MAX);
+        xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+        if (reply)
+        {
             int len = xcb_get_property_value_length(reply);
-            const char * text = (const char*)xcb_get_property_value(reply);
-            ret = MultiByteToWideChar(CP_UTF8,0,text,len,nullptr,0);
+            const char *text = (const char *)xcb_get_property_value(reply);
+            ret = MultiByteToWideChar(CP_UTF8, 0, text, len, nullptr, 0);
             free(reply);
         }
         return ret;
@@ -3027,24 +3061,31 @@ int SConnection::OnGetWindowTextLengthW(HWND hWnd){
 int SConnection::OnGetWindowTextA(HWND hWnd, char *buf, int bufLen)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (wndObj){
-        if(bufLen<wndObj->title.length()){
+    if (wndObj)
+    {
+        if (bufLen < wndObj->title.length())
+        {
             SetLastError(ERROR_INSUFFICIENT_BUFFER);
             return 0;
         }
-        strcpy(buf,wndObj->title.c_str());
+        strcpy(buf, wndObj->title.c_str());
         return wndObj->title.length();
-    }else{
+    }
+    else
+    {
         int ret = 0;
-        xcb_get_property_cookie_t cookie = xcb_get_property(connection,0,hWnd,atoms.WM_NAME,atoms.UTF8_STRING,0,UINT_MAX);
-        xcb_get_property_reply_t* reply =  xcb_get_property_reply(connection,cookie,NULL);
-        if(reply){
+        xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, hWnd, atoms.WM_NAME, atoms.UTF8_STRING, 0, UINT_MAX);
+        xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+        if (reply)
+        {
             int len = xcb_get_property_value_length(reply);
-            if(len<=bufLen){
-                const char * text = (const char*)xcb_get_property_value(reply);
-                memcpy(buf,text,len);
+            if (len <= bufLen)
+            {
+                const char *text = (const char *)xcb_get_property_value(reply);
+                memcpy(buf, text, len);
                 ret = len;
-                if(len<bufLen){
+                if (len < bufLen)
+                {
                     buf[len] = 0;
                 }
             }
@@ -3057,17 +3098,22 @@ int SConnection::OnGetWindowTextA(HWND hWnd, char *buf, int bufLen)
 int SConnection::OnGetWindowTextW(HWND hWnd, wchar_t *buf, int bufLen)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (wndObj){
-        return MultiByteToWideChar(CP_UTF8,0,wndObj->title.c_str(),wndObj->title.length(),buf,bufLen);
-    }else{
+    if (wndObj)
+    {
+        return MultiByteToWideChar(CP_UTF8, 0, wndObj->title.c_str(), wndObj->title.length(), buf, bufLen);
+    }
+    else
+    {
         int ret = 0;
-        xcb_get_property_cookie_t cookie = xcb_get_property(connection,0,hWnd,atoms.WM_NAME,atoms.UTF8_STRING,0,UINT_MAX);
-        xcb_get_property_reply_t* reply =  xcb_get_property_reply(connection,cookie,NULL);
-        if(reply){
+        xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, hWnd, atoms.WM_NAME, atoms.UTF8_STRING, 0, UINT_MAX);
+        xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+        if (reply)
+        {
             int len = xcb_get_property_value_length(reply);
-            if(len<=bufLen){
-                const char * text = (const char*)xcb_get_property_value(reply);
-                ret = MultiByteToWideChar(CP_UTF8,0,text,len,buf,bufLen);
+            if (len <= bufLen)
+            {
+                const char *text = (const char *)xcb_get_property_value(reply);
+                ret = MultiByteToWideChar(CP_UTF8, 0, text, len, buf, bufLen);
             }
             free(reply);
         }
@@ -3075,69 +3121,86 @@ int SConnection::OnGetWindowTextW(HWND hWnd, wchar_t *buf, int bufLen)
     }
 }
 
-struct StFindWindow{
-    SConnection * conn;
+struct StFindWindow
+{
+    SConnection *conn;
     LPCSTR lpClassName;
     LPCSTR lpWindowName;
     HWND hRet;
 };
 
-static BOOL CALLBACK CbFindWindow(HWND hWnd, LPARAM lp){
-    StFindWindow *param=(StFindWindow*)lp;
+static BOOL CALLBACK CbFindWindow(HWND hWnd, LPARAM lp)
+{
+    StFindWindow *param = (StFindWindow *)lp;
     BOOL bMatch = TRUE;
-    if(param->lpWindowName){
+    if (param->lpWindowName)
+    {
         char szTxt[1000];
-        if(param->conn->OnGetWindowTextA(hWnd,szTxt,1000)){
-            bMatch = strcmp(param->lpWindowName,szTxt)==0;
-        }else{
+        if (param->conn->OnGetWindowTextA(hWnd, szTxt, 1000))
+        {
+            bMatch = strcmp(param->lpWindowName, szTxt) == 0;
+        }
+        else
+        {
             bMatch = FALSE;
         }
-//        SLOG_STMI()<<"OnGetWindowText for "<<hWnd<<" got "<<szTxt;
+        //        SLOG_STMI()<<"OnGetWindowText for "<<hWnd<<" got "<<szTxt;
     }
-    if(bMatch && param->lpClassName){
+    if (bMatch && param->lpClassName)
+    {
         char szCls[1000];
-        if(param->conn->OnGetClassName(hWnd,szCls,1000)){
-            bMatch = strcmp(szCls,param->lpClassName) == 0;
-        }else{
+        if (param->conn->OnGetClassName(hWnd, szCls, 1000))
+        {
+            bMatch = strcmp(szCls, param->lpClassName) == 0;
+        }
+        else
+        {
             bMatch = FALSE;
         }
     }
-    if(bMatch){
+    if (bMatch)
+    {
         param->hRet = hWnd;
     }
     return !bMatch;
 }
 
-HWND SConnection::OnFindWindowEx(HWND hParent, HWND hChildAfter, LPCSTR lpClassName,LPCSTR lpWindowName){
-    char szTstCls[1000]={0};
-    if(lpClassName && IS_INTRESOURCE(lpClassName)){
-        GetAtomNameA((int)(intptr_t)lpClassName,szTstCls,1000);
+HWND SConnection::OnFindWindowEx(HWND hParent, HWND hChildAfter, LPCSTR lpClassName, LPCSTR lpWindowName)
+{
+    char szTstCls[1000] = { 0 };
+    if (lpClassName && IS_INTRESOURCE(lpClassName))
+    {
+        GetAtomNameA((int)(intptr_t)lpClassName, szTstCls, 1000);
         lpClassName = szTstCls;
     }
-    StFindWindow param={this,lpClassName,lpWindowName,0};
-    OnEnumWindows(hParent,hChildAfter,CbFindWindow,(LPARAM)&param);
+    StFindWindow param = { this, lpClassName, lpWindowName, 0 };
+    OnEnumWindows(hParent, hChildAfter, CbFindWindow, (LPARAM)&param);
     return param.hRet;
 }
 
-BOOL SConnection::OnEnumWindows(HWND hParent,HWND hChildAfter,WNDENUMPROC lpEnumFunc, LPARAM lParam)
+BOOL SConnection::OnEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEnumFunc, LPARAM lParam)
 {
-    if(!hParent) hParent = screen->root;
+    if (!hParent)
+        hParent = screen->root;
     xcb_query_tree_cookie_t tree_cookie = xcb_query_tree(connection, hParent);
     xcb_query_tree_reply_t *tree_reply = xcb_query_tree_reply(connection, tree_cookie, NULL);
     if (!tree_reply)
         return FALSE;
     xcb_window_t *children = xcb_query_tree_children(tree_reply);
-    int i=0;
-    if(hChildAfter){
-        while(i<tree_reply->children_len){
-            if(children[i] == hChildAfter)
+    int i = 0;
+    if (hChildAfter)
+    {
+        while (i < tree_reply->children_len)
+        {
+            if (children[i] == hChildAfter)
                 break;
             i++;
         }
     }
     BOOL bContinue = TRUE;
-    for(;bContinue && i<tree_reply->children_len;i++){
-        bContinue = lpEnumFunc(children[i],lParam);
+    for (; bContinue && i < tree_reply->children_len; i++)
+    {
+        bContinue = lpEnumFunc(children[i], lParam);
     }
     free(tree_reply);
     return TRUE;

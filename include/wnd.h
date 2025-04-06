@@ -364,17 +364,17 @@ extern "C"
 
     BOOL WINAPI AnimateWindow(HWND hwnd, DWORD time, DWORD flags);
 
-    HWND WINAPI FindWindowA(LPCSTR lpClassName,LPCSTR lpWindowName);
-    HWND WINAPI FindWindowW(LPCWSTR lpClassName,LPCWSTR lpWindowName);
-    HWND WINAPI FindWindowExA(HWND hParent, HWND hChildAfter,LPCSTR lpClassName,LPCSTR lpWindowName);
-    HWND WINAPI FindWindowExW(HWND hParent, HWND hChildAfter,LPCWSTR lpClassName,LPCWSTR lpWindowName);
+    HWND WINAPI FindWindowA(LPCSTR lpClassName, LPCSTR lpWindowName);
+    HWND WINAPI FindWindowW(LPCWSTR lpClassName, LPCWSTR lpWindowName);
+    HWND WINAPI FindWindowExA(HWND hParent, HWND hChildAfter, LPCSTR lpClassName, LPCSTR lpWindowName);
+    HWND WINAPI FindWindowExW(HWND hParent, HWND hChildAfter, LPCWSTR lpClassName, LPCWSTR lpWindowName);
 #ifdef UNICODE
-    #define FindWindow FindWindowW
-    #define FindWindowEx FindWindowExW
+#define FindWindow   FindWindowW
+#define FindWindowEx FindWindowExW
 #else
-    #define FindWindow FindWindowA
-    #define FindWindowEx FindWindowExA
-#endif//UNICODE
+#define FindWindow   FindWindowA
+#define FindWindowEx FindWindowExA
+#endif // UNICODE
 
 #ifdef __cplusplus
 }

@@ -244,27 +244,25 @@ BOOL WINAPI Shell_NotifyIconW(DWORD dwMessage, PNOTIFYICONDATAW lpData)
     return Shell_NotifyIconA(dwMessage, &dataA);
 }
 
+BOOL WINAPI PathMatchSpecExW(LPCWSTR pszFile, LPCWSTR pszSpec, DWORD dwFlags)
+{
+    std::string strFile, strSpec;
+    tostring(pszFile, -1, strFile);
+    tostring(pszSpec, -1, strSpec);
+    return PathMatchSpecExA(strFile.c_str(), strSpec.c_str(), dwFlags);
+}
 
-BOOL WINAPI PathMatchSpecExW(
-    LPCWSTR pszFile,
-    LPCWSTR pszSpec,
-    DWORD   dwFlags
-  ){
-    std::string strFile,strSpec;
-    tostring(pszFile,-1,strFile);
-    tostring(pszSpec,-1,strSpec);
-    return PathMatchSpecExA(strFile.c_str(),strSpec.c_str(),dwFlags);
-  }
-
-  // 实现 trim 函数
-static void str_trim(std::string& str) {
+// 实现 trim 函数
+static void str_trim(std::string &str)
+{
     // 定义空白字符集合
     const std::string whitespace = " \t\n\r\f\v";
     // 找到第一个非空白字符的位置
     size_t start = str.find_first_not_of(whitespace);
-    if (start == std::string::npos) {
+    if (start == std::string::npos)
+    {
         str = "";
-        return ;  // 如果字符串全是空白字符，返回空字符串
+        return; // 如果字符串全是空白字符，返回空字符串
     }
 
     // 找到最后一个非空白字符的位置
@@ -274,105 +272,115 @@ static void str_trim(std::string& str) {
     str = str.substr(start, end - start + 1);
 }
 
-static int myfnmatch(LPCSTR pszFile,LPCSTR pszSpec,BOOL bStrip){
-    std::string strFile(pszFile),strSpec(pszSpec);
-    std::transform(strFile.begin(), strFile.end(), strFile.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    std::transform(strSpec.begin(), strSpec.end(), strSpec.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-        if(!bStrip)
-            return fnmatch(strSpec.c_str(),strFile.c_str(),FNM_NOESCAPE);
-        else{
-            str_trim(strSpec);
-            if(strSpec.empty())
-                return FALSE;
-            return fnmatch(strSpec.c_str(),strFile.c_str(),FNM_NOESCAPE);
-        }
+static int myfnmatch(LPCSTR pszFile, LPCSTR pszSpec, BOOL bStrip)
+{
+    std::string strFile(pszFile), strSpec(pszSpec);
+    std::transform(strFile.begin(), strFile.end(), strFile.begin(), [](unsigned char c) { return std::tolower(c); });
+    std::transform(strSpec.begin(), strSpec.end(), strSpec.begin(), [](unsigned char c) { return std::tolower(c); });
+    if (!bStrip)
+        return fnmatch(strSpec.c_str(), strFile.c_str(), FNM_NOESCAPE);
+    else
+    {
+        str_trim(strSpec);
+        if (strSpec.empty())
+            return FALSE;
+        return fnmatch(strSpec.c_str(), strFile.c_str(), FNM_NOESCAPE);
     }
+}
 
-BOOL WINAPI PathMatchSpecExA(
-    LPCSTR pszFile,
-    LPCSTR pszSpec,
-    DWORD   dwFlags
-  ){
-    if(dwFlags & PMSF_MULTIPLE){
-        char* patterns = strdup(pszSpec);  // 复制模式字符串
-        if (!patterns) {
+BOOL WINAPI PathMatchSpecExA(LPCSTR pszFile, LPCSTR pszSpec, DWORD dwFlags)
+{
+    if (dwFlags & PMSF_MULTIPLE)
+    {
+        char *patterns = strdup(pszSpec); // 复制模式字符串
+        if (!patterns)
+        {
             perror("strdup");
             return FALSE;
         }
 
-        char* token = strtok(patterns, ";");  // 使用分号分隔模式
-        while (token) {
-            if (myfnmatch(pszFile,token, !(dwFlags & PMSF_DONT_STRIP_SPACES)) == 0) {
+        char *token = strtok(patterns, ";"); // 使用分号分隔模式
+        while (token)
+        {
+            if (myfnmatch(pszFile, token, !(dwFlags & PMSF_DONT_STRIP_SPACES)) == 0)
+            {
                 free(patterns);
-                return TRUE;  // 匹配成功
+                return TRUE; // 匹配成功
             }
             token = strtok(NULL, ";");
         }
 
         free(patterns);
-        return FALSE;  // 未匹配
-    }else{
-        return myfnmatch(pszFile,pszSpec,!(dwFlags & PMSF_DONT_STRIP_SPACES)) == 0;
+        return FALSE; // 未匹配
     }
-  }
+    else
+    {
+        return myfnmatch(pszFile, pszSpec, !(dwFlags & PMSF_DONT_STRIP_SPACES)) == 0;
+    }
+}
 
-BOOL WINAPI PathMatchSpecW(
-    LPCWSTR pszFile,
-    LPCWSTR pszSpec
-  ){
-    return PathMatchSpecExW(pszFile,pszSpec,0);
-  }
+BOOL WINAPI PathMatchSpecW(LPCWSTR pszFile, LPCWSTR pszSpec)
+{
+    return PathMatchSpecExW(pszFile, pszSpec, 0);
+}
 
-BOOL WINAPI PathMatchSpecA(
-    LPCSTR pszFile,
-    LPCSTR pszSpec
-  ){
-    return PathMatchSpecExA(pszFile,pszSpec,0);
-  }
+BOOL WINAPI PathMatchSpecA(LPCSTR pszFile, LPCSTR pszSpec)
+{
+    return PathMatchSpecExA(pszFile, pszSpec, 0);
+}
 
-
-
-static int is_executable(const char* filename) {
+static int is_executable(const char *filename)
+{
     struct stat file_stat;
 
     // 获取文件状态
-    if (stat(filename, &file_stat) == -1) {
-        return -1;  // 获取文件状态失败
+    if (stat(filename, &file_stat) == -1)
+    {
+        return -1; // 获取文件状态失败
     }
 
     // 检查文件权限是否包含执行权限
-    if (file_stat.st_mode & S_IXUSR) {
-        return 1;  // 文件对用户可执行
-    } else if (file_stat.st_mode & S_IXGRP) {
-        return 2;  // 文件对组可执行
-    } else if (file_stat.st_mode & S_IXOTH) {
-        return 3;  // 文件对其他用户可执行
+    if (file_stat.st_mode & S_IXUSR)
+    {
+        return 1; // 文件对用户可执行
+    }
+    else if (file_stat.st_mode & S_IXGRP)
+    {
+        return 2; // 文件对组可执行
+    }
+    else if (file_stat.st_mode & S_IXOTH)
+    {
+        return 3; // 文件对其他用户可执行
     }
 
-    return 0;  // 文件不可执行
+    return 0; // 文件不可执行
 }
 
-BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd){
-    if(!lpOperation || stricmp(lpOperation,"open")!=0)
+BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd)
+{
+    if (!lpOperation || stricmp(lpOperation, "open") != 0)
         return FALSE;
     int exe = is_executable(lpFile);
-    if(exe == -1)
+    if (exe == -1)
         return FALSE;
-    if(exe == 0){
+    if (exe == 0)
+    {
         int len = strlen(lpFile);
-        char *cmd = new char[len+10];
+        char *cmd = new char[len + 10];
         sprintf(cmd, "xdg-open %s", lpFile);
         int ret = system(cmd);
-        delete []cmd;
-        return TRUE; 
-    }else{
-        PROCESS_INFORMATION procInfo={0};
-        char *params=lpParameters?strdup(lpParameters):NULL;
-        BOOL bRet = CreateProcessA(lpFile,params,NULL,NULL,FALSE,0,NULL,lpDirectory,NULL,&procInfo);
-        if(params) free(params);
-        if(bRet){
+        delete[] cmd;
+        return TRUE;
+    }
+    else
+    {
+        PROCESS_INFORMATION procInfo = { 0 };
+        char *params = lpParameters ? strdup(lpParameters) : NULL;
+        BOOL bRet = CreateProcessA(lpFile, params, NULL, NULL, FALSE, 0, NULL, lpDirectory, NULL, &procInfo);
+        if (params)
+            free(params);
+        if (bRet)
+        {
             CloseHandle(procInfo.hProcess);
             CloseHandle(procInfo.hThread);
         }
@@ -380,50 +388,52 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
     }
 }
 
-BOOL WINAPI ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd){
-    std::string strOp,strFile,strParam,strDir;
-    tostring(lpOperation,-1,strOp);
-    tostring(lpFile,-1,strFile);
-    tostring(lpParameters,-1,strParam);
-    tostring(lpDirectory,-1,strDir);
-    return ShellExecuteA(hwnd,lpOperation?strOp.c_str():NULL,
-    lpFile?strFile.c_str():NULL,
-    lpParameters?strParam.c_str():NULL,
-    lpDirectory?strDir.c_str():NULL,
-    nShowCmd
-    );
+BOOL WINAPI ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd)
+{
+    std::string strOp, strFile, strParam, strDir;
+    tostring(lpOperation, -1, strOp);
+    tostring(lpFile, -1, strFile);
+    tostring(lpParameters, -1, strParam);
+    tostring(lpDirectory, -1, strDir);
+    return ShellExecuteA(hwnd, lpOperation ? strOp.c_str() : NULL, lpFile ? strFile.c_str() : NULL, lpParameters ? strParam.c_str() : NULL, lpDirectory ? strDir.c_str() : NULL, nShowCmd);
 }
 
-BOOL WINAPI ShellExecuteExA(LPSHELLEXECUTEINFOA lpExecInfo){
+BOOL WINAPI ShellExecuteExA(LPSHELLEXECUTEINFOA lpExecInfo)
+{
     LPCSTR lpOperation = lpExecInfo->lpVerb;
-    if(!lpOperation)
+    if (!lpOperation)
         return FALSE;
     UINT_PTR verb = Verb_Unknown;
-    if(stricmp(lpOperation,"open")==0)
+    if (stricmp(lpOperation, "open") == 0)
         verb = Verb_Open;
-    else if(stricmp(lpOperation,"runas")==0)
+    else if (stricmp(lpOperation, "runas") == 0)
         verb = Verb_RunAs;
-    if(verb == Verb_Unknown)
+    if (verb == Verb_Unknown)
         return FALSE;
     LPCSTR lpFile = lpExecInfo->lpFile;
     int exe = is_executable(lpFile);
-    if(exe == -1)
+    if (exe == -1)
         return FALSE;
-    if(exe == 0){
+    if (exe == 0)
+    {
         int len = strlen(lpFile);
-        char *cmd = new char[len+10];
+        char *cmd = new char[len + 10];
         sprintf(cmd, "xdg-open %s", lpFile);
         int ret = system(cmd);
-        delete []cmd;
-        return TRUE; 
-    }else{
+        delete[] cmd;
+        return TRUE;
+    }
+    else
+    {
         LPCSTR lpParameters = lpExecInfo->lpParameters;
-        PROCESS_INFORMATION procInfo={0};
-        char *params=lpParameters?strdup(lpParameters):NULL;
-        BOOL bRet = CreateProcessAsUserA((HANDLE)verb,lpFile,params,NULL,NULL,FALSE,0,NULL,lpExecInfo->lpDirectory,NULL,&procInfo);
-        if(params) free(params);
-        if(bRet){
-            if(lpExecInfo->fMask & SEE_MASK_NOCLOSEPROCESS)
+        PROCESS_INFORMATION procInfo = { 0 };
+        char *params = lpParameters ? strdup(lpParameters) : NULL;
+        BOOL bRet = CreateProcessAsUserA((HANDLE)verb, lpFile, params, NULL, NULL, FALSE, 0, NULL, lpExecInfo->lpDirectory, NULL, &procInfo);
+        if (params)
+            free(params);
+        if (bRet)
+        {
+            if (lpExecInfo->fMask & SEE_MASK_NOCLOSEPROCESS)
                 lpExecInfo->hProcess = procInfo.hProcess;
             else
                 CloseHandle(procInfo.hProcess);
@@ -433,15 +443,16 @@ BOOL WINAPI ShellExecuteExA(LPSHELLEXECUTEINFOA lpExecInfo){
     }
 }
 
-BOOL WINAPI ShellExecuteExW(LPSHELLEXECUTEINFOW lpExecInfo){
+BOOL WINAPI ShellExecuteExW(LPSHELLEXECUTEINFOW lpExecInfo)
+{
     SHELLEXECUTEINFOA infoA;
     infoA.cbSize = sizeof(infoA);
     infoA.fMask = lpExecInfo->fMask;
-    std::string strVerb,strFile,strParam,strDir;
-    tostring(lpExecInfo->lpVerb,-1,strVerb);
-    tostring(lpExecInfo->lpFile,-1,strFile);
-    tostring(lpExecInfo->lpParameters,-1,strParam);
-    tostring(lpExecInfo->lpDirectory,-1,strDir);
+    std::string strVerb, strFile, strParam, strDir;
+    tostring(lpExecInfo->lpVerb, -1, strVerb);
+    tostring(lpExecInfo->lpFile, -1, strFile);
+    tostring(lpExecInfo->lpParameters, -1, strParam);
+    tostring(lpExecInfo->lpDirectory, -1, strDir);
     infoA.lpVerb = strVerb.c_str();
     infoA.lpFile = strFile.c_str();
     infoA.lpParameters = strParam.c_str();

@@ -396,8 +396,9 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
         pWnd->dwExStyle &= ~WS_EX_COMPOSITED;
     }
 
-    HWND hWnd = conn->OnWindowCreate(pWnd,cs,depth);
-    if(!hWnd){
+    HWND hWnd = conn->OnWindowCreate(pWnd, cs, depth);
+    if (!hWnd)
+    {
         free(pWnd);
         return 0;
     }
@@ -410,7 +411,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
 
     if (0 == SendMessage(hWnd, WM_NCCREATE, 0, (LPARAM)cs) || 0 != SendMessage(hWnd, WM_CREATE, 0, (LPARAM)cs))
     {
-        conn->OnWindowDestroy(hWnd,pWnd);
+        conn->OnWindowDestroy(hWnd, pWnd);
         WndMgr::freeWindow(hWnd);
         return 0;
     }
@@ -434,7 +435,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     }
     if (isTransparent)
     {
-        conn->SetWindowMsgTransparent(hWnd,pWnd,TRUE);
+        conn->SetWindowMsgTransparent(hWnd, pWnd, TRUE);
     }
     if (!isMsgWnd && cs->style & WS_VISIBLE)
     {
@@ -495,7 +496,7 @@ HWND WINAPI CreateWindowExA(DWORD exStyle, LPCSTR className, LPCSTR windowName, 
 int GetClassNameA(HWND hWnd, LPSTR lpClassName, int nMaxCount)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->OnGetClassName(hWnd,lpClassName,nMaxCount);
+    return conn->OnGetClassName(hWnd, lpClassName, nMaxCount);
 }
 
 int GetClassNameW(HWND hWnd, LPWSTR lpClassName, int nMaxCount)
@@ -511,15 +512,18 @@ BOOL WINAPI DestroyWindow(HWND hWnd)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (wndObj)
     {
-        if(!wndObj->bDestroyed){
+        if (!wndObj->bDestroyed)
+        {
             SendMessage(hWnd, WM_DESTROY, 0, 0);
         }
-        return TRUE; 
-    }else{
+        return TRUE;
+    }
+    else
+    {
         SConnection *conn = SConnMgr::instance()->getConnection();
-        if(!conn->IsWindow(hWnd))
+        if (!conn->IsWindow(hWnd))
             return FALSE;
-        PostMessage(hWnd,WM_DESTROY,0,0);
+        PostMessage(hWnd, WM_DESTROY, 0, 0);
         return TRUE;
     }
 }
@@ -643,7 +647,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     if (!(htCode >= HTCAPTION && htCode <= HTBOTTOMRIGHT) || htCode == HTVSCROLL || htCode == HTHSCROLL)
         return -2;
 
-//    SLOG_STMI() << "HandleNcTestCode,code=" << htCode;
+    //    SLOG_STMI() << "HandleNcTestCode,code=" << htCode;
     wndObj->mConnection->SetTimerBlock(true);
     RECT rcWnd = wndObj->rc;
     BOOL bQuit = FALSE;
@@ -666,7 +670,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
             }
             else if (msg.message == WM_LBUTTONUP)
             {
-                //SLOG_STMI() << "HandleNcTestCode,WM_LBUTTONUP";
+                // SLOG_STMI() << "HandleNcTestCode,WM_LBUTTONUP";
                 bQuit = TRUE;
                 break;
             }
@@ -756,7 +760,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     ReleaseCapture();
 
     wndObj->mConnection->SetTimerBlock(false);
-    //SLOG_STMI() << "HandleNcTestCode,Quit";
+    // SLOG_STMI() << "HandleNcTestCode,Quit";
 
     return 0;
 }
@@ -1260,11 +1264,14 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         while (hChild)
         {
             WndObj child = WndMgr::fromHwnd(hChild);
-            if(child){
+            if (child)
+            {
                 DestroyWindow(hChild);
-            }else{
-                //other process window, set it's parent to screen root
-                wndObj->mConnection->SetParent(hChild,nullptr,0);
+            }
+            else
+            {
+                // other process window, set it's parent to screen root
+                wndObj->mConnection->SetParent(hChild, nullptr, 0);
             }
             hChild = GetWindow(hWnd, GW_CHILDLAST);
         }
@@ -1281,7 +1288,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 
 SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, HANDLE &hEvt)
 {
-    if(!connCur->IsWindow(hWnd))
+    if (!connCur->IsWindow(hWnd))
         return nullptr;
     uuid_t uuid;
     uuid_generate_random(uuid);
@@ -1346,20 +1353,22 @@ SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM w
 
 #define kMaxSendMsgStack 20
 thread_local static int s_nCallStack = 0;
-class CallStackCount{
-public:
-CallStackCount(){
-    s_nCallStack ++;
-}
-~CallStackCount(){
-    s_nCallStack--;
-}
+class CallStackCount {
+  public:
+    CallStackCount()
+    {
+        s_nCallStack++;
+    }
+    ~CallStackCount()
+    {
+        s_nCallStack--;
+    }
 };
 
 static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, UINT fuFlags, UINT uTimeout, PDWORD_PTR lpdwResult)
 {
     CallStackCount stackCount;
-    if(s_nCallStack>kMaxSendMsgStack)
+    if (s_nCallStack > kMaxSendMsgStack)
         return -2;
     SConnection *connCur = SConnMgr::instance()->getConnection();
     WndObj pWnd = WndMgr::fromHwnd(hWnd);
@@ -1367,19 +1376,20 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
     { // not the same process. send ipc message
         if (bWideChar)
         {
-            SLOG_STME()<<"ipc msg not support wide char api! msg="<< msg;
+            SLOG_STME() << "ipc msg not support wide char api! msg=" << msg;
             return 0;
         }
         HANDLE hEvt = INVALID_HANDLE_VALUE;
         SharedMemory *shareMem = PostIpcMessage(connCur, hWnd, msg, wp, lp, hEvt);
-        
+
         if (!shareMem)
         {
             return 0;
         }
-        if(uTimeout!=-1) uTimeout=1000;
-        _SynHandle * handle= GetSynHandle(hEvt);
-        SLOG_STMI()<<"ipc event name="<<handle->getName();
+        if (uTimeout != -1)
+            uTimeout = 1000;
+        _SynHandle *handle = GetSynHandle(hEvt);
+        SLOG_STMI() << "ipc event name=" << handle->getName();
         int ret = WAIT_FAILED;
         if (fuFlags & SMTO_BLOCK)
         {
@@ -1395,9 +1405,9 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
                 {
                     if (PeekMessage(&msg2, 0, 0, 0, PM_REMOVE))
                     {
-                        if(msg2.message == WM_QUIT)
+                        if (msg2.message == WM_QUIT)
                         {
-                            connCur->postMsg(msg2.hwnd,msg2.message,msg2.wParam,msg2.lParam);
+                            connCur->postMsg(msg2.hwnd, msg2.message, msg2.wParam, msg2.lParam);
                             break;
                         }
                         TranslateMessage(&msg2);
@@ -1412,15 +1422,17 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         }
         if (ret == WAIT_OBJECT_0)
         {
-            _SynHandle * handle2= GetSynHandle(hEvt);
-            SLOG_STMI()<<"ipc return event name="<<handle2->getName();
+            _SynHandle *handle2 = GetSynHandle(hEvt);
+            SLOG_STMI() << "ipc return event name=" << handle2->getName();
 
             MsgLayout *ptr = (MsgLayout *)shareMem->buffer();
-            SLOG_STMW()<<"PostIpcMessage ret 0, result:"<<ptr->ret<<" timeout:"<<uTimeout;
-            if(lpdwResult)
+            SLOG_STMW() << "PostIpcMessage ret 0, result:" << ptr->ret << " timeout:" << uTimeout;
+            if (lpdwResult)
                 *lpdwResult = ptr->ret;
-        }else{
-            SLOG_STMW()<<"PostIpcMessage ret:"<<ret<<" timeout:"<<uTimeout;
+        }
+        else
+        {
+            SLOG_STMW() << "PostIpcMessage ret:" << ret << " timeout:" << uTimeout;
         }
 
         delete shareMem;
@@ -1649,10 +1661,10 @@ BOOL SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int x, int y, int cx, int cy,
     if (!wndObj)
     {
         SConnection *conn = SConnMgr::instance()->getConnection();
-        if(!conn)
+        if (!conn)
             return FALSE;
-        return conn->MoveWindow(hWnd,x,y,cx,cy);
-    }    
+        return conn->MoveWindow(hWnd, x, y, cx, cy);
+    }
     WINDOWPOS wndPos;
     wndPos.hwnd = hWnd;
     wndPos.hwndInsertAfter = hWndInsertAfter;
@@ -2279,12 +2291,13 @@ BOOL UpdateWindow(HWND hWnd)
 BOOL GetClientRect(HWND hWnd, RECT *pRc)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj){
-        //hWnd is owned by other process.
+    if (!wndObj)
+    {
+        // hWnd is owned by other process.
         SConnection *conn = SConnMgr::instance()->getConnection();
         xcb_get_geometry_cookie_t cookie = xcb_get_geometry(conn->connection, hWnd);
-        xcb_get_geometry_reply_t* reply = xcb_get_geometry_reply(conn->connection, cookie, NULL);
-        if(!reply)
+        xcb_get_geometry_reply_t *reply = xcb_get_geometry_reply(conn->connection, cookie, NULL);
+        if (!reply)
             return FALSE;
         pRc->left = pRc->top = 0;
         pRc->right = reply->width;
@@ -2806,7 +2819,7 @@ static HBRUSH DEFWND_ControlColor(HDC hDC, UINT ctlType)
 
 static LRESULT OnSetWindowText(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
 {
-    return wndObj->mConnection->OnSetWindowText(hWnd,wndObj.data(),(LPCSTR)lp);
+    return wndObj->mConnection->OnSetWindowText(hWnd, wndObj.data(), (LPCSTR)lp);
 }
 
 LRESULT OnMsgW2A(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
@@ -3111,7 +3124,7 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         {
             if ((wndPos.x != rc.left || wndPos.y != rc.top))
             {
-                wndObj->mConnection->SetWindowPos(hWnd,wndPos.x,wndPos.y);
+                wndObj->mConnection->SetWindowPos(hWnd, wndPos.x, wndPos.y);
             }
             SendMessage(hWnd, WM_MOVE, 0, MAKELPARAM(wndPos.x, wndPos.y));
         }
@@ -3119,7 +3132,7 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         {
             if ((wndPos.cx != rc.right - rc.left || wndPos.cy != rc.bottom - rc.top))
             {
-                wndObj->mConnection->SetWindowSize(hWnd,wndPos.cx,wndPos.cy);
+                wndObj->mConnection->SetWindowSize(hWnd, wndPos.cx, wndPos.cy);
             }
             SendMessage(hWnd, WM_SIZE, 0, MAKELPARAM(wndPos.cx, wndPos.cy));
         }
@@ -3197,19 +3210,17 @@ BOOL ShowWindow(HWND hWnd, int nCmdShow)
     if (!wndObj)
         return FALSE;
     BOOL bVisible = IsWindowVisible(hWnd);
-    BOOL bNew = nCmdShow == SW_SHOW 
-            || nCmdShow == SW_SHOWNOACTIVATE 
-            || nCmdShow == SW_SHOWNORMAL 
-            || nCmdShow == SW_SHOWNA
-            || nCmdShow == SW_MAXIMIZE
-            || nCmdShow == SW_MINIMIZE;
+    BOOL bNew = nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNOACTIVATE || nCmdShow == SW_SHOWNORMAL || nCmdShow == SW_SHOWNA || nCmdShow == SW_MAXIMIZE || nCmdShow == SW_MINIMIZE;
     if (bVisible == bNew)
         return TRUE;
     wndObj->mConnection->SetWindowVisible(hWnd, wndObj.data(), bNew, nCmdShow);
     SendMessage(hWnd, WM_SHOWWINDOW, bNew, 0);
-    if(nCmdShow == SW_MAXIMIZE){
+    if (nCmdShow == SW_MAXIMIZE)
+    {
         SendMessage(hWnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
-    }else if(nCmdShow == SW_MINIMIZE){
+    }
+    else if (nCmdShow == SW_MINIMIZE)
+    {
         SendMessage(hWnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
     }
     return TRUE;
@@ -3253,13 +3264,13 @@ BOOL IsIconic(HWND hWnd)
 int GetWindowTextW(HWND hWnd, LPWSTR lpszStringBuf, int nMaxCount)
 {
     SConnection *pConn = SConnMgr::instance()->getConnection();
-    return pConn->OnGetWindowTextW(hWnd,lpszStringBuf,nMaxCount);
+    return pConn->OnGetWindowTextW(hWnd, lpszStringBuf, nMaxCount);
 }
 
 int GetWindowTextA(HWND hWnd, LPSTR lpszStringBuf, int nMaxCount)
 {
     SConnection *pConn = SConnMgr::instance()->getConnection();
-    return pConn->OnGetWindowTextA(hWnd,lpszStringBuf,nMaxCount);
+    return pConn->OnGetWindowTextA(hWnd, lpszStringBuf, nMaxCount);
 }
 
 int GetWindowTextLengthW(HWND hWnd)
@@ -3899,7 +3910,7 @@ BOOL WINAPI IsWindowUnicode(HWND hWnd)
 BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam)
 {
     SConnection *pConn = SConnMgr::instance()->getConnection();
-    return pConn->OnEnumWindows(0,0,lpEnumFunc,lParam);
+    return pConn->OnEnumWindows(0, 0, lpEnumFunc, lParam);
 }
 
 BOOL WINAPI FlashWindowEx(PFLASHWINFO pfwi)
@@ -3932,27 +3943,33 @@ BOOL WINAPI AnimateWindow(HWND hwnd, DWORD time, DWORD flags)
     return TRUE;
 }
 
-
-HWND WINAPI FindWindowA(LPCSTR lpClassName,LPCSTR lpWindowName){
-    return FindWindowExA(0,0,lpClassName,lpWindowName);
+HWND WINAPI FindWindowA(LPCSTR lpClassName, LPCSTR lpWindowName)
+{
+    return FindWindowExA(0, 0, lpClassName, lpWindowName);
 }
 
-HWND WINAPI FindWindowW(LPCWSTR lpClassName,LPCWSTR lpWindowName){
-    return FindWindowExW(0,0,lpClassName,lpWindowName);
+HWND WINAPI FindWindowW(LPCWSTR lpClassName, LPCWSTR lpWindowName)
+{
+    return FindWindowExW(0, 0, lpClassName, lpWindowName);
 }
 
-HWND WINAPI FindWindowExA(HWND hParent, HWND hChildAfter,LPCSTR lpClassName,LPCSTR lpWindowName){
+HWND WINAPI FindWindowExA(HWND hParent, HWND hChildAfter, LPCSTR lpClassName, LPCSTR lpWindowName)
+{
     SConnection *pConn = SConnMgr::instance()->getConnection();
-    return pConn->OnFindWindowEx(hParent, hChildAfter,lpClassName,lpWindowName);
+    return pConn->OnFindWindowEx(hParent, hChildAfter, lpClassName, lpWindowName);
 }
 
-HWND WINAPI FindWindowExW(HWND hParent, HWND hChildAfter,LPCWSTR lpClassName,LPCWSTR lpWindowName){
-    std::string strCls,strWnd;
-    tostring(lpWindowName,-1,strWnd);
-    if(IS_INTRESOURCE(lpClassName)){
-        return FindWindowExA(hParent,hChildAfter,(LPCSTR)lpClassName,lpWindowName?strWnd.c_str():nullptr);
-    }else{
-        tostring(lpClassName,-1,strCls);
-        return FindWindowExA(hParent,hChildAfter,strCls.c_str(),lpWindowName?strWnd.c_str():nullptr);    
+HWND WINAPI FindWindowExW(HWND hParent, HWND hChildAfter, LPCWSTR lpClassName, LPCWSTR lpWindowName)
+{
+    std::string strCls, strWnd;
+    tostring(lpWindowName, -1, strWnd);
+    if (IS_INTRESOURCE(lpClassName))
+    {
+        return FindWindowExA(hParent, hChildAfter, (LPCSTR)lpClassName, lpWindowName ? strWnd.c_str() : nullptr);
+    }
+    else
+    {
+        tostring(lpClassName, -1, strCls);
+        return FindWindowExA(hParent, hChildAfter, strCls.c_str(), lpWindowName ? strWnd.c_str() : nullptr);
     }
 }

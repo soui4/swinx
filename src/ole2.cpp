@@ -59,10 +59,10 @@ HRESULT WINAPI DoDragDrop(IDataObject *pDataObject, /* [in] ptr to the data obj 
 
 HRESULT WINAPI OleSetClipboard(IDataObject *pdo)
 {
-    if(!OpenClipboard(0))
+    if (!OpenClipboard(0))
         return CLIPBRD_E_CANT_OPEN;
     SConnection *pconn = SConnMgr::instance()->getConnection();
-    pconn->getClipboard()->setDataObject(pdo,FALSE);
+    pconn->getClipboard()->setDataObject(pdo, FALSE);
     CloseClipboard();
     return S_OK;
 }
@@ -77,7 +77,7 @@ HRESULT WINAPI OleFlushClipboard(void)
 HRESULT WINAPI OleIsCurrentClipboard(IDataObject *pdo)
 {
     SConnection *pconn = SConnMgr::instance()->getConnection();
-    return pconn->getClipboard()->isCurrentClipboard(pdo)?S_OK:S_FALSE;
+    return pconn->getClipboard()->isCurrentClipboard(pdo) ? S_OK : S_FALSE;
 }
 
 HRESULT WINAPI OleGetClipboard(IDataObject **ppdo)

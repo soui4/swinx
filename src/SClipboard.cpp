@@ -191,9 +191,9 @@ HRESULT SMimeData::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC **ppenumForma
 }
 
 //-------------------------------------------------------
-SDataObjectProxy::SDataObjectProxy(SConnection* conn, HWND hWnd)
-:m_conn(conn)
-,m_hSource(hWnd)
+SDataObjectProxy::SDataObjectProxy(SConnection *conn, HWND hWnd)
+    : m_conn(conn)
+    , m_hSource(hWnd)
 {
 }
 
@@ -224,7 +224,7 @@ HRESULT SDataObjectProxy::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
     {
         return DV_E_FORMATETC;
     }
-    std::shared_ptr<std::vector<char>> buf = m_conn->readSelection(isXdnd(),pformatetcIn->cfFormat);
+    std::shared_ptr<std::vector<char>> buf = m_conn->readSelection(isXdnd(), pformatetcIn->cfFormat);
     if (!buf)
         return DV_E_DVASPECT;
     size_t bufLen = buf->size();
@@ -737,9 +737,10 @@ void SClipboard::handleSelectionClear(xcb_selection_clear_event_t *e)
     if (owner != m_owner)
     {
         std::unique_lock<std::recursive_mutex> lock(m_mutex);
-        if(m_doExClip){
+        if (m_doExClip)
+        {
             m_doExClip->Release();
-            m_doExClip=NULL;
+            m_doExClip = NULL;
         }
         m_doClip->clear();
         m_ts = XCB_CURRENT_TIME;
@@ -772,9 +773,10 @@ xcb_window_t SClipboard::getClipboardOwner() const
 BOOL SClipboard::emptyClipboard()
 {
     std::unique_lock<std::recursive_mutex> lock(m_mutex);
-    if(m_doExClip){
+    if (m_doExClip)
+    {
         m_doExClip->Release();
-        m_doExClip=NULL;
+        m_doExClip = NULL;
     }
     m_doClip->clear();
     xcb_set_selection_owner(m_conn->connection, XCB_NONE, m_conn->atoms.CLIPBOARD, XCB_TIME_CURRENT_TIME);
@@ -782,42 +784,44 @@ BOOL SClipboard::emptyClipboard()
     return TRUE;
 }
 
-BOOL SClipboard::isCurrentClipboard(IDataObject * pDo){
+BOOL SClipboard::isCurrentClipboard(IDataObject *pDo)
+{
     std::unique_lock<std::recursive_mutex> lock(m_mutex);
 
-    if(m_doExClip)
+    if (m_doExClip)
         return pDo == m_doExClip;
     return pDo == m_doClip;
 }
 
 IDataObject *SClipboard::getDataObject(BOOL bSel)
 {
-    if(bSel)
+    if (bSel)
     {
-        if(!m_doSel)
+        if (!m_doSel)
             return nullptr;
         m_doSel->AddRef();
         return m_doSel;
-    }    
+    }
     xcb_window_t owner = GetClipboardOwner();
-    if(owner == m_owner)
+    if (owner == m_owner)
     {
         std::unique_lock<std::recursive_mutex> lock(m_mutex);
-        IDataObject *ret = m_doExClip?m_doExClip:m_doClip;
+        IDataObject *ret = m_doExClip ? m_doExClip : m_doClip;
         ret->AddRef();
         return ret;
-    }   
-    else{
-        SDataObjectProxy * ret = new SDataObjectProxy(m_conn,owner);
+    }
+    else
+    {
+        SDataObjectProxy *ret = new SDataObjectProxy(m_conn, owner);
         ret->fetchDataTypeList();
         return ret;
     }
 }
 
-BOOL SClipboard::setDataObject(IDataObject *pDo,BOOL bSel)
+BOOL SClipboard::setDataObject(IDataObject *pDo, BOOL bSel)
 {
-    if(bSel)
-    {//used for xdnd
+    if (bSel)
+    { // used for xdnd
         if (m_doSel)
         {
             m_doSel->Release();
@@ -834,27 +838,32 @@ BOOL SClipboard::setDataObject(IDataObject *pDo,BOOL bSel)
             xcb_set_selection_owner(m_conn->connection, XCB_NONE, m_conn->atoms.XdndSelection, XCB_CURRENT_TIME);
         }
         return TRUE;
-    }else
-    {//used for clipboard
+    }
+    else
+    { // used for clipboard
         std::unique_lock<std::recursive_mutex> lock(m_mutex);
-        if(!m_bOpen)
+        if (!m_bOpen)
             return FALSE;
-        if(m_doExClip){
+        if (m_doExClip)
+        {
             m_doExClip->Release();
             m_doExClip = NULL;
         }
         m_doExClip = pDo;
-        if(m_doExClip){
+        if (m_doExClip)
+        {
             m_doExClip->AddRef();
         }
         return TRUE;
     }
 }
 
-void SClipboard::flushClipboard(){
+void SClipboard::flushClipboard()
+{
     std::unique_lock<std::recursive_mutex> lock(m_mutex);
-    if(m_doExClip){
-        //copy extenal dataobject to internal dataobject
+    if (m_doExClip)
+    {
+        // copy extenal dataobject to internal dataobject
         m_doClip->clear();
         IEnumFORMATETC *enum_fmt;
         HRESULT hr = m_doExClip->EnumFormatEtc(DATADIR_GET, &enum_fmt);
@@ -863,17 +872,17 @@ void SClipboard::flushClipboard(){
         FORMATETC fmt;
         while (enum_fmt->Next(1, &fmt, NULL) == S_OK)
         {
-            STGMEDIUM storage={0};
+            STGMEDIUM storage = { 0 };
             hr = m_doExClip->GetData(&fmt, &storage);
             if (hr == S_OK)
             {
-                m_doClip->SetData(&fmt,&storage,FALSE);
+                m_doClip->SetData(&fmt, &storage, FALSE);
             }
         }
         enum_fmt->Release();
 
         m_doExClip->Release();
-        m_doExClip=NULL;
+        m_doExClip = NULL;
     }
     xcb_set_selection_owner(m_conn->connection, m_owner, m_conn->atoms.CLIPBOARD, XCB_CURRENT_TIME);
     m_conn->flush();
@@ -949,9 +958,9 @@ HANDLE SClipboard::setClipboardData(UINT uFormat, HANDLE hMem)
         uFormat = CF_TEXT;
     }
     IDataObject *pDo = getDataObject(FALSE);
-    FORMATETC formatetc = {(CLIPFORMAT)uFormat,nullptr,0,0,TYMED_HGLOBAL};  //Pointer to the FORMATETC structure
+    FORMATETC formatetc = { (CLIPFORMAT)uFormat, nullptr, 0, 0, TYMED_HGLOBAL }; // Pointer to the FORMATETC structure
     STGMEDIUM medium;
-    pDo->SetData(&formatetc,&medium,TRUE);
+    pDo->SetData(&formatetc, &medium, TRUE);
     pDo->Release();
     m_ts = m_conn->getSectionTs();
     return hMem;
@@ -966,7 +975,7 @@ BOOL SClipboard::openClipboard(HWND hWndNewOwner)
             return FALSE;
     }
     m_mutex.lock();
-    if(m_bOpen)
+    if (m_bOpen)
         return FALSE;
     m_bOpen = TRUE;
     return TRUE;
@@ -975,7 +984,7 @@ BOOL SClipboard::openClipboard(HWND hWndNewOwner)
 BOOL SClipboard::closeClipboard()
 {
     m_mutex.unlock();
-    if(!m_bOpen)
+    if (!m_bOpen)
         return FALSE;
     m_bOpen = FALSE;
     flushClipboard();
@@ -1080,11 +1089,12 @@ class ClipboardEvent : public IEventChecker {
     }
 };
 
-xcb_window_t SClipboard::getClipboardMgrOwner(){
+xcb_window_t SClipboard::getClipboardMgrOwner()
+{
     xcb_window_t ret = XCB_NONE;
     xcb_get_selection_owner_cookie_t cookie = xcb_get_selection_owner(xcb_connection(), m_conn->atoms.CLIPBOARD_MANAGER);
     xcb_get_selection_owner_reply_t *reply = xcb_get_selection_owner_reply(xcb_connection(), cookie, 0);
-    if (reply) 
+    if (reply)
         ret = reply->owner;
     free(reply);
     return ret;
@@ -1102,7 +1112,7 @@ xcb_generic_event_t *SClipboard::waitForClipboardEvent(xcb_window_t win, int typ
 
         if (checkManager)
         {
-            if(getClipboardMgrOwner()==XCB_NONE)
+            if (getClipboardMgrOwner() == XCB_NONE)
                 return 0;
         }
 
