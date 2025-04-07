@@ -15,6 +15,7 @@ enum
     HNamedMutex,
     HFileMap,
     HFdHandle,
+    HNotifyHandle,
 };
 
 struct _SynHandle

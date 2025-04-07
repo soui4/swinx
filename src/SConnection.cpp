@@ -791,6 +791,10 @@ BOOL SConnection::TranslateMessage(const MSG *pMsg)
 
 BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
 {
+    if (WaitForSingleObject(m_evtSync, 0) == WAIT_OBJECT_0)
+    {
+        event2Msg(false, 0, GetTickCount64());
+    }
     std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
     { // test for callback task
         auto it = m_lstCallbackTask.begin();

@@ -5,11 +5,13 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/inotify.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <assert.h>
 #include <iconv.h>
 #include <setjmp.h>
+#include <dirent.h>
 #include "SConnection.h"
 #include "wnd.h"
 #include "uimsg.h"
@@ -2185,4 +2187,126 @@ LPWSTR WINAPI GetCommandLineW(void)
     char *tmp = GetCommandLineA();
     MultiByteToWideChar(CP_UTF8, 0, tmp, -1, cmdline, 1024);
     return cmdline;
+}
+
+//------------------------------------------------------------------------------
+HANDLE WINAPI FindFirstChangeNotificationW(LPCWSTR lpPathName, BOOL bWatchSubtree, DWORD dwNotifyFilter)
+{
+    if (!lpPathName)
+        return INVALID_HANDLE_VALUE;
+    std::string str;
+    tostring(lpPathName, -1, str);
+    return FindFirstChangeNotificationA(str.c_str(), bWatchSubtree, dwNotifyFilter);
+}
+
+struct NotifyHandle : FdHandle
+{
+    std::list<int> lstWd;
+
+    NotifyHandle(int _fd)
+        : FdHandle(_fd)
+    {
+        type = HNotifyHandle;
+    }
+
+    ~NotifyHandle()
+    {
+        for(auto wd : lstWd){
+            inotify_rm_watch(fd, wd);
+        }
+        lstWd.clear();
+        close(fd);
+    }
+};
+
+static void add_path_watch(NotifyHandle *pHandle, const char *path,BOOL bWatchSubtree, uint32_t mask) {
+    int wd = inotify_add_watch(pHandle->fd, path, mask);
+    if (wd == -1) {
+        return;
+    }
+    pHandle->lstWd.push_back(wd);
+    if(!bWatchSubtree)
+        return;
+    // 监视子目录
+    DIR *dir = opendir(path);
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        // 忽略 "." 和 ".."
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+            char full_path[PATH_MAX];
+            snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
+            if (entry->d_type == DT_DIR) {
+                // 递归监视子目录
+                add_path_watch(pHandle, full_path, TRUE,mask);
+            }
+        }
+    }
+
+    closedir(dir);
+}
+
+HANDLE WINAPI FindFirstChangeNotificationA(LPCSTR lpPathName, BOOL bWatchSubtree, DWORD dwNotifyFilter)
+{
+    uint32_t mask = 0;
+    if (dwNotifyFilter & FILE_NOTIFY_CHANGE_FILE_NAME)
+    {
+        mask |= IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO;
+    }
+    if (dwNotifyFilter & FILE_NOTIFY_CHANGE_DIR_NAME)
+    {
+        mask |= IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO;
+    }
+    if (dwNotifyFilter & FILE_NOTIFY_CHANGE_SIZE)
+    {
+        mask |= IN_MODIFY;
+    }
+    if (dwNotifyFilter & FILE_NOTIFY_CHANGE_ATTRIBUTES)
+    {
+        mask |= IN_MODIFY;
+    }
+
+    if (!lpPathName || mask == 0)
+        return INVALID_HANDLE_VALUE;
+    int fd = inotify_init();
+    if (fd == -1)
+    {
+        return INVALID_HANDLE_VALUE;
+    }
+    NotifyHandle *notifyHandle = new NotifyHandle(fd);
+    add_path_watch(notifyHandle,lpPathName,bWatchSubtree,mask);
+    if(notifyHandle->lstWd.empty()){
+        delete notifyHandle;
+        return INVALID_HANDLE_VALUE;
+    }
+    return NewSynHandle(notifyHandle);
+}
+
+BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
+{
+    _SynHandle *synHandle = GetSynHandle(hChangeHandle);
+    if (!synHandle || synHandle->getType() != HNotifyHandle)
+        return FALSE;
+    NotifyHandle *notifyHandle = (NotifyHandle *)synHandle;
+
+    struct inotify_event evt;
+    int evt_len = FIELD_OFFSET(struct inotify_event, name);
+    if (read(notifyHandle->getReadFd(), &evt, evt_len) == evt_len)
+    {
+        char szBuf[1024];
+        int remain = evt.len;
+        for (; remain > 0;)
+        {
+            int len = std::min(1024, remain);
+            int readed = read(notifyHandle->getReadFd(), szBuf, len);
+            assert(readed == len);
+            remain -= readed;
+        }
+        return TRUE;
+    }
+    return FALSE;
+}
+
+BOOL WINAPI FindCloseChangeNotification(HANDLE hChangeHandle)
+{
+    return CloseHandle(hChangeHandle);
 }

@@ -1389,7 +1389,7 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         if (uTimeout != -1)
             uTimeout = 1000;
         _SynHandle *handle = GetSynHandle(hEvt);
-        SLOG_STMI() << "ipc event name=" << handle->getName();
+        //SLOG_STMI() << "ipc event name=" << handle->getName();
         int ret = WAIT_FAILED;
         if (fuFlags & SMTO_BLOCK)
         {

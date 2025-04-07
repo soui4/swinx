@@ -682,6 +682,19 @@ typedef int(WINAPI *PROC)();
 #define GetCommandLine GetCommandLineA
 #endif // UNICODE
 
+    HANDLE WINAPI FindFirstChangeNotificationA(LPCSTR lpPathName, BOOL bWatchSubtree, DWORD dwNotifyFilter);
+    HANDLE WINAPI FindFirstChangeNotificationW(LPCWSTR lpPathName, BOOL bWatchSubtree, DWORD dwNotifyFilter);
+
+    BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle);
+
+    BOOL WINAPI FindCloseChangeNotification(HANDLE hChangeHandle);
+
+#ifdef UNICODE
+#define FindFirstChangeNotification FindFirstChangeNotificationW
+#else
+#define FindFirstChangeNotification FindFirstChangeNotificationA
+#endif // UNICODE
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus
