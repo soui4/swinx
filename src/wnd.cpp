@@ -652,6 +652,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     RECT rcWnd = wndObj->rc;
     BOOL bQuit = FALSE;
     SetCapture(hWnd);
+    SendMessageA(hWnd, WM_ENTERSIZEMOVE, 0, 0);
     for (; !bQuit;)
     {
         MSG msg;
@@ -757,6 +758,8 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
             }
         }
     }
+
+    SendMessageA(hWnd, WM_EXITSIZEMOVE, 0, 0);
     ReleaseCapture();
 
     wndObj->mConnection->SetTimerBlock(false);
