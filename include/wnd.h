@@ -190,6 +190,7 @@ extern "C"
 
     HWND GetParent(HWND hwnd);
     HWND SetParent(HWND hWnd, HWND hParent);
+    HWND GetAncestor(HWND hwnd, UINT gaFlags);
 
     BOOL GetCursorPos(LPPOINT ppt);
 

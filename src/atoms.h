@@ -28,6 +28,7 @@ class SAtoms {
     _NET_WM_STATE_FULLSCREEN,
     _NET_WM_STATE_STAYS_ON_TOP,
     _NET_WM_STATE_DEMANDS_ATTENTION,
+    _NET_WM_STATE_FOCUSED,
 
     _NET_WM_NAME,
     _NET_WM_ICON,
@@ -48,7 +49,7 @@ class SAtoms {
     _XEMBED_INFO,
     _NET_WM_WINDOW_OPACITY,
     _NET_WORKAREA,
-
+    _NET_ACTIVE_WINDOW,
     _NET_DOUBLE_CLICK_TIME,
     CLIPBOARD,
     INCR,
@@ -116,7 +117,8 @@ class SAtoms {
             "_NET_WM_STATE_FULLSCREEN",
             "_NET_WM_STATE_STAYS_ON_TOP",
             "_NET_WM_STATE_DEMANDS_ATTENTION",
-
+            "_NET_WM_STATE_FOCUSED",
+            
             "_NET_WM_NAME",
             "_NET_WM_ICON",
             "_NET_WM_ICON_NAME",
@@ -136,6 +138,7 @@ class SAtoms {
             "_XEMBED_INFO",
             "_NET_WM_WINDOW_OPACITY",
             "_NET_WORKAREA",
+            "_NET_ACTIVE_WINDOW",
             "_NET_DOUBLE_CLICK_TIME",
 
             "CLIPBOARD",

@@ -371,10 +371,18 @@ typedef int(WINAPI *PROC)();
 
     HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName);
 
+    DWORD WINAPI GetDllDirectoryA(DWORD nBufferLength, LPSTR lpBuffer);
+    DWORD WINAPI GetDllDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer);
+    BOOL WINAPI SetDllDirectoryA(LPCSTR lpPathName);
+    BOOL WINAPI SetDllDirectoryW(LPCWSTR lpPathName);
 #ifdef _UNICODE
-#define LoadLibrary LoadLibraryW
+#define LoadLibrary     LoadLibraryW
+#define GetDllDirectory GetDllDirectoryW
+#define SetDllDirectory SetDllDirectoryW
 #else
-#define LoadLibrary LoadLibraryA
+#define LoadLibrary     LoadLibraryA
+#define GetDllDirectory GetDllDirectoryA
+#define SetDllDirectory SetDllDirectoryA
 #endif
 
     static inline BOOL WINAPI FreeLibrary(HMODULE hModule)

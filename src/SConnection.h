@@ -53,7 +53,8 @@ class SConnection {
         NetWmStateMaximizedVert = 0x10,
         NetWmStateModal = 0x20,
         NetWmStateStaysOnTop = 0x40,
-        NetWmStateDemandsAttention = 0x80
+        NetWmStateDemandsAttention = 0x80,
+        NetWMStateFocus = 0x100,
     };
 
     enum {
@@ -120,8 +121,6 @@ class SConnection {
 
     BOOL SetActiveWindow(HWND hWnd);
 
-    HWND GetParentWnd(HWND hWnd) const;
-
     HWND GetWindow(HWND hWnd, int code) const;
 
     HWND WindowFromPoint(POINT pt, HWND hWnd) const;
@@ -151,7 +150,7 @@ class SConnection {
     HWND GetFocus() const {
         return m_hFocus;
     }
-    HWND SetFocus(HWND hWnd);
+    BOOL SetFocus(HWND hWnd);
 
     BOOL IsDropTarget(HWND hWnd);
 
@@ -165,7 +164,7 @@ class SConnection {
     int OnGetWindowTextW(HWND hWnd,wchar_t *buf,int bufLen);
     HWND OnFindWindowEx(HWND hParent, HWND hChildAfter, LPCSTR lpClassName, LPCSTR lpWindowName);
     BOOL OnEnumWindows(HWND hParent, HWND hChildAfter,WNDENUMPROC lpEnumFunc, LPARAM lParam);
-
+    HWND OnGetAncestor(HWND hwnd,UINT gaFlags);
   public:
     struct CaretInfo
     {
@@ -259,7 +258,8 @@ public:
     void readXResources();
     void initializeXFixes();
     bool event2Msg(bool bTimeout, int elapse, uint64_t ts);
-    void OnSetFocus(HWND hWnd);
+    void OnFocusChanged(HWND hFocus);
+    void OnActiveChange(HWND hWnd,BOOL bActive);
     xcb_cursor_t createXcbCursor(HCURSOR cursor);
     uint32_t netWmStates(HWND hWnd);
 
@@ -274,6 +274,7 @@ public:
 
     void updateWorkArea();
     xcb_cursor_t getXcbCursor(HCURSOR cursor);
+    void postMsg(Msg *pMsg);
   private:
     static void xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, char *str,
       uint32_t length, uint32_t *keysym, size_t nKeySym,

@@ -811,41 +811,32 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
     }
 }
 
-static BOOL ActiveWindow(WndObj &wndObj, HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
+static BOOL ActiveWindow(HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
 {
-    if (wndObj->dwStyle & WS_CHILD)
-    {
-        do
-        {
-            HWND hParent = GetParent(hWnd);
-            if (!hParent)
-                break;
-            WndObj wndParent = WndMgr::fromHwnd(hParent);
-            if (!wndParent)
-                return 0;
-            if ((wndParent->dwExStyle & (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW)) != 0 || (wndParent->dwStyle & WS_DISABLED) != 0)
-                return 0;
-            hWnd = hParent;
-            wndObj = wndParent;
-        } while (1);
-    }
+    HWND hRoot = GetAncestor(hWnd, GA_ROOT);
+    if (hRoot)
+        hWnd = hRoot;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return FALSE;
+
     BOOL bRet = FALSE;
     if ((wndObj->dwExStyle & (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW)) == 0 && (wndObj->dwStyle & WS_DISABLED) == 0)
     {
         UINT maRet = 0;
         if (bMouseActive)
         {
-            maRet = SendMessage(hWnd, WM_MOUSEACTIVATE, (WPARAM)hWnd, MAKELPARAM(htCode, msg));
+            maRet = SendMessageA(hWnd, WM_MOUSEACTIVATE, (WPARAM)hWnd, MAKELPARAM(htCode, msg));
         }
         if (!bMouseActive || maRet == MA_ACTIVATE || maRet == MA_ACTIVATEANDEAT)
         {
             HWND oldActive = wndObj->mConnection->GetActiveWnd();
             if (!wndObj->mConnection->SetActiveWindow(hWnd))
                 return FALSE;
-            SendMessage(hWnd, WM_ACTIVATE, bMouseActive ? WA_CLICKACTIVE : WA_ACTIVE, oldActive);
+            SendMessageA(hWnd, WM_ACTIVATE, bMouseActive ? WA_CLICKACTIVE : WA_ACTIVE, oldActive);
             if (IsWindow(oldActive))
             {
-                SendMessage(oldActive, WM_ACTIVATE, WA_INACTIVE, hWnd);
+                SendMessageA(oldActive, WM_ACTIVATE, WA_INACTIVE, hWnd);
             }
         }
         bRet = maRet == MA_ACTIVATEANDEAT || maRet == MA_NOACTIVATEANDEAT;
@@ -1006,7 +997,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     case WM_MBUTTONDBLCLK:
     case WM_RBUTTONDBLCLK:
     {
-        bSkipMsg = ActiveWindow(wndObj, hWnd, TRUE, msg, wndObj->htCode);
+        bSkipMsg = ActiveWindow(hWnd, TRUE, msg, wndObj->htCode);
         if (!bSkipMsg && GetCapture() != hWnd)
         {
             POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
@@ -1392,7 +1383,7 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         if (uTimeout != -1)
             uTimeout = 1000;
         _SynHandle *handle = GetSynHandle(hEvt);
-        //SLOG_STMI() << "ipc event name=" << handle->getName();
+        // SLOG_STMI() << "ipc event name=" << handle->getName();
         int ret = WAIT_FAILED;
         if (fuFlags & SMTO_BLOCK)
         {
@@ -2064,14 +2055,19 @@ BOOL EnableWindow(HWND hWnd, BOOL bEnable)
 HWND SetActiveWindow(HWND hWnd)
 {
     HWND hRet = GetActiveWindow();
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    ActiveWindow(wndObj, hWnd, FALSE, 0, 0);
+    ActiveWindow(hWnd, FALSE, 0, 0);
     return hRet;
 }
 
 HWND GetParent(HWND hWnd)
 {
     return (HWND)GetWindowLongPtrA(hWnd, GWLP_HWNDPARENT);
+}
+
+HWND GetAncestor(HWND hwnd, UINT gaFlags)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
+    return conn->OnGetAncestor(hwnd, gaFlags);
 }
 
 HWND SetParent(HWND hWnd, HWND hParent)
@@ -2241,7 +2237,9 @@ HWND GetFocus()
 HWND SetFocus(HWND hWnd)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->SetFocus(hWnd);
+    HWND oldFocus = conn->GetFocus();
+    conn->SetFocus(hWnd);
+    return oldFocus;
 }
 
 HDC BeginPaint(HWND hWnd, PAINTSTRUCT *ps)

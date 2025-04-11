@@ -19,6 +19,7 @@
 #include "synhandle.h"
 #include "tostring.hpp"
 #include "debug.h"
+#include "sysapi.h"
 #define kLogTag "sysapi"
 
 using namespace swinx;
@@ -304,8 +305,101 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
 #endif
 }
 
+class DllLoader {
+  public:
+    DllLoader()
+    {
+        // search app dir
+        char szPath[MAX_PATH] = { 0 };
+        GetModuleFileNameA(NULL, szPath, MAX_PATH);
+        char *p = strrchr(szPath, '/');
+        assert(p);
+        p[1] = 0;
+        m_lstDirs.push_back(szPath);
+    }
+
+    BOOL SetDllDirectoryA(LPCSTR lpPathName)
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        if (lpPathName)
+        {
+            if (GetFileAttributes(lpPathName) & FILE_ATTRIBUTE_DIRECTORY == 0)
+                return FALSE;
+            m_userDllDir = lpPathName;
+            if (*m_userDllDir.rbegin() != '/')
+                m_userDllDir += '/';
+            return TRUE;
+        }
+        else
+        {
+            m_userDllDir = "";
+            return TRUE;
+        }
+    }
+
+    DWORD GetDllDirectoryA(DWORD nBufferLength, LPSTR lpBuffer)
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        if (m_userDllDir.length() > nBufferLength)
+        {
+            SetLastError(ERROR_BUFFER_OVERFLOW);
+            return 0;
+        }
+        memcpy(lpBuffer, m_userDllDir.c_str(), m_userDllDir.length());
+        if (nBufferLength > m_userDllDir.length())
+            lpBuffer[m_userDllDir.length()] = 0;
+        return m_userDllDir.length();
+    }
+
+    DWORD GetDllDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer)
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return MultiByteToWideChar(CP_UTF8, 0, m_userDllDir.c_str(), -1, lpBuffer, nBufferLength);
+    }
+
+    HMODULE LoadDll(LPCSTR lpFileName, int mode)
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        if (!m_userDllDir.empty())
+        {
+            std::string path = m_userDllDir + lpFileName;
+            if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
+                return dlopen(path.c_str(), mode);
+        }
+        {
+            // search current dir
+            char szPath[MAX_PATH] = { 0 };
+            int len = GetCurrentDirectoryA(MAX_PATH, szPath);
+            if (szPath[len - 1] != '/')
+            {
+                szPath[len++] = '/';
+                szPath[len] = 0;
+            }
+            std::string path = szPath;
+            path += lpFileName;
+            if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
+                return dlopen(path.c_str(), mode);
+        }
+        for (auto it : m_lstDirs)
+        {
+            std::string path = it + lpFileName;
+            if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
+                return dlopen(path.c_str(), mode);
+        }
+        return NULL;
+    }
+
+  private:
+    std::mutex m_mutex;
+    std::list<std::string> m_lstDirs;
+    std::string m_userDllDir;
+};
+
+static DllLoader s_dllLoader;
+
 HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
 {
+
     if (!lpFileName)
         return NULL;
     HMODULE ret = 0;
@@ -316,46 +410,27 @@ HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
             break;
         if (strchr(lpFileName, '/') != NULL)
             break;
-        // search app dir
-        char szPath[MAX_PATH] = { 0 };
-        GetModuleFileNameA(NULL, szPath, MAX_PATH);
-        char *p = strrchr(szPath, '/');
-        assert(p);
-        p++;
-        strcpy(p, lpFileName);
-        ret = dlopen(szPath, RTLD_NOW);
+        ret = s_dllLoader.LoadDll(lpFileName, RTLD_NOW);
         if (ret)
             break;
-        GetCurrentDirectoryA(MAX_PATH, szPath);
-        int len = strlen(szPath);
-        if (szPath[len - 1] != '/')
+        char szPath[MAX_PATH];
+        const char *ext = strrchr(lpFileName, '.');
+        if (!ext)
         {
-            szPath[len++] = '/';
-            szPath[len] = 0;
+            // no ext, add so as the extend name
+            sprintf(szPath, "%s.so", lpFileName);
         }
-        p = szPath + len;
-        strcpy(p, lpFileName);
-        ret = dlopen(szPath, RTLD_NOW);
-        if (!ret)
+        else if (stricmp(ext, ".dll") == 0)
         {
-            const char *ext = strrchr(lpFileName, '.');
-            if (!ext)
-            {
-                // no ext, add so as the extend name
-                sprintf(szPath, "%s.so", lpFileName);
-            }
-            else if (stricmp(ext, ".dll") == 0)
-            {
-                // windows dll name pattern, change to libxxx.so
-                sprintf(szPath, "lib%s", lpFileName);
-                strcpy(szPath + 3 + (ext - lpFileName), ".so");
-            }
-            else
-            {
-                break;
-            }
-            ret = LoadLibraryA(szPath);
+            // windows dll name pattern, change to libxxx.so
+            sprintf(szPath, "lib%s", lpFileName);
+            strcpy(szPath + 3 + (ext - lpFileName), ".so");
         }
+        else
+        {
+            break;
+        }
+        ret = LoadLibraryA(szPath);
     } while (false);
     return ret;
 }
@@ -366,6 +441,30 @@ HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName)
     if (0 == WideCharToMultiByte(CP_UTF8, 0, lpFileName, -1, szName, MAX_PATH, NULL, NULL))
         return 0;
     return LoadLibraryA(szName);
+}
+
+DWORD WINAPI GetDllDirectoryA(DWORD nBufferLength, LPSTR lpBuffer)
+{
+    return s_dllLoader.GetDllDirectoryA(nBufferLength, lpBuffer);
+}
+
+BOOL WINAPI SetDllDirectoryA(LPCSTR lpPathName)
+{
+    return s_dllLoader.SetDllDirectoryA(lpPathName);
+}
+
+DWORD WINAPI GetDllDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer)
+{
+    return s_dllLoader.GetDllDirectoryW(nBufferLength, lpBuffer);
+}
+
+BOOL WINAPI SetDllDirectoryW(LPCWSTR lpPathName)
+{
+    if (!lpPathName)
+        return SetDllDirectoryA(NULL);
+    std::string str;
+    tostring(lpPathName, -1, str);
+    return SetDllDirectoryA(str.c_str());
 }
 
 #define STIF_DEFAULT     0x00000000L
@@ -2211,7 +2310,8 @@ struct NotifyHandle : FdHandle
 
     ~NotifyHandle()
     {
-        for(auto wd : lstWd){
+        for (auto wd : lstWd)
+        {
             inotify_rm_watch(fd, wd);
         }
         lstWd.clear();
@@ -2219,25 +2319,30 @@ struct NotifyHandle : FdHandle
     }
 };
 
-static void add_path_watch(NotifyHandle *pHandle, const char *path,BOOL bWatchSubtree, uint32_t mask) {
+static void add_path_watch(NotifyHandle *pHandle, const char *path, BOOL bWatchSubtree, uint32_t mask)
+{
     int wd = inotify_add_watch(pHandle->fd, path, mask);
-    if (wd == -1) {
+    if (wd == -1)
+    {
         return;
     }
     pHandle->lstWd.push_back(wd);
-    if(!bWatchSubtree)
+    if (!bWatchSubtree)
         return;
     // 监视子目录
     DIR *dir = opendir(path);
     struct dirent *entry;
-    while ((entry = readdir(dir)) != NULL) {
+    while ((entry = readdir(dir)) != NULL)
+    {
         // 忽略 "." 和 ".."
-        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0)
+        {
             char full_path[PATH_MAX];
             snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
-            if (entry->d_type == DT_DIR) {
+            if (entry->d_type == DT_DIR)
+            {
                 // 递归监视子目录
-                add_path_watch(pHandle, full_path, TRUE,mask);
+                add_path_watch(pHandle, full_path, TRUE, mask);
             }
         }
     }
@@ -2273,8 +2378,9 @@ HANDLE WINAPI FindFirstChangeNotificationA(LPCSTR lpPathName, BOOL bWatchSubtree
         return INVALID_HANDLE_VALUE;
     }
     NotifyHandle *notifyHandle = new NotifyHandle(fd);
-    add_path_watch(notifyHandle,lpPathName,bWatchSubtree,mask);
-    if(notifyHandle->lstWd.empty()){
+    add_path_watch(notifyHandle, lpPathName, bWatchSubtree, mask);
+    if (notifyHandle->lstWd.empty())
+    {
         delete notifyHandle;
         return INVALID_HANDLE_VALUE;
     }

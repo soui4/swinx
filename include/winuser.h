@@ -2159,6 +2159,13 @@ extern "C"
 #define FILE_ACTION_RENAMED_OLD_NAME   0x00000004
 #define FILE_ACTION_RENAMED_NEW_NAME   0x00000005
 
+/*
+ * The "real" ancestor window
+ */
+#define GA_PARENT    1
+#define GA_ROOT      2
+#define GA_ROOTOWNER 3
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus
