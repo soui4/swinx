@@ -867,7 +867,7 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
                 {
                     m_msgPeek = nullptr;
                     BOOL bRet = peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
-                    postMsg(msg);// insert paint message back.
+                    postMsg(msg); // insert paint message back.
                     return bRet;
                 }
             }
@@ -907,7 +907,6 @@ void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp)
     GetCursorPos(&pMsg->pt);
     postMsg(pMsg);
 }
-
 
 void SConnection::postMsg(Msg *pMsg)
 {
@@ -2144,43 +2143,43 @@ HKL SConnection::ActivateKeyboardLayout(HKL hKl)
 
 void SConnection::OnFocusChanged(HWND hFocus)
 {
-        if (hFocus == m_hFocus)
-            return;
-        if (m_hFocus)
+    if (hFocus == m_hFocus)
+        return;
+    if (m_hFocus)
+    {
+        HIMC hIMC = ImmGetContext(m_hFocus);
+        if (hIMC)
         {
-            HIMC hIMC = ImmGetContext(m_hFocus);
-            if (hIMC)
+            if (hIMC->xic)
             {
-                if (hIMC->xic)
-                {
-                    xcb_xim_close(m_xim);
-                }
-                ImmReleaseContext(m_hFocus, hIMC);
+                xcb_xim_close(m_xim);
             }
-            Msg *pMsg = new Msg;
-            pMsg->hwnd = m_hFocus;
-            pMsg->message = WM_KILLFOCUS;
-            pMsg->wParam = (WPARAM)hFocus;
-            pMsg->lParam = 0;
-            postMsg(pMsg);
+            ImmReleaseContext(m_hFocus, hIMC);
         }
-        HWND hOldFocus = m_hFocus;
-        m_hFocus = hFocus;
-        if (hFocus)
+        Msg *pMsg = new Msg;
+        pMsg->hwnd = m_hFocus;
+        pMsg->message = WM_KILLFOCUS;
+        pMsg->wParam = (WPARAM)hFocus;
+        pMsg->lParam = 0;
+        postMsg(pMsg);
+    }
+    HWND hOldFocus = m_hFocus;
+    m_hFocus = hFocus;
+    if (hFocus)
+    {
+        HIMC hIMC = ImmGetContext(hFocus);
+        if (hIMC)
         {
-            HIMC hIMC = ImmGetContext(hFocus);
-            if (hIMC)
-            {
-                xcb_xim_open(m_xim, xim_open_callback, true, (void *)hFocus);
-                ImmReleaseContext(hFocus, hIMC);
-            }
-            Msg *pMsg = new Msg;
-            pMsg->hwnd = m_hFocus;
-            pMsg->message = WM_SETFOCUS;
-            pMsg->wParam = (WPARAM)hOldFocus;
-            pMsg->lParam = 0;
-            postMsg(pMsg);
+            xcb_xim_open(m_xim, xim_open_callback, true, (void *)hFocus);
+            ImmReleaseContext(hFocus, hIMC);
         }
+        Msg *pMsg = new Msg;
+        pMsg->hwnd = m_hFocus;
+        pMsg->message = WM_SETFOCUS;
+        pMsg->wParam = (WPARAM)hOldFocus;
+        pMsg->lParam = 0;
+        postMsg(pMsg);
+    }
 }
 
 BOOL SConnection::SetFocus(HWND hWnd)
@@ -2223,7 +2222,7 @@ static void printAtomName(xcb_connection_t *connection, xcb_atom_t atom)
         free(reply);
     }
 }
-#endif//ENABLE_PRINTATOMNAME
+#endif // ENABLE_PRINTATOMNAME
 
 uint32_t SConnection::netWmStates(HWND hWnd)
 {
@@ -2794,8 +2793,9 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_FOCUS_OUT:
     {
         xcb_get_input_focus_cookie_t cookie = xcb_get_input_focus(connection);
-        xcb_get_input_focus_reply_t *reply = xcb_get_input_focus_reply(connection,cookie,nullptr);
-        if(reply){
+        xcb_get_input_focus_reply_t *reply = xcb_get_input_focus_reply(connection, cookie, nullptr);
+        if (reply)
+        {
             OnFocusChanged(reply->focus);
             free(reply);
         }

@@ -43,8 +43,9 @@ namespace swinx
         SLogStream& operator<<(double t);
         SLogStream& operator<<(const SLogBinary& binary);
 
+        SLogStream &writeFormat(const char *format, ...);
+        SLogStream &writeFormat(const wchar_t *format, ...);    
     private:
-        SLogStream& writeData(const char* ft, ...);
         SLogStream& writeLongLong(long long t);
         SLogStream& writeULongLong(unsigned long long t);
         SLogStream& writePointer(const void* t);
@@ -91,23 +92,8 @@ std::stringstream& operator <<(std::stringstream& dst, const wchar_t* src);
 #endif//__PRETTY_FUNCTION__
 
 #define LOG_STM(tag,level) swinx::Log(tag,level,__FILE__,__PRETTY_FUNCTION__,__LINE__).stream()
-#define LOG_FMT(tag,level, logformat, ...)                                     \
-    do                                                                      \
-    {                                                                       \
-        if(sizeof(logformat[0])==sizeof(char)){                             \
-            char logbuf[swinx::Log::MAX_LOGLEN] = { 0 };                  \
-            int nLen = snprintf(logbuf, swinx::Log::MAX_LOGLEN,           \
-                (const char *)logformat, ##__VA_ARGS__);                    \
-                LOG_STM(tag, level) << logbuf;                                 \
-        }                                                                   \
-        else                                                                \
-        {                                                                   \
-            wchar_t logbuf[swinx::Log::MAX_LOGLEN] = { 0 };               \
-            int nLen = _snwprintf(logbuf, swinx::Log::MAX_LOGLEN,         \
-                (const wchar_t *)logformat, ##__VA_ARGS__);                 \
-            LOG_STM(tag, level) << logbuf;                                     \
-        }                                                                   \
-    }while(false);
+#define LOG_FMT(tag,level, logformat, ...) \
+    LOG_STM(tag, level).writeFormat(logformat, ##__VA_ARGS__)
 
 #define LOG_STMD(tag) LOG_STM(tag,SLOG_DEBUG)
 #define LOG_STMI(tag) LOG_STM(tag,SLOG_INFO)

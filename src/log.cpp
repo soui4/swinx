@@ -28,7 +28,7 @@ SLogStream &SLogStream::writeWString(const wchar_t *t, int nLen)
         if (dwLen > 0)
         {
             buf[dwLen] = 0;
-            writeData("%s", buf);
+            writeFormat("%s", buf);
         }
     }
     return *this;
@@ -36,24 +36,24 @@ SLogStream &SLogStream::writeWString(const wchar_t *t, int nLen)
 
 SLogStream &SLogStream::writeString(const char *t)
 {
-    writeData("%s", t);
+    writeFormat("%s", t);
     return *this;
 }
 
 SLogStream &SLogStream::writeBinary(const SLogBinary &t)
 {
-    writeData("%s", "\r\n\t[");
+    writeFormat("%s", "\r\n\t[");
     for (int i = 0; i < t._len; i++)
     {
         if (i % 16 == 0)
         {
-            writeData("%s", "\r\n\t");
+            writeFormat("%s", "\r\n\t");
             *this << (void *)(t._buf + i);
-            writeData("%s", ": ");
+            writeFormat("%s", ": ");
         }
-        writeData("%02x ", (unsigned char)t._buf[i]);
+        writeFormat("%02x ", (unsigned char)t._buf[i]);
     }
-    writeData("%s", "\r\n\t]\r\n\t");
+    writeFormat("%s", "\r\n\t]\r\n\t");
     return *this;
 }
 
@@ -70,7 +70,7 @@ SLogStream &SLogStream::writeLongLong(long long t)
 #if defined(WIN32) || defined(_WIN64)
     writeData("%I64d", t);
 #else
-    writeData("%lld", t);
+    writeFormat("%lld", t);
 #endif
     return *this;
 }
@@ -80,18 +80,36 @@ SLogStream &SLogStream::writeULongLong(unsigned long long t)
 #if defined(WIN32) || defined(_WIN64)
     writeData("%I64u", t);
 #else
-    writeData("%llu", t);
+    writeFormat("%llu", t);
 #endif
     return *this;
 }
 
 SLogStream &SLogStream::writePointer(const void *t)
 {
-    writeData("%p", t);
+    writeFormat("%p", t);
     return *this;
 }
 
-SLogStream &SLogStream::writeData(const char *fmt, ...)
+SLogStream &SLogStream::writeFormat(const wchar_t *fmt2, ...)
+{
+    wchar_t *fmt = wcsdup(fmt2);
+    wchar_t *p = wcsstr(fmt, L"%s");
+    while (p)
+    {
+        p[1] = L'S';
+        p = wcsstr(p + 2, L"%s");
+    }
+    wchar_t logbuf[swinx::Log::MAX_LOGLEN] = { 0 };
+    va_list args;
+    va_start(args, fmt2);
+    int ret = vswprintf(logbuf, swinx::Log::MAX_LOGLEN, fmt, args);
+    va_end(args);
+    free(fmt);
+    return writeWString(logbuf, ret);
+}
+
+SLogStream &SLogStream::writeFormat(const char *fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -99,8 +117,7 @@ SLogStream &SLogStream::writeData(const char *fmt, ...)
     {
         int len = 0;
         int count = (int)(_end - _cur) - 1;
-#if defined(WIN32) || defined(_WIN64)
-        len = _vsnprintf(_cur, count, fmt, args);
+        len = vsnprintf(_cur, count, fmt, args);
         if (len == count || (len == -1 && errno == E_RANGE))
         {
             len = count;
@@ -111,19 +128,6 @@ SLogStream &SLogStream::writeData(const char *fmt, ...)
             *_cur = '\0';
             len = 0;
         }
-#else
-        len = vsnprintf(_cur, count, fmt, args);
-        if (len < 0)
-        {
-            *_cur = '\0';
-            len = 0;
-        }
-        else if (len >= count)
-        {
-            len = count;
-            *(_end - 1) = '\0';
-        }
-#endif
         _cur += len;
     }
     va_end(args);
@@ -138,12 +142,12 @@ SLogStream &SLogStream::operator<<(const SLogBinary &binary)
 
 SLogStream &SLogStream::operator<<(double t)
 {
-    return writeData("%.4lf", t);
+    return writeFormat("%.4lf", t);
 }
 
 SLogStream &SLogStream::operator<<(float t)
 {
-    return writeData("%.4f", t);
+    return writeFormat("%.4f", t);
 }
 
 SLogStream &SLogStream::operator<<(unsigned long long t)
@@ -168,32 +172,32 @@ SLogStream &SLogStream::operator<<(long t)
 
 SLogStream &SLogStream::operator<<(unsigned int t)
 {
-    return writeData("%u", t);
+    return writeFormat("%u", t);
 }
 
 SLogStream &SLogStream::operator<<(int t)
 {
-    return writeData("%d", t);
+    return writeFormat("%d", t);
 }
 
 SLogStream &SLogStream::operator<<(unsigned short t)
 {
-    return writeData("%u", (unsigned int)t);
+    return writeFormat("%u", (unsigned int)t);
 }
 
 SLogStream &SLogStream::operator<<(short t)
 {
-    return writeData("%d", (int)t);
+    return writeFormat("%d", (int)t);
 }
 
 SLogStream &SLogStream::operator<<(unsigned char t)
 {
-    return writeData("%u", (unsigned int)t);
+    return writeFormat("%u", (unsigned int)t);
 }
 
 SLogStream &SLogStream::operator<<(char t)
 {
-    return writeData("%c", t);
+    return writeFormat("%c", t);
 }
 
 SLogStream &SLogStream::operator<<(wchar_t t)
@@ -203,7 +207,7 @@ SLogStream &SLogStream::operator<<(wchar_t t)
 
 SLogStream &SLogStream::operator<<(bool t)
 {
-    return (t ? writeData("%s", "true") : writeData("%s", "false"));
+    return (t ? writeFormat("%s", "true") : writeFormat("%s", "false"));
 }
 
 SLogStream &SLogStream::operator<<(const wchar_t *t)
