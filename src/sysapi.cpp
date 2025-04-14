@@ -2416,3 +2416,108 @@ BOOL WINAPI FindCloseChangeNotification(HANDLE hChangeHandle)
 {
     return CloseHandle(hChangeHandle);
 }
+
+struct ThreadInfo{
+    ThreadInfo(){
+        pthread_mutex_init(&mutex2, nullptr);
+        pthread_cond_init(&cond, nullptr);    
+        hEvent = CreateEventA(NULL,FALSE,FALSE,NULL);
+    }
+    ~ThreadInfo(){
+        CloseHandle(hEvent);
+        pthread_mutex_destroy(&mutex2);
+        pthread_cond_destroy(&cond);
+    }
+    pthread_mutex_t mutex2;
+    pthread_cond_t cond;
+    HANDLE hEvent;
+};
+
+struct ThreadObj
+    : PipeSynHandle
+    , ThreadInfo
+{
+    pthread_t thread;
+    ThreadObj()
+    :thread(0)
+    {
+        type = HThread;
+        init(NULL,NULL);
+    }
+    ~ThreadObj(){
+        if(thread!=0){
+            pthread_join(thread,nullptr);
+        }
+    }
+    void *getData() override {return (ThreadInfo*)this;}
+};
+
+struct ThreadParam {
+    ThreadParam(LPTHREAD_START_ROUTINE _lpStartAddress, LPVOID _lpParameter, DWORD _dwCreationFlags, tid_t * _lpThreadId)
+    :lpStartAddress(_lpStartAddress)
+    ,lpParameter(_lpParameter)
+    ,dwCreationFlags(_dwCreationFlags)
+    ,lpThreadId(_lpThreadId)
+    {
+
+    }
+    LPTHREAD_START_ROUTINE lpStartAddress;
+    LPVOID lpParameter;
+    DWORD dwCreationFlags;
+    tid_t * lpThreadId;
+    ThreadObj *info;
+};
+
+static void* Swinx_ThreadProc(void *p){
+    ThreadParam *param = (ThreadParam*)p;
+    if(param->lpThreadId)
+        * param->lpThreadId = GetCurrentThreadId();
+    SetEvent(param->info->hEvent);
+    if(param->dwCreationFlags & CREATE_SUSPENDED)
+    {
+        SLOG_STMI()<<"waiting for resume";
+        pthread_mutex_lock(&param->info->mutex2);
+        pthread_cond_wait(&param->info->cond,&param->info->mutex2);
+        pthread_mutex_unlock(&param->info->mutex2);
+        SLOG_STMI()<<"waiting for resume done";
+    }
+    param->lpStartAddress(param->lpParameter);
+    delete param;
+    param->info->writeSignal();//wakeup waitings for the thread object.
+    return nullptr;
+}
+
+
+HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, tid_t * lpThreadId)
+{
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setstacksize(&attr, dwStackSize);
+
+    ThreadParam *param = new ThreadParam(lpStartAddress,lpParameter,dwCreationFlags,lpThreadId);
+    ThreadObj *trdObj = new ThreadObj();
+    param->info = trdObj;
+    if (pthread_create(&trdObj->thread, &attr, Swinx_ThreadProc, param) != 0) {
+        SLOG_STME()<< "Failed to create thread";
+        delete param;
+        delete trdObj;
+        return INVALID_HANDLE_VALUE;
+    }
+    WaitForSingleObject(trdObj->hEvent,INFINITE);
+    return NewSynHandle(trdObj);
+}
+
+//only support resume thread that was created with flag CREATE_SUSPENDED
+DWORD WINAPI ResumeThread(HANDLE hThread)
+{
+    if(hThread == INVALID_HANDLE_VALUE)
+        return -1;
+    _SynHandle *synHandle = GetSynHandle(hThread);
+    if(!synHandle || synHandle->getType()!=HThread)
+        return -1;
+    ThreadObj *threadObj = (ThreadObj*)synHandle;
+    pthread_mutex_lock(&threadObj->mutex2);
+    pthread_cond_signal(&threadObj->cond);
+    pthread_mutex_unlock(&threadObj->mutex2);
+    return 0;
+}

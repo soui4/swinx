@@ -1025,6 +1025,7 @@ DWORD WINAPI WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds)
     s_globalHandleTable.getRwLock()->unlockShared();
     if (fd == -1)
     {
+        CloseHandle(hTmp);
         return WAIT_ABANDONED;
     }
 start_wait:

@@ -16,6 +16,7 @@ enum
     HFileMap,
     HFdHandle,
     HNotifyHandle,
+    HThread,
 };
 
 struct _SynHandle
@@ -94,4 +95,52 @@ static _SynHandle *GetSynHandle(HANDLE h)
         return nullptr;
     return (_SynHandle *)h->ptr;
 }
+
+
+struct PipeSynHandle : _SynHandle
+{
+    std::recursive_mutex mutex;
+    int fd[2];
+    PipeSynHandle()
+    {
+        fd[0] = fd[1] = -1;
+    }
+
+    ~PipeSynHandle()
+    {
+        if (fd[0] != -1)
+            close(fd[0]);
+        if (fd[1] != -1)
+            close(fd[1]);
+    }
+
+    void lock() override
+    {
+        mutex.lock();
+    }
+    void unlock() override
+    {
+        mutex.unlock();
+    }
+    int getReadFd() override
+    {
+        return fd[0];
+    }
+
+    int getWriteFd() override
+    {
+        return fd[1];
+    }
+
+    bool init(LPCSTR pszName, void *initData) override
+    {
+        return pipe(fd) != -1;
+    }
+
+    virtual LPCSTR getName() const
+    {
+        return nullptr;
+    }
+};
+
 #endif//_SYN_HANDLE_H_
