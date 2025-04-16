@@ -2487,7 +2487,10 @@ HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwSt
 {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    pthread_attr_setstacksize(&attr, dwStackSize);
+    if(dwStackSize!=0)
+    {
+        pthread_attr_setstacksize(&attr, dwStackSize);
+    }    
 
     ThreadParam *param = new ThreadParam(lpStartAddress,lpParameter,dwCreationFlags,lpThreadId);
     ThreadObj *trdObj = new ThreadObj();
