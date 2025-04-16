@@ -703,24 +703,14 @@ typedef int(WINAPI *PROC)();
 #define FindFirstChangeNotification FindFirstChangeNotificationA
 #endif // UNICODE
 
-
-    typedef DWORD (WINAPI *PTHREAD_START_ROUTINE)(LPVOID lpThreadParameter);
+    typedef DWORD(WINAPI *PTHREAD_START_ROUTINE)(LPVOID lpThreadParameter);
     typedef PTHREAD_START_ROUTINE LPTHREAD_START_ROUTINE;
 
-    HANDLE WINAPI CreateThread(
-        LPSECURITY_ATTRIBUTES lpThreadAttributes,
-        SIZE_T dwStackSize,
-        LPTHREAD_START_ROUTINE lpStartAddress,
-        LPVOID lpParameter,
-        DWORD dwCreationFlags,
-        tid_t * lpThreadId
-    );
+    HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, tid_t *lpThreadId);
 
-    //only support resume thread that was created with flag CREATE_SUSPENDED
-    DWORD WINAPI ResumeThread(
-                  HANDLE hThread
-      );
-      
+    // only support resume thread that was created with flag CREATE_SUSPENDED
+    DWORD WINAPI ResumeThread(HANDLE hThread);
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus
