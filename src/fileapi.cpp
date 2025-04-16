@@ -42,9 +42,19 @@ CreateFileA(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECUR
 {
     _FileData *fd = new _FileData;
     int mode = O_RDONLY;
-    if ((dwDesiredAccess & (FILE_READ_DATA | FILE_WRITE_DATA)) == (FILE_READ_DATA | FILE_WRITE_DATA))
+    DWORD dwAccess = 0;
+    if (dwDesiredAccess | GENERIC_READ)
+        dwAccess |= FILE_GENERIC_READ;
+    if (dwDesiredAccess | GENERIC_WRITE)
+        dwAccess |= FILE_GENERIC_WRITE;
+    if (dwDesiredAccess | GENERIC_EXECUTE)
+        dwAccess |= FILE_GENERIC_EXECUTE;
+    if (dwDesiredAccess | GENERIC_ALL)
+        dwAccess |= FILE_GENERIC_READ | FILE_GENERIC_WRITE | FILE_GENERIC_EXECUTE;
+
+    if ((dwAccess & (FILE_READ_DATA | FILE_WRITE_DATA)) == (FILE_READ_DATA | FILE_WRITE_DATA))
         mode = O_RDWR;
-    else if (dwDesiredAccess & FILE_WRITE_DATA)
+    else if (dwAccess & FILE_WRITE_DATA)
         mode = O_WRONLY;
     if (!(dwShareMode & (FILE_SHARE_READ | FILE_SHARE_DELETE | FILE_SHARE_WRITE)))
         mode |= O_EXCL;

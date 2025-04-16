@@ -1106,6 +1106,10 @@ int GetSystemMetrics(int nIndex)
     case SM_CXEDGE:
     case SM_CYEDGE:
         return 1;
+    case SM_CXSMICON:
+        return 16;
+    case SM_CYSMICON:
+        return 16;
     case SM_CXICON:
         ret = 32;
         break;
@@ -2009,6 +2013,74 @@ GetTempPathW(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return
     return MultiByteToWideChar(CP_UTF8, 0, szPath, ret, lpBuffer, nBufferLength);
 }
 
+UINT WINAPI GetTempFileNameW(LPCWSTR lpPathName, LPCWSTR lpPrefixString, UINT uUnique, LPWSTR lpTempFileName)
+{
+    std::string strPath, strPrefix;
+    char szTmpFileName[MAX_PATH] = { 0 };
+    tostring(lpPathName, -1, strPath);
+    tostring(lpPrefixString, -1, strPrefix);
+    int ret = GetTempFileNameA(strPath.c_str(), strPrefix.c_str(), uUnique, szTmpFileName);
+    if (!ret)
+        return 0;
+    MultiByteToWideChar(CP_UTF8, 0, szTmpFileName, -1, lpTempFileName, MAX_PATH);
+    return ret;
+}
+
+UINT WINAPI GetTempFileNameA(LPCSTR lpPathName, LPCSTR lpPrefixString, UINT unique, LPSTR buffer)
+{
+    DWORD attr = GetFileAttributesA(lpPathName);
+    if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY))
+    {
+        SetLastError(ERROR_DIRECTORY);
+        return 0;
+    }
+
+    strcpy(buffer, lpPathName);
+    char *p = buffer + strlen(buffer);
+
+    /* add a \, if there isn't one  */
+    if ((p == buffer) || (p[-1] != '/'))
+        *p++ = '/';
+
+    if (lpPrefixString)
+        for (int i = 3; (i > 0) && (*lpPrefixString); i--)
+            *p++ = *lpPrefixString++;
+
+    unique &= 0xffff;
+    if (unique)
+        sprintf_s(p, MAX_PATH - (p - buffer), "%x.tmp", unique);
+    else
+    {
+        /* get a "random" unique number and try to create the file */
+        HANDLE handle;
+        UINT num = GetTickCount() & 0xffff;
+        static UINT last;
+
+        /* avoid using the same name twice in a short interval */
+        if (last - num < 10)
+            num = last + 1;
+        if (!num)
+            num = 1;
+        unique = num;
+        do
+        {
+            sprintf_s(p, MAX_PATH - (p - buffer), "%x.tmp", unique);
+            handle = CreateFile(buffer, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
+            if (handle != INVALID_HANDLE_VALUE)
+            { /* We created it */
+                CloseHandle(handle);
+                last = unique;
+                break;
+            }
+            if (GetLastError() != ERROR_FILE_EXISTS && GetLastError() != ERROR_SHARING_VIOLATION)
+                break; /* No need to go on */
+            if (!(++unique & 0xffff))
+                unique = 1;
+        } while (unique != num);
+    }
+    return unique;
+}
+
 BOOL IsValidCodePage(UINT CodePage)
 {
     // todo:hjx
@@ -2481,9 +2553,9 @@ static void *Swinx_ThreadProc(void *p)
     SetEvent(param->info->hEvent);
     if (param->dwCreationFlags & CREATE_SUSPENDED)
     {
-        //SLOG_STMI() << "waiting for resume";
+        // SLOG_STMI() << "waiting for resume";
         WaitForSingleObject(param->info->hEventResume, INFINITE);
-        //SLOG_STMI() << "waiting for resume done";
+        // SLOG_STMI() << "waiting for resume done";
     }
     param->lpStartAddress(param->lpParameter);
     delete param;
@@ -2524,6 +2596,6 @@ DWORD WINAPI ResumeThread(HANDLE hThread)
         return -1;
     ThreadObj *threadObj = (ThreadObj *)synHandle;
     SetEvent(threadObj->hEventResume);
-    //SLOG_STMI() << "resume thread done";
+    // SLOG_STMI() << "resume thread done";
     return 0;
 }

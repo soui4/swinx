@@ -644,10 +644,15 @@ typedef int(WINAPI *PROC)();
     WINAPI
     GetTempPathW(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return +1) LPWSTR lpBuffer);
 
+    UINT WINAPI GetTempFileNameW(LPCWSTR lpPathName, LPCWSTR lpPrefixString, UINT uUnique, LPWSTR lpTempFileName);
+
+    UINT WINAPI GetTempFileNameA(LPCSTR lpPathName, LPCSTR lpPrefixString, UINT uUnique, LPSTR lpTempFileName);
 #ifdef UNICODE
-#define GetTempPath GetTempPathW
+#define GetTempPath     GetTempPathW
+#define GetTempFileName GetTempFileNameW
 #else
-#define GetTempPath GetTempPathA
+#define GetTempPath     GetTempPathA
+#define GetTempFileName GetTempFileNameA
 #endif
 
     BOOL WINAPI IsValidCodePage(UINT CodePage);

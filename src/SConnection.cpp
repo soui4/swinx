@@ -1236,17 +1236,7 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
     xcb_colormap_t cmap = xcb_generate_id(connection);
     xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE, cmap, screen->root, pWnd->visualId);
 
-    const uint32_t evt_mask = XCB_EVENT_MASK_EXPOSURE 
-                            | XCB_EVENT_MASK_STRUCTURE_NOTIFY 
-                            | XCB_EVENT_MASK_PROPERTY_CHANGE 
-                            | XCB_EVENT_MASK_FOCUS_CHANGE 
-                            | XCB_EVENT_MASK_BUTTON_PRESS 
-                            | XCB_EVENT_MASK_BUTTON_RELEASE 
-                            | XCB_EVENT_MASK_POINTER_MOTION 
-                            | XCB_EVENT_MASK_ENTER_WINDOW 
-                            | XCB_EVENT_MASK_LEAVE_WINDOW 
-                            | XCB_EVENT_MASK_KEY_PRESS 
-                            | XCB_EVENT_MASK_KEY_RELEASE;
+    const uint32_t evt_mask = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
 
     const uint32_t mask = XCB_CW_BACK_PIXMAP | XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_SAVE_UNDER | XCB_CW_EVENT_MASK | XCB_CW_COLORMAP;
 
