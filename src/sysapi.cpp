@@ -2419,18 +2419,15 @@ BOOL WINAPI FindCloseChangeNotification(HANDLE hChangeHandle)
 
 struct ThreadInfo{
     ThreadInfo(){
-        pthread_mutex_init(&mutex2, nullptr);
-        pthread_cond_init(&cond, nullptr);    
         hEvent = CreateEventA(NULL,FALSE,FALSE,NULL);
+        hEventResume = CreateEventA(NULL,FALSE,FALSE,NULL);
     }
     ~ThreadInfo(){
         CloseHandle(hEvent);
-        pthread_mutex_destroy(&mutex2);
-        pthread_cond_destroy(&cond);
+        CloseHandle(hEventResume);
     }
-    pthread_mutex_t mutex2;
-    pthread_cond_t cond;
     HANDLE hEvent;
+    HANDLE hEventResume;
 };
 
 struct ThreadObj
@@ -2476,9 +2473,7 @@ static void* Swinx_ThreadProc(void *p){
     if(param->dwCreationFlags & CREATE_SUSPENDED)
     {
         SLOG_STMI()<<"waiting for resume";
-        pthread_mutex_lock(&param->info->mutex2);
-        pthread_cond_wait(&param->info->cond,&param->info->mutex2);
-        pthread_mutex_unlock(&param->info->mutex2);
+        WaitForSingleObject(param->info->hEventResume,INFINITE);
         SLOG_STMI()<<"waiting for resume done";
     }
     param->lpStartAddress(param->lpParameter);
@@ -2516,8 +2511,7 @@ DWORD WINAPI ResumeThread(HANDLE hThread)
     if(!synHandle || synHandle->getType()!=HThread)
         return -1;
     ThreadObj *threadObj = (ThreadObj*)synHandle;
-    pthread_mutex_lock(&threadObj->mutex2);
-    pthread_cond_signal(&threadObj->cond);
-    pthread_mutex_unlock(&threadObj->mutex2);
+    SetEvent(threadObj->hEventResume);
+    SLOG_STMI()<<"resume thread done";
     return 0;
 }
