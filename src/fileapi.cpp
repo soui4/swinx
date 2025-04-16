@@ -603,9 +603,9 @@ typedef struct
     CRITICAL_SECTION cs;         /* crit section protecting this structure */
     FINDEX_SEARCH_OPS search_op; /* Flags passed to FindFirst.  */
     FINDEX_INFO_LEVELS level;    /* Level passed to FindFirst */
-    BOOL wildcard;               /* did the mask contain wildcard characters? */
+    UINT wildcard;               /* did the mask contain wildcard characters? */
 } FIND_FIRST_INFO;
-
+#define MASK_FILTER_ALL 0x80000000
 #define FIND_FIRST_MAGIC 0xc0ffee11
 
 static void file_name_AtoW(const char *name, wchar_t *buf, int len)
@@ -627,19 +627,7 @@ FindFirstFileW(_In_ LPCWSTR lpFileName, _Out_ LPWIN32_FIND_DATAW lpFindFileData)
     std::string strName;
     tostring(lpFileName, -1, strName);
     WIN32_FIND_DATAA dataA;
-    HANDLE ret = FindFirstFileA(strName.c_str(), &dataA);
-    if (ret)
-    {
-        lpFindFileData->dwFileAttributes = dataA.dwFileAttributes;
-        lpFindFileData->ftCreationTime = dataA.ftCreationTime;
-        lpFindFileData->ftLastWriteTime = dataA.ftLastWriteTime;
-        lpFindFileData->ftLastAccessTime = dataA.ftLastAccessTime;
-        lpFindFileData->nFileSizeLow = dataA.nFileSizeLow;
-        lpFindFileData->nFileSizeHigh = dataA.nFileSizeHigh;
-        file_name_AtoW(dataA.cFileName, lpFindFileData->cFileName, MAX_PATH);
-        file_name_AtoW(dataA.cAlternateFileName, lpFindFileData->cAlternateFileName, 14);
-    }
-    return ret;
+    return FindFirstFileA(strName.c_str(), &dataA);
 }
 
 BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFindFileData)
@@ -657,8 +645,9 @@ BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFind
         struct dirent *entry = readdir(info->dir);
         if (!entry)
             break;
-
-        if (info->wildcard)
+        if(info->wildcard & MASK_FILTER_ALL)
+            bMatch=TRUE;
+        else if (info->wildcard)
             bMatch = 0 == fnmatch(info->name, entry->d_name, 0);
         else if (info->level == 0)
             bMatch = stricmp(info->name, entry->d_name) == 0;
@@ -676,6 +665,10 @@ BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFind
             else if (S_ISDIR(fileStat.st_mode))
             {
                 lpFindFileData->dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
+            }
+            if(entry->d_name[0]=='.')
+            {
+                lpFindFileData->dwFileAttributes |= FILE_ATTRIBUTE_HIDDEN;
             }
             strcpy(lpFindFileData->cFileName, entry->d_name);
             strcpy(lpFindFileData->cAlternateFileName, "");
@@ -801,11 +794,12 @@ HANDLE WINAPI FindFirstFileExA(LPCSTR filename, FINDEX_INFO_LEVELS level, LPVOID
     info->search_op = search_op;
     info->level = level;
     info->wildcard = strpbrk(name, "*?") != NULL;
+    if(info->wildcard && strcmp(name,"*.*")==0){
+        info->wildcard |=MASK_FILTER_ALL;
+    }
     strcpy(info->path, strName.c_str());
     strcpy(info->name, name);
-    HANDLE hFind = (HANDLE)info;
-    FindNextFileA(hFind, (LPWIN32_FIND_DATAA)data);
-    return hFind;
+    return (HANDLE)info;
 }
 
 BOOL WINAPI CopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, BOOL bFailIfExists)
