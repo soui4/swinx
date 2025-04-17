@@ -1263,6 +1263,9 @@ HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWOR
 
 HANDLE WINAPI CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCWSTR lpName)
 {
+    if(!lpName){
+        return CreateFileMappingA(hFile, lpAttributes, flProtect, dwMaximumSizeHigh, dwMaximumSizeLow, nullptr);
+    }
     char szPath[MAX_PATH];
     if (0 == WideCharToMultiByte(CP_UTF8, 0, lpName, -1, szPath, MAX_PATH, nullptr, nullptr))
         return FALSE;
