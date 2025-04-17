@@ -795,7 +795,7 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
     UINT elapse = m_tsLastMsg == -1 ? 0 : (ts - m_tsLastMsg);
     m_tsLastMsg = ts;
     event2Msg(bTimeout, elapse, ts);
-    
+
     std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
     { // test for callback task
         auto it = m_lstCallbackTask.begin();
@@ -1687,11 +1687,12 @@ xcb_cursor_t SConnection::createXcbCursor(HCURSOR cursor)
         return XCB_NONE;
     }
     xcb_cursor_t xcb_cursor = XCB_NONE;
+    BITMAP bm;
     ICONINFO info = { 0 };
     GetIconInfo(cursor, &info);
     assert(info.fIcon == 0);
-    assert(info.hbmColor);
-    BITMAP bm;
+    if(!info.hbmColor)
+        goto end;
     GetObject(info.hbmColor, sizeof(bm), &bm);
     if (bm.bmBitsPixel != 32)
     {

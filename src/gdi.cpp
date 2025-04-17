@@ -944,8 +944,9 @@ HGDIOBJ SelectObject(HDC hdc, HGDIOBJ h)
     }
     case OBJ_BITMAP:
     {
+        if(h==hdc->bmp)
+            break;
         // recreate cairo_t object
-        assert(h != hdc->bmp);
         ret = hdc->bmp;
         cairo_antialias_t antialis = CAIRO_ANTIALIAS_GOOD;
         if (hdc->cairo)
