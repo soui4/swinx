@@ -918,15 +918,23 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     case UM_XDND_DRAG_ENTER:
     {
         SLOG_STMI() << "UM_XDND_DRAG_ENTER!";
-        DragEnterData *data = (DragEnterData *)lp;
-        if (!wndObj->dropTarget || !wndObj->dragData)
+        DragEnterData *pDragEnterData = (DragEnterData *)lp;
+        assert(pDragEnterData->pData);
+        if (!wndObj->dropTarget)
         {
             SLOG_STMW() << "should not run into here!";
             return 1;
         }
-        XDndDataObjectProxy *dragData = (XDndDataObjectProxy *)wndObj->dragData;
+        if(wndObj->dragData)
+        {
+            SLOG_STMW() << "should not run into here!";
+            return 1;
+        }
+        wndObj->dragData = pDragEnterData->pData;
+        wndObj->dragData->AddRef();
+        XDndDataObjectProxy *dragData = pDragEnterData->pData;
         DWORD grfKeyState = 0; // no key state is available here.
-        wndObj->dropTarget->DragEnter(wndObj->dragData, grfKeyState, data->pt, &dragData->m_dwEffect);
+        wndObj->dropTarget->DragEnter(dragData, grfKeyState, pDragEnterData->pt, &dragData->m_dwEffect);
         return 0;
     }
     case UM_XDND_DRAG_LEAVE:
@@ -983,8 +991,10 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         DWORD dwEffect = wp ? wp : dragData->m_dwEffect; // if wp is valid, using wp alse using dragover effect.
         HRESULT hr = wndObj->dropTarget->Drop(wndObj->dragData, dragData->m_dwKeyState, dragData->m_ptOver, &dwEffect);
         wndObj->mConnection->SendXdndFinish(hWnd, dragData->getSource(), hr == S_OK, dwEffect);
-        wndObj->dragData->Release();
-        wndObj->dragData = NULL;
+        if(wndObj->dragData){
+            wndObj->dragData->Release();
+            wndObj->dragData = NULL;
+        }
         SLOG_STMI() << "UM_XDND_DRAG_DROP, set dragData to null";
         return 0;
     }

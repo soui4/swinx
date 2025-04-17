@@ -1,5 +1,6 @@
 #include <windows.h>
 #include "uimsg.h"
+#include "SDragdrop.h"
 
 void IpcMsg::uuid2string(const uuid_t id, char *buf)
 {
@@ -27,4 +28,17 @@ std::string IpcMsg::get_ipc_event_name(const uuid_t id)
     std::string event_name = "/soui-sendmsg-event-";
     event_name += buf;
     return event_name;
+}
+
+
+DragEnterData::DragEnterData(XDndDataObjectProxy *_pData){
+    pData=_pData;
+    if(pData)
+        pData->AddRef();
+}
+DragEnterData::~DragEnterData(){
+    if(pData){
+        pData->Release();
+        pData=NULL;
+    }
 }

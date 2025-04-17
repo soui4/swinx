@@ -2541,16 +2541,16 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             WndObj wndObj = WndMgr::fromHwnd(e2->window);
             if (!wndObj)
                 break;
-            DragEnterMsg *pMsg2 = new DragEnterMsg;
-            pMsg2->hwnd = e2->window;
-            pMsg2->message = UM_XDND_DRAG_ENTER;
-            pMsg2->hFrom = e2->data.data32[0];
             int version = (int)(e2->data.data32[1] >> 24);
             if (version > SDragDrop::xdnd_version)
                 break;
-            XDndDataObjectProxy *pData = new XDndDataObjectProxy(this, pMsg2->hFrom, e2->data.data32);
             SLOG_STMI() << "####drag enter, init dragData";
-            wndObj->dragData = pData;
+            XDndDataObjectProxy *pDataObject = new XDndDataObjectProxy(this, e2->data.data32[0], e2->data.data32);
+            DragEnterMsg *pMsg2 = new DragEnterMsg(pDataObject);
+            pDataObject->Release();
+            pMsg2->hwnd = e2->window;
+            pMsg2->message = UM_XDND_DRAG_ENTER;
+            pMsg2->hFrom = e2->data.data32[0];
 
             POINT pt;
             GetCursorPos(&pt);

@@ -131,14 +131,14 @@ static UINT DragQueryFileSize(HDROP hDrop)
     const char *buf = (const char *)hDrop;
     if (!buf)
         return 0;
-    UINT i = 1;
+    UINT i = 0;
     while (buf)
     {
-        buf = strchr(buf, '\n');
+        buf = strstr(buf, "\r\n");
         if (!buf)
             break;
         i++;
-        buf++;
+        buf+=2;
     }
     return i;
 }
@@ -153,21 +153,26 @@ UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
     UINT i = 0;
     while (i < iFile)
     {
-        buf = strchr(buf, '\n');
+        buf = strstr(buf, "\r\n");
         if (!buf)
             return 0;
         i++;
-        buf++;
+        buf+=2;
     }
-    const char *end = strchr(buf, '\n');
-    if (!end)
-        end = buf + strlen(buf);
+    const char *end = strstr(buf, "\r\n");
+    if (!end){
+        return 0;
+    }
     if (!lpszFile)
         return end - buf;
     if (end - buf > cch)
     {
         SetLastError(ERROR_BUFFER_OVERFLOW);
         return 0;
+    }
+    if(end - buf > 8 && strncmp(buf,"file:///",8)==0){
+        //remove file header
+        buf+=7;
     }
     memcpy(lpszFile, buf, end - buf);
     if (end - buf + 1 <= cch)

@@ -1893,6 +1893,7 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
     if (cchText < 0)
         cchText = strlen(pszBuf);
     assert(pRect);
+    RECT rc=*pRect;
     cairo_save(hdc->cairo);
     ApplyFont(hdc);
     ApplyPen(hdc->cairo, hdc->pen);
@@ -1926,7 +1927,9 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
         DeleteObject(pen);
     }
     cairo_restore(hdc->cairo);
-
+    if(!(uFormat & DT_CALCRECT)){
+        *pRect = rc;
+    }
     return TRUE;
 }
 

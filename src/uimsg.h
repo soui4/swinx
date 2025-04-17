@@ -3,11 +3,12 @@
 #include <windows.h>
 #include <mutex>
 #include <string>
+#include <uuid/uuid.h>
+#include <xcb/xproto.h>
 #include "gdi.h"
 #include "handle.h"
 #include "sharedmem.h"
-#include <uuid/uuid.h>
-#include <xcb/xproto.h>
+
 #include "log.h"
 
 enum _MsgType
@@ -356,12 +357,16 @@ enum {
 struct DragBase {
     HWND hFrom;
 };
+class XDndDataObjectProxy;
 struct DragEnterData : DragBase {
     POINTL pt;
+    XDndDataObjectProxy *pData;
+    DragEnterData(XDndDataObjectProxy *_pData);
+    ~DragEnterData();
 };
 
 struct DragEnterMsg : Msg , DragEnterData {
-    DragEnterMsg() {
+    DragEnterMsg(XDndDataObjectProxy *_pData): DragEnterData(_pData){
         lParam = (LPARAM)(DragEnterData*)this;
     }
 
