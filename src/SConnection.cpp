@@ -790,10 +790,12 @@ BOOL SConnection::TranslateMessage(const MSG *pMsg)
 
 BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
 {
-    if (WaitForSingleObject(m_evtSync, 0) == WAIT_OBJECT_0)
-    {
-        event2Msg(false, 0, GetTickCount64());
-    }
+    bool bTimeout = WaitForSingleObject(m_evtSync, 0) != WAIT_OBJECT_0;
+    uint64_t ts = GetTickCount64();
+    UINT elapse = m_tsLastMsg == -1 ? 0 : (ts - m_tsLastMsg);
+    m_tsLastMsg = ts;
+    event2Msg(bTimeout, elapse, ts);
+    
     std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
     { // test for callback task
         auto it = m_lstCallbackTask.begin();
