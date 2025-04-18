@@ -925,7 +925,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             SLOG_STMW() << "should not run into here!";
             return 1;
         }
-        if(wndObj->dragData)
+        if (wndObj->dragData)
         {
             SLOG_STMW() << "should not run into here!";
             return 1;
@@ -991,7 +991,8 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         DWORD dwEffect = wp ? wp : dragData->m_dwEffect; // if wp is valid, using wp alse using dragover effect.
         HRESULT hr = wndObj->dropTarget->Drop(wndObj->dragData, dragData->m_dwKeyState, dragData->m_ptOver, &dwEffect);
         wndObj->mConnection->SendXdndFinish(hWnd, dragData->getSource(), hr == S_OK, dwEffect);
-        if(wndObj->dragData){
+        if (wndObj->dragData)
+        {
             wndObj->dragData->Release();
             wndObj->dragData = NULL;
         }

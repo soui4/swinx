@@ -944,7 +944,7 @@ HGDIOBJ SelectObject(HDC hdc, HGDIOBJ h)
     }
     case OBJ_BITMAP:
     {
-        if(h==hdc->bmp)
+        if (h == hdc->bmp)
             break;
         // recreate cairo_t object
         ret = hdc->bmp;
@@ -1894,7 +1894,7 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
     if (cchText < 0)
         cchText = strlen(pszBuf);
     assert(pRect);
-    RECT rc=*pRect;
+    RECT rc = *pRect;
     cairo_save(hdc->cairo);
     ApplyFont(hdc);
     ApplyPen(hdc->cairo, hdc->pen);
@@ -1928,7 +1928,8 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
         DeleteObject(pen);
     }
     cairo_restore(hdc->cairo);
-    if(!(uFormat & DT_CALCRECT)){
+    if (!(uFormat & DT_CALCRECT))
+    {
         *pRect = rc;
     }
     return TRUE;

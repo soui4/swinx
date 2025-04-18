@@ -1691,7 +1691,7 @@ xcb_cursor_t SConnection::createXcbCursor(HCURSOR cursor)
     ICONINFO info = { 0 };
     GetIconInfo(cursor, &info);
     assert(info.fIcon == 0);
-    if(!info.hbmColor)
+    if (!info.hbmColor)
         goto end;
     GetObject(info.hbmColor, sizeof(bm), &bm);
     if (bm.bmBitsPixel != 32)

@@ -138,7 +138,7 @@ static UINT DragQueryFileSize(HDROP hDrop)
         if (!buf)
             break;
         i++;
-        buf+=2;
+        buf += 2;
     }
     return i;
 }
@@ -157,10 +157,11 @@ UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
         if (!buf)
             return 0;
         i++;
-        buf+=2;
+        buf += 2;
     }
     const char *end = strstr(buf, "\r\n");
-    if (!end){
+    if (!end)
+    {
         return 0;
     }
     if (!lpszFile)
@@ -170,9 +171,10 @@ UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
         SetLastError(ERROR_BUFFER_OVERFLOW);
         return 0;
     }
-    if(end - buf > 8 && strncmp(buf,"file:///",8)==0){
-        //remove file header
-        buf+=7;
+    if (end - buf > 8 && strncmp(buf, "file:///", 8) == 0)
+    {
+        // remove file header
+        buf += 7;
     }
     memcpy(lpszFile, buf, end - buf);
     if (end - buf + 1 <= cch)

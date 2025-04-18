@@ -30,15 +30,17 @@ std::string IpcMsg::get_ipc_event_name(const uuid_t id)
     return event_name;
 }
 
-
-DragEnterData::DragEnterData(XDndDataObjectProxy *_pData){
-    pData=_pData;
-    if(pData)
+DragEnterData::DragEnterData(XDndDataObjectProxy *_pData)
+{
+    pData = _pData;
+    if (pData)
         pData->AddRef();
 }
-DragEnterData::~DragEnterData(){
-    if(pData){
+DragEnterData::~DragEnterData()
+{
+    if (pData)
+    {
         pData->Release();
-        pData=NULL;
+        pData = NULL;
     }
 }

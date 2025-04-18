@@ -605,7 +605,7 @@ typedef struct
     FINDEX_INFO_LEVELS level;    /* Level passed to FindFirst */
     UINT wildcard;               /* did the mask contain wildcard characters? */
 } FIND_FIRST_INFO;
-#define MASK_FILTER_ALL 0x80000000
+#define MASK_FILTER_ALL  0x80000000
 #define FIND_FIRST_MAGIC 0xc0ffee11
 
 static void file_name_AtoW(const char *name, wchar_t *buf, int len)
@@ -645,8 +645,8 @@ BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFind
         struct dirent *entry = readdir(info->dir);
         if (!entry)
             break;
-        if(info->wildcard & MASK_FILTER_ALL)
-            bMatch=TRUE;
+        if (info->wildcard & MASK_FILTER_ALL)
+            bMatch = TRUE;
         else if (info->wildcard)
             bMatch = 0 == fnmatch(info->name, entry->d_name, 0);
         else if (info->level == 0)
@@ -666,7 +666,7 @@ BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFind
             {
                 lpFindFileData->dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
             }
-            if(entry->d_name[0]=='.')
+            if (entry->d_name[0] == '.')
             {
                 lpFindFileData->dwFileAttributes |= FILE_ATTRIBUTE_HIDDEN;
             }
@@ -794,8 +794,9 @@ HANDLE WINAPI FindFirstFileExA(LPCSTR filename, FINDEX_INFO_LEVELS level, LPVOID
     info->search_op = search_op;
     info->level = level;
     info->wildcard = strpbrk(name, "*?") != NULL;
-    if(info->wildcard && strcmp(name,"*.*")==0){
-        info->wildcard |=MASK_FILTER_ALL;
+    if (info->wildcard && strcmp(name, "*.*") == 0)
+    {
+        info->wildcard |= MASK_FILTER_ALL;
     }
     strcpy(info->path, strName.c_str());
     strcpy(info->name, name);
