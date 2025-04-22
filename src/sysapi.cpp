@@ -1979,38 +1979,20 @@ DWORD
 WINAPI
 GetTempPathA(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return +1) LPSTR lpBuffer)
 {
-    int len = strlen(lpBuffer);
-    if (len + 7 > nBufferLength)
-        return len + 7;
-    strcpy(lpBuffer + len, "XXXXXX");
-    int fd = mkstemp(lpBuffer);
-    if (fd != -1)
-    {
-        close(fd);
-        unlink(lpBuffer);
-        return len + 7;
-    }
-    SetLastError(ERROR_INVALID_ACCESS);
-    return 0;
+    if(nBufferLength<5)
+        return 0;
+    strcpy(lpBuffer,"/tmp");
+    return 5;
 }
 
 DWORD
 WINAPI
 GetTempPathW(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return +1) LPWSTR lpBuffer)
 {
-    char szPath[MAX_PATH];
-    if (0 == WideCharToMultiByte(CP_UTF8, 0, lpBuffer, nBufferLength, szPath, MAX_PATH, NULL, NULL))
+    if(nBufferLength<5)
         return 0;
-    DWORD ret = GetTempPathA(MAX_PATH, szPath);
-    if (ret == 0)
-        return 0;
-    int len = MultiByteToWideChar(CP_UTF8, 0, szPath, ret, NULL, 0);
-    if (len > nBufferLength)
-    {
-        SetLastError(ERROR_INVALID_ACCESS);
-        return 0;
-    }
-    return MultiByteToWideChar(CP_UTF8, 0, szPath, ret, lpBuffer, nBufferLength);
+    wcscpy(lpBuffer,L"/tmp");
+    return 5;
 }
 
 UINT WINAPI GetTempFileNameW(LPCWSTR lpPathName, LPCWSTR lpPrefixString, UINT uUnique, LPWSTR lpTempFileName)

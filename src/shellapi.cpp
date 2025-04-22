@@ -336,6 +336,474 @@ BOOL WINAPI PathMatchSpecA(LPCSTR pszFile, LPCSTR pszSpec)
     return PathMatchSpecExA(pszFile, pszSpec, 0);
 }
 
+
+char * WINAPI PathFindFileNameA(const char *path)
+{
+    const char *last_slash = path;
+    while (path && *path)
+    {
+        if ((*path == '\\' || *path == '/' || *path == ':') &&
+                path[1] && path[1] != '\\' && path[1] != '/')
+            last_slash = path + 1;
+        path = CharNextA(path);
+    }
+
+    return (char *)last_slash;
+}
+
+wchar_t * WINAPI PathFindFileNameW(const wchar_t *path)
+{
+    const wchar_t *last_slash = path;
+
+    while (path && *path)
+    {
+        if ((*path == '\\' || *path == '/' || *path == ':') &&
+                path[1] && path[1] != '\\' && path[1] != '/')
+            last_slash = path + 1;
+        path++;
+    }
+
+    return (wchar_t *)last_slash;
+}
+
+
+char * WINAPI PathFindExtensionA(const char *path)
+{
+    const char *lastpoint = NULL;
+
+
+    if (path)
+    {
+        while (*path)
+        {
+            if (*path == '\\' || *path == ' ')
+                lastpoint = NULL;
+            else if (*path == '.')
+                lastpoint = path;
+            path = CharNextA(path);
+        }
+    }
+
+    return (LPSTR)(lastpoint ? lastpoint : path);
+}
+
+wchar_t * WINAPI PathFindExtensionW(const wchar_t *path)
+{
+    const wchar_t *lastpoint = NULL;
+
+    if (path)
+    {
+        while (*path)
+        {
+            if (*path == '\\' || *path == ' ')
+                lastpoint = NULL;
+            else if (*path == '.')
+                lastpoint = path;
+            path++;
+        }
+    }
+
+    return (LPWSTR)(lastpoint ? lastpoint : path);
+}
+
+BOOL WINAPI PathIsRelativeA(const char *path)
+{
+    if (!path || !*path || IsDBCSLeadByte(*path))
+        return TRUE;
+
+    return !(*path == '/');
+}
+
+BOOL WINAPI PathIsRelativeW(const wchar_t *path)
+{
+    if (!path || !*path)
+        return TRUE;
+
+    return !(*path == '/');
+}
+
+
+BOOL WINAPI PathFileExistsA(const char *path)
+{
+    if (!path)
+        return FALSE;
+    DWORD attrs = GetFileAttributesA(path);
+    return attrs != INVALID_FILE_ATTRIBUTES;
+}
+
+BOOL WINAPI PathFileExistsW(const wchar_t *path)
+{
+    if (!path)
+        return FALSE;
+    DWORD attrs = GetFileAttributesW(path);
+    return attrs != INVALID_FILE_ATTRIBUTES;
+}
+
+
+BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
+{
+    const wchar_t *src = path;
+    wchar_t *dst = buffer;
+
+    if (dst)
+        *dst = '\0';
+
+    if (!dst || !path)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    if (!*path)
+    {
+        *buffer++ = '/';
+        *buffer = '\0';
+        return TRUE;
+    }
+
+    /* Copy path root */
+    if (*src == '/')
+    {
+        *dst++ = *src++;
+    }
+    else if (*src && src[1] == ':')
+    {
+        /* X:\ */
+        *dst++ = *src++;
+        *dst++ = *src++;
+        if (*src == '/')
+            *dst++ = *src++;
+    }
+
+    /* Canonicalize the rest of the path */
+    while (*src)
+    {
+        if (*src == '.')
+        {
+            if (src[1] == '/' && (src == path || src[-1] == '/'))
+            {
+                src += 2; /* Skip .\ */
+            }
+            else if (src[1] == '.' && dst != buffer && dst[-1] == '/')
+            {
+                /* \.. backs up a directory, over the root if it has no \ following X:.
+                 * .. is ignored if it would remove a UNC server name or initial /
+                 */
+                if (dst != buffer)
+                {
+                    *dst = '\0'; /* Allow PathIsUNCServerShareA test on lpszBuf */
+                    while (dst > buffer && *dst != '/')
+                        dst--;
+                    if (dst == buffer)
+                    {
+                        *dst++ = '/';
+                        src++;
+                    }
+                }
+                src += 2; /* Skip .. in src path */
+            }
+            else
+                *dst++ = *src++;
+        }
+        else
+            *dst++ = *src++;
+    }
+
+    /* Append \ to naked drive specs */
+    if (dst - buffer == 2 && dst[-1] == ':')
+        *dst++ = '/';
+    *dst++ = '\0';
+    return TRUE;
+}
+
+BOOL WINAPI PathCanonicalizeA(char *buffer, const char *path)
+{
+    wchar_t pathW[MAX_PATH], bufferW[MAX_PATH];
+    BOOL ret;
+    int len;
+
+    if (buffer)
+        *buffer = '\0';
+
+    if (!buffer || !path)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    len = MultiByteToWideChar(CP_UTF8, 0, path, -1, pathW, ARRAYSIZE(pathW));
+    if (!len)
+        return FALSE;
+
+    ret = PathCanonicalizeW(bufferW, pathW);
+    WideCharToMultiByte(CP_UTF8, 0, bufferW, -1, buffer, MAX_PATH, 0, 0);
+
+    return ret;
+}
+
+
+void WINAPI PathQuoteSpacesA(char *path)
+{
+    if (path && strchr(path, ' '))
+    {
+        size_t len = strlen(path) + 1;
+
+        if (len + 2 < MAX_PATH)
+        {
+            memmove(path + 1, path, len);
+            path[0] = '"';
+            path[len] = '"';
+            path[len + 1] = '\0';
+        }
+    }
+}
+
+void WINAPI PathQuoteSpacesW(wchar_t *path)
+{
+    if (path && wcschr(path, ' '))
+    {
+        int len = lstrlenW(path) + 1;
+
+        if (len + 2 < MAX_PATH)
+        {
+            memmove(path + 1, path, len * sizeof(wchar_t));
+            path[0] = '"';
+            path[len] = '"';
+            path[len + 1] = '\0';
+        }
+    }
+}
+
+
+#define PATH_CHAR_CLASS_LETTER      0x00000001
+#define PATH_CHAR_CLASS_ASTERIX     0x00000002
+#define PATH_CHAR_CLASS_DOT         0x00000004
+#define PATH_CHAR_CLASS_BACKSLASH   0x00000008
+#define PATH_CHAR_CLASS_COLON       0x00000010
+#define PATH_CHAR_CLASS_SEMICOLON   0x00000020
+#define PATH_CHAR_CLASS_COMMA       0x00000040
+#define PATH_CHAR_CLASS_SPACE       0x00000080
+#define PATH_CHAR_CLASS_OTHER_VALID 0x00000100
+#define PATH_CHAR_CLASS_DOUBLEQUOTE 0x00000200
+
+#define PATH_CHAR_CLASS_INVALID     0x00000000
+#define PATH_CHAR_CLASS_ANY         0xffffffff
+
+static const DWORD path_charclass[] =
+{
+    /* 0x00 */  PATH_CHAR_CLASS_INVALID,      /* 0x01 */  PATH_CHAR_CLASS_INVALID,
+    /* 0x02 */  PATH_CHAR_CLASS_INVALID,      /* 0x03 */  PATH_CHAR_CLASS_INVALID,
+    /* 0x04 */  PATH_CHAR_CLASS_INVALID,      /* 0x05 */  PATH_CHAR_CLASS_INVALID,
+    /* 0x06 */  PATH_CHAR_CLASS_INVALID,      /* 0x07 */  PATH_CHAR_CLASS_INVALID,
+    /* 0x08 */  PATH_CHAR_CLASS_INVALID,      /* 0x09 */  PATH_CHAR_CLASS_INVALID,
+    /* 0x0a */  PATH_CHAR_CLASS_INVALID,      /* 0x0b */  PATH_CHAR_CLASS_INVALID,
+    /* 0x0c */  PATH_CHAR_CLASS_INVALID,      /* 0x0d */  PATH_CHAR_CLASS_INVALID,
+    /* 0x0e */  PATH_CHAR_CLASS_INVALID,      /* 0x0f */  PATH_CHAR_CLASS_INVALID,
+    /* 0x10 */  PATH_CHAR_CLASS_INVALID,      /* 0x11 */  PATH_CHAR_CLASS_INVALID,
+    /* 0x12 */  PATH_CHAR_CLASS_INVALID,      /* 0x13 */  PATH_CHAR_CLASS_INVALID,
+    /* 0x14 */  PATH_CHAR_CLASS_INVALID,      /* 0x15 */  PATH_CHAR_CLASS_INVALID,
+    /* 0x16 */  PATH_CHAR_CLASS_INVALID,      /* 0x17 */  PATH_CHAR_CLASS_INVALID,
+    /* 0x18 */  PATH_CHAR_CLASS_INVALID,      /* 0x19 */  PATH_CHAR_CLASS_INVALID,
+    /* 0x1a */  PATH_CHAR_CLASS_INVALID,      /* 0x1b */  PATH_CHAR_CLASS_INVALID,
+    /* 0x1c */  PATH_CHAR_CLASS_INVALID,      /* 0x1d */  PATH_CHAR_CLASS_INVALID,
+    /* 0x1e */  PATH_CHAR_CLASS_INVALID,      /* 0x1f */  PATH_CHAR_CLASS_INVALID,
+    /* ' '  */  PATH_CHAR_CLASS_SPACE,        /* '!'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '"'  */  PATH_CHAR_CLASS_DOUBLEQUOTE,  /* '#'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '$'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '%'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '&'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '\'' */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '('  */  PATH_CHAR_CLASS_OTHER_VALID,  /* ')'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '*'  */  PATH_CHAR_CLASS_ASTERIX,      /* '+'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* ','  */  PATH_CHAR_CLASS_COMMA,        /* '-'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '.'  */  PATH_CHAR_CLASS_DOT,          /* '/'  */  PATH_CHAR_CLASS_INVALID,
+    /* '0'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '1'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '2'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '3'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '4'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '5'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '6'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '7'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '8'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '9'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* ':'  */  PATH_CHAR_CLASS_COLON,        /* ';'  */  PATH_CHAR_CLASS_SEMICOLON,
+    /* '<'  */  PATH_CHAR_CLASS_INVALID,      /* '='  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '>'  */  PATH_CHAR_CLASS_INVALID,      /* '?'  */  PATH_CHAR_CLASS_LETTER,
+    /* '@'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* 'A'  */  PATH_CHAR_CLASS_ANY,
+    /* 'B'  */  PATH_CHAR_CLASS_ANY,          /* 'C'  */  PATH_CHAR_CLASS_ANY,
+    /* 'D'  */  PATH_CHAR_CLASS_ANY,          /* 'E'  */  PATH_CHAR_CLASS_ANY,
+    /* 'F'  */  PATH_CHAR_CLASS_ANY,          /* 'G'  */  PATH_CHAR_CLASS_ANY,
+    /* 'H'  */  PATH_CHAR_CLASS_ANY,          /* 'I'  */  PATH_CHAR_CLASS_ANY,
+    /* 'J'  */  PATH_CHAR_CLASS_ANY,          /* 'K'  */  PATH_CHAR_CLASS_ANY,
+    /* 'L'  */  PATH_CHAR_CLASS_ANY,          /* 'M'  */  PATH_CHAR_CLASS_ANY,
+    /* 'N'  */  PATH_CHAR_CLASS_ANY,          /* 'O'  */  PATH_CHAR_CLASS_ANY,
+    /* 'P'  */  PATH_CHAR_CLASS_ANY,          /* 'Q'  */  PATH_CHAR_CLASS_ANY,
+    /* 'R'  */  PATH_CHAR_CLASS_ANY,          /* 'S'  */  PATH_CHAR_CLASS_ANY,
+    /* 'T'  */  PATH_CHAR_CLASS_ANY,          /* 'U'  */  PATH_CHAR_CLASS_ANY,
+    /* 'V'  */  PATH_CHAR_CLASS_ANY,          /* 'W'  */  PATH_CHAR_CLASS_ANY,
+    /* 'X'  */  PATH_CHAR_CLASS_ANY,          /* 'Y'  */  PATH_CHAR_CLASS_ANY,
+    /* 'Z'  */  PATH_CHAR_CLASS_ANY,          /* '['  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '\\' */  PATH_CHAR_CLASS_BACKSLASH,    /* ']'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '^'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '_'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '`'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* 'a'  */  PATH_CHAR_CLASS_ANY,
+    /* 'b'  */  PATH_CHAR_CLASS_ANY,          /* 'c'  */  PATH_CHAR_CLASS_ANY,
+    /* 'd'  */  PATH_CHAR_CLASS_ANY,          /* 'e'  */  PATH_CHAR_CLASS_ANY,
+    /* 'f'  */  PATH_CHAR_CLASS_ANY,          /* 'g'  */  PATH_CHAR_CLASS_ANY,
+    /* 'h'  */  PATH_CHAR_CLASS_ANY,          /* 'i'  */  PATH_CHAR_CLASS_ANY,
+    /* 'j'  */  PATH_CHAR_CLASS_ANY,          /* 'k'  */  PATH_CHAR_CLASS_ANY,
+    /* 'l'  */  PATH_CHAR_CLASS_ANY,          /* 'm'  */  PATH_CHAR_CLASS_ANY,
+    /* 'n'  */  PATH_CHAR_CLASS_ANY,          /* 'o'  */  PATH_CHAR_CLASS_ANY,
+    /* 'p'  */  PATH_CHAR_CLASS_ANY,          /* 'q'  */  PATH_CHAR_CLASS_ANY,
+    /* 'r'  */  PATH_CHAR_CLASS_ANY,          /* 's'  */  PATH_CHAR_CLASS_ANY,
+    /* 't'  */  PATH_CHAR_CLASS_ANY,          /* 'u'  */  PATH_CHAR_CLASS_ANY,
+    /* 'v'  */  PATH_CHAR_CLASS_ANY,          /* 'w'  */  PATH_CHAR_CLASS_ANY,
+    /* 'x'  */  PATH_CHAR_CLASS_ANY,          /* 'y'  */  PATH_CHAR_CLASS_ANY,
+    /* 'z'  */  PATH_CHAR_CLASS_ANY,          /* '{'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '|'  */  PATH_CHAR_CLASS_INVALID,      /* '}'  */  PATH_CHAR_CLASS_OTHER_VALID,
+    /* '~'  */  PATH_CHAR_CLASS_OTHER_VALID
+};
+
+BOOL WINAPI PathIsValidCharA(char c, DWORD _class)
+{
+    if ((unsigned)c > 0x7e)
+        return _class & PATH_CHAR_CLASS_OTHER_VALID;
+
+    return _class & path_charclass[(unsigned)c];
+}
+
+BOOL WINAPI PathIsValidCharW(wchar_t c, DWORD _class)
+{
+    if (c > 0x7e)
+        return _class & PATH_CHAR_CLASS_OTHER_VALID;
+
+    return _class & path_charclass[c];
+}
+
+
+int WINAPI PathCommonPrefixA(const char *file1, const char *file2, char *path)
+{
+    const char *iter1 = file1;
+    const char *iter2 = file2;
+    unsigned int len = 0;
+
+    if (path)
+        *path = '\0';
+
+    if (!file1 || !file2)
+        return 0;
+
+
+    for (;;)
+    {
+        /* Update len */
+        if ((!*iter1 || *iter1 == '/') && (!*iter2 || *iter2 == '/'))
+            len = iter1 - file1; /* Common to this point */
+
+        if (!*iter1 || *iter1 != *iter2)
+            break; /* Strings differ at this point */
+
+        iter1++;
+        iter2++;
+    }
+
+    if (len && path)
+    {
+        memcpy(path, file1, len);
+        path[len] = '\0';
+    }
+
+    return len;
+}
+
+int WINAPI PathCommonPrefixW(const wchar_t *file1, const wchar_t *file2, wchar_t *path)
+{
+    const wchar_t *iter1 = file1;
+    const wchar_t *iter2 = file2;
+    unsigned int len = 0;
+
+    if (path)
+        *path = '\0';
+
+    if (!file1 || !file2)
+        return 0;
+
+    for (;;)
+    {
+        /* Update len */
+        if ((!*iter1 || *iter1 == '/') && (!*iter2 || *iter2 == '/'))
+            len = iter1 - file1; /* Common to this point */
+
+        if (!*iter1 || *iter1 != *iter2)
+            break; /* Strings differ at this point */
+
+        iter1++;
+        iter2++;
+    }
+
+    if (len && path)
+    {
+        memcpy(path, file1, len * sizeof(wchar_t));
+        path[len] = '\0';
+    }
+
+    return len;
+}
+
+BOOL WINAPI PathIsPrefixA(const char *prefix, const char *path)
+{
+    return prefix && path && PathCommonPrefixA(path, prefix, NULL) == (int)strlen(prefix);
+}
+
+BOOL WINAPI PathIsPrefixW(const wchar_t *prefix, const wchar_t *path)
+{
+    return prefix && path && PathCommonPrefixW(path, prefix, NULL) == (int)lstrlenW(prefix);
+}
+
+DWORD WINAPI GetFullPathNameW(
+    LPCWSTR lpFileName,
+    DWORD nBufferLength,
+    LPWSTR lpBuffer,
+    LPWSTR* lpFilePart
+  ){
+    if(PathIsRelativeW(lpFileName)){
+        GetCurrentDirectoryW(nBufferLength,lpBuffer);
+        if(wcslen(lpBuffer)+wcslen(lpFileName)>nBufferLength-2)
+            return 0;
+        wcscat(lpBuffer,lpFileName);
+    }else{
+        if(wcslen(lpFileName)>nBufferLength)
+            return 0;
+        wcscpy(lpBuffer,lpFileName);
+    }
+    wchar_t *tmp=wcsdup(lpBuffer);
+    PathCanonicalizeW(lpBuffer,tmp);
+    free(tmp);
+    if(lpFilePart){
+        *lpFilePart = PathFindFileNameW(lpBuffer);
+    }
+    return wcslen(lpBuffer);
+  }
+
+
+  DWORD WINAPI GetFullPathNameA(
+    LPCSTR lpFileName,
+    DWORD nBufferLength,
+    LPSTR lpBuffer,
+    LPSTR* lpFilePart
+  ){
+    if(PathIsRelativeA(lpFileName)){
+        GetCurrentDirectoryA(nBufferLength,lpBuffer);
+        if(strlen(lpBuffer)+strlen(lpFileName)>nBufferLength-2)
+            return 0;
+        strcat(lpBuffer,lpFileName);
+    }else{
+        if(strlen(lpFileName)>nBufferLength)
+            return 0;
+        strcpy(lpBuffer,lpFileName);
+    }
+    char *tmp=strdup(lpBuffer);
+    PathCanonicalizeA(lpBuffer,tmp);
+    free(tmp);
+    if(lpFilePart){
+        *lpFilePart = PathFindFileNameA(lpBuffer);
+    }
+    return strlen(lpBuffer);
+  }
+
 static int is_executable(const char *filename)
 {
     struct stat file_stat;
