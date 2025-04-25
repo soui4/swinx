@@ -44,7 +44,14 @@ static void parseString(GSList** list,
 }
 
 static GtkWindow * native2GtkWindow(HWND winid){
-    GdkWindow *gdk_wnd = gdk_x11_window_foreign_new_for_display(gdk_display_get_default(), winid);
+    GdkDisplay * display = gdk_display_get_default();
+    const char *display_name = gdk_display_get_name(display);
+    if(strstr(display_name,"wayland")!=0)
+    {
+        SLOG_STMW()<<"native2GtkWindow failed for wayland display!";
+        return nullptr;
+    }
+    GdkWindow *gdk_wnd = gdk_x11_window_foreign_new_for_display(display, winid);
     // 创建一个临时的 GTK 窗口
     if(!gdk_wnd) return nullptr;
     GtkWindow *gtk_wnd = GTK_WINDOW(gtk_window_new(GTK_WINDOW_TOPLEVEL));
