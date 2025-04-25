@@ -228,11 +228,12 @@ HRESULT SDataObjectProxy::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
     if (!buf)
         return DV_E_DVASPECT;
     size_t bufLen = buf->size();
-    pmedium->hGlobal = GlobalAlloc(0, bufLen);
+    pmedium->hGlobal = GlobalAlloc(0, bufLen+1);
     if (!pmedium->hGlobal)
         return STG_E_MEDIUMFULL;
-    void *dst = GlobalLock(pmedium->hGlobal);
+    char *dst = (char*)GlobalLock(pmedium->hGlobal);
     memcpy(dst, buf->data(), bufLen);
+    dst[bufLen]=0;//append a null
     GlobalUnlock(pmedium->hGlobal);
     return S_OK;
 }

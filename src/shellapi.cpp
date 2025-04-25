@@ -134,11 +134,23 @@ static UINT DragQueryFileSize(HDROP hDrop)
     UINT i = 0;
     while (buf)
     {
-        buf = strstr(buf, "\r\n");
-        if (!buf)
-            break;
-        i++;
-        buf += 2;
+        const char * end = strstr(buf, "\r\n");
+        if (end)
+        {
+            i++;
+            buf = end + 2;
+        }else{
+            end = strstr(buf, "\n");
+            if(end)
+            {
+                i++;
+                buf =end+1;
+            }else{
+                if(buf[0]!=0)
+                    i++;
+                break;
+            }
+        }
     }
     return i;
 }
@@ -153,16 +165,25 @@ UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
     UINT i = 0;
     while (i < iFile)
     {
-        buf = strstr(buf, "\r\n");
-        if (!buf)
-            return 0;
+        const char * end = strstr(buf, "\r\n");
+        if (!end)
+        {
+            end = strstr(buf,"\n");
+            if(!end)
+                return 0;
+        }
         i++;
-        buf += 2;
+        if(end[0]==0x0d)
+            buf = end+2;
+        else
+            buf = end+1;
     }
     const char *end = strstr(buf, "\r\n");
     if (!end)
     {
-        return 0;
+        end = strstr(buf,"\n");
+        if(!end)
+            end = buf + strlen(buf);
     }
     if (!lpszFile)
         return end - buf;
