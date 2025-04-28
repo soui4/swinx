@@ -2162,7 +2162,10 @@ DWORD WINAPI GetEnvironmentVariableA(LPCSTR lpName, LPSTR lpBuffer, DWORD nSize)
 {
     const char *value = getenv(lpName);
     if (!value)
+    {
+        SetLastError(ERROR_ENVVAR_NOT_FOUND);
         return 0;
+    }
     size_t len = strlen(value);
     if (len >= nSize)
         return len + 1;
@@ -2175,8 +2178,10 @@ DWORD WINAPI GetEnvironmentVariableW(LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSiz
     std::string name;
     tostring(lpName, -1, name);
     const char *value = getenv(name.c_str());
-    if (!value)
+    if (!value){
+        SetLastError(ERROR_ENVVAR_NOT_FOUND);
         return 0;
+    }
     std::wstring wstr;
     towstring(value, -1, wstr);
     size_t len = wstr.length();
