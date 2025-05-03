@@ -333,7 +333,7 @@ public:
 
 class SConnMgr {
     swinx::SRwLock m_rwLock;
-    std::map<pthread_t, SConnection *> m_conns;
+    std::map<tid_t, SConnection *> m_conns;
     HANDLE m_hHeap;
 
     friend class SConnection;
@@ -342,7 +342,7 @@ class SConnMgr {
     static SConnMgr *instance();
 
   public:
-    SConnection *getConnection(pthread_t tid = 0, int screenNum = 0);
+    SConnection *getConnection(tid_t tid = 0, int screenNum = 0);
     HANDLE getProcessHeap(){
         return m_hHeap;
     }

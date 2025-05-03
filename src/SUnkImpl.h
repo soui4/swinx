@@ -2,15 +2,15 @@
 #define __SUNKNOWNIMPL__H__
 
 #define IUNKNOWN_BEGIN2(iid, cls)                                    \
-    STDMETHODIMP_(ULONG) AddRef(void)                                \
+    STDMETHODIMP_(ULONG) AddRef(void) override                       \
     {                                                                \
         return _AddRef();                                            \
     }                                                                \
-    STDMETHODIMP_(ULONG) Release(void)                               \
+    STDMETHODIMP_(ULONG) Release(void) override                      \
     {                                                                \
         return _Release();                                           \
     }                                                                \
-    STDMETHODIMP QueryInterface(REFIID riid, void **ppvObj)          \
+    STDMETHODIMP QueryInterface(REFIID riid, void **ppvObj) override \
     {                                                                \
         if (ppvObj == NULL)                                          \
             return E_INVALIDARG;                                     \

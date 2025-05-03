@@ -137,7 +137,7 @@ struct PipeSynHandle : _SynHandle
         return pipe(fd) != -1;
     }
 
-    virtual LPCSTR getName() const
+    virtual LPCSTR getName()  const override
     {
         return nullptr;
     }

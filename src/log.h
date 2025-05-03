@@ -77,8 +77,8 @@ namespace swinx
         static void PrintLog(const char *log, int level);
         static void setLogLevel(int level);
     private:
-        char m_tag[100]{ 0 };
-        char m_logbuf[MAX_LOGLEN + 100]{ 0 };
+        char m_tag[100];
+        char m_logbuf[MAX_LOGLEN + 100];
         int   m_level;
         SLogStream m_stream;
         std::stringstream m_lineInfo;

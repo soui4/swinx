@@ -12,6 +12,7 @@
 #include <semaphore.h>
 #include <string>
 
+namespace swinx{
 struct ISemRwLock
 {
     virtual ~ISemRwLock()
@@ -246,5 +247,5 @@ class SharedMemory {
         return m_rwlock;
     }
 };
-
+}//end of ns swinx
 #endif //_SHARED_MEM_H_

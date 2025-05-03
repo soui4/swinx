@@ -1,13 +1,24 @@
-﻿cmake_minimum_required(VERSION 3.1)
+﻿cmake_minimum_required(VERSION 3.16)
 
 project(swinx)
+set(CMAKE_CXX_STANDARD 11)
 
+add_compile_options(-Wno-deprecated-declarations)
+add_compile_options(-Wno-unknown-warning-option)
+add_compile_options(-Wno-extern-c-compat)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+set(USING_GTK3_DLG OFF)
+else()
 option(USING_GTK3_DLG "Using GTK3 to show common dialog" ON)
+endif()
+
 #set(USING_GTK3_DLG OFF)
 if(USING_GTK3_DLG)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK3 QUIET gtk+-3.0)  # 检查 GTK 3.0 版本
 # 如果找到 GTK，则设置相关变量
+set(GTK3_FOUND OFF)
 if(GTK3_FOUND)
     message(STATUS "GTK version ${GTK3_VERSION} found. Enabling GTK support.  ")
     add_definitions(-DENABLE_GTK) 
@@ -49,14 +60,16 @@ source_group("Source Files" FILES ${SRCS})
  
 if (NOT ENABLE_SOUI_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
-    
-    if(GTK3_FOUND)
-        target_link_libraries(swinx 
-        cairo uuid xkbcommon xcb-imdkit ${GTK3_LIBRARIES})
-    else()
     target_link_libraries(swinx
-        libxcb  cairo uuid xkbcommon xcb-imdkit
+        xcb  cairo  xkbcommon xcb-imdkit freetype fontconfig png
     )
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+        target_link_libraries(swinx uuid)
+    else()
+        target_link_libraries(swinx iconv)
+    endif()
+    if(GTK3_FOUND)
+        target_link_libraries(swinx ${GTK3_LIBRARIES})
     endif()
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS})

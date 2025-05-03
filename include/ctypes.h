@@ -145,7 +145,7 @@ typedef struct _SYSTEMTIME
     WORD wMilliseconds;
 } SYSTEMTIME;
 
-#define RGB(r, g, b)     ((r) | (g) << 8 | (b) << 16) | (0xffu << 24)
+#define RGB(r, g, b)     (((r) | (g) << 8 | (b) << 16) | (0xffu << 24))
 #define RGBA(r, g, b, a) ((r) | (g) << 8 | (b) << 16 | ((uint32_t)a) << 24)
 #define GetRValue(rgb)   (LOBYTE(rgb))
 #define GetGValue(rgb)   (LOBYTE(rgb >> 8))

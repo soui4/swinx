@@ -13,6 +13,7 @@
 #include "handle.h"
 #include "synhandle.h"
 #include "uimsg.h"
+using namespace  swinx;
 
 enum
 {
@@ -21,10 +22,15 @@ enum
 };
 
 static const char *kFifoRoot = "/tmp";
+#ifdef __APPLE__
+static const char *kFifoNameTemplate = "/tmp/soui-B699-A95AB24431E1.%d";
+static const char *kFileMapNameTemplate = "/shm-soui-B699-A95AB24431E1.%d";
+static const char *kGlobalShareMemName = "/share_soui_A95AB24431E7";
+#else
 static const char *kFifoNameTemplate = "/tmp/soui-2BACFFE6-9ED7-4AC8-B699-A95AB24431E1.%d";
 static const char *kFileMapNameTemplate = "/shm-soui-2BACFFE6-9ED7-4AC8-B699-A95AB24431E1.%d";
 static const char *kGlobalShareMemName = "/share_mem_soui-2BACFFE6-9ED7-4AC8-B699-A95AB24431E7";
-
+#endif//__APPLE__
 struct EventData
 {
     BOOL bManualReset;
@@ -253,7 +259,7 @@ struct NoNameWaitbleObj : _SynHandle
     }
     virtual void onInit(HandleData *pData, void *initData) = 0;
 
-    virtual LPCSTR getName() const
+    virtual LPCSTR getName() const override
     {
         return nullptr;
     }
@@ -373,7 +379,7 @@ struct NamedWaitbleObj : _SynHandle
 
     virtual void onInit(HandleData *pData, void *initData) = 0;
 
-    virtual LPCSTR getName() const
+    virtual LPCSTR getName() const override
     {
         if (index == -1)
         {
@@ -1245,10 +1251,10 @@ HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWOR
     if (name.empty())
     {
         // generate random name.
-        uuid_t id;
-        uuid_generate(id);
-        char szBuf[33];
-        IpcMsg::uuid2string(id, szBuf);
+        suid_t id;
+        IpcMsg::gen_suid(&id);
+        char szBuf[25];
+        IpcMsg::suid2string(id, szBuf);
         name += "/random_share_map_";
         name += szBuf;
     }

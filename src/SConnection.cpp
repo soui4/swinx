@@ -66,7 +66,7 @@ SConnMgr::~SConnMgr()
 void SConnMgr::removeConn(SConnection *pObj)
 {
     SAutoWriteLock autoLock(m_rwLock);
-    pthread_t tid = pthread_self();
+    tid_t tid = (tid_t)pthread_self();
     auto it = m_conns.find(tid);
     if (it == m_conns.end())
     {
@@ -77,9 +77,9 @@ void SConnMgr::removeConn(SConnection *pObj)
     m_conns.erase(it);
 }
 
-SConnection *SConnMgr::getConnection(pthread_t tid_, int screenNum)
+SConnection *SConnMgr::getConnection(tid_t tid_, int screenNum)
 {
-    pthread_t tid = tid_ != 0 ? tid_ : pthread_self();
+    tid_t tid = tid_ != 0 ? tid_ : (tid_t)pthread_self();
     {
         SAutoReadLock autoLock(m_rwLock);
         auto it = m_conns.find(tid);
@@ -1879,7 +1879,7 @@ BOOL SConnection::SetActiveWindow(HWND hWnd)
             return FALSE;
         if (wndObj->dwStyle & (WS_CHILD | WS_DISABLED))
             return FALSE;
-        if (!wndObj->dwStyle & WS_VISIBLE)
+        if (!(wndObj->dwStyle & WS_VISIBLE))
             return FALSE;
         if (wndObj->dwExStyle & (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW))
             return FALSE;

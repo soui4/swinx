@@ -39,17 +39,17 @@ public:
 	std::list<FormatedData*> m_lstData;
 	std::recursive_mutex m_mutex;
 public:
-	HRESULT WINAPI GetData(FORMATETC* pformatetcIn,STGMEDIUM* pmedium);
+	HRESULT WINAPI GetData(FORMATETC* pformatetcIn,STGMEDIUM* pmedium)override;
 
-	HRESULT WINAPI GetDataHere(FORMATETC* pformatetc,STGMEDIUM* pmedium);
+	HRESULT WINAPI GetDataHere(FORMATETC* pformatetc,STGMEDIUM* pmedium)override;
 
-	HRESULT WINAPI QueryGetData(FORMATETC* pformatetc);
+	HRESULT WINAPI QueryGetData(FORMATETC* pformatetc)override;
 
-	HRESULT WINAPI SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, BOOL fRelease);
+	HRESULT WINAPI SetData(FORMATETC* pformatetc, STGMEDIUM* pmedium, BOOL fRelease)override;
 
-	HRESULT WINAPI EnumFormatEtc(DWORD dwDirection,IEnumFORMATETC** ppenumFormatEtc);
+	HRESULT WINAPI EnumFormatEtc(DWORD dwDirection,IEnumFORMATETC** ppenumFormatEtc)override;
 
-	HRESULT WINAPI GetCanonicalFormatEtc(FORMATETC* pformatectIn, FORMATETC* pformatetcOut) {
+	HRESULT WINAPI GetCanonicalFormatEtc(FORMATETC* pformatectIn, FORMATETC* pformatetcOut) override{
 		return E_NOTIMPL;
 	}
 
@@ -57,16 +57,16 @@ public:
 		FORMATETC* pformatetc,
 		DWORD advf,
 		IAdviseSink* pAdvSink,
-		DWORD* pdwConnection) {
+		DWORD* pdwConnection)override {
 		return E_NOTIMPL;
 	}
 
-	HRESULT WINAPI DUnadvise(DWORD dwConnection) {
+	HRESULT WINAPI DUnadvise(DWORD dwConnection) override{
 		return E_NOTIMPL;
 	}
 
 	HRESULT WINAPI EnumDAdvise(
-		IEnumSTATDATA** ppenumAdvise) {
+		IEnumSTATDATA** ppenumAdvise) override{
 		return E_NOTIMPL;
 	}
 	IUNKNOWN_BEGIN(IDataObject)
@@ -86,22 +86,22 @@ public:
 
 	virtual bool isXdnd() const{ return false;}
 public:
-    virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetData(
+    virtual /* [local] */ HRESULT WINAPI GetData(
         /* [annotation][unique][in] */
         _In_  FORMATETC* pformatetcIn,
         /* [annotation][out] */
-        _Out_  STGMEDIUM* pmedium);
+        _Out_  STGMEDIUM* pmedium) override;
 
-    virtual /* [local] */ HRESULT STDMETHODCALLTYPE GetDataHere(
+    virtual /* [local] */ HRESULT WINAPI GetDataHere(
         /* [annotation][unique][in] */
         _In_  FORMATETC* pformatetc,
         /* [annotation][out][in] */
-        _Inout_  STGMEDIUM* pmedium) {
+        _Inout_  STGMEDIUM* pmedium) override{
         return E_NOTIMPL;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE QueryGetData(
-        /* [unique][in] */ __RPC__in_opt FORMATETC* pformatetc) {
+    virtual HRESULT WINAPI QueryGetData(
+        /* [unique][in] */ __RPC__in_opt FORMATETC* pformatetc) override{
         for (auto it : m_lstTypes) {
             if (it == pformatetc->cfFormat)
             {
@@ -114,42 +114,42 @@ public:
         return DV_E_FORMATETC;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE GetCanonicalFormatEtc(
+    virtual HRESULT WINAPI GetCanonicalFormatEtc(
         /* [unique][in] */ __RPC__in_opt FORMATETC* pformatectIn,
-        /* [out] */ __RPC__out FORMATETC* pformatetcOut) {
+        /* [out] */ __RPC__out FORMATETC* pformatetcOut) override{
         return E_NOTIMPL;
     }
 
-    virtual /* [local] */ HRESULT STDMETHODCALLTYPE SetData(
+    virtual /* [local] */ HRESULT WINAPI SetData(
         /* [annotation][unique][in] */
         _In_  FORMATETC* pformatetc,
         /* [annotation][unique][in] */
         _In_  STGMEDIUM* pmedium,
-        /* [in] */ BOOL fRelease) {
+        /* [in] */ BOOL fRelease) override{
         return E_NOTIMPL;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE EnumFormatEtc(
+    virtual HRESULT WINAPI EnumFormatEtc(
         /* [in] */ DWORD dwDirection,
-        /* [out] */ __RPC__deref_out_opt IEnumFORMATETC** ppenumFormatEtc) {
+        /* [out] */ __RPC__deref_out_opt IEnumFORMATETC** ppenumFormatEtc) override{
         return E_NOTIMPL;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE DAdvise(
+    virtual HRESULT WINAPI DAdvise(
         /* [in] */ __RPC__in FORMATETC* pformatetc,
         /* [in] */ DWORD advf,
         /* [unique][in] */ __RPC__in_opt IAdviseSink* pAdvSink,
-        /* [out] */ __RPC__out DWORD* pdwConnection) {
+        /* [out] */ __RPC__out DWORD* pdwConnection)override {
         return E_NOTIMPL;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE DUnadvise(
-        /* [in] */ DWORD dwConnection) {
+    virtual HRESULT WINAPI DUnadvise(
+        /* [in] */ DWORD dwConnection)override {
         return E_NOTIMPL;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE EnumDAdvise(
-        /* [out] */ __RPC__deref_out_opt IEnumSTATDATA** ppenumAdvise) {
+    virtual HRESULT WINAPI EnumDAdvise(
+        /* [out] */ __RPC__deref_out_opt IEnumSTATDATA** ppenumAdvise)override {
         return E_NOTIMPL;
     }
 public:

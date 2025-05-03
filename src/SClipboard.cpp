@@ -21,7 +21,7 @@ class SMimeEnumFORMATETC : public SUnkImpl<IEnumFORMATETC> {
         /* [annotation] */
         _Out_writes_to_(celt, *pceltFetched) FORMATETC *rgelt,
         /* [annotation] */
-        _Out_opt_ ULONG *pceltFetched)
+        _Out_opt_ ULONG *pceltFetched) override
     {
         if (m_iFmt + celt > m_mimeData->m_lstData.size())
             return E_UNEXPECTED;
@@ -44,21 +44,19 @@ class SMimeEnumFORMATETC : public SUnkImpl<IEnumFORMATETC> {
         return S_OK;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE Skip(
-        /* [in] */ ULONG celt)
+    virtual HRESULT STDMETHODCALLTYPE Skip(/* [in] */ ULONG celt) override
     {
         m_iFmt += celt;
         return S_OK;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE Reset(void)
+    virtual HRESULT STDMETHODCALLTYPE Reset(void) override
     {
         m_iFmt = 0;
         return S_OK;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE Clone(
-        /* [out] */ __RPC__deref_out_opt IEnumFORMATETC **ppenum)
+    virtual HRESULT STDMETHODCALLTYPE Clone(/* [out] */ __RPC__deref_out_opt IEnumFORMATETC **ppenum) override
     {
         return E_NOTIMPL;
     }
@@ -425,7 +423,7 @@ static inline int maxSelectionIncr(xcb_connection_t *c)
 bool SClipboard::clipboardReadProperty(xcb_window_t win, xcb_atom_t property, bool deleteProperty, std::vector<char> *buffer, int *size, xcb_atom_t *type, int *format)
 {
     int maxsize = maxSelectionIncr(xcb_connection());
-    ulong bytes_left; // bytes_after
+    unsigned long bytes_left; // bytes_after
     xcb_atom_t dummy_type;
     int dummy_format;
 

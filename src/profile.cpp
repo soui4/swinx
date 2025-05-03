@@ -752,7 +752,7 @@ static BOOL PROFILE_Open(LPCWSTR filename, BOOL write_access)
 
     if (hFile == INVALID_HANDLE_VALUE)
     {
-        SLOG_STMW() << "Error " << GetLastError() << " opening file " << filename;
+//        SLOG_STMW() << "Error " << GetLastError() << " opening file " << filename;
         return FALSE;
     }
 

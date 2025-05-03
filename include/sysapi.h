@@ -2,7 +2,7 @@
 #define _SYS_API_H
 #include <ctypes.h>
 #include <unistd.h>
-#include <malloc.h>
+//#include <malloc.h>
 
 #ifdef __cplusplus
 extern "C"

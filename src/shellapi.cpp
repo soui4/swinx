@@ -32,7 +32,7 @@ class CDropFileTarget : public SUnkImpl<IDropTarget> {
         /* [unique][in] */ IDataObject *pDataObj,
         /* [in] */ DWORD grfKeyState,
         /* [in] */ POINTL pt,
-        /* [out][in] */ DWORD *pdwEffect)
+        /* [out][in] */ DWORD *pdwEffect) override
     {
         *pdwEffect = DROPEFFECT_COPY;
         return S_OK;
@@ -41,13 +41,13 @@ class CDropFileTarget : public SUnkImpl<IDropTarget> {
     virtual HRESULT STDMETHODCALLTYPE DragOver(
         /* [in] */ DWORD grfKeyState,
         /* [in] */ POINTL pt,
-        /* [out][in] */ DWORD *pdwEffect)
+        /* [out][in] */ DWORD *pdwEffect) override
     {
         *pdwEffect = DROPEFFECT_COPY;
         return S_OK;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE DragLeave(void)
+    virtual HRESULT STDMETHODCALLTYPE DragLeave(void) override
     {
         return S_OK;
     }
@@ -56,7 +56,7 @@ class CDropFileTarget : public SUnkImpl<IDropTarget> {
         /* [unique][in] */ IDataObject *pDataObj,
         /* [in] */ DWORD grfKeyState,
         /* [in] */ POINTL pt,
-        /* [out][in] */ DWORD *pdwEffect)
+        /* [out][in] */ DWORD *pdwEffect) override
     {
         FORMATETC format = { CF_HDROP, 0, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
         STGMEDIUM medium;

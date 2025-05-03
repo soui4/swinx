@@ -9,8 +9,6 @@
 #include "handle.h"
 #include "sharedmem.h"
 
-#include "log.h"
-
 enum _MsgType
 {
     MT_POST = 0,
@@ -131,8 +129,8 @@ struct CallbackTask : CbTask
 
 struct CallbackTaskIpc : CbTask
 {
-    SharedMemory *pSharedMem;
-    CallbackTaskIpc(HANDLE evt, SharedMemory *shareMem)
+    swinx::SharedMemory *pSharedMem;
+    CallbackTaskIpc(HANDLE evt, swinx::SharedMemory *shareMem)
         : CbTask(evt)
         , pSharedMem(shareMem)
     {
@@ -270,68 +268,22 @@ struct MsgWndPosChanged : Msg
     WINDOWPOS pos;
 };
 
+typedef unsigned char   suid_t[8];
+
 struct IpcMsg : Msg
 {
-    static void uuid2string(const uuid_t id, char *buf);
-    static std::string get_share_mem_name(const uuid_t id);
-    static std::string get_ipc_event_name(const uuid_t id);
-    SharedMemory *shareMem;
+    static void gen_suid(suid_t * uid);
+    static void suid2string(const suid_t id, char *buf);
+    static std::string get_share_mem_name(const suid_t id);
+    static std::string get_ipc_event_name(const suid_t id);
+
+    swinx::SharedMemory *shareMem;
     HANDLE synEvt;
     COPYDATASTRUCT cds;
     bool hasResult;
-    IpcMsg(HWND hWnd, const uint32_t data[5])
-        : shareMem(nullptr)
-        , synEvt(INVALID_HANDLE_VALUE)
-        , hasResult(false)
-    {
-        hwnd = hWnd;
-        message = data[0];
-        uuid_t id;
-        memcpy(id, data + 1, sizeof(id));
-        std::string strEvt = get_ipc_event_name(id);
-        synEvt = CreateEventA(nullptr, FALSE, FALSE, strEvt.c_str());
-
-        std::string strMem = get_share_mem_name(id);
-        shareMem = new SharedMemory;
-        shareMem->init(strMem.c_str(), 0); // open exist share mem.
-        MsgLayout *msgLayout = (MsgLayout *)shareMem->buffer();
-        if (message == WM_COPYDATA)
-        {
-            wParam = msgLayout->wp;
-            cds.dwData = msgLayout->lp;
-            LPBYTE extra = (LPBYTE)(msgLayout + 1);
-            cds.cbData = *(DWORD *)extra;
-            cds.lpData = extra + sizeof(DWORD);
-            lParam = (LPARAM)&cds;
-            //LOG_STMI("msg")<<"recv copydata msg, dwData="<<cds.dwData<<" cbData="<<cds.cbData;
-        }
-        else
-        {
-            wParam = msgLayout->wp;
-            lParam = msgLayout->lp;
-            //LOG_STMI("msg")<<"recv ipc msg="<<message<<" wp="<<wParam<<" lp="<<lParam;
-        }
-    }
-
-    ~IpcMsg()
-    {
-        //LOG_STMI("msg")<<"ipc msg release";
-        if (!hasResult)
-        {
-            SetEvent(synEvt);
-        }
-        CloseHandle(synEvt);
-        delete shareMem;
-    }
-
-    virtual void SetResult(LRESULT res)
-    {
-        //LOG_STMI("msg")<<"ipc msg SetResult "<<res;
-        hasResult = true;
-        MsgLayout *msgLayout = (MsgLayout *)shareMem->buffer();
-        msgLayout->ret = res;
-        SetEvent(synEvt);
-    }
+    IpcMsg(HWND hWnd, const uint32_t data[5]);
+    ~IpcMsg();
+    void SetResult(LRESULT res) override;
 };
 
 struct CallHookData

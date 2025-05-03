@@ -2,7 +2,7 @@
 #include <sys/mman.h>
 #include "log.h"
 #define kLogTag "sharememory"
-
+namespace swinx{
 SharedMemory::~SharedMemory()
 {
     if (shmid == -1)
@@ -87,3 +87,5 @@ void SharedMemory::detach()
 {
     m_bDetached = true;
 }
+
+}//end of ns swinx

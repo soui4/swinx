@@ -2,7 +2,11 @@
 add_definitions(-DDEFAULT_XKB_RULES=\"evdev\")
 add_definitions(-DDEFAULT_XKB_MODEL=\"pc105\")
 add_definitions(-DDEFAULT_XKB_LAYOUT=\"us\")
+if(CMAKE_SYSTEM_NAME MATCHES Darwin)
+add_definitions(-DDFLT_XKB_CONFIG_ROOT=\"/opt/X11/share/X11/xkb\")
+else()
 add_definitions(-DDFLT_XKB_CONFIG_ROOT=\"/usr/share/X11/xkb\")
+endif()
 
 # OUR SOURCES
 set(xkbcommon_headers

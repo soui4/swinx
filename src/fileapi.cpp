@@ -141,9 +141,9 @@ BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLa
         struct stat64 st;
         if (0 != fstat64(fd->fd, &st))
             return FALSE;
-        TimeSpec2FileTime(st.st_ctim, lpCreationTime);
-        TimeSpec2FileTime(st.st_mtim, lpLastWriteTime);
-        TimeSpec2FileTime(st.st_atim, lpLastAccessTime);
+        //TimeSpec2FileTime(st.st_ctim, lpCreationTime);
+        //TimeSpec2FileTime(st.st_mtim, lpLastWriteTime);
+        //TimeSpec2FileTime(st.st_atim, lpLastAccessTime);
         return TRUE;
     }
     else
@@ -672,9 +672,9 @@ BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFind
             }
             strcpy(lpFindFileData->cFileName, entry->d_name);
             strcpy(lpFindFileData->cAlternateFileName, "");
-            TimeSpec2FileTime(fileStat.st_ctim, &lpFindFileData->ftCreationTime);
-            TimeSpec2FileTime(fileStat.st_mtim, &lpFindFileData->ftLastWriteTime);
-            TimeSpec2FileTime(fileStat.st_atim, &lpFindFileData->ftLastAccessTime);
+            //TimeSpec2FileTime(fileStat.st_ctim, &lpFindFileData->ftCreationTime);
+            //TimeSpec2FileTime(fileStat.st_mtim, &lpFindFileData->ftLastWriteTime);
+            //TimeSpec2FileTime(fileStat.st_atim, &lpFindFileData->ftLastAccessTime);
             lpFindFileData->nFileSizeLow = fileStat.st_size & 0xffffffff;
             lpFindFileData->nFileSizeHigh = (fileStat.st_size & 0xffffffff00000000) >> 32;
             break;

@@ -29,6 +29,7 @@
 
 #define kLogTag "wnd"
 
+using namespace swinx;
 // xcb-icccm 3.8 support
 #ifdef XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS
 #define xcb_get_wm_hints_reply         xcb_icccm_get_wm_hints_reply
@@ -352,7 +353,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
         return FALSE;
     }
     _Window *pWnd = new _Window(clsInfo.cbWndExtra);
-    pWnd->tid = pthread_self();
+    pWnd->tid = (tid_t)pthread_self();
     pWnd->hdc = nullptr;
 
     SConnection *conn = SConnMgr::instance()->getConnection(pWnd->tid);
@@ -1059,7 +1060,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     break;
     case WM_MOUSEHOVER:
     {
-        if (!wndObj->hoverInfo.uHoverState == HS_Leave && (wndObj->hoverInfo.dwFlags & TME_HOVER))
+        if (wndObj->hoverInfo.uHoverState != HS_Leave && (wndObj->hoverInfo.dwFlags & TME_HOVER))
         {
             wndObj->hoverInfo.uHoverState = HS_HoverDelay;
             DWORD delay = wndObj->hoverInfo.dwHoverTime;
@@ -1090,10 +1091,10 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSELEAVE, HTNOWHERE, MAKELPARAM(pt.x, pt.y));
         }
         wndObj->htCode = HTNOWHERE;
-        if (!wndObj->hoverInfo.uHoverState != HS_Leave)
+        if (wndObj->hoverInfo.uHoverState != HS_Leave)//todo:hjx
         {
             wndObj->hoverInfo.uHoverState = HS_Leave;
-            if (!wndObj->hoverInfo.dwFlags & TME_LEAVE)
+            if (!(wndObj->hoverInfo.dwFlags & TME_LEAVE))
             {
                 bSkipMsg = TRUE;
             }
@@ -1291,13 +1292,15 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     return ret;
 }
 
+
 SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, HANDLE &hEvt)
 {
     if (!connCur->IsWindow(hWnd))
         return nullptr;
-    uuid_t uuid;
-    uuid_generate_random(uuid);
+    suid_t uuid;
+    IpcMsg::gen_suid(&uuid);
     std::string strName = IpcMsg::get_share_mem_name(uuid);
+    //SLOG_STMI()<<"post ipc msg: share mem name="<<strName.c_str();
     SharedMemory *shareMem = new SharedMemory;
 
     int bufLen = 0;
@@ -1336,6 +1339,8 @@ SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM w
     }
 
     std::string evtName = IpcMsg::get_ipc_event_name(uuid);
+    //SLOG_STMI()<<"post ipc msg: event name="<<evtName.c_str();
+
     hEvt = CreateEventA(nullptr, FALSE, FALSE, evtName.c_str());
 
     // the hWnd is valid window id.
@@ -1347,8 +1352,7 @@ SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM w
         connCur->atoms.WM_WIN4XCB_IPC //.type
     };
     client_msg_event.data.data32[0] = msg;
-    memcpy(client_msg_event.data.data32 + 1, uuid, sizeof(uuid));
-
+    memcpy(client_msg_event.data.data32 + 1, uuid, sizeof(suid_t));//use 1-2 as the suid.
     // Send the client message event
     xcb_send_event(connCur->connection, 0, hWnd, XCB_EVENT_MASK_NO_EVENT, (const char *)&client_msg_event);
     // Flush the request to the X server
@@ -2722,7 +2726,7 @@ static LRESULT handlePrint(HWND hWnd, WPARAM wp, LPARAM lp)
     HRGN hRgn = wndObj->invalid.hRgn;
     BOOL bErase = wndObj->invalid.bErase;
 
-    if (lp & (PRF_CLIENT | PRF_NONCLIENT) == (PRF_CLIENT | PRF_NONCLIENT))
+    if ((lp & (PRF_CLIENT | PRF_NONCLIENT)) == (PRF_CLIENT | PRF_NONCLIENT))
     {
         RECT rc = wndObj->rc;
         OffsetRect(&rc, -rc.left, -rc.top);
@@ -3411,13 +3415,13 @@ BOOL SetLayeredWindowAttributes(HWND hWnd, COLORREF crKey, BYTE byAlpha, DWORD d
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return FALSE;
-    if (wndObj->dwExStyle & WS_EX_LAYERED == 0)
+    if ((wndObj->dwExStyle & WS_EX_LAYERED) == 0)
         return FALSE;
     if (dwFlags & LWA_COLORKEY)
     {
         return FALSE;
     }
-    if (dwFlags & LWA_ALPHA && byAlpha != wndObj->byAlpha)
+    if ((dwFlags & LWA_ALPHA) && byAlpha != wndObj->byAlpha)
     {
         wndObj->byAlpha = byAlpha;
         if (wndObj->flags & kMapped)
