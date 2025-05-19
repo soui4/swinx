@@ -746,6 +746,40 @@ void GetSystemTime(SYSTEMTIME *pSysTime)
     pSysTime->wMilliseconds = tvNow.tv_usec / 1000;
 }
 
+static const int64_t EPOCH = ((int64_t)116444736000000000LL);//  1601-01-01 00:00:00
+static void TimeT2FileTime(time_t t, FILETIME *pft) {
+    long long int ll = (long long int)t * 10000000LL + EPOCH;
+    pft->dwLowDateTime = (uint32_t)ll;
+    pft->dwHighDateTime = (uint32_t)(ll >> 32);
+}
+
+static time_t FileTime2TimeT(FILETIME ft) {
+    ULARGE_INTEGER uli;
+    uli.LowPart = ft.dwLowDateTime;
+    uli.HighPart = ft.dwHighDateTime;
+    // 减去偏移量并转换为秒
+    ULARGE_INTEGER qwFileTime;
+    qwFileTime.QuadPart = uli.QuadPart - EPOCH;
+    return qwFileTime.QuadPart / 10000000;
+}
+
+BOOL LocalFileTimeToFileTime(const FILETIME *lpLocalFileTime, LPFILETIME lpFileTime)
+{
+    time_t localTime =FileTime2TimeT(lpLocalFileTime);
+    // 转换为UTC time_t
+    struct tm *utcTm = gmtime(&localTime);
+    if (!utcTm) {
+        return FALSE;
+    }
+    time_t utcTime = mktime(utcTm);
+    if (utcTime == (time_t)-1) {
+        return FALSE; 
+    }
+    
+    TimeToFileTime(utcTime, lpFileTime);
+    return TRUE;
+}
+
 time_t _mkgmtime(struct tm *_Tm)
 {
     return mktime(_Tm);

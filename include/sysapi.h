@@ -191,9 +191,13 @@ extern "C"
     pid_t WINAPI GetProcessId(HANDLE Process);
     HANDLE WINAPI GetCurrentProcess(void);
 
-    void GetLocalTime(SYSTEMTIME *pSysTime);
-    void GetSystemTime(SYSTEMTIME *lpSystemTime);
-
+    void WINAPI GetLocalTime(SYSTEMTIME *pSysTime);
+    void WINAPI GetSystemTime(SYSTEMTIME *lpSystemTime);
+    BOOL WINAPI LocalFileTimeToFileTime(
+                  const FILETIME* lpLocalFileTime,
+                 LPFILETIME lpFileTime
+      );
+      
     time_t _mkgmtime(struct tm *_Tm);
     int _localtime64_s(struct tm *ptm, const __time64_t *ptime);
 
