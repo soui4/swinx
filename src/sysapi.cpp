@@ -753,7 +753,7 @@ static void TimeT2FileTime(time_t t, FILETIME *pft) {
     pft->dwHighDateTime = (uint32_t)(ll >> 32);
 }
 
-static time_t FileTime2TimeT(FILETIME ft) {
+static time_t FileTime2TimeT(const FILETIME &ft) {
     ULARGE_INTEGER uli;
     uli.LowPart = ft.dwLowDateTime;
     uli.HighPart = ft.dwHighDateTime;
@@ -765,7 +765,7 @@ static time_t FileTime2TimeT(FILETIME ft) {
 
 BOOL LocalFileTimeToFileTime(const FILETIME *lpLocalFileTime, LPFILETIME lpFileTime)
 {
-    time_t localTime =FileTime2TimeT(lpLocalFileTime);
+    time_t localTime =FileTime2TimeT(*lpLocalFileTime);
     // 转换为UTC time_t
     struct tm *utcTm = gmtime(&localTime);
     if (!utcTm) {
@@ -776,7 +776,7 @@ BOOL LocalFileTimeToFileTime(const FILETIME *lpLocalFileTime, LPFILETIME lpFileT
         return FALSE; 
     }
     
-    TimeToFileTime(utcTime, lpFileTime);
+    TimeT2FileTime(utcTime, lpFileTime);
     return TRUE;
 }
 
