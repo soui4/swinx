@@ -4,7 +4,7 @@
 #include <gdk/gdkx.h>
 #include <gtk/gtkfilechooser.h>
 
-#include "../log.h"
+#include "log.h"
 #define kLogTag "gtk"
 namespace Gtk{
 
@@ -241,7 +241,7 @@ bool gtk_choose_color(HWND parent,COLORREF *out){
         gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(dialog), &color);
         ret = true;
         *out = RGBA(tobcolor(color.red),tobcolor(color.green),tobcolor(color.blue),tobcolor(color.alpha));
-    }
+    } 
     // 销毁对话框
     gtk_widget_destroy(dialog);
     while (gtk_events_pending())

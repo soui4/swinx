@@ -5,7 +5,9 @@
 #include "hook.h"
 #include "SRwLock.hpp"
 #include "SConnection.h"
+#ifdef __linux__
 #include "SClipboard.h"
+#endif//__linux
 #include "debug.h"
 #define kLogTag "hook"
 
@@ -171,7 +173,10 @@ LRESULT HookMgr::call_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
                 data.code = nCode;
                 data.wp = wParam;
                 data.lp = lParam;
+                #ifdef __linux__
+                //using clipboard owner of the target thread
                 SendMessageTimeoutA(conn->getClipboard()->getClipboardOwner(), UM_CALLHOOK, 0, (LPARAM)&data, 0, get_hook_timeout(), &ret);
+                #endif//__linux__
             }
         }
     }

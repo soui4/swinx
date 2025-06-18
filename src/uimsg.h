@@ -1,11 +1,10 @@
 #ifndef _UIMSG_H_
 #define _UIMSG_H_
-#include <windows.h>
 #include <mutex>
 #include <string>
 #include <uuid/uuid.h>
 #include <xcb/xproto.h>
-#include "gdi.h"
+#include <hook.h>
 #include "handle.h"
 #include "sharedmem.h"
 
@@ -213,6 +212,7 @@ struct SendReply : MsgReply
     }
 };
 
+
 struct Msg : MSG
 {
     MsgReply *msgReply;
@@ -254,13 +254,7 @@ struct MsgPaint : Msg
         : rgn(src)
     {
     }
-    ~MsgPaint()
-    {
-        if (rgn)
-        {
-            DeleteObject(rgn);
-        }
-    }
+    ~MsgPaint();
 };
 
 struct MsgWndPosChanged : Msg
@@ -306,6 +300,7 @@ enum {
     UM_XDND_STATUS,
 };
 
+#ifdef __linux__
 struct DragBase {
     HWND hFrom;
 };
@@ -345,5 +340,7 @@ struct DragOverMsg : Msg, DragOverData {
         lParam = (LPARAM)(DragOverData*)this;
     }
 };
+
+#endif//__linux__
 
 #endif //_UIMSG_H_

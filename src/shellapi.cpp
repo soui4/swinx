@@ -250,14 +250,9 @@ void WINAPI DragAcceptFiles(_In_ HWND hWnd, _In_ BOOL fAccept)
 }
 
 //----------------------------------------------------------------------
-static STrayIconMgr *getTrayIconMgr()
-{
-    return SConnMgr::instance()->getConnection()->GetTrayIconMgr();
-}
-
 BOOL WINAPI Shell_NotifyIconA(DWORD dwMessage, PNOTIFYICONDATAA lpData)
 {
-    return getTrayIconMgr()->NotifyIcon(dwMessage, lpData);
+    return SConnMgr::instance()->getConnection()->NotifyIcon(dwMessage, lpData);
 }
 
 BOOL WINAPI Shell_NotifyIconW(DWORD dwMessage, PNOTIFYICONDATAW lpData)

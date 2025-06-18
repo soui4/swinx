@@ -1,15 +1,23 @@
 #include <windows.h>
 #include <commdlg.h>
 #include "tostring.hpp"
+#ifdef ENABLE_GTK
 #include "gtk/gtkdlghelper.h"
+#endif//ENABLE_GTK
 #include "log.h"
 #define kLogTag "commondlg"
 
-static BOOL _GetOpenFileNameA(LPOPENFILENAMEA p, Gtk::Mode mode)
+enum Mode{
+    OPEN=0,
+    SAVE,
+    FOLDER,
+};
+
+static BOOL _GetOpenFileNameA(LPOPENFILENAMEA p, Mode mode)
 {
 #ifdef ENABLE_GTK
     std::list<std::string> lstRet;
-    bool ret = Gtk::openGtkFileChooser(lstRet, p->hwndOwner, mode, "", "", p->lpstrInitialDir ? p->lpstrInitialDir : "", p->lpstrFilter ? p->lpstrFilter : "", NULL, p->Flags & OFN_ALLOWMULTISELECT);
+    bool ret = Gtk::openGtkFileChooser(lstRet, p->hwndOwner, (Gtk::Mode)mode, "", "", p->lpstrInitialDir ? p->lpstrInitialDir : "", p->lpstrFilter ? p->lpstrFilter : "", NULL, p->Flags & OFN_ALLOWMULTISELECT);
     if (!ret || lstRet.empty())
         return FALSE;
     auto it = lstRet.begin();
@@ -62,7 +70,7 @@ static BOOL _GetOpenFileNameA(LPOPENFILENAMEA p, Gtk::Mode mode)
 #endif // ENABLE_GTK
 }
 
-BOOL _GetOpenFileNameW(LPOPENFILENAMEW p, Gtk::Mode mode)
+BOOL _GetOpenFileNameW(LPOPENFILENAMEW p, Mode mode)
 {
     std::string strFilter, strCustomFilter, strFile, strFileTitle, strInitDir, strTitle, strDefExt;
     tostring(p->lpstrFilter, -1, strFilter);
@@ -124,21 +132,21 @@ BOOL _GetOpenFileNameW(LPOPENFILENAMEW p, Gtk::Mode mode)
 
 BOOL GetOpenFileNameA(LPOPENFILENAMEA p)
 {
-    return _GetOpenFileNameA(p, Gtk::OPEN);
+    return _GetOpenFileNameA(p, OPEN);
 }
 
 BOOL GetOpenFileNameW(LPOPENFILENAMEW p)
 {
-    return _GetOpenFileNameW(p, Gtk::OPEN);
+    return _GetOpenFileNameW(p, OPEN);
 }
 
 BOOL GetSaveFileNameA(LPOPENFILENAMEA p)
 {
-    return _GetOpenFileNameA(p, Gtk::SAVE);
+    return _GetOpenFileNameA(p, SAVE);
 }
 BOOL GetSaveFileNameW(LPOPENFILENAMEW p)
 {
-    return _GetOpenFileNameW(p, Gtk::SAVE);
+    return _GetOpenFileNameW(p, SAVE);
     ;
 }
 
@@ -170,7 +178,7 @@ BOOL WINAPI PickFolderA(_In_ LPBROWSEINFOA lpbi)
     of.lpstrFile = lpbi->lpszPath;
     of.hwndOwner = lpbi->hwndOwner;
     of.lpstrInitialDir = lpbi->strlRoot;
-    return _GetOpenFileNameA(&of, Gtk::FOLDER);
+    return _GetOpenFileNameA(&of, FOLDER);
 }
 
 BOOL WINAPI PickFolderW(_In_ LPBROWSEINFOW lpbi)
@@ -182,5 +190,5 @@ BOOL WINAPI PickFolderW(_In_ LPBROWSEINFOW lpbi)
     of.lpstrFile = lpbi->lpszPath;
     of.hwndOwner = lpbi->hwndOwner;
     of.lpstrInitialDir = lpbi->strlRoot;
-    return _GetOpenFileNameW(&of, Gtk::FOLDER);
+    return _GetOpenFileNameW(&of, FOLDER);
 }

@@ -105,7 +105,16 @@ typedef void *PVOID;
 typedef char CHAR;
 typedef uint8_t UCHAR;
 typedef DWORD_PTR *PDWORD_PTR;
+
+#ifdef __linux__
 typedef int BOOL;
+#else
+#ifndef OBJC_BOOL_DEFINED
+typedef signed char BOOL;
+#endif//OBJC_BOOL_DEFINED
+#endif
+#define FALSE 0
+#define TRUE  1
 typedef float FLOAT;
 typedef FLOAT *PFLOAT;
 typedef double DOUBLE;
@@ -151,10 +160,6 @@ typedef struct _SYSTEMTIME
 #define GetGValue(rgb)   (LOBYTE(rgb >> 8))
 #define GetBValue(rgb)   (LOBYTE(rgb >> 16))
 #define GetAValue(rgb)   (LOBYTE(rgb >> 24))
-
-typedef int BOOL;
-#define FALSE 0
-#define TRUE  1
 
 #define MINCHAR     0x80
 #define MAXCHAR     0x7f

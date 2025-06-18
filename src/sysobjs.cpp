@@ -331,11 +331,13 @@ struct NamedWaitbleObj : _SynHandle
         int ret = mkfifo(pData->szName, 0666);
         if (ret != NOERROR && errno != EEXIST)
         {
+            perror("mkfifo");
             return false;
         }
-        fifo = open(pData->szName, IPC_CREAT | 0666);
+        fifo = open(pData->szName, O_RDWR);
         if (fifo == -1)
         {
+            perror("open fifo");
             return false;
         }
         pData->nRef++;

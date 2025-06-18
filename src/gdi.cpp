@@ -1,9 +1,7 @@
 ﻿#include <windows.h>
 #include <gdi.h>
-#include <cairo/cairo.h>
-#include <cairo/cairo-xcb.h>
+#include <cairo.h>
 #include <fontconfig/fontconfig.h>
-#include <xcb/xcb_aux.h>
 #include <math.h>
 #include <png.h>
 #include <assert.h>
@@ -870,7 +868,10 @@ HDC CreateCompatibleDC(HDC hdc)
     if (hdc == 0)
     {
         conn = SConnMgr::instance()->getConnection();
-        hwnd = conn->screen->root;
+        if (!conn)
+            return nullptr;
+        
+        hwnd = conn->GetScreenWindow();
     }
     else
     {
@@ -3027,7 +3028,24 @@ struct _IconObj
     DWORD yHotspot;
     HBITMAP hbmMask;
     HBITMAP hbmColor;
+    WORD    cursorId;
 };
+
+void SetCursorID(HICON hIcon, WORD cursorId)
+{
+    hIcon->cursorId = cursorId;
+}
+
+WORD GetCursorID(HICON hIcon)
+{
+    return hIcon->cursorId;
+}
+
+POINT GetIconHotSpot(HICON hIcon)
+{
+    POINT ret= { (LONG)hIcon->xHotspot, (LONG)hIcon->yHotspot };
+    return ret;
+}
 
 BOOL GetIconInfo(HICON hIcon, PICONINFO piconinfo)
 {
@@ -3191,7 +3209,7 @@ int GetTextFaceW(HDC hdc, int nCount, LPWSTR lpFaceName)
     return MultiByteToWideChar(CP_UTF8, 0, lf->lfFaceName, -1, lpFaceName, nCount);
 }
 
-BOOL Polygon(HDC hdc, const POINT *apt, int cpt)
+BOOL Polygon_Priv(HDC hdc, const POINT *apt, int cpt)
 {
     if (cpt < 2)
         return FALSE;
@@ -3467,10 +3485,7 @@ HDC WINAPI CreateICA(LPCSTR lpszDriver,    // driver name
                      CONST void *lpdvmInit // optional initialization data
 )
 {
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    HDC ret = new _SDC(conn->screen->root);
-    SelectObject(ret, conn->GetDesktopBitmap());
-    return ret;
+    return CreateCompatibleDC(0);
 }
 
 HDC WINAPI CreateICW(LPCWSTR lpszDriver,   // driver name

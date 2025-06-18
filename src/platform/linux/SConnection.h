@@ -6,6 +6,7 @@
 #include <list>
 #include <pthread.h>
 #include <xcb/xcb.h>
+#include <cairo/cairo-xcb.h>
 #include <mutex>
 #include <thread>
 #include <atomic>
@@ -107,9 +108,8 @@ class SConnection {
     HWND SetCapture(HWND hCapture);
     BOOL ReleaseCapture();
     HWND GetCapture() const;
-    HCURSOR SetCursor(HCURSOR cursor);
+    HCURSOR SetCursor(HWND hWnd,HCURSOR cursor);
     HCURSOR GetCursor();
-    BOOL SetWindowCursor(HWND hWnd,HCURSOR cursor);
     BOOL DestroyCursor(HCURSOR cursor);
 
     void SetTimerBlock(bool bBlock)
@@ -120,8 +120,6 @@ class SConnection {
     HWND GetActiveWnd() const;
 
     BOOL SetActiveWindow(HWND hWnd);
-
-    HWND GetWindow(HWND hWnd, int code) const;
 
     HWND WindowFromPoint(POINT pt, HWND hWnd) const;
     
@@ -165,6 +163,11 @@ class SConnection {
     HWND OnFindWindowEx(HWND hParent, HWND hChildAfter, LPCSTR lpClassName, LPCSTR lpWindowName);
     BOOL OnEnumWindows(HWND hParent, HWND hChildAfter,WNDENUMPROC lpEnumFunc, LPARAM lParam);
     HWND OnGetAncestor(HWND hwnd,UINT gaFlags);
+
+    cairo_surface_t * CreateWindowSurface(HWND hWnd,uint32_t visualId,int cx, int cy);
+    cairo_surface_t * ResizeSurface(cairo_surface_t *surface,HWND hWnd, uint32_t visualId, int width, int height);
+    
+    void SendSysCommand(HWND hWnd,int nCmd);
   public:
     struct CaretInfo
     {
@@ -190,7 +193,7 @@ class SConnection {
         return m_caretBlinkTime;
     }
 
-    void GetWorkArea(RECT* prc);
+    void GetWorkArea(HMONITOR hMonitor,RECT* prc);
 public:
     SClipboard* getClipboard() {
         return m_clipboard;
@@ -210,7 +213,6 @@ public:
 
     HANDLE SetClipboardData(UINT uFormat, HANDLE hMem);
 
-    UINT RegisterClipboardFormatA(LPCSTR pszName);
   public:
       bool hasXFixes() const { return xfixes_first_event > 0; }
       STrayIconMgr* GetTrayIconMgr() { return m_trayIconMgr; }
@@ -226,9 +228,33 @@ public:
       void OnWindowDestroy(HWND hWnd,_Window *wnd);
       void SetWindowVisible(HWND hWnd, _Window *wnd, BOOL bVisible, int nCmdShow);
       void SetParent(HWND hWnd, _Window *wnd,HWND parent);
-      void SendExposeEvent(HWND hWnd);
+      void SendExposeEvent(HWND hWnd, LPCRECT rc);
       void SetWindowMsgTransparent(HWND hWnd,_Window * wndObj,BOOL bTransparent);
       void AssociateHIMC(HWND hWnd,_Window *wndObj,HIMC hIMC);
+
+    void UpdateWindowIcon(HWND hWnd, _Window * wndObj);
+    int GetScreenWidth(HMONITOR hMonitor) const;
+    int GetScreenHeight(HMONITOR hMonitor) const;
+    HWND GetScreenWindow() const;
+
+    uint32_t GetVisualID(BOOL bScreen) const;
+    uint32_t GetCmap() const;
+    void SetZOrder(HWND hWnd, _Window * wndObj,HWND hWndInsertAfter);
+    void SendClientMessage(HWND hWnd, uint32_t type, uint32_t *data, int len);
+    uint32_t GetIpcAtom() const {
+        return atoms.WM_WIN4XCB_IPC;
+    }
+    DWORD GetWndProcessId(HWND hWnd);
+    HWND WindowFromPoint(POINT pt);
+    BOOL GetClientRect(HWND hWnd, RECT *pRc);
+    BOOL IsWindowVisible(HWND hWnd);
+    HWND GetWindow(HWND hWnd, _Window *wndObj,UINT uCmd);
+    UINT RegisterMessage(LPCSTR lpString);
+    UINT RegisterClipboardFormatA(LPCSTR lpString);
+    BOOL NotifyIcon(DWORD dwMessage, PNOTIFYICONDATAA lpData);
+    HMONITOR GetScreen(DWORD dwFlags) const;
+    void updateWindow(HWND hWnd, const RECT &rc);
+    void commitCanvas(HWND hWnd, const RECT &rc);
   public:
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);

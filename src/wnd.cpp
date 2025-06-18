@@ -1,12 +1,5 @@
 ﻿#include <windows.h>
 #include <wnd.h>
-#include <xcb/xcb.h>
-#include <xcb/xproto.h>
-#include <cairo/cairo-xcb.h>
-#include <xcb/xcb_aux.h>
-#include <xcb/xcb_icccm.h>
-#include <xcb/randr.h>
-#include <xcb/xfixes.h>
 #include <map>
 #include <mutex>
 #include <string>
@@ -24,33 +17,14 @@
 #include "tostring.hpp"
 #include "wndobj.h"
 #include "debug.h"
+#ifdef __linux__
 #include "SDragdrop.h"
+#endif//__linux__
 #include "synhandle.h"
 
 #define kLogTag "wnd"
 
 using namespace swinx;
-// xcb-icccm 3.8 support
-#ifdef XCB_ICCCM_NUM_WM_SIZE_HINTS_ELEMENTS
-#define xcb_get_wm_hints_reply         xcb_icccm_get_wm_hints_reply
-#define xcb_get_wm_hints               xcb_icccm_get_wm_hints
-#define xcb_get_wm_hints_unchecked     xcb_icccm_get_wm_hints_unchecked
-#define xcb_set_wm_hints               xcb_icccm_set_wm_hints
-#define xcb_set_wm_normal_hints        xcb_icccm_set_wm_normal_hints
-#define xcb_size_hints_set_base_size   xcb_icccm_size_hints_set_base_size
-#define xcb_size_hints_set_max_size    xcb_icccm_size_hints_set_max_size
-#define xcb_size_hints_set_min_size    xcb_icccm_size_hints_set_min_size
-#define xcb_size_hints_set_position    xcb_icccm_size_hints_set_position
-#define xcb_size_hints_set_resize_inc  xcb_icccm_size_hints_set_resize_inc
-#define xcb_size_hints_set_size        xcb_icccm_size_hints_set_size
-#define xcb_size_hints_set_win_gravity xcb_icccm_size_hints_set_win_gravity
-#define xcb_wm_hints_set_iconic        xcb_icccm_wm_hints_set_iconic
-#define xcb_wm_hints_set_normal        xcb_icccm_wm_hints_set_normal
-#define xcb_wm_hints_set_input         xcb_icccm_wm_hints_set_input
-#define xcb_wm_hints_t                 xcb_icccm_wm_hints_t
-#define XCB_WM_STATE_ICONIC            XCB_ICCCM_WM_STATE_ICONIC
-#define XCB_WM_STATE_WITHDRAWN         XCB_ICCCM_WM_STATE_WITHDRAWN
-#endif
 
 enum
 {
@@ -119,65 +93,11 @@ static BOOL InitWndDC(HWND hwnd, int cx, int cy)
     assert(hwnd);
     WndObj wndObj = WndMgr::fromHwnd(hwnd);
     assert(wndObj);
-    cairo_surface_t *surface = cairo_xcb_surface_create(wndObj->mConnection->connection, hwnd, xcb_aux_find_visual_by_id(wndObj->mConnection->screen, wndObj->visualId), std::max(cx, 1), std::max(cy, 1));
+    cairo_surface_t *surface = wndObj->mConnection->CreateWindowSurface(hwnd,wndObj->visualId,cx,cy);
     wndObj->bmp = InitGdiObj(OBJ_BITMAP, surface);
     wndObj->hdc = new _SDC(hwnd);
     SelectObject(wndObj->hdc, wndObj->bmp);
     return TRUE;
-}
-
-static void AppendIconData(std::vector<uint32_t> &buf, HICON hIcon)
-{
-    ICONINFO info;
-    if (GetIconInfo(hIcon, &info))
-    {
-        BITMAP bm;
-        GetObject(info.hbmColor, sizeof(bm), &bm);
-        if (bm.bmBitsPixel == 32)
-        {
-            int pos = buf.size();
-            buf.resize(pos + bm.bmWidth * bm.bmHeight + 2);
-            uint32_t *data = buf.data() + pos;
-            data[0] = bm.bmWidth;
-            data[1] = bm.bmHeight;
-            memcpy(data + 2, bm.bmBits, bm.bmWidth * bm.bmHeight * 4);
-        }
-        if (info.hbmColor)
-            DeleteObject(info.hbmColor);
-        if (info.hbmMask)
-            DeleteObject(info.hbmMask);
-    }
-}
-
-static void WIN_UpdateIcon(HWND hWnd)
-{
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (wndObj)
-    {
-        std::vector<uint32_t> buf;
-        AppendIconData(buf, wndObj->iconSmall);
-        AppendIconData(buf, wndObj->iconBig);
-        if (!buf.empty())
-        {
-            xcb_change_property(wndObj->mConnection->connection, XCB_PROP_MODE_REPLACE, hWnd, wndObj->mConnection->atoms._NET_WM_ICON, XCB_ATOM_CARDINAL, 32, buf.size(), buf.data());
-        }
-        else
-        {
-            xcb_delete_property(wndObj->mConnection->connection, hWnd, wndObj->mConnection->atoms._NET_WM_ICON);
-        }
-        xcb_flush(wndObj->mConnection->connection);
-    }
-}
-
-static void SetWindowPosHint(SConnection *c, HWND hWnd, int x, int y, int cx, int cy)
-{
-    xcb_size_hints_t hints;
-    memset(&hints, 0, sizeof(hints));
-    xcb_size_hints_set_position(&hints, true, x, y);
-    if (cx > 0 && cy > 0)
-        xcb_size_hints_set_size(&hints, true, cx, cy);
-    xcb_size_hints_set_win_gravity(&hints, XCB_GRAVITY_STATIC);
-    xcb_set_wm_normal_hints(c->connection, hWnd, &hints);
 }
 
 static BOOL GetScrollBarRect(HWND hWnd, UINT uSb, RECT *pRc)
@@ -331,11 +251,30 @@ BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
     }
     if (IsRectEmpty(lpRect))
         return FALSE;
+    #ifdef __linux__
     HRGN rgn = CreateRectRgnIndirect(lpRect);
     CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, rgn, RGN_OR);
     DeleteObject(rgn);
     wndObj->invalid.bErase = wndObj->invalid.bErase || bErase;
-    wndObj->mConnection->SendExposeEvent(hWnd);
+    wndObj->mConnection->SendExposeEvent(hWnd,lpRect);
+    #else
+    RECT rcInvalid={0};
+    GetRgnBox(wndObj->invalid.hRgn, &rcInvalid);
+    if (IsRectEmpty(&rcInvalid))
+    {
+        rcInvalid = *lpRect;
+    }
+    else
+    {
+        UnionRect(&rcInvalid,&rcInvalid,lpRect);
+    }
+
+    HRGN rgn = CreateRectRgnIndirect(&rcInvalid);
+    CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, rgn, RGN_OR);
+    DeleteObject(rgn);
+    wndObj->invalid.bErase = wndObj->invalid.bErase || bErase;
+    wndObj->mConnection->SendExposeEvent(hWnd,&rcInvalid);
+    #endif
     return TRUE;
 }
 
@@ -384,12 +323,12 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     pWnd->rc = rcInit;
     pWnd->showSbFlags |= (cs->style & WS_HSCROLL) ? SB_HORZ : 0;
     pWnd->showSbFlags |= (cs->style & WS_VSCROLL) ? SB_VERT : 0;
-    pWnd->visualId = conn->screen->root_visual;
+    pWnd->visualId = conn->GetVisualID(TRUE);
     int depth = XCB_COPY_FROM_PARENT;
     if ((pWnd->dwExStyle & WS_EX_COMPOSITED) && !(pWnd->dwStyle & WS_CHILD) && conn->IsScreenComposited())
     {
         pWnd->dwStyle &= ~WS_CAPTION;
-        pWnd->visualId = conn->rgba_visual->visual_id;
+        pWnd->visualId = conn->GetVisualID(FALSE);
         depth = 32;
     }
     else
@@ -431,8 +370,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     }
     if (cs->dwExStyle & WS_EX_TOPMOST)
     {
-        uint32_t values[] = { XCB_STACK_MODE_ABOVE };
-        xcb_configure_window(conn->connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
+        SetWindowPos(hWnd,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE);
     }
     if (isTransparent)
     {
@@ -641,14 +579,12 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return -1;
-
+    if (!(htCode >= HTCAPTION && htCode <= HTBOTTOMRIGHT) || htCode == HTVSCROLL || htCode == HTHSCROLL)
+        return -2;
     POINT ptClick;
     if (!wndObj->mConnection->GetCursorPos(&ptClick))
         return -1;
-    if (!(htCode >= HTCAPTION && htCode <= HTBOTTOMRIGHT) || htCode == HTVSCROLL || htCode == HTHSCROLL)
-        return -2;
-
-    //    SLOG_STMI() << "HandleNcTestCode,code=" << htCode;
+    SLOG_STMI() << "HandleNcTestCode,code=" << htCode;
     wndObj->mConnection->SetTimerBlock(true);
     RECT rcWnd = wndObj->rc;
     BOOL bQuit = FALSE;
@@ -672,7 +608,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
             }
             else if (msg.message == WM_LBUTTONUP)
             {
-                // SLOG_STMI() << "HandleNcTestCode,WM_LBUTTONUP";
+                SLOG_STMI() << "HandleNcTestCode,WM_LBUTTONUP";
                 bQuit = TRUE;
                 break;
             }
@@ -693,6 +629,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
                 { //
                     RECT rcNow = rcWnd;
                     rcNow.top += ptNow.y - ptClick.y;
+                    SLOG_STMI()<<"HandleNcTestCode SetWindowPos,cx="<<rcNow.right - rcNow.left<<" cy="<<rcNow.bottom - rcNow.top;
                     SetWindowPos(hWnd, 0, rcNow.left, rcNow.top, rcNow.right - rcNow.left, rcNow.bottom - rcNow.top, SWP_NOZORDER);
                 }
                 break;
@@ -764,7 +701,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     ReleaseCapture();
 
     wndObj->mConnection->SetTimerBlock(false);
-    // SLOG_STMI() << "HandleNcTestCode,Quit";
+    SLOG_STMI() << "HandleNcTestCode,Quit";
 
     return 0;
 }
@@ -776,7 +713,9 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
         WNDCLASSEXA wc;
         GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCE(wndObj->clsAtom), &wc);
         if (wc.hCursor)
-            SetCursor(wc.hCursor);
+        {
+            wndObj->mConnection->SetCursor(hWnd,wc.hCursor);
+        }
     }
     else if (htCode > HTCAPTION && htCode < HTBORDER)
     {
@@ -803,11 +742,7 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
             cursorId = IDC_SIZE;
             break;
         }
-        static LPCSTR prev_id = 0;
-        if (cursorId != prev_id)
-        {
-            prev_id = cursorId;
-        }
+        //SLOG_STMI()<<"UpdateWindowCursor, hWnd="<<hWnd<<" cursor="<<(WORD)(ULONG_PTR)cursorId;
         SetCursor(LoadCursor(wndObj->hInstance, cursorId));
     }
 }
@@ -825,13 +760,13 @@ static BOOL ActiveWindow(HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
     if ((wndObj->dwExStyle & (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW)) == 0 && (wndObj->dwStyle & WS_DISABLED) == 0)
     {
         UINT maRet = 0;
-        if (bMouseActive)
+        HWND oldActive = wndObj->mConnection->GetActiveWnd();
+        if (bMouseActive && oldActive != hWnd)
         {
             maRet = SendMessageA(hWnd, WM_MOUSEACTIVATE, (WPARAM)hWnd, MAKELPARAM(htCode, msg));
         }
         if (!bMouseActive || maRet == MA_ACTIVATE || maRet == MA_ACTIVATEANDEAT)
         {
-            HWND oldActive = wndObj->mConnection->GetActiveWnd();
             if (!wndObj->mConnection->SetActiveWindow(hWnd))
                 return FALSE;
             SendMessageA(hWnd, WM_ACTIVATE, bMouseActive ? WA_CLICKACTIVE : WA_ACTIVE, oldActive);
@@ -873,7 +808,7 @@ LRESULT CallWindowProc(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     return proc(hWnd, msg, wp, lp);
 }
 
-static BOOL CALLBACK Enum4DestroyOwned(HWND hwnd, LPARAM lParam)
+static int CALLBACK Enum4DestroyOwned(HWND hwnd, LPARAM lParam)
 {
     HWND hTest = (HWND)lParam;
     if (GetParent(hwnd) == hTest)
@@ -916,6 +851,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             wndObj->mConnection->SetWindowOpacity(hWnd, wndObj->byAlpha);
         }
         return 0;
+        #ifdef __linux__
     case UM_XDND_DRAG_ENTER:
     {
         SLOG_STMI() << "UM_XDND_DRAG_ENTER!";
@@ -1000,6 +936,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         SLOG_STMI() << "UM_XDND_DRAG_DROP, set dragData to null";
         return 0;
     }
+    #endif//__linux__
     case WM_LBUTTONDOWN:
         if (bSkipMsg = (0 == HandleNcTestCode(hWnd, wndObj->htCode)))
             break;
@@ -1188,7 +1125,9 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         {
             wndObj->rc.right = wndObj->rc.left + sz.cx;
             wndObj->rc.bottom = wndObj->rc.top + sz.cy;
-            cairo_xcb_surface_set_size((cairo_surface_t *)GetGdiObjPtr(wndObj->bmp), std::max(sz.cx, 1), std::max(sz.cy, 1));
+            cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(wndObj->bmp);
+            surface = wndObj->mConnection->ResizeSurface(surface,hWnd,wndObj->visualId, sz.cx,sz.cy);
+            SetGdiObjPtr(wndObj->bmp, surface);
             RECT rc = wndObj->rc;
             OffsetRect(&rc, -rc.left, -rc.top);
             InvalidateRect(hWnd, &rc, TRUE);
@@ -1343,20 +1282,10 @@ SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM w
 
     hEvt = CreateEventA(nullptr, FALSE, FALSE, evtName.c_str());
 
-    // the hWnd is valid window id.
-    xcb_client_message_event_t client_msg_event = {
-        XCB_CLIENT_MESSAGE,           //.response_type
-        32,                           //.format
-        0,                            //.sequence
-        (xcb_window_t)hWnd,           //.window
-        connCur->atoms.WM_WIN4XCB_IPC //.type
-    };
-    client_msg_event.data.data32[0] = msg;
-    memcpy(client_msg_event.data.data32 + 1, uuid, sizeof(suid_t));//use 1-2 as the suid.
-    // Send the client message event
-    xcb_send_event(connCur->connection, 0, hWnd, XCB_EVENT_MASK_NO_EVENT, (const char *)&client_msg_event);
-    // Flush the request to the X server
-    xcb_flush(connCur->connection);
+    uint32_t data[5];
+    data[0] = msg;
+    memcpy(data + 1, uuid, sizeof(suid_t));
+    connCur->SendClientMessage(hWnd, connCur->GetIpcAtom(), data, 5);
     return shareMem;
 }
 
@@ -1640,13 +1569,7 @@ tid_t GetWindowThreadProcessId(HWND hWnd, LPDWORD lpdwProcessId)
     SConnection *pConn = wndObj->mConnection;
     if (lpdwProcessId)
     {
-        xcb_get_property_cookie_t cookie = xcb_get_property(pConn->connection, 0, hWnd, pConn->atoms._NET_WM_PID, XCB_ATOM_CARDINAL, 0, 1);
-        xcb_get_property_reply_t *reply = xcb_get_property_reply(pConn->connection, cookie, NULL);
-        if (reply != NULL)
-        {
-            *lpdwProcessId = *(DWORD *)xcb_get_property_value(reply);
-            free(reply);
-        }
+        *lpdwProcessId = pConn->GetWndProcessId(hWnd);
     }
     return wndObj->tid;
 }
@@ -1718,8 +1641,9 @@ static void onExStyleChange(HWND hWnd, WndObj &wndObj, DWORD newExStyle)
     wndObj->dwExStyle = newExStyle;
     if (newExStyle & WS_EX_TOPMOST)
     {
-        uint32_t values[] = { XCB_STACK_MODE_ABOVE };
-        xcb_configure_window(wndObj->mConnection->connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
+        wndObj->mConnection->SetZOrder(hWnd, wndObj.data(), HWND_TOPMOST);
+    }else{
+        wndObj->mConnection->SetZOrder(hWnd, wndObj.data(), HWND_NOTOPMOST);//todo:hjx
     }
 }
 
@@ -2033,7 +1957,7 @@ HWND GetActiveWindow()
 HWND GetDesktopWindow()
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->screen->root;
+    return conn->GetScreenWindow();
 }
 
 BOOL IsWindowEnabled(HWND hWnd)
@@ -2061,7 +1985,7 @@ BOOL EnableWindow(HWND hWnd, BOOL bEnable)
         GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCE(wndObj->clsAtom), &clsInfo);
         if (clsInfo.hCursor)
         {
-            wndObj->mConnection->SetWindowCursor(hWnd, clsInfo.hCursor);
+            wndObj->mConnection->SetCursor(hWnd, clsInfo.hCursor);
         }
     }
     return TRUE;
@@ -2100,113 +2024,10 @@ BOOL GetCursorPos(LPPOINT ppt)
     return conn->GetCursorPos(ppt);
 }
 
-// 根据给定的 X 和 Y 坐标查找屏幕上的窗口
-xcb_window_t getWindowFromPoint(xcb_connection_t *connection, int16_t x, int16_t y)
-{
-    xcb_query_tree_reply_t *tree;
-    xcb_query_tree_cookie_t tree_cookie;
-    xcb_window_t root, parent, *children;
-    int children_num;
-
-    root = xcb_setup_roots_iterator(xcb_get_setup(connection)).data->root;
-    tree_cookie = xcb_query_tree(connection, root);
-    tree = xcb_query_tree_reply(connection, tree_cookie, NULL);
-
-    if (!tree)
-    {
-        return XCB_NONE;
-    }
-
-    children = xcb_query_tree_children(tree);
-    children_num = xcb_query_tree_children_length(tree);
-
-    for (int i = 0; i < children_num; i++)
-    {
-        xcb_get_geometry_reply_t *geo = xcb_get_geometry_reply(connection, xcb_get_geometry(connection, children[i]), NULL);
-
-        if (geo && x >= geo->x && y >= geo->y && x < geo->x + geo->width && y < geo->y + geo->height)
-        {
-            parent = children[i];
-            free(geo);
-            break;
-        }
-
-        free(geo);
-    }
-
-    free(tree);
-
-    return parent;
-}
-
-static void XcbGeo2Rect(xcb_get_geometry_reply_t *geo, RECT *rc)
-{
-    rc->left = geo->x;
-    rc->top = geo->y;
-    rc->right = geo->x + geo->width;
-    rc->bottom = geo->y + geo->height;
-}
-
-static HWND _WindowFromPoint(xcb_connection_t *connection, xcb_window_t parent, POINT pt)
-{
-    xcb_query_tree_reply_t *tree;
-    xcb_query_tree_cookie_t tree_cookie;
-    xcb_window_t *children;
-    HWND ret = XCB_NONE;
-    int children_num;
-
-    tree_cookie = xcb_query_tree(connection, parent);
-    tree = xcb_query_tree_reply(connection, tree_cookie, NULL);
-
-    if (!tree)
-    {
-        return XCB_NONE;
-    }
-    xcb_get_geometry_reply_t *geoParent = xcb_get_geometry_reply(connection, xcb_get_geometry(connection, parent), NULL);
-    if (!geoParent)
-        return XCB_NONE;
-    RECT rcParent;
-    XcbGeo2Rect(geoParent, &rcParent);
-    free(geoParent);
-    if (!PtInRect(&rcParent, pt))
-        return XCB_NONE;
-    children = xcb_query_tree_children(tree);
-    children_num = xcb_query_tree_children_length(tree);
-
-    for (int i = children_num - 1; i >= 0; i--)
-    {
-        if (!IsWindowVisible(children[i]))
-            continue;
-        xcb_get_geometry_reply_t *geo = xcb_get_geometry_reply(connection, xcb_get_geometry(connection, children[i]), NULL);
-        if (!geo)
-            continue;
-        RECT rc;
-        XcbGeo2Rect(geo, &rc);
-        free(geo);
-        if (PtInRect(&rc, pt))
-        {
-            ret = children[i];
-            break;
-        }
-    }
-    free(tree);
-    if (ret != XCB_NONE)
-    {
-        pt.x -= rcParent.left;
-        pt.y -= rcParent.top;
-        ret = _WindowFromPoint(connection, ret, pt);
-    }
-    else
-    {
-        ret = parent;
-    }
-    return ret;
-}
-
 HWND WindowFromPoint(POINT pt)
 {
     SConnection *pConn = SConnMgr::instance()->getConnection();
-    return _WindowFromPoint(pConn->connection, pConn->screen->root, pt);
+    return pConn->WindowFromPoint(pt);
 }
 
 UINT_PTR SetTimer(HWND hWnd, UINT_PTR nIDEvent, UINT uElapse, TIMERPROC lpTimerFunc)
@@ -2299,8 +2120,7 @@ BOOL UpdateWindow(HWND hWnd)
     GetRgnBox(wndObj->invalid.hRgn, &rcBox);
     if (IsRectEmpty(&rcBox))
         return FALSE;
-
-    SendMessageA(hWnd, WM_PAINT, 0, 0);
+    wndObj->mConnection->updateWindow(hWnd,rcBox);
     return TRUE;
 }
 
@@ -2311,15 +2131,7 @@ BOOL GetClientRect(HWND hWnd, RECT *pRc)
     {
         // hWnd is owned by other process.
         SConnection *conn = SConnMgr::instance()->getConnection();
-        xcb_get_geometry_cookie_t cookie = xcb_get_geometry(conn->connection, hWnd);
-        xcb_get_geometry_reply_t *reply = xcb_get_geometry_reply(conn->connection, cookie, NULL);
-        if (!reply)
-            return FALSE;
-        pRc->left = pRc->top = 0;
-        pRc->right = reply->width;
-        pRc->bottom = reply->height;
-        free(reply);
-        return TRUE;
+        return conn->GetClientRect(hWnd, pRc);
     }
     *pRc = wndObj->rc;
     OffsetRect(pRc, -pRc->left, -pRc->top);
@@ -2345,20 +2157,15 @@ static BOOL _GetWndRect(HWND hWnd, RECT *rc)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (wndObj)
+    {
         *rc = wndObj->rc;
+        return TRUE;
+    }    
     else
     {
         SConnection *conn = SConnMgr::instance()->getConnection();
-        xcb_get_geometry_cookie_t cookie = xcb_get_geometry(conn->connection, hWnd);
-        xcb_get_geometry_reply_t *reply = xcb_get_geometry_reply(conn->connection, cookie, nullptr);
-        if (!reply)
-            return FALSE;
-        rc->left = reply->x;
-        rc->top = reply->y;
-        rc->right = reply->x + reply->width;
-        rc->bottom = reply->y + reply->height;
+        return conn->GetClientRect(hWnd, rc);
     }
-    return TRUE;
 }
 
 BOOL GetWindowRect(HWND hWnd, RECT *rc)
@@ -2379,54 +2186,6 @@ BOOL GetWindowRect(HWND hWnd, RECT *rc)
         OffsetRect(rc, rcParent.left, rcParent.top);
     }
     return TRUE;
-}
-
-static void ChangeNetWmState(SConnection *conn, xcb_window_t wnd, bool bSet, xcb_atom_t one, xcb_atom_t two)
-{
-    xcb_client_message_event_t event;
-    event.response_type = XCB_CLIENT_MESSAGE;
-    event.window = wnd;
-    event.format = 32;
-    event.sequence = 0;
-    event.type = conn->atoms._NET_WM_STATE;
-    event.data.data32[0] = bSet ? 1 : 0;
-    event.data.data32[1] = one;
-    event.data.data32[2] = two;
-    event.data.data32[3] = event.data.data32[4] = 0;
-    xcb_send_event(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
-    xcb_flush(conn->connection);
-}
-
-static void SendSysCommand(SConnection *conn, xcb_window_t wnd, uint32_t cmd)
-{
-    xcb_client_message_event_t event;
-    event.response_type = XCB_CLIENT_MESSAGE;
-    event.window = wnd;
-    event.format = 32;
-    event.sequence = 0;
-    event.type = conn->atoms.WM_CHANGE_STATE;
-    event.data.data32[0] = cmd;
-    xcb_send_event(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
-    xcb_flush(conn->connection);
-}
-
-static void SendSysRestore(SConnection *conn, xcb_window_t wnd)
-{
-
-    xcb_client_message_event_t event;
-    event.response_type = XCB_CLIENT_MESSAGE;
-    event.window = wnd;
-    event.format = 32;
-    event.sequence = 0;
-    event.type = conn->atoms._NET_WM_STATE;
-    event.data.data32[0] = 0;
-    event.data.data32[1] = conn->atoms._NET_WM_STATE_MAXIMIZED_VERT;
-    event.data.data32[2] = conn->atoms._NET_WM_STATE_MAXIMIZED_HORZ;
-    event.data.data32[3] = 0;
-    event.data.data32[4] = 0;
-
-    xcb_send_event(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
-    xcb_flush(conn->connection);
 }
 
 static int GetScrollBarPartState(const ScrollBar *sb, int iPart)
@@ -3037,14 +2796,14 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         {
             HICON ret = wndObj->iconSmall;
             wndObj->iconSmall = (HICON)lp;
-            WIN_UpdateIcon(hWnd);
+            wndObj->mConnection->UpdateWindowIcon(hWnd, wndObj.data());
             return (LRESULT)ret;
         }
         else if (wp == ICON_BIG)
         {
             HICON ret = wndObj->iconBig;
             wndObj->iconBig = (HICON)lp;
-            WIN_UpdateIcon(hWnd);
+            wndObj->mConnection->UpdateWindowIcon(hWnd, wndObj.data());
             return (LRESULT)ret;
         }
         break;
@@ -3089,13 +2848,9 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
             }
             break;
         case SC_MINIMIZE:
-            SendSysCommand(wndObj->mConnection, hWnd, XCB_ICCCM_WM_STATE_ICONIC);
-            break;
         case SC_MAXIMIZE:
-            ChangeNetWmState(wndObj->mConnection, hWnd, true, wndObj->mConnection->atoms._NET_WM_STATE_MAXIMIZED_HORZ, wndObj->mConnection->atoms._NET_WM_STATE_MAXIMIZED_VERT);
-            break;
         case SC_RESTORE:
-            SendSysRestore(wndObj->mConnection, hWnd);
+            wndObj->mConnection->SendSysCommand(hWnd,action);
             break;
         case SC_CLOSE:
             SendMessage(hWnd, WM_CLOSE, 0, 0);
@@ -3152,36 +2907,10 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
             }
             SendMessage(hWnd, WM_SIZE, 0, MAKELPARAM(wndPos.cx, wndPos.cy));
         }
-        if ((wndPos.flags & (SWP_NOMOVE | SWP_NOSIZE)) != 0)
-        {
-            SetWindowPosHint(wndObj->mConnection, hWnd, rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
-        }
         if (!(wndPos.flags & SWP_NOZORDER))
         {
-            if (wndPos.hwndInsertAfter == HWND_TOPMOST || wndPos.hwndInsertAfter == HWND_TOP)
-            {
-                if (wndPos.hwndInsertAfter == HWND_TOPMOST)
-                {
-                    uint32_t val[] = { XCB_STACK_MODE_ABOVE };
-                    xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_STACK_MODE, val);
-                    wndObj->dwExStyle |= WS_EX_TOPMOST;
-                }
-                else
-                {
-                    uint32_t val[] = { XCB_STACK_MODE_TOP_IF };
-                    xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_STACK_MODE, val);
-                    wndObj->dwExStyle &= ~WS_EX_TOPMOST;
-                }
-            }
-            else
-            {
-                uint32_t val[] = { (uint32_t)wndPos.hwndInsertAfter, XCB_STACK_MODE_ABOVE };
-                xcb_configure_window(wndObj->mConnection->connection, wndPos.hwnd, XCB_CONFIG_WINDOW_SIBLING | XCB_CONFIG_WINDOW_STACK_MODE, val);
-                wndObj->dwExStyle &= ~WS_EX_TOPMOST;
-            }
-            xcb_flush(wndObj->mConnection->connection);
+            wndObj->mConnection->SetZOrder(hWnd, wndObj.data(), wndPos.hwndInsertAfter);
         }
-
         int showCmd = -1;
         if (wndPos.flags & SWP_SHOWWINDOW)
         {
@@ -3196,7 +2925,6 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         }
         if (showCmd != -1)
             ShowWindow(wndPos.hwnd, showCmd);
-        xcb_flush(wndObj->mConnection->connection);
         if (!(wndPos.flags & SWP_NOREDRAW))
         {
             InvalidateRect(hWnd, nullptr, TRUE);
@@ -3250,15 +2978,7 @@ BOOL MoveWindow(HWND hWnd, int x, int y, int nWidth, int nHeight, BOOL bRepaint)
 BOOL IsWindowVisible(HWND hWnd)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
-    xcb_connection_t *connection = conn->connection;
-
-    xcb_get_window_attributes_cookie_t cookie = xcb_get_window_attributes(connection, hWnd);
-    xcb_get_window_attributes_reply_t *reply = xcb_get_window_attributes_reply(connection, cookie, NULL);
-    if (!reply)
-        return FALSE;
-    uint8_t mapState = reply->map_state;
-    free(reply);
-    return mapState == XCB_MAP_STATE_VIEWABLE;
+    return conn->IsWindowVisible(hWnd);
 }
 
 BOOL IsZoomed(HWND hWnd)
@@ -3378,7 +3098,9 @@ int ReleaseDC(HWND hWnd, HDC hdc)
     RestoreDC(hdc, -1);
     if (hdc->nSave > 0)
         return 1;
-    xcb_flush(wndObj->mConnection->connection);
+    RECT rc;
+    GetClipBox(hdc, &rc);
+    wndObj->mConnection->commitCanvas(hWnd,rc);
     return 1;
 }
 
@@ -3492,53 +3214,11 @@ static HWND GetWndSibling(xcb_connection_t *conn, HWND hParent, HWND hWnd, BOOL 
 
 HWND GetWindow(HWND hWnd, UINT uCmd)
 {
-    if (uCmd == GW_OWNER)
-    {
-        WndObj wndObj = WndMgr::fromHwnd(hWnd);
-        if (!wndObj)
-        {
-            SetLastError(ERROR_INVALID_HANDLE);
-            return 0;
-        }
-        return wndObj->owner;
-    }
-
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    xcb_query_tree_cookie_t cookie = xcb_query_tree(conn->connection, hWnd);
-    xcb_query_tree_reply_t *reply = xcb_query_tree_reply(conn->connection, cookie, NULL);
-    if (!reply)
-    {
-        SetLastError(ERROR_INVALID_HANDLE);
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
         return 0;
-    }
-    HWND hRet = 0;
-    xcb_window_t *children = xcb_query_tree_children(reply);
-    HWND hParent = reply->parent ? reply->parent : reply->root;
-    switch (uCmd)
-    {
-    case GW_CHILDFIRST:
-        if (reply->children_len > 0)
-            hRet = children[0];
-        break;
-    case GW_CHILDLAST:
-        if (reply->children_len > 0)
-            hRet = children[reply->children_len - 1];
-        break;
-    case GW_HWNDFIRST:
-        hRet = GetWindow(hParent, GW_CHILDFIRST);
-        break;
-    case GW_HWNDLAST:
-        hRet = GetWindow(hParent, GW_CHILDLAST);
-        break;
-    case GW_HWNDPREV:
-        hRet = GetWndSibling(conn->connection, hParent, hWnd, FALSE);
-        break;
-    case GW_HWNDNEXT:
-        hRet = GetWndSibling(conn->connection, hParent, hWnd, TRUE);
-        break;
-    }
-    free(reply);
-    return hRet;
+    else
+        return wndObj->mConnection->GetWindow(hWnd, wndObj.data(), uCmd);
 }
 
 //-------------------------------------------------------------
@@ -3908,7 +3588,7 @@ int WINAPI ScrollWindowEx(HWND hWnd, int dx, int dy, const RECT *prcScroll, cons
 UINT WINAPI RegisterWindowMessageA(_In_ LPCSTR lpString)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
-    return WM_REG_FIRST + SAtoms::internAtom(conn->connection, 0, lpString);
+    return conn->RegisterMessage(lpString);
 }
 
 UINT WINAPI RegisterWindowMessageW(_In_ LPCWSTR lpString)

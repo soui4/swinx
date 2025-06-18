@@ -9,9 +9,9 @@ public:
     CursorMgr();
     ~CursorMgr();
 
-    static HCURSOR LoadCursor(LPCSTR lpCursorName);
+    static HCURSOR loadCursor(LPCSTR lpCursorName);
 
-    static BOOL DestroyCursor(HCURSOR cursor);
+    static BOOL destroyCursor(HCURSOR cursor);
 
   private:
     HCURSOR _LoadCursor(LPCSTR lpCursorName);

@@ -121,7 +121,7 @@ class CMenu : public CNativeWnd {
   public:
     CMenu(SMenuItem *pParent = nullptr);
 
-    virtual ~CMenu(void) noexcept override;
+    virtual ~CMenu(void) ;
 
     void SetParent(CMenu *pParent)
     {
@@ -177,7 +177,7 @@ class CMenu : public CNativeWnd {
     BOOL SetMenuInfo(LPCMENUINFO lpMenuInfo);
 
   public:
-    static void EndMenu(int nCmdId = 0);
+    static BOOL EndMenu(int nCmdId = 0);
 
     CMenu *GetParentItem();
 
@@ -1402,24 +1402,19 @@ void CMenu::OnMouseLeave()
     HoverItem(-1);
 }
 
-void CMenu::EndMenu(int nCmdId /*=0*/)
+BOOL CMenu::EndMenu(int nCmdId /*=0*/)
 {
     if (!s_MenuData)
-        return;
+        return FALSE;
     s_MenuData->ExitMenu(nCmdId);
     ::PostMessage(s_MenuData->GetOwner(), WM_NULL, 0, 0);
+    return TRUE;
 }
 
 CMenu *CMenu::GetParentItem()
 {
     return m_pParent;
 }
-
-EXTERN_C void EndMenuEx(int nCmdId)
-{
-    CMenu::EndMenu(nCmdId);
-}
-
 SMenuItem *CMenu::FindItem(UINT id)
 {
     for (int idx = 0; idx < m_lsMenuItem.size(); idx++)
@@ -1879,4 +1874,10 @@ BOOL WINAPI AppendMenuW(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR l
     std::string str;
     tostring(lpNewItem, -1, str);
     return AppendMenuA(hMenu, uFlags, uIDNewItem, str.c_str());
+}
+
+BOOL WINAPI EndMenu()
+{
+    CMenu::EndMenu();
+    return TRUE;
 }

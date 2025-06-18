@@ -1,7 +1,6 @@
 #ifndef _SHARED_MEM_H_
 #define _SHARED_MEM_H_
-#include <windows.h>
-
+#include <ctypes.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/types.h>

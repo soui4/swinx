@@ -1,5 +1,6 @@
 #include "sharedmem.h"
 #include <sys/mman.h>
+#include <windows.h>
 #include "log.h"
 #define kLogTag "sharememory"
 namespace swinx{

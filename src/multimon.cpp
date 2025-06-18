@@ -18,31 +18,27 @@ BOOL WINAPI EnumDisplayDevicesA(PVOID, DWORD, PDISPLAY_DEVICEA, DWORD)
     return FALSE;
 }
 
-HMONITOR
-MonitorFromWindow(HWND hWnd, DWORD dwFlags)
+HMONITOR MonitorFromWindow(HWND hWnd, DWORD dwFlags)
 {
     WndObj pWnd = WndMgr::fromHwnd(hWnd);
     if (!pWnd)
         return FALSE;
-    auto conn = SConnMgr::instance()->getConnection(pWnd->tid);
-    return (HMONITOR)conn->screen;
+    SConnection * conn = SConnMgr::instance()->getConnection(pWnd->tid);
+    return conn->GetScreen(dwFlags);
 }
 
-HMONITOR MonitorFromPoint(POINT pt,     // point
-                          DWORD dwFlags // determine return value
-)
+HMONITOR MonitorFromPoint(POINT pt,  DWORD dwFlags )
 {
     SConnection *pConn = SConnMgr::instance()->getConnection();
-    return (HMONITOR)pConn->screen;
+    return pConn->GetScreen(dwFlags);
 }
 
 HMONITOR MonitorFromRect(LPCRECT lprc, // rectangle
                          DWORD dwFlags // determine return value
 )
 {
-    // todo:hjx
     SConnection *pConn = SConnMgr::instance()->getConnection();
-    return (HMONITOR)pConn->screen;
+    return pConn->GetScreen(dwFlags);
 }
 
 BOOL GetMonitorInfoW(HMONITOR hMonitor, LPMONITORINFO lpmi)
@@ -54,15 +50,12 @@ BOOL GetMonitorInfoA(HMONITOR hMonitor, LPMONITORINFO lpmi)
 {
     if (lpmi == nullptr || lpmi->cbSize != sizeof(MONITORINFO))
         return FALSE;
-    xcb_screen_t *screen = (xcb_screen_t *)hMonitor;
-
+    SConnection *pConn = SConnMgr::instance()->getConnection();
     lpmi->rcMonitor.left = 0;
     lpmi->rcMonitor.top = 0;
-    lpmi->rcMonitor.right = screen->width_in_pixels;
-    lpmi->rcMonitor.bottom = screen->height_in_pixels;
-
+    lpmi->rcMonitor.right = pConn->GetScreenWidth(hMonitor);
+    lpmi->rcMonitor.bottom =  pConn->GetScreenHeight(hMonitor);
     lpmi->rcWork = lpmi->rcMonitor;
-    SConnection *pConn = SConnMgr::instance()->getConnection();
-    pConn->GetWorkArea(&lpmi->rcWork);
+    pConn->GetWorkArea(hMonitor,&lpmi->rcWork);
     return TRUE;
 }

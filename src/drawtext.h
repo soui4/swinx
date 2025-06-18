@@ -1,9 +1,9 @@
-﻿#ifndef _DRAWTEXT_H_
+#ifndef _DRAWTEXT_H_
 #define _DRAWTEXT_H_
 
 #include <windows.h>
 #include <vector>
-#include <cairo/cairo.h>
+#include <cairo.h>
 
 #define SkScalar float
 class TextLayoutEx {

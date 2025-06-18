@@ -138,12 +138,18 @@ BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLa
         struct timespec st_mtim; /* Time of last modification.  */
         struct timespec st_ctim; /* Time of last status change.  */
 
-        struct stat64 st;
-        if (0 != fstat64(fd->fd, &st))
+        struct stat st;
+        if (0 != fstat(fd->fd, &st))
             return FALSE;
-        //TimeSpec2FileTime(st.st_ctim, lpCreationTime);
-        //TimeSpec2FileTime(st.st_mtim, lpLastWriteTime);
-        //TimeSpec2FileTime(st.st_atim, lpLastAccessTime);
+        #ifdef __APPLE__
+        TimeSpec2FileTime(st.st_atimespec, lpLastAccessTime);
+        TimeSpec2FileTime(st.st_mtimespec, lpLastWriteTime);
+        TimeSpec2FileTime(st.st_ctimespec, lpCreationTime);
+        #else
+        TimeSpec2FileTime(st.st_ctim, lpCreationTime);
+        TimeSpec2FileTime(st.st_mtim, lpLastWriteTime);
+        TimeSpec2FileTime(st.st_atim, lpLastAccessTime);
+        #endif
         return TRUE;
     }
     else
@@ -189,7 +195,7 @@ int _open_osfhandle(HANDLE hFile, int flags)
 }
 
 /* extend a file beyond the current end of file */
-static int grow_file(int unix_fd, uint64_t new_size)
+static bool grow_file(int unix_fd, uint64_t new_size)
 {
     static const char zero = 0;
     off_t size = new_size;
@@ -197,15 +203,15 @@ static int grow_file(int unix_fd, uint64_t new_size)
     if (sizeof(new_size) > sizeof(size) && size != new_size)
     {
         set_error(STATUS_INVALID_PARAMETER);
-        return 0;
+        return false;
     }
     /* extend the file one byte beyond the requested size and then truncate it */
     /* this should work around ftruncate implementations that can't extend files */
     if (pwrite(unix_fd, &zero, 1, size) != -1)
     {
-        return ftruncate(unix_fd, size) == 0 ? 1 : 0;
+        return ftruncate(unix_fd, size) == 0 ;
     }
-    return 0;
+    return false;
 }
 
 static bool set_fd_eof(int fd, uint64_t eof)
@@ -214,12 +220,10 @@ static bool set_fd_eof(int fd, uint64_t eof)
 
     if (fd == -1)
     {
-        // set_error(fd->no_fd_status);
         return false;
     }
     if (fstat(fd, &st) == -1)
     {
-        // file_set_error();
         return false;
     }
     if (eof < st.st_size)
@@ -305,7 +309,7 @@ BOOL WINAPI SetEndOfFile(HANDLE file)
     }
     LARGE_INTEGER pos;
     pos.QuadPart = lseek(fd->fd, 0, SEEK_CUR);
-    return set_fd_eof(fd->fd, pos.QuadPart) != -1;
+    return set_fd_eof(fd->fd, pos.QuadPart);
 }
 
 typedef short CSHORT;
@@ -653,10 +657,10 @@ BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFind
             bMatch = stricmp(info->name, entry->d_name) == 0;
         if (!bMatch)
             continue;
-        struct stat64 fileStat = { 0 };
+        struct stat fileStat = { 0 };
         std::stringstream path;
         path << info->path << "/" << entry->d_name;
-        if (0 == stat64(path.str().c_str(), &fileStat))
+        if (0 == stat(path.str().c_str(), &fileStat))
         {
             if (S_ISREG(fileStat.st_mode))
             {

@@ -24,6 +24,7 @@
 #include "tostring.hpp"
 #include "debug.h"
 #include "sysapi.h"
+#include "cursormgr.h"
 #define kLogTag "sysapi"
 
 using namespace swinx;
@@ -780,6 +781,21 @@ BOOL LocalFileTimeToFileTime(const FILETIME *lpLocalFileTime, LPFILETIME lpFileT
     return TRUE;
 }
 
+BOOL FileTimeToLocalFileTime(const FILETIME *lpFileTime, LPFILETIME lpLocalFileTime)
+{
+    time_t utcTime = FileTime2TimeT(*lpFileTime);
+    struct tm *utcTm = localtime(&utcTime);
+    if (!utcTm) {
+        return FALSE;
+    }
+    time_t localTime = mktime(utcTm);
+    if (localTime == (time_t)-1) {
+        return  FALSE;
+    }
+    TimeT2FileTime(localTime, lpLocalFileTime);
+    return TRUE;
+}
+
 time_t _mkgmtime(struct tm *_Tm)
 {
     return mktime(_Tm);
@@ -1288,12 +1304,13 @@ int GetSystemMetrics(int nIndex)
 {
     int ret = 0;
     SConnection *conn = SConnMgr::instance()->getConnection();
+    HMONITOR hMonitor = conn->GetScreen(0);
     switch (nIndex)
     {
     case SM_CXSCREEN:
-        return conn->screen->width_in_pixels;
+        return conn->GetScreenWidth(hMonitor);
     case SM_CYSCREEN:
-        return conn->screen->height_in_pixels;
+        return conn->GetScreenHeight(hMonitor);
     case SM_CXBORDER:
     case SM_CYBORDER:
     case SM_CXEDGE:
@@ -1470,7 +1487,7 @@ pid_t WINAPI GetProcessId(HANDLE hProcess)
     return pid;
 }
 
-HANDLE WINAPI GetCurrentProcess(void)
+HANDLE WINAPI GetCurrentProcess_Priv(void)
 {
     return INVALID_HANDLE_VALUE; // return a pseudo handle
 }
@@ -1800,9 +1817,18 @@ __time64_t _time64(__time64_t *_Time)
 #endif //__x86_64
 }
 
-HCURSOR LoadCursor(HINSTANCE hInstance, LPCSTR lpCursorName)
+HCURSOR LoadCursorA(HINSTANCE hInstance, LPCSTR lpCursorName)
 {
-    return CursorMgr::LoadCursor(lpCursorName);
+    return CursorMgr::loadCursor(lpCursorName);
+}
+
+HCURSOR LoadCursorW(HINSTANCE hInstance, LPCWSTR lpCursorName)
+{
+    if(IS_INTRESOURCE(lpCursorName))
+        return LoadCursorA(hInstance, (LPCSTR)lpCursorName);
+    std::string str;
+    tostring(lpCursorName, -1, str);
+    return CursorMgr::loadCursor(str.c_str());
 }
 
 BOOL DestroyCursor(HCURSOR hCursor)
@@ -1811,13 +1837,13 @@ BOOL DestroyCursor(HCURSOR hCursor)
     BOOL bRet = conn->DestroyCursor(hCursor);
     if (!bRet)
         return FALSE;
-    return CursorMgr::DestroyCursor(hCursor);
+    return CursorMgr::destroyCursor(hCursor);
 }
 
 HCURSOR SetCursor(HCURSOR hCursor)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->SetCursor(hCursor);
+    return conn->SetCursor(0, hCursor);
 }
 
 HCURSOR GetCursor(VOID)
@@ -2454,14 +2480,7 @@ class SOsHandleMgr {
 
     ~SOsHandleMgr()
     {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        auto it = m_fdMap.begin();
-        while (it != m_fdMap.end())
-        {
-            CloseHandle(it->second);
-            it++;
-        }
-        m_fdMap.clear();
+        cleanup();
     }
 
     bool isValidFd(int fd)
@@ -2504,6 +2523,18 @@ class SOsHandleMgr {
         HANDLE hRet = NewSynHandle(new FdHandle(fd));
         m_fdMap.insert(std::make_pair(fd, hRet));
         return hRet;
+    }
+
+    void cleanup()
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        auto it = m_fdMap.begin();
+        while (it != m_fdMap.end())
+        {
+            CloseHandle(it->second);
+            it++;
+        }
+        m_fdMap.clear();
     }
 
   private:

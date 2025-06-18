@@ -999,8 +999,13 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
         BYTE bXHeight;
     } PANOSE, *LPPANOSE;
 
-    BOOL WINAPI Polygon(HDC hdc, const POINT *apt, int cpt);
 
+    BOOL WINAPI Polygon_Priv(HDC hdc, const POINT *apt, int cpt);
+
+    #ifndef MacPolygon
+    #define Polygon Polygon_Priv
+    #endif//MacPolygon
+    
 #define TA_NOUPDATECP 0
 #define TA_UPDATECP   1
 

@@ -2,7 +2,7 @@
 #define _BUILTIN_IMAGE_H_
 
 #include <windows.h>
-#include <cairo/cairo.h>
+#include <cairo.h>
 class BuiltinImage {
 public:
 	enum {

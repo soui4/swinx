@@ -2,7 +2,7 @@
 #define _SDC_H_
 #include <windows.h>
 #include <region.h>
-#include <cairo/cairo.h>
+#include <cairo.h>
 
 typedef struct _SDC
 {

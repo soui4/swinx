@@ -1,33 +1,8 @@
 #include "cursormgr.h"
 #include "cursors.hpp"
 #include <assert.h>
-
+#include "cursorid.h"
 static CursorMgr s_cursorMgr;
-
-enum
-{
-    CIDC_NODROP = 1,
-    CIDC_MOVE = 2,
-    CIDC_COPY = 3,
-    CIDC_LINK = 4,
-
-    CIDC_ARROW = 32512,
-    CIDC_IBEAM = 32513,
-    CIDC_WAIT = 32514,
-    CIDC_CROSS = 32515,
-    CIDC_UPARROW = 32516,
-    CIDC_SIZE = 32640,
-    CIDC_ICON = 32641,
-    CIDC_SIZENWSE = 32642,
-    CIDC_SIZENESW = 32643,
-    CIDC_SIZEWE = 32644,
-    CIDC_SIZENS = 32645,
-    CIDC_SIZEALL = 32646,
-    CIDC_NO = 32648,
-    CIDC_HAND = 32649,
-    CIDC_APPSTARTING = 32650,
-    CIDC_HELP = 32651,
-};
 
 struct CData
 {
@@ -138,11 +113,12 @@ CursorMgr::~CursorMgr()
     m_stdCursor.clear();
 }
 
-HCURSOR CursorMgr::LoadCursor(LPCSTR lpCursorName)
+HCURSOR CursorMgr::loadCursor(LPCSTR lpCursorName)
 {
     return s_cursorMgr._LoadCursor(lpCursorName);
 }
 
+void SetCursorID(HICON hIcon, WORD cursorId);
 HCURSOR CursorMgr::_LoadCursor(LPCSTR lpCursorName)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
@@ -159,6 +135,7 @@ HCURSOR CursorMgr::_LoadCursor(LPCSTR lpCursorName)
         }
         ret = (HCURSOR)LoadImageBuf((PBYTE)data.buf, data.length, IMAGE_CURSOR, 0, 0, LR_DEFAULTSIZE | LR_DEFAULTCOLOR);
         assert(ret);
+        SetCursorID((HICON)ret, wId);
         m_stdCursor.insert(std::make_pair(wId, ret));
     }
     else
@@ -168,7 +145,7 @@ HCURSOR CursorMgr::_LoadCursor(LPCSTR lpCursorName)
     return ret;
 }
 
-BOOL CursorMgr::DestroyCursor(HCURSOR cursor)
+BOOL CursorMgr::destroyCursor(HCURSOR cursor)
 {
     return s_cursorMgr._DestroyCursor(cursor);
 }

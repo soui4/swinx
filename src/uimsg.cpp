@@ -1,11 +1,19 @@
 #include <windows.h>
 #include <atomic>
 #include "uimsg.h"
+#ifdef __linux__
 #include "SDragdrop.h"
-
+#endif//__linux__
 #include "log.h"
 #define kLogTag "uimsg"
 
+MsgPaint::~MsgPaint()
+{
+    if (rgn)
+    {
+        DeleteObject(rgn);
+    }
+}
 void IpcMsg::gen_suid(suid_t *uid)
 {
     static std::atomic<uint32_t> s_uid_index(0);
@@ -98,6 +106,7 @@ IpcMsg::IpcMsg(HWND hWnd, const uint32_t data[5])
         SetEvent(synEvt);
     }
 //-----------------------------------------------------------
+#ifdef __linux__
 DragEnterData::DragEnterData(XDndDataObjectProxy *_pData)
 {
     pData = _pData;
@@ -112,3 +121,4 @@ DragEnterData::~DragEnterData()
         pData = NULL;
     }
 }
+#endif//__linux__

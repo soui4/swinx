@@ -211,7 +211,6 @@ UINT SKeyboard::mapVirtualKey(UINT code, UINT type) const
     case MAPVK_VK_TO_VSC_EX:
     case MAPVK_VK_TO_VSC:
     {
-        // todo:hjx
         ret = lookVkMap(code);
         break;
     }

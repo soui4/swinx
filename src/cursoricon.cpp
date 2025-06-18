@@ -1891,22 +1891,6 @@ INT WINAPI LookupIconIdFromDirectory(LPBYTE dir, BOOL bIcon)
 }
 
 /***********************************************************************
- *              LoadCursorW (USER32.@)
- */
-HCURSOR WINAPI LoadCursorW(HINSTANCE hInstance, LPCWSTR name)
-{
-    return (HCURSOR)LoadImageW(hInstance, name, IMAGE_CURSOR, 0, 0, LR_SHARED | LR_DEFAULTSIZE);
-}
-
-/***********************************************************************
- *		LoadCursorA (USER32.@)
- */
-HCURSOR WINAPI LoadCursorA(HINSTANCE hInstance, LPCSTR name)
-{
-    return (HCURSOR)LoadImageA(hInstance, name, IMAGE_CURSOR, 0, 0, LR_SHARED | LR_DEFAULTSIZE);
-}
-
-/***********************************************************************
  *		LoadIconW (USER32.@)
  */
 HICON WINAPI LoadIconW(HINSTANCE hInstance, LPCWSTR name)
