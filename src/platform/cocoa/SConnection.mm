@@ -1008,6 +1008,8 @@ HWND SConnection::_GetRoot(HWND hWnd){
 
 HWND SConnection::_GetParent(HWND hWnd){
   WndObj wndObj = WndMgr::fromHwnd(hWnd);
+  if(!wndObj)
+    return NULL;
   if(wndObj->dwStyle & WS_CHILD)
     return wndObj->parent;
   return NULL;
