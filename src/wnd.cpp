@@ -599,6 +599,10 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
         {
             if (CallMsgFilter(&msg, htCode == HTCAPTION ? MSGF_SIZE : MSGF_MOVE))
                 continue;
+            if(msg.message == WM_CANCELMODE){
+                bQuit = TRUE;
+                break;
+            }
             if (msg.message == WM_QUIT)
             {
                 SLOG_STMI() << "HandleNcTestCode,WM_QUIT";

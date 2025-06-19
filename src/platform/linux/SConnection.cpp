@@ -1891,11 +1891,6 @@ HCURSOR SConnection::SetCursor(HWND hWnd,HCURSOR cursor)
     {
         ret = it->second;
     }
-    else if (cursor == it->second)
-    {
-        return ret;
-    }
-    
     xcb_cursor_t xcbCursor = getXcbCursor(cursor);
     if (xcbCursor){
         uint32_t val[] = { xcbCursor };

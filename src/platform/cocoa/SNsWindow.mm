@@ -51,7 +51,11 @@ static void RevertNSRect(NSScreen *screen, BOOL fullscreen, NSRect *r)
 class NsWndMap{
   public:
     NsWndMap(){
-        m_base = getpid()<<16;
+    }
+    ~NsWndMap(){
+        std::lock_guard<std::mutex> lock(m_mutex);
+        SLOG_STMW()<<"remain "<<m_map.size()<<" windows";
+        m_map.clear();
     }
     SNsWindow* get(HWND hWnd){
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -71,18 +75,9 @@ class NsWndMap{
             return;
         m_map.erase(hWnd);
     }
-    HWND generateId(){
-        std::lock_guard<std::mutex> lock(m_mutex);
-        int hWnd = m_base++;
-        while(m_map.find(hWnd) != m_map.end())
-            hWnd++;
-        pid_t pid;
-        return hWnd;
-    }
   private:
     std::map<HWND, SNsWindow*> m_map;
     std::mutex m_mutex;
-    int m_base = 0;
 };
 
 static NsWndMap s_hwnd2nsWin;
@@ -139,7 +134,7 @@ defer:(BOOL)flag;
     NSRange   _selectedRange;
     NSRect    _inputRect;
 }
-- (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withId:(HWND)hWnd withParent:(HWND)hParent;
+- (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent;
 - (void)destroy;
 - (BOOL)startCapture;
 - (BOOL)stopCapture;
@@ -160,9 +155,9 @@ defer:(BOOL)flag;
     NSEventModifierFlags m_modifierFlags;
 }
 
-- (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withId:(HWND)hWnd withParent:(HWND)hParent{
+- (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent{
     m_pListener = listener;
-    m_hWnd = hWnd;
+    m_hWnd = (HWND)(__bridge void *)self;
     self = [super initWithFrame:frameRect];
     if (self) {
         self.wantsLayer = YES;    
@@ -349,9 +344,9 @@ defer:(BOOL)flag;
 - (void)mouseEntered:(NSEvent *)theEvent{
     [self onMouseEvent:theEvent withMsgId:WM_MOUSEHOVER];
 }
+
 - (void)mouseExited:(NSEvent *)theEvent{
     [self onMouseEvent:theEvent withMsgId:WM_MOUSELEAVE];
-    [[NSCursor arrowCursor] set];//恢复光标
 }
 
 - (SHORT) getKeyModifiers{
@@ -725,10 +720,17 @@ defer:(BOOL)flag
     [self setLevel:(NSWindowLevel)NSNormalWindowLevel];
     [self setDelegate:self];
     self.ignoresMouseEvents = NO;
+    self.movableByWindowBackground = NO;
     eventMonitor=nil;
     isResizing = FALSE;
     m_pCapture = nil;
     return self;
+}
+
+- (void)resizeWithEvent:(NSEvent *)event {
+}
+
+- (void)cursorUpdate:(NSEvent *)event {
 }
 
 -(BOOL)setCapture:(SNsWindow *)pWin{
@@ -812,6 +814,13 @@ defer:(BOOL)flag
     return TRUE;
 }
 
+-(void)mouseExited:(NSEvent *)event {
+    if(!m_pCapture){
+        [self.contentView mouseExited:event];
+        [[NSCursor arrowCursor] set];
+    }
+}
+
 - (void)sendEvent:(NSEvent *)event {
     if (event.type == NSEventTypeMouseMoved) {
         [self mouseMoved:event];
@@ -854,6 +863,8 @@ defer:(BOOL)flag
 
     else if(event.type==NSEventTypeLeftMouseDragged || event.type==NSEventTypeRightMouseDragged || event.type==NSEventTypeOtherMouseDragged ){
         [self mouseDragged:event];
+    }else if(event.type==NSEventTypeMouseMoved){
+        [self mouseMoved:event];
     }
     else
     {
@@ -1132,10 +1143,10 @@ defer:(BOOL)flag
 HWND createNsWindow(HWND hParent, DWORD dwStyle,DWORD dwExStyle, LPCSTR pszTitle, int x,int y,int cx,int cy, SConnBase *pListener)
 {
 	NSRect rect = NSMakeRect(x, y, cx, cy);
-    HWND hWnd  = s_hwnd2nsWin.generateId();
     if(!(dwStyle&WS_CHILD))
         hParent=0;
-    SNsWindow * nswindow = [[SNsWindow alloc] initWithFrame:rect withListener:pListener withId:hWnd withParent:hParent];
+    SNsWindow * nswindow = [[SNsWindow alloc] initWithFrame:rect withListener:pListener withParent:hParent];
+    HWND hWnd  = nswindow->m_hWnd;
 	s_hwnd2nsWin.set(hWnd, nswindow);
 	return hWnd;
 }
@@ -1156,7 +1167,7 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
     if(!nswindow)
         return FALSE;
     BOOL bRoot = IsRootView(nswindow);
-    SLOG_STMI()<<"hjx showNsWindow: hWnd="<<hWnd<<" nCmdShow="<<nCmdShow;
+    //SLOG_STMI()<<"hjx showNsWindow: hWnd="<<hWnd<<" nCmdShow="<<nCmdShow;
     if(nCmdShow == SW_HIDE)
     {
         if(bRoot)
@@ -1790,9 +1801,9 @@ static NSCursor *cursorFromHCursor(HCURSOR cursor){
         case CIDC_UPARROW:
             return [NSCursor pointingHandCursor];
         case CIDC_SIZE:
-            return [NSCursor resizeLeftRightCursor];
+            return [NSCursor arrowCursor];
         case CIDC_SIZEALL:
-            return [NSCursor resizeLeftRightCursor];
+            return [NSCursor arrowCursor];
         case CIDC_ICON:
             return [NSCursor arrowCursor];
         case CIDC_SIZENWSE:

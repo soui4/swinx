@@ -48,7 +48,7 @@ class SConnection : public SConnBase{
     ~SConnection();
 
     public:
-    void onTerminate() override {}
+    void onTerminate() override;
     void onEvent(HWND hWnd,UINT message,WPARAM wParam,LPARAM lParam) override {}
     void OnNsEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) override;
     void OnDrawRect(HWND hWnd, const RECT &rc, cairo_t *ctx) override;

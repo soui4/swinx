@@ -1,6 +1,7 @@
 
 
 #import <Cocoa/Cocoa.h>
+#import <Foundation/NSDebug.h>
 #include "os_state.h"
 #include <log.h>
 #define kLogTag "os_state"
@@ -10,7 +11,6 @@
   SConnBase *m_pOsListener;
 }
 - (void)terminate:(id)sender;
-- (void)sendEvent:(NSEvent *)theEvent;
 
 @end
 
@@ -19,16 +19,6 @@
 // Override terminate to handle Quit and System Shutdown smoothly.
 - (void)terminate:(id)sender {
   m_pOsListener->onTerminate();
-}
-
-// Dispatch events here so that we can handle events caught by
-// nextEventMatchingMask in SDL, as well as events caught by other
-// processes (such as CEF) that are passed down to NSApp.
-- (void)sendEvent:(NSEvent *)theEvent {
-  if (theEvent.type == NSEventTypeMouseMoved) {
-    // todo:hjx
-  }
-  [super sendEvent:theEvent];
 }
 
 @end
@@ -65,6 +55,8 @@ struct OsState {
 
 OsState::OsState(SConnBase *pListener) : m_pOsListener(pListener) {
   @autoreleasepool {
+      NSDebugEnabled=        YES;
+      NSZombieEnabled=    YES;
     SwinXApplication *nsApp = [SwinXApplication sharedApplication];
     [nsApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     AppDelegate *appDelegate = [[AppDelegate alloc] init];

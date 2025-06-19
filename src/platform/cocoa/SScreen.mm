@@ -3,7 +3,6 @@
 #include <cairo.h>
 #include "SScreen.h"
 
-
 struct DisplayData{
   CGDirectDisplayID display;
 };
@@ -288,7 +287,10 @@ uint32_t Cocoa_InitDisplayModes(std::vector<VideoDisplay> * pDisplays)
             /* this returns a stddup'ed string */
             const char * name = Cocoa_GetDisplayName(displays[i]);
             if(name)
-                display.name = name;// swinx::Cocoa_GetDisplayName(displays[i]);
+            {
+                display.name = name;
+                free((void*)name);
+            }
             if (!GetDisplayMode(moderef, TRUE, NULL, link, &mode)) {
                 CVDisplayLinkRelease(link);
                 CGDisplayModeRelease(moderef);

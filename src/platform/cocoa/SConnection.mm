@@ -322,7 +322,6 @@ void SConnection::stopEventWaiting(){
 }
 
 static NSEvent *nextEvent(NSDate *timeoutDate, SConnection *connection) {
-  @autoreleasepool {
     NSEvent *nsEvent = [NSApp nextEventMatchingMask:NSEventMaskAny
                                           untilDate:timeoutDate
                                              inMode:NSDefaultRunLoopMode
@@ -330,22 +329,33 @@ static NSEvent *nextEvent(NSDate *timeoutDate, SConnection *connection) {
     if (nsEvent == nil)
       return nil;
     NSInteger eventType = nsEvent.type;
-    if (eventType == NSEventTypeMouseMoved &&
-        connection->GetCapture() == NULL) {
+    if (eventType == NSEventTypeMouseMoved && connection->GetCapture() == NULL) {
       NSPoint mouseLocation = [nsEvent locationInWindow];
       if (nsEvent.window != nil) {
         mouseLocation = [nsEvent.window convertPointToScreen:mouseLocation];
       }
+      static NSWindow *lastHit = nil;
       // find the window by its mouse location
       NSWindow *wndHit = nil;
       auto windows = [NSApp windows];
       for (int i = [windows count] - 1; i >= 0; i--) {
         auto window = [windows objectAtIndex:i];
+        if(![window isVisible])
+          continue;
         NSRect frame = [window frame];
         if (NSPointInRect(mouseLocation, frame)) {
           wndHit = window;
           break;
         }
+      }
+      if(wndHit != lastHit){
+        if(lastHit != nil){
+          [lastHit mouseExited:nsEvent];
+        }
+        if(wndHit != nil){
+          [wndHit mouseEntered:nsEvent];
+        }
+        lastHit = wndHit;
       }
       if (wndHit == nil)
         return nil;
@@ -364,7 +374,6 @@ static NSEvent *nextEvent(NSDate *timeoutDate, SConnection *connection) {
       }
     }
     return nsEvent;
-  }
 }
 
 int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, bool fWaitAll, DWORD dwWaitMask) {
@@ -499,8 +508,8 @@ void SConnection::updateMsgQueue(DWORD dwTimeout) {
             }
         }
     }
-    @autoreleasepool 
-    {
+    //@autoreleasepool
+    {//todo:hjx add autoreleasepool result in crash, fix it later.
         NSDate *timeoutDate = nil;
         if(dwTimeout == 0)
             timeoutDate = [NSDate distantPast];
@@ -775,10 +784,6 @@ HCURSOR SConnection::SetCursor(HWND hWnd,HCURSOR cursor) {
     if (it != m_wndCursor.end())
     {
         ret = it->second;
-    }
-    else if (cursor == it->second)
-    {
-        return cursor;
     }
     setNsWindowCursor(hWnd, cursor);
     m_wndCursor[hWnd] = cursor; // update window cursor
@@ -1486,6 +1491,10 @@ SConnMgr::~SConnMgr()
     delete m_conn;
     m_conn = NULL;
     CloseHandle(m_hHeap);
+}
+
+void SConnection::onTerminate() {
+    PostQuitMessage(0);
 }
 
 void SConnection::OnNsEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
