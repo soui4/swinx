@@ -1718,7 +1718,7 @@ static void DrawTextDecLines(HDC hdc, cairo_font_extents_t &font_ext, LPCSTR str
         }
         if (lf->lfUnderline)
         {
-            double y_line = y + font_ext.ascent + 1;
+            double y_line = y + font_ext.ascent + font_ext.descent+1;
             cairo_move_to(hdc->cairo, x + text_ext.x_bearing, y_line);
             cairo_line_to(hdc->cairo, x + text_ext.x_advance, y_line);
         }
@@ -1921,7 +1921,7 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
         }
         if (lf->lfUnderline)
         {
-            double y_line = pRect->top + font_ext.ascent + 1;
+            double y_line = pRect->top + font_ext.ascent + font_ext.descent +1;
             cairo_move_to(hdc->cairo, pRect->left, y_line);
             cairo_line_to(hdc->cairo, pRect->right, y_line);
         }
