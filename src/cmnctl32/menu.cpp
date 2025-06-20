@@ -1229,7 +1229,9 @@ void CMenu::PopupSubMenu(int iItem, BOOL bCheckFirstItem)
     if (!pItem)
         return;
     CMenu *pSubMenu = pItem->GetSubMenu();
-    if (!pSubMenu || IsWindowVisible(pSubMenu->m_hWnd))
+    if (!pSubMenu)
+        return;
+    if(IsWindowVisible(pSubMenu->m_hWnd))
         return;
     if (!pSubMenu->m_bMenuInitialized)
     {
@@ -1243,7 +1245,7 @@ void CMenu::PopupSubMenu(int iItem, BOOL bCheckFirstItem)
     POINT showpt;
     showpt.x = rcWnd.right + 5, showpt.y = rcWnd.top + rcItem.top;
     m_iSelItem = iItem;
-    printf("show sub menu %d\n", iItem);
+    //SLOG_FMTI("show sub menu %d", iItem);
     pSubMenu->ShowMenu(0, showpt.x, showpt.y);
 }
 
@@ -1504,7 +1506,7 @@ BOOL CMenu::CheckMenuRadioItem(UINT idFirst, UINT idLast, UINT idCheck, UINT uFl
     int idxFirst = -1;
     int idxLast = -1;
     int idxCheck = -1;
-
+    //todo:hjx
     /*SWindow *pChild = m_pMenuRoot->GetWindow(GSW_FIRSTCHILD);
     int i = 0;
     while (pChild)

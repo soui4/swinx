@@ -60,15 +60,17 @@ NSImage *imageFromHICON(HICON hIcon) {
 
         // 设置点击事件
         [_statusItem setAction:@selector(statusItemClicked:)];
+        [_statusItem sendActionOn:NSLeftMouseDownMask | NSRightMouseDownMask];
         [_statusItem setTarget:self];
     }
     return self;
 }
 
 - (void)statusItemClicked:(id)sender {
+    NSEvent *event = [NSApp currentEvent];
     if (_lpData->hWnd && (_lpData->uFlags & NIF_MESSAGE))
     {
-        PostMessage(_lpData->hWnd, _lpData->uCallbackMessage, _lpData->uID, WM_LBUTTONDOWN);
+        PostMessage(_lpData->hWnd, _lpData->uCallbackMessage, _lpData->uID, event.type == NSEventTypeLeftMouseDown? WM_LBUTTONDOWN:WM_RBUTTONDOWN);
     }
 }
 

@@ -1142,6 +1142,7 @@ defer:(BOOL)flag
 
 HWND createNsWindow(HWND hParent, DWORD dwStyle,DWORD dwExStyle, LPCSTR pszTitle, int x,int y,int cx,int cy, SConnBase *pListener)
 {
+    @autoreleasepool {
 	NSRect rect = NSMakeRect(x, y, cx, cy);
     if(!(dwStyle&WS_CHILD))
         hParent=0;
@@ -1149,10 +1150,12 @@ HWND createNsWindow(HWND hParent, DWORD dwStyle,DWORD dwExStyle, LPCSTR pszTitle
     HWND hWnd  = nswindow->m_hWnd;
 	s_hwnd2nsWin.set(hWnd, nswindow);
 	return hWnd;
+    }
 }
 
 
 static BOOL IsRootView(SNsWindow *pView){
+    @autoreleasepool {
     if(pView.superview == nil)
         return TRUE;
     if(pView.window == nil)
@@ -1160,9 +1163,11 @@ static BOOL IsRootView(SNsWindow *pView){
     if(pView == pView.window.contentView)
         return TRUE;
     return FALSE;
+    }
 }
 
 BOOL showNsWindow(HWND hWnd,int nCmdShow){
+    @autoreleasepool {
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return FALSE;
@@ -1255,11 +1260,12 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
         }
     }
     return TRUE;
+    }
 }
 
 
 BOOL setNsWindowPos(HWND hWnd, int x, int y){
-    
+    @autoreleasepool {
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return FALSE;
@@ -1277,10 +1283,12 @@ BOOL setNsWindowPos(HWND hWnd, int x, int y){
         [nswindow setFrameOrigin:(NSPoint)rect.origin];
     }
     return TRUE;
+    }
 }
 
 
 BOOL setNsWindowSize(HWND hWnd, int cx, int cy){
+    @autoreleasepool {
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return FALSE;
@@ -1300,11 +1308,13 @@ BOOL setNsWindowSize(HWND hWnd, int cx, int cy){
         [nswindow setNeedsDisplay:YES];
     }
     return TRUE;
+    }
 }
 
 
 void closeNsWindow(HWND hWnd)
 {
+    @autoreleasepool {
 	SNsWindow* pWin = s_hwnd2nsWin.get(hWnd);
 	if(pWin)
 	{
@@ -1318,6 +1328,7 @@ void closeNsWindow(HWND hWnd)
         }
 		s_hwnd2nsWin.remove(hWnd);
 	}
+    }
 }
 
 HWND getNsWindow(HWND hParent, int code)
@@ -1436,6 +1447,8 @@ void invalidateNsWindow(HWND hWnd, LPCRECT rc){
         SNsWindow * nswindow = getNsWindow(hWnd);
         if(!nswindow)
             return;
+        if([nswindow.window isMiniaturized])
+            return;
         NSRect rect = NSMakeRect(rc->left, rc->top, rc->right - rc->left, rc->bottom - rc->top);
         [nswindow invalidRect:rect];
     }
@@ -1453,15 +1466,21 @@ void updateNsWindow(HWND hWnd, const RECT &rc){
 }
 
 BOOL isNsWindowVisible(HWND hWnd){
+    @autoreleasepool {
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return FALSE;
     if([nswindow window] == nil)
         return FALSE;
-    return [nswindow isHidden] == NO;
+    if(IsRootView(nswindow))
+        return [nswindow.window isVisible];
+    else
+        return ![nswindow isHidden];
+    }
 }
 
 BOOL getNsWindowRect(HWND hWnd, RECT *rc){
+    @autoreleasepool {
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return FALSE;
@@ -1471,9 +1490,11 @@ BOOL getNsWindowRect(HWND hWnd, RECT *rc){
     rc->right = rect.origin.x + rect.size.width;
     rc->bottom = rect.origin.y + rect.size.height;
     return TRUE;
+    }
 }
 
 static NSScreen *screenForPoint(NSPoint point) {
+    @autoreleasepool {
     // 获取包含该点的显示器ID
     CGDirectDisplayID displayID;
     uint32_t displayCount = 0;
@@ -1489,11 +1510,12 @@ static NSScreen *screenForPoint(NSPoint point) {
             }
         }
     }
-    
     return [NSScreen mainScreen];
+    }
 }
 
 static NSWindow *windowAtPoint(NSPoint screenPoint) {
+    @autoreleasepool {
     NSScreen *screen = screenForPoint(screenPoint);
     // 将点转换为屏幕坐标系
     NSPoint windowPoint = screenPoint;
@@ -1501,6 +1523,7 @@ static NSWindow *windowAtPoint(NSPoint screenPoint) {
     // 获取位于该点的窗口编号
     NSInteger windowNumber = [NSWindow windowNumberAtPoint:windowPoint belowWindowWithWindowNumber:0];
     return [NSApp windowWithWindowNumber:windowNumber];
+    }
 }
 
 HWND hwndFromPoint(HWND hWnd,POINT pt){
@@ -1555,30 +1578,38 @@ BOOL setNsWindowZorder(HWND hWnd, HWND hWndInsertAfter){
 }
 
 BOOL setNsWindowCapture(HWND hWnd){
+    @autoreleasepool {
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return FALSE;
     return [nswindow startCapture];
+    }
 }
 BOOL releaseNsWindowCapture(HWND hWnd){
+    @autoreleasepool {
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return FALSE;
     return [nswindow stopCapture];
+    }
 }
 
 BOOL setNsWindowAlpha(HWND hWnd,BYTE byAlpha){
+    @autoreleasepool {
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return FALSE;
     [nswindow setAlpha:byAlpha];
     return TRUE;
+    }
 }
 BYTE getNsWindowAlpha(HWND hWnd){
+    @autoreleasepool {
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return 0;
     return [nswindow getAlpha];
+    }
 }
 
 
@@ -1604,6 +1635,7 @@ BOOL setNsForegroundWindow(HWND hWnd) {
         return FALSE;
     }
     [nswindow.window orderFront:nil];
+    [NSApp activateIgnoringOtherApps:YES];
     return TRUE;
     }
 }
@@ -1694,28 +1726,24 @@ BOOL setNsParent(HWND hWnd, HWND hParent){
     }
 }
 
-BOOL flashNsWindow(HWND hwnd,
-        DWORD dwFlags,
-        UINT uCount,
-        DWORD dwTimeout){
-            @autoreleasepool {
-            SNsWindow * nsWindow = getNsWindow(hwnd);
-            if(!nsWindow)
-                return FALSE;
-            if(nsWindow.window == nil)
-                return FALSE;
-            if(dwFlags == FLASHW_STOP){
-                [nsWindow.window setHasShadow:YES];
-                return TRUE;
-            }
-            if(dwFlags == FLASHW_ALL){
-                [nsWindow.window setHasShadow:NO];
-                return TRUE;
-            }
-            return FALSE;
-            
-            }
-        }
+BOOL flashNsWindow(HWND hwnd, DWORD dwFlags, UINT uCount, DWORD dwTimeout) {
+  @autoreleasepool {
+    SNsWindow *nsWindow = getNsWindow(hwnd);
+    if (!nsWindow)
+      return FALSE;
+    if (nsWindow.window == nil)
+      return FALSE;
+    if (dwFlags == FLASHW_STOP) {
+      [nsWindow.window setHasShadow:YES];
+      return TRUE;
+    }
+    if (dwFlags == FLASHW_ALL) {
+      [nsWindow.window setHasShadow:NO];
+      return TRUE;
+    }
+    return FALSE;
+  }
+}
 
 BOOL isNsDropTarget(HWND hWnd){
     @autoreleasepool {
