@@ -1,11 +1,8 @@
-﻿
-#include "wnd.h"
-#import <Cocoa/Cocoa.h>
-#include <objc/NSObjCRuntime.h>
+﻿#import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
-#include <os/log.h>
+#import <objc/NSObjCRuntime.h>
 #include <mutex>
 #include <MacTypes.h>
 #include <memory>
