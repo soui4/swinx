@@ -160,7 +160,6 @@ defer:(BOOL)flag;
     m_hWnd = (HWND)(__bridge void *)self;
     self = [super initWithFrame:frameRect];
     if (self) {
-        self.wantsLayer = YES;    
         m_rcPos = frameRect;
         m_byAlpha = 255;
         m_bMsgTransparent = FALSE;
@@ -228,12 +227,6 @@ defer:(BOOL)flag;
     }else {
         return FALSE;
     }
-}
-
-- (void)setFrameSize:(NSSize)newSize {
-    [super setFrameSize:newSize];
-    m_pListener->OnNsEvent(m_hWnd, WM_SIZE, 0,MAKELONG((int)newSize.width, (int)newSize.height));
-    [self setNeedsDisplay:YES];
 }
 
 - (void)drawRect:(NSRect)dirtyRect {
@@ -700,10 +693,8 @@ defer:(BOOL)flag;
         id eventMonitor;
         BOOL isResizing;
         NSRect m_defSize;
-        BOOL m_bZoomed;
         SNsWindow *m_pCapture;
-        __weak NSView * m_pHover;
-
+        NSView * m_pHover;
 }
 
 - (instancetype)initWithContentRect : (NSRect)contentRect 
@@ -711,7 +702,6 @@ styleMask:(NSWindowStyleMask)styleMask
 backing:(NSBackingStoreType)backingType 
 defer:(BOOL)flag
 {
-    m_bZoomed = FALSE;
     self = [super initWithContentRect:contentRect
                             styleMask:styleMask 
                               backing:backingType
@@ -725,12 +715,6 @@ defer:(BOOL)flag
     isResizing = FALSE;
     m_pCapture = nil;
     return self;
-}
-
-- (void)resizeWithEvent:(NSEvent *)event {
-}
-
-- (void)cursorUpdate:(NSEvent *)event {
 }
 
 -(BOOL)setCapture:(SNsWindow *)pWin{
@@ -826,9 +810,6 @@ defer:(BOOL)flag
         [self mouseMoved:event];
     }else if(event.type == NSEventTypeLeftMouseDown || event.type == NSEventTypeRightMouseDown || event.type == NSEventTypeOtherMouseDown)
     {
-        if([self canBecomeKeyWindow] && ![self isKeyWindow]){
-            //[self makeKeyWindow];
-        }
         NSView *view = m_pCapture?m_pCapture:[self.contentView hitTest:event.locationInWindow];
         switch(event.type){
             case NSEventTypeLeftMouseDown:
@@ -881,22 +862,20 @@ defer:(BOOL)flag
         [m_pCapture mouseMoved:(NSEvent *)event];
         return;
     }
-//    SLOG_STMI()<<"mouseMoved,pos="<<(int)event.locationInWindow.x<<","<<(int)event.locationInWindow.y;
-    NSView * pView = [self.contentView hitTest:event.locationInWindow];
-    __strong NSView * pHover = m_pHover;
-    if(pView != pHover){
-        if(pHover){
-            [pHover mouseExited:event];
+    NSView * pHover = [self.contentView hitTest:event.locationInWindow];
+    if(m_pHover != pHover){
+        if(m_pHover){
+            [m_pHover mouseExited:event];
             m_pHover = nil;
         }
-        m_pHover = pView;
+        m_pHover = pHover;
         if(m_pHover){
             [m_pHover mouseEntered:event];
         }
     }
-    if(pView)
+    if(pHover)
     {
-        [pView mouseMoved:(NSEvent *)event];
+        [pHover mouseMoved:(NSEvent *)event];
     }   
 }
 
@@ -925,15 +904,26 @@ defer:(BOOL)flag
         isResizing=FALSE;
     }    
     BOOL bZoomed = [self isZoomed];
-    if(!bZoomed)
-    {
-        if(m_bZoomed){
-            [root onStateChange:(int)SIZE_RESTORED];
-        }
-    }else{
-        [root onStateChange:(int)SIZE_MAXIMIZED];
+    if(bZoomed){
+        [root onStateChange:SIZE_MAXIMIZED];
+    }else {
+        [root onStateChange:SIZE_RESTORED];
     }
-    m_bZoomed = bZoomed;
+}
+
+- (void)windowDidDeminiaturize:(NSNotification *)notification {
+    SNsWindow * root = self.contentView;
+    BOOL bZoomed = [self isZoomed];
+    if(bZoomed){
+        [root onStateChange:SIZE_MAXIMIZED];
+    }else {
+        [root onStateChange:SIZE_RESTORED];
+    }
+}
+
+- (void)windowDidMiniaturize:(NSNotification *)notification {
+    SNsWindow * root = self.contentView;
+    [root onStateChange:SIZE_MINIMIZED];
 }
 
 - (void)windowDidMove:(NSNotification *)notification {
@@ -982,18 +972,6 @@ defer:(BOOL)flag
     return YES;
 }
 
-- (void) windowDidMiniaturize:(NSNotification *)notification {
-    SNsWindow * root = self.contentView;
-    [root onStateChange:SIZE_MINIMIZED];
-    SLOG_STMI()<<"windowDidMiniaturize,hWnd="<<root->m_hWnd;
-}
-
-- (void) windowDidDeminiaturize:(NSNotification *)notification {
-    SNsWindow * root = self.contentView;
-    [root onStateChange:SIZE_RESTORED];
-    SLOG_STMI()<<"windowDidDeminiaturize,hWnd="<<root->m_hWnd;
-}
-
 - (void) windowDidEnterFullScreen:(NSNotification *)notification {
     SNsWindow * root = self.contentView;
     SLOG_STMI()<<"windowDidEnterFullScreen,hWnd="<<root->m_hWnd;
@@ -1006,7 +984,7 @@ defer:(BOOL)flag
 
 -(void)unzoom{
     if([self isZoomed]){
-        [self setFrame:m_defSize display:YES];
+        [self setFrame:m_defSize display:YES animate:YES];
     }
 }
 
@@ -1096,7 +1074,6 @@ defer:(BOOL)flag
     NSRect contentRect = [self contentRectForFrameRect:[self frame]];
     NSArray *screens = [NSScreen screens];
     ConvertNSRect([screens objectAtIndex:0], FALSE, &contentRect);
-    //[self.contentView setFrameSize:contentRect.size];
     SNsWindow * root = self.contentView;
     isResizing=TRUE;
     SetWindowPos(root->m_hWnd, 0, contentRect.origin.x, contentRect.origin.y, contentRect.size.width, contentRect.size.height, SWP_NOZORDER|SWP_NOACTIVATE);
@@ -1213,8 +1190,6 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
                 }
                 [host setContentView:nswindow];
                 [host setAnimationBehavior:NSWindowAnimationBehaviorNone];
-                [host.contentView setAutoresizingMask:NSViewWidthSizable | NSViewHeightSizable];
-
                 assert(nswindow.window != nil);
                 if(dwExStyle & WS_EX_TOPMOST){
                     [host setLevel:NSFloatingWindowLevel];

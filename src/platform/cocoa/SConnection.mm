@@ -863,7 +863,6 @@ bool SConnection::GetCursorPos(LPPOINT ppt) const {
 }
 
 int SConnection::GetDpi(bool bx) const {
-    // Empty implementation
     return 96;
 }
 
