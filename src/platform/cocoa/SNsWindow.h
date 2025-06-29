@@ -9,7 +9,7 @@
 HWND createNsWindow(HWND hParent,DWORD dwStyle,DWORD dwExStyle, LPCSTR pszTitle, int x,int y,int cx,int cy, SConnBase *pListener);
 void closeNsWindow(HWND hWnd);
 BOOL IsNsWindow(HWND hWnd);
-cairo_t * getNsWindowSurface(HWND hWnd);
+cairo_t * getNsWindowCanvas(HWND hWnd);
 BOOL showNsWindow(HWND hWnd,int nCmdShow);
 BOOL setNsWindowPos(HWND hWnd, int x, int y);
 BOOL setNsWindowSize(HWND hWnd, int cx, int cy);
@@ -51,4 +51,7 @@ HRESULT doNsDragDrop(IDataObject *pDataObject,
                           IDropSource *pDropSource,
                           DWORD dwOKEffect,     
                           DWORD *pdwEffect);
+BOOL getNsCursorPos(LPPOINT ppt);
+
+int getNsDpi(bool bx);
 #endif//_SNSWINDOW_H_

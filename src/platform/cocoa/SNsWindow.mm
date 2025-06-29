@@ -25,8 +25,18 @@ extern "C"{
     LONG_PTR GetWindowLongPtrA(HWND hWnd, int nIndex);
 }
 
-cairo_t * getNsWindowSurface(HWND hWnd);
+cairo_t * getNsWindowCanvas(HWND hWnd);
 
+#define float2int(x) (int)floor((x)+0.5f)
+static RECT NSRect2Rect(NSRect r)
+{
+    RECT ret;
+    ret.left = float2int(r.origin.x);
+    ret.top = float2int(r.origin.y);
+    ret.right = float2int(r.origin.x + r.size.width);
+    ret.bottom = float2int(r.origin.y + r.size.height);
+    return ret;
+}
 
 static void ConvertNSRect(NSScreen *screen, BOOL fullscreen, NSRect *r)
 {
@@ -97,8 +107,12 @@ SNsWindow *getNsWindow(HWND hWnd){
     -(BOOL)releaseCapture:(SNsWindow *)pWin;
 @end
 
+@protocol SizeingMark
+    -(void)setSizeingMark:(BOOL) bSizeing;
+@end
+
 // 自定义窗口类
-@interface SNsWindowHost : NSWindow<NSWindowDelegate,MouseCapture>
+@interface SNsWindowHost : NSWindow<NSWindowDelegate,MouseCapture, SizeingMark>
 - (instancetype)initWithContentRect : (NSRect)contentRect 
 styleMask:(NSWindowStyleMask)styleMask 
 backing:(NSBackingStoreType)backingType 
@@ -107,11 +121,12 @@ defer:(BOOL)flag;
 -(BOOL)setCapture:(SNsWindow *)pWin;
 -(BOOL)releaseCapture:(SNsWindow *)pWin;
 -(void)unzoom;
+-(void)setSizeingMark:(BOOL) bSizeing;
 @end
 
 
 // 自定义窗口类
-@interface SNsPanelHost : NSPanel<NSWindowDelegate, MouseCapture>
+@interface SNsPanelHost : NSPanel<NSWindowDelegate, MouseCapture,SizeingMark>
 - (instancetype)initWithContentRect : (NSRect)contentRect 
 styleMask:(NSWindowStyleMask)styleMask 
 backing:(NSBackingStoreType)backingType 
@@ -119,7 +134,7 @@ defer:(BOOL)flag;
 
 -(BOOL)setCapture:(SNsWindow *)pWin;
 -(BOOL)releaseCapture:(SNsWindow *)pWin;
-
+-(void)setSizeingMark:(BOOL) bSizeing;
 @end
 
 // SNsWindow 实现
@@ -133,6 +148,7 @@ defer:(BOOL)flag;
     NSRange   _markedRange;
     NSRange   _selectedRange;
     NSRect    _inputRect;
+    cairo_surface_t * _offscreenSur;
 }
 - (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent;
 - (void)destroy;
@@ -150,24 +166,30 @@ defer:(BOOL)flag;
     SConnBase *m_pListener;
     BYTE m_byAlpha;
     BOOL m_bMsgTransparent;
-    BOOL m_bDrawing;
     BOOL m_bCommitCache;
     NSEventModifierFlags m_modifierFlags;
 }
 
 - (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent{
     m_pListener = listener;
+    m_rcPos = frameRect;
     m_hWnd = (HWND)(__bridge void *)self;
+    NSScreen * screen = [NSScreen mainScreen];//todo, get screen from position.
+    float scale = [screen backingScaleFactor];
+    frameRect.origin.x /= scale;
+    frameRect.origin.y /= scale;
+    frameRect.size.width /= scale;
+    frameRect.size.height /= scale;
+
     self = [super initWithFrame:frameRect];
     if (self) {
-        m_rcPos = frameRect;
         m_byAlpha = 255;
         m_bMsgTransparent = FALSE;
-         m_bDrawing = FALSE;
          m_bCommitCache = FALSE;
          m_bSetActive = FALSE;
          m_modifierFlags = 0;
          _markedText = nil;
+         _offscreenSur = nil;
     }
     SNsWindow *parent = getNsWindow(hParent);
     if(parent){
@@ -176,16 +198,20 @@ defer:(BOOL)flag;
     return self;
 }
 
+- (void)dealloc
+{
+    if(_offscreenSur){
+        cairo_surface_destroy(_offscreenSur);
+        _offscreenSur = nil;       
+    }
+}
+
 - (void)updateRect:(NSRect)rc;{
-    if(m_bDrawing)
-        return;
     m_bCommitCache = TRUE;
     [self displayRect:rc];
 }
 
 - (void)invalidRect:(NSRect)rc;{
-    if(m_bDrawing)
-        return;
     if(NSIsEmptyRect(rc))
         return;
     [self setNeedsDisplayInRect:rc];
@@ -229,20 +255,42 @@ defer:(BOOL)flag;
     }
 }
 
+- (void)layout {
+    [super layout];
+    if(_offscreenSur!=nil){
+        cairo_surface_destroy(_offscreenSur);
+        _offscreenSur = nil;
+    }
+    NSRect rect = self.frame;
+    float scale = [self.window backingScaleFactor];
+    rect.origin.x *= scale;
+    rect.origin.y *= scale;
+    rect.size.width *= scale;
+    rect.size.height *= scale;
+    m_rcPos = rect;
+    _offscreenSur = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, (int)rect.size.width, (int)rect.size.height);
+    if(self != [self.window contentView])
+    {//only for child window
+        RECT rc = NSRect2Rect(rect);
+        SetWindowPos(m_hWnd,0,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOACTIVATE);
+    }
+}
+
 - (void)drawRect:(NSRect)dirtyRect {
-    m_bDrawing = TRUE;
     CGContextRef cgContext = [[NSGraphicsContext currentContext] CGContext];
     cairo_surface_t *windowSurface = cairo_quartz_surface_create_for_cg_context(
         cgContext,
         self.bounds.size.width,
         self.bounds.size.height
     );
+
     cairo_t *windowCr = cairo_create(windowSurface);
     cairo_rectangle(windowCr, dirtyRect.origin.x, dirtyRect.origin.y, dirtyRect.size.width, dirtyRect.size.height);
     cairo_clip(windowCr);
-    
+    float scale = [self.window backingScaleFactor];
+    cairo_scale(windowCr, 1.0f/scale, 1.0f/scale);
     // if(m_bCommitCache){
-    //     cairo_t *cr = getNsWindowSurface(m_hWnd);
+    //     cairo_t *cr = getNsWindowCanvas(m_hWnd);
     //     cairo_surface_t* src_surface = cairo_get_target(cr);
     //     cairo_set_source_surface(windowCr, src_surface, 0, 0);
     //     cairo_rectangle(windowCr, dirtyRect.origin.x, dirtyRect.origin.y, dirtyRect.size.width, dirtyRect.size.height);
@@ -250,13 +298,21 @@ defer:(BOOL)flag;
     //     m_bCommitCache = FALSE;      
     // }else
     {
+        dirtyRect.origin.x *= scale;
+        dirtyRect.origin.y *= scale;
+        dirtyRect.size.width *= scale;
+        dirtyRect.size.height *= scale;
+
+        cairo_t * offscreenCr = cairo_create(_offscreenSur);
         RECT rc = {(LONG)dirtyRect.origin.x, (LONG)dirtyRect.origin.y, (LONG)(dirtyRect.origin.x+dirtyRect.size.width), (LONG)(dirtyRect.origin.y+dirtyRect.size.height)};
-        m_pListener->OnDrawRect(m_hWnd, rc, windowCr);
+        m_pListener->OnDrawRect(m_hWnd, rc, offscreenCr);
+        cairo_destroy(offscreenCr);
+        cairo_set_source_surface(windowCr, _offscreenSur,0,0);
+        cairo_paint(windowCr);
     }
     
     cairo_destroy(windowCr);
     cairo_surface_destroy(windowSurface);
-    m_bDrawing = FALSE;
 }
 
 - (BOOL)isFlipped {
@@ -293,7 +349,10 @@ defer:(BOOL)flag;
         uFlags |= MK_XBUTTON2;
     }
     NSPoint locationInView = [self convertPoint:theEvent.locationInWindow fromView:nil];
-    LPARAM lParam = MAKELPARAM((int)locationInView.x,(int)locationInView.y);
+    float scale = [self.window backingScaleFactor];
+    locationInView.x *= scale;
+    locationInView.y *= scale;
+    LPARAM lParam = MAKELPARAM((int)floor(locationInView.x+0.5f),(int)floor(locationInView.y+0.5f));
     m_pListener->OnNsEvent(m_hWnd,msg,uFlags,lParam);
 }
 
@@ -691,7 +750,7 @@ defer:(BOOL)flag;
 // SNsWindowHost 实现
 @implementation SNsWindowHost{
         id eventMonitor;
-        BOOL isResizing;
+        BOOL m_bSizing;
         NSRect m_defSize;
         SNsWindow *m_pCapture;
         NSView * m_pHover;
@@ -712,7 +771,7 @@ defer:(BOOL)flag
     self.ignoresMouseEvents = NO;
     self.movableByWindowBackground = NO;
     eventMonitor=nil;
-    isResizing = FALSE;
+    m_bSizing = FALSE;
     m_pCapture = nil;
     return self;
 }
@@ -796,6 +855,10 @@ defer:(BOOL)flag
     eventMonitor = nil;
     m_pCapture = nil;
     return TRUE;
+}
+
+-(void)setSizeingMark:(BOOL) bSizeing{
+    m_bSizing = bSizeing;
 }
 
 -(void)mouseExited:(NSEvent *)event {
@@ -891,26 +954,6 @@ defer:(BOOL)flag
     [super close]; 
 }
 
-- (void)windowDidResize:(NSNotification *)notification{
-    
-    NSRect contentRect = [self contentRectForFrameRect:[self frame]];
-    NSArray *screens = [NSScreen screens];
-    ConvertNSRect([screens objectAtIndex:0], FALSE, &contentRect);
-    SNsWindow * root = self.contentView;
-    if(!isResizing)
-    {
-        isResizing=TRUE;
-        SetWindowPos(root->m_hWnd, 0, contentRect.origin.x, contentRect.origin.y, contentRect.size.width, contentRect.size.height, SWP_NOZORDER|SWP_NOACTIVATE);
-        isResizing=FALSE;
-    }    
-    BOOL bZoomed = [self isZoomed];
-    if(bZoomed){
-        [root onStateChange:SIZE_MAXIMIZED];
-    }else {
-        [root onStateChange:SIZE_RESTORED];
-    }
-}
-
 - (void)windowDidDeminiaturize:(NSNotification *)notification {
     SNsWindow * root = self.contentView;
     BOOL bZoomed = [self isZoomed];
@@ -926,19 +969,51 @@ defer:(BOOL)flag
     [root onStateChange:SIZE_MINIMIZED];
 }
 
-- (void)windowDidMove:(NSNotification *)notification {
-    NSRect contentRect = [self contentRectForFrameRect:[self frame]];
-    NSArray *screens = [NSScreen screens];
-    ConvertNSRect([screens objectAtIndex:0], FALSE, &contentRect);
+- (void)windowDidResize:(NSNotification *)notification{
+    if(m_bSizing)
+        return;
     SNsWindow * root = self.contentView;
+    NSRect contentRect = [self contentRectForFrameRect:[self frame]];
+    NSScreen *screen = [self screen];
+    ConvertNSRect(screen, FALSE, &contentRect);
+    float scale = [screen backingScaleFactor];
+    contentRect.origin.x *= scale;
+    contentRect.origin.y *= scale;
+    contentRect.size.width *= scale;
+    contentRect.size.height *= scale;
+    m_bSizing=TRUE;
+    RECT rc = NSRect2Rect(contentRect);
+    SetWindowPos(root->m_hWnd,0,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOACTIVATE);
+    m_bSizing=FALSE;  
+    BOOL bZoomed = [self isZoomed];
+    if(bZoomed){
+        [root onStateChange:SIZE_MAXIMIZED];
+    }else {
+        [root onStateChange:SIZE_RESTORED];
+    }
+}
 
-    isResizing=TRUE;
-    SetWindowPos(root->m_hWnd, 0, contentRect.origin.x, contentRect.origin.y,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
-    isResizing=FALSE;
+- (void)windowDidMove:(NSNotification *)notification {
+    if(m_bSizing)
+        return;
+    NSRect contentRect = [self contentRectForFrameRect:[self frame]];
+    NSScreen *screen = [self screen];
+    ConvertNSRect(screen, FALSE, &contentRect);
+    float scale = [screen backingScaleFactor];
+    contentRect.origin.x *= scale;
+    contentRect.origin.y *= scale;
+    contentRect.size.width *= scale;
+    contentRect.size.height *= scale;
+
+    SNsWindow * root = self.contentView;
+    m_bSizing=TRUE;
+    RECT rc = NSRect2Rect(contentRect);
+    SetWindowPos(root->m_hWnd,0,rc.left,rc.top,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
+    m_bSizing=FALSE;
 }
 
 - (void)setFrame:(NSRect)frameRect display:(BOOL)flag{
-    if(isResizing)
+    if(m_bSizing)
         return;
     [super setFrame:frameRect display:flag];
 }
@@ -999,7 +1074,7 @@ defer:(BOOL)flag
 // SNsPanelHost 实现
 @implementation SNsPanelHost{
         id eventMonitor;
-        BOOL isResizing;
+        BOOL m_bSizing;
         SNsWindow *m_pCapture;
 }
 
@@ -1015,7 +1090,7 @@ defer:(BOOL)flag
     [self setAcceptsMouseMovedEvents:YES];
     [self setDelegate:self];
     eventMonitor=nil;
-    isResizing = FALSE;
+    m_bSizing = FALSE;
     return self;
 }
 
@@ -1052,6 +1127,10 @@ defer:(BOOL)flag
     return TRUE;
 }
 
+-(void)setSizeingMark:(BOOL) bSizeing{
+    m_bSizing = bSizeing;
+}
+
  - (void)mouseMoved:(NSEvent *)event{
     if(m_pCapture){
         [m_pCapture mouseMoved:(NSEvent *)event];
@@ -1063,7 +1142,6 @@ defer:(BOOL)flag
     }
 }
 
-// 在窗口即将关闭时调用
 - (void)close {
     SNsWindow * root = self.contentView;
     [root destroy];
@@ -1071,28 +1149,51 @@ defer:(BOOL)flag
 }
 
 - (void)windowDidResize:(NSNotification *)notification{
-    NSRect contentRect = [self contentRectForFrameRect:[self frame]];
-    NSArray *screens = [NSScreen screens];
-    ConvertNSRect([screens objectAtIndex:0], FALSE, &contentRect);
+    if(m_bSizing)
+        return;
     SNsWindow * root = self.contentView;
-    isResizing=TRUE;
-    SetWindowPos(root->m_hWnd, 0, contentRect.origin.x, contentRect.origin.y, contentRect.size.width, contentRect.size.height, SWP_NOZORDER|SWP_NOACTIVATE);
-    isResizing=FALSE;
+    NSRect contentRect = [self contentRectForFrameRect:[self frame]];
+    NSScreen *screen = [self screen];
+    ConvertNSRect(screen, FALSE, &contentRect);
+    float scale = [screen backingScaleFactor];
+    contentRect.origin.x *= scale;
+    contentRect.origin.y *= scale;
+    contentRect.size.width *= scale;
+    contentRect.size.height *= scale;
+    m_bSizing=TRUE;
+    RECT rc = NSRect2Rect(contentRect);
+    SetWindowPos(root->m_hWnd, 0, rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top, SWP_NOZORDER|SWP_NOACTIVATE);
+    m_bSizing=FALSE;  
+    BOOL bZoomed = [self isZoomed];
+    if(bZoomed){
+        [root onStateChange:SIZE_MAXIMIZED];
+    }else {
+        [root onStateChange:SIZE_RESTORED];
+    }
 }
 
 - (void)windowDidMove:(NSNotification *)notification {
+    if(m_bSizing)
+        return;
     NSRect contentRect = [self contentRectForFrameRect:[self frame]];
-    NSArray *screens = [NSScreen screens];
-    ConvertNSRect([screens objectAtIndex:0], FALSE, &contentRect);
-    SNsWindow * root = self.contentView;
+    NSScreen *screen = [self screen];
+    ConvertNSRect(screen, FALSE, &contentRect);
+    float scale = [screen backingScaleFactor];
+    contentRect.origin.x *= scale;
+    contentRect.origin.y *= scale;
+    contentRect.size.width *= scale;
+    contentRect.size.height *= scale;
 
-    isResizing=TRUE;
-    SetWindowPos(root->m_hWnd, 0, contentRect.origin.x, contentRect.origin.y,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
-    isResizing=FALSE;
+    SNsWindow * root = self.contentView;
+    m_bSizing=TRUE;
+    RECT rc = NSRect2Rect(contentRect);
+    SetWindowPos(root->m_hWnd, 0, rc.left, rc.top, 0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
+    m_bSizing=FALSE;
 }
 
+
 - (void)setFrame:(NSRect)frameRect display:(BOOL)flag{
-    if(isResizing)
+    if(m_bSizing)
         return;
     [super setFrame:frameRect display:flag];
 }
@@ -1116,6 +1217,18 @@ defer:(BOOL)flag
     return NO;
 }
 @end
+
+static NSScreen * getNsScreen(HWND hWnd){
+    @autoreleasepool {
+        if(hWnd){
+            SNsWindow * nswindow = getNsWindow(hWnd);
+            if(nswindow && nswindow.window){
+                return [nswindow.window screen];
+            }
+        }
+        return [NSScreen mainScreen];
+    }
+}
 
 HWND createNsWindow(HWND hParent, DWORD dwStyle,DWORD dwExStyle, LPCSTR pszTitle, int x,int y,int cx,int cy, SConnBase *pListener)
 {
@@ -1178,9 +1291,15 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
                     styleMask |= NSWindowStyleMaskClosable;
                 if(dwExStyle & (WS_EX_NOACTIVATE))
                     styleMask |= NSWindowStyleMaskNonactivatingPanel|NSWindowStyleMaskUtilityWindow;
+                NSScreen *screen = getNsScreen(hWnd);
                 NSRect rect = nswindow->m_rcPos;
-                NSArray *screens = [NSScreen screens];
-                ConvertNSRect([screens objectAtIndex:0], FALSE, &rect);
+                float scale = [screen backingScaleFactor];
+                rect.origin.x /= scale;
+                rect.origin.y /= scale;
+                rect.size.width /= scale;
+                rect.size.height /= scale;
+
+                ConvertNSRect(screen, FALSE, &rect);
 
                 NSWindow * host = nil;
                 if(dwExStyle & (WS_EX_NOACTIVATE)){
@@ -1194,8 +1313,8 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
                 if(dwExStyle & WS_EX_TOPMOST){
                     [host setLevel:NSFloatingWindowLevel];
                 }
+                host.backgroundColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.0];
                 if(dwExStyle & WS_EX_COMPOSITED){
-                    host.backgroundColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.0];
                     [host setOpaque:NO];
                 }else{
                     [host setOpaque:YES];
@@ -1224,11 +1343,11 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
             }else if(nCmdShow == SW_SHOWMAXIMIZED){
                 [nswindow.window zoom:nil];
             }
-            //SLOG_STMI()<<"showNsWindow:  hWnd="<<nswindow->m_hWnd;
             if(nCmdShow == SW_SHOWNA || nCmdShow == SW_SHOWNOACTIVATE ||![nswindow.window canBecomeKeyWindow]){
                 [nswindow.window orderFront:nil];
             }else{
                 [nswindow.window makeKeyAndOrderFront:nil];
+                [nswindow onActive:TRUE];//force active
             }
         }else{
             [nswindow setHidden : NO];
@@ -1248,14 +1367,23 @@ BOOL setNsWindowPos(HWND hWnd, int x, int y){
     rect.origin.x = x;
     rect.origin.y = y;
     nswindow->m_rcPos=rect;
+    NSScreen *screen = getNsScreen(hWnd);
+    float scale = [screen backingScaleFactor];
+    rect.origin.x /= scale;
+    rect.origin.y /= scale;
+    rect.size.width /= scale;
+    rect.size.height /= scale;
+
     if(IsRootView(nswindow)){
         if(nswindow.window != nil){
-            NSArray *screens = [NSScreen screens];
-            ConvertNSRect([screens objectAtIndex:0], FALSE, &rect);
-            [nswindow.window setFrame:rect display:YES animate:NO];
+            ConvertNSRect(screen, FALSE, &rect);
+
+            [(id<SizeingMark>)nswindow.window setSizeingMark:TRUE];
+            [nswindow.window setFrameOrigin:rect.origin];
+            [(id<SizeingMark>)nswindow.window setSizeingMark:FALSE];
         }
     }else{
-        [nswindow setFrameOrigin:(NSPoint)rect.origin];
+        [nswindow setFrameOrigin:rect.origin];
     }
     return TRUE;
     }
@@ -1272,11 +1400,19 @@ BOOL setNsWindowSize(HWND hWnd, int cx, int cy){
     rect.size.width = cx;
     rect.size.height = cy;
     nswindow->m_rcPos=rect;
+
+    NSScreen *screen = getNsScreen(hWnd);
+    float scale = [screen backingScaleFactor];
+    rect.origin.x /= scale;
+    rect.origin.y /= scale;
+    rect.size.width /= scale;
+    rect.size.height /= scale;
     if(IsRootView(nswindow)){
         if(nswindow.window != nil){
-            NSArray *screens = [NSScreen screens];
-            ConvertNSRect([screens objectAtIndex:0], FALSE, &rect);
+            ConvertNSRect(screen, FALSE, &rect);
+            [(id<SizeingMark>)nswindow.window setSizeingMark:TRUE];
             [nswindow.window setFrame:rect display:YES animate:NO];
+            [(id<SizeingMark>)nswindow.window setSizeingMark:FALSE];
         }
     }else{
         [nswindow setFrame:rect];
@@ -1384,6 +1520,7 @@ HWND getNsActiveWindow(){
         SNsWindow *nswindow = (SNsWindow *)activeWindow.contentView;
         return nswindow->m_hWnd;
     }
+    SLOG_STMW()<<"hjx No active window!";
     return 0;
     }
 }
@@ -1832,7 +1969,8 @@ static NSCursor *cursorFromHCursor(HCURSOR cursor){
         return it->second;
     NSImage  *nsImage = imageFromHICON(cursor);
     POINT hotSpot = GetIconHotSpot(cursor);
-    NSCursor *nsCursor = [[NSCursor alloc] initWithImage:nsImage hotSpot:NSMakePoint(hotSpot.x, hotSpot.y)];
+    int height = nsImage.size.height;
+    NSCursor *nsCursor = [[NSCursor alloc] initWithImage:nsImage hotSpot:NSMakePoint(hotSpot.x, height-hotSpot.y)];
     s_cursorMap.insert(std::make_pair(cursor, nsCursor));
     return nsCursor;
     }
@@ -1851,5 +1989,38 @@ BOOL setNsWindowCursor(HWND hWnd, HCURSOR cursor){
             [cursorFromHCursor(cursor) set];
         }
         return TRUE;
+    }
+}
+
+BOOL getNsCursorPos(LPPOINT ppt) {
+    @autoreleasepool {
+    NSPoint mouseLocation = [NSEvent mouseLocation];
+    ppt->x = mouseLocation.x;
+    ppt->y = mouseLocation.y;
+
+    NSScreen *screen = nil;
+    for (NSScreen *currentScreen in [NSScreen screens]) {
+      if (NSPointInRect(mouseLocation, [currentScreen frame])) {
+        screen = currentScreen;
+        break;
+      }
+    }
+    if(screen == nil)
+        screen = [NSScreen mainScreen];
+    NSRect rect = [screen frame];
+    //convert to ns coordinate
+    ppt->y = rect.size.height - ppt->y;
+    float scale = [screen backingScaleFactor];
+    ppt->x *= scale;
+    ppt->y *= scale;
+    return TRUE;
+    }
+}
+
+int getNsDpi(bool bx) {
+    @autoreleasepool {
+    NSScreen *screen = [NSScreen mainScreen];
+    float scale = [screen backingScaleFactor];
+    return scale * 96;
     }
 }

@@ -1296,8 +1296,9 @@ BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, 
 int GetSystemScale()
 {
     // todo:hjx
-    int dpi = GetDpiForWindow(0);
-    return dpi * 100 / 96;
+    return 100;
+    // int dpi = GetDpiForWindow(0);
+    // return dpi * 100 / 96;
 }
 
 int GetSystemMetrics(int nIndex)
@@ -1327,10 +1328,10 @@ int GetSystemMetrics(int nIndex)
         ret = 32;
         break;
     case SM_CXCURSOR:
-        ret = 32;
+        ret = 16;
         break;
     case SM_CYCURSOR:
-        ret = 32;
+        ret = 16;
         break;
     case SM_CYHSCROLL:
     case SM_CXVSCROLL:

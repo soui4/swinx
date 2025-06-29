@@ -31,7 +31,7 @@ static const NSInteger kFDReadyEventSubtype = 100; // 自定义子类型
 
 NSWindow *getNsWindow(HWND hWnd);
 
-cairo_t * getNsWindowSurface(HWND hWnd){
+cairo_t * getNsWindowCanvas(HWND hWnd){
   WndObj wndObj = WndMgr::fromHwnd(hWnd);
   assert(wndObj);
   assert(wndObj->hdc);
@@ -809,7 +809,7 @@ void SConnection::SetTimerBlock(bool bBlock) {
 }
 
 HWND SConnection::GetActiveWnd() const {
-  return getNsActiveWindow();
+    return m_hActive;
 }
 
 bool SConnection::SetActiveWindow(HWND hWnd) {
@@ -845,22 +845,11 @@ bool SConnection::MoveWindow(HWND hWnd, int x, int y, int cx, int cy) const {
 }
 
 bool SConnection::GetCursorPos(LPPOINT ppt) const {
-    @autoreleasepool {
-    NSPoint mouseLocation = [NSEvent mouseLocation];
-    ppt->x = mouseLocation.x;
-    ppt->y = mouseLocation.y;
-    NSScreen * screen = [NSScreen mainScreen];
-    if(screen)
-    {//convert to ns coordinate
-        NSRect rect = [screen frame];
-        ppt->y = rect.size.height - ppt->y;
-    }
-    return TRUE;
-    }
+    return getNsCursorPos(ppt);
 }
 
 int SConnection::GetDpi(bool bx) const {
-    return 96;
+    return getNsDpi(bx);
 }
 
 void SConnection::KillWindowTimer(HWND hWnd) {
@@ -1061,7 +1050,7 @@ int SConnection::GetScreenWidth(HMONITOR hMonitor) const {
     @autoreleasepool {
         NSScreen *screen = (__bridge NSScreen *)hMonitor;
         NSRect rect = [screen frame];
-        return rect.size.width;
+        return rect.size.width * [screen backingScaleFactor];
     }
 }
 
@@ -1069,7 +1058,7 @@ int SConnection::GetScreenHeight(HMONITOR hMonitor) const {
     @autoreleasepool {
         NSScreen *screen = (__bridge NSScreen *)hMonitor;
         NSRect rect = [screen frame];
-        return rect.size.height;
+        return rect.size.height * [screen backingScaleFactor];
     }
 }
 
@@ -1275,10 +1264,11 @@ void SConnection::GetWorkArea(HMONITOR hMonitor, RECT* prc) {
     @autoreleasepool {
         NSScreen *screen = (__bridge NSScreen *)hMonitor;
         NSRect rect = [screen frame];
-        prc->left = rect.origin.x;
-        prc->top = rect.origin.y;
-        prc->right = rect.origin.x + rect.size.width;
-        prc->bottom = rect.origin.y + rect.size.height;
+        float scale = [screen backingScaleFactor];
+        prc->left = rect.origin.x * scale;
+        prc->top = rect.origin.y* scale;
+        prc->right = (rect.origin.x + rect.size.width)* scale;
+        prc->bottom = (rect.origin.y + rect.size.height)* scale;
     }
 }
 
@@ -1511,13 +1501,9 @@ void SConnection::OnNsActive(HWND hWnd, BOOL bActive) {
             }
         }
     }
+    if(bActive)//record last active window
+        m_hActive = hWnd;
     SendMessageA(hWnd, WM_ACTIVATE, bActive?1:0, 0);
-    // Msg *pMsg = new Msg;
-    // pMsg->hwnd = hWnd;
-    // pMsg->message = WM_ACTIVATE;
-    // pMsg->wParam = bActive?1:0;
-    // pMsg->lParam = 0;
-    // postMsg(pMsg);
 }
 
 void SConnection::OnDrawRect(HWND hWnd, const RECT &rc, cairo_t *ctx){

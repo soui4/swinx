@@ -49,7 +49,6 @@ class SConnection : public SConnBase{
 
     public:
     void onTerminate() override;
-    void onEvent(HWND hWnd,UINT message,WPARAM wParam,LPARAM lParam) override {}
     void OnNsEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) override;
     void OnDrawRect(HWND hWnd, const RECT &rc, cairo_t *ctx) override;
     void OnNsActive(HWND hWnd, BOOL bActive) override;
@@ -258,6 +257,7 @@ public:
       HBITMAP m_deskBmp;  
       HWND m_hWndCapture=NULL;  
       HWND m_hFocus = NULL;
+      HWND m_hActive = NULL;
       CaretInfo m_caretInfo;
       UINT m_caretBlinkTime = TS_CARET;
       SClipboard* m_clipboard;
