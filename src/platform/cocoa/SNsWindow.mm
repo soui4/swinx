@@ -263,17 +263,9 @@ defer:(BOOL)flag;
     }
     NSRect rect = self.frame;
     float scale = [self.window backingScaleFactor];
-    rect.origin.x *= scale;
-    rect.origin.y *= scale;
-    rect.size.width *= scale;
-    rect.size.height *= scale;
-    m_rcPos = rect;
-    _offscreenSur = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, (int)rect.size.width, (int)rect.size.height);
-    if(self != [self.window contentView])
-    {//only for child window
-        RECT rc = NSRect2Rect(rect);
-        SetWindowPos(m_hWnd,0,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOACTIVATE);
-    }
+    int wid = (int)(rect.size.width * scale);
+    int hei = (int)(rect.size.height * scale);
+    _offscreenSur = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, wid, hei);
 }
 
 - (void)drawRect:(NSRect)dirtyRect {
