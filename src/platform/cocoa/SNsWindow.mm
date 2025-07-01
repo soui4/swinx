@@ -1567,6 +1567,7 @@ HWND getNsForegroundWindow() {
         if(topWindow && topWindow.contentView != nil){
             SNsWindow *nswindow = (SNsWindow *)topWindow.contentView;
             if(nswindow){
+                SLOG_STMI()<<"getNsForegroundWindow: hWnd="<<nswindow->m_hWnd;
                 return nswindow->m_hWnd;
             }
         }
@@ -1582,6 +1583,7 @@ BOOL setNsForegroundWindow(HWND hWnd) {
     if(![nswindow.window isVisible]){
         return FALSE;
     }
+    SLOG_STMI()<<"setNsForegroundWindow: hWnd="<<nswindow->m_hWnd;
     [nswindow.window orderFront:nil];
     [NSApp activateIgnoringOtherApps:YES];
     return TRUE;

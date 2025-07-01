@@ -258,6 +258,7 @@ public:
       HWND m_hWndCapture=NULL;  
       HWND m_hFocus = NULL;
       HWND m_hActive = NULL;
+      HWND m_hForeground = NULL;
       CaretInfo m_caretInfo;
       UINT m_caretBlinkTime = TS_CARET;
       SClipboard* m_clipboard;

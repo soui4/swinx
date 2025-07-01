@@ -1,4 +1,5 @@
-﻿#import <Cocoa/Cocoa.h>
+﻿#include "src/platform/cocoa/SNsWindow.h"
+#import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
@@ -871,11 +872,19 @@ void SConnection::KillWindowTimer(HWND hWnd) {
 }
 
 HWND SConnection::GetForegroundWindow() {
-    return getNsForegroundWindow();
+    HWND hret = m_hForeground;
+    if(!IsNsWindow(hret)){
+        hret = getNsForegroundWindow();
+    }
+    return hret;
 }
 
 bool SConnection::SetForegroundWindow(HWND hWnd) {
-    return setNsForegroundWindow(hWnd);
+    bool ret =setNsForegroundWindow(hWnd);
+    if(ret){
+        m_hForeground = hWnd;
+    }
+    return ret;
 }
 
 bool SConnection::SetWindowOpacity(HWND hWnd, BYTE byAlpha) {
