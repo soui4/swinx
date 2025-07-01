@@ -747,7 +747,7 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
             break;
         }
         //SLOG_STMI()<<"UpdateWindowCursor, hWnd="<<hWnd<<" cursor="<<(WORD)(ULONG_PTR)cursorId;
-        SetCursor(LoadCursor(wndObj->hInstance, cursorId));
+        wndObj->mConnection->SetCursor(hWnd,LoadCursor(wndObj->hInstance, cursorId));
     }
 }
 

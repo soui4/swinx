@@ -47,7 +47,6 @@
 
 namespace swinx {
 struct OsState {
-  void *application;
   SConnBase *m_pOsListener;
   OsState(SConnBase *pListener);
   ~OsState();
@@ -59,16 +58,15 @@ OsState::OsState(SConnBase *pListener) : m_pOsListener(pListener) {
       NSZombieEnabled=    YES;
     SwinXApplication *nsApp = [SwinXApplication sharedApplication];
     [nsApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+    [nsApp activateIgnoringOtherApps:YES];
     AppDelegate *appDelegate = [[AppDelegate alloc] init];
     [nsApp setDelegate:appDelegate];
     [nsApp finishLaunching];
     nsApp->m_pOsListener = pListener;
-    application = (__bridge void *)nsApp;
   }
 }
 OsState::~OsState() {
-  SwinXApplication *nsApp = (__bridge SwinXApplication *)application;
-  [nsApp terminate:nil];
+  [NSApp terminate:nil];
 }
 
 static OsState *s_OsState = nil;

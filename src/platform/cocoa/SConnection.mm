@@ -772,8 +772,13 @@ HWND SConnection::GetCapture() const {
 }
 
 HCURSOR SConnection::SetCursor(HWND hWnd,HCURSOR cursor) {
-    if(!hWnd)
-        hWnd = GetActiveWnd();
+    if(!hWnd){
+        if(m_msgPeek){
+            hWnd = m_msgPeek->hwnd;
+        }else{
+            hWnd = GetActiveWnd();
+        }
+    }
     if (!hWnd)
         return cursor;
     auto it = m_wndCursor.find(hWnd);

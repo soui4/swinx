@@ -1,4 +1,5 @@
 #import <Cocoa/Cocoa.h>
+#include <objc/objc.h>
 #include <objc/NSObjCRuntime.h>
 #include <cairo-quartz.h>
 #include <map>
@@ -20,6 +21,7 @@
 #define kLogTag "SNsWindow"
 
 static NSString *NSPasteboardTypeSOUI = @"NSPasteboardTypeSOUI";
+
 
 extern "C"{
     LONG_PTR GetWindowLongPtrA(HWND hWnd, int nIndex);
@@ -124,19 +126,6 @@ defer:(BOOL)flag;
 -(void)setSizeingMark:(BOOL) bSizeing;
 @end
 
-
-// 自定义窗口类
-@interface SNsPanelHost : NSPanel<NSWindowDelegate, MouseCapture,SizeingMark>
-- (instancetype)initWithContentRect : (NSRect)contentRect 
-styleMask:(NSWindowStyleMask)styleMask 
-backing:(NSBackingStoreType)backingType 
-defer:(BOOL)flag;
-
--(BOOL)setCapture:(SNsWindow *)pWin;
--(BOOL)releaseCapture:(SNsWindow *)pWin;
--(void)setSizeingMark:(BOOL) bSizeing;
-@end
-
 // SNsWindow 实现
 @interface SNsWindow : NSView <NSDraggingDestination,NSTextInputClient>{
     @public
@@ -200,6 +189,7 @@ defer:(BOOL)flag;
 
 - (void)dealloc
 {
+    SLOG_STMI()<<"SNsWindow dealloc, m_hWnd="<<m_hWnd;
     if(_offscreenSur){
         cairo_surface_destroy(_offscreenSur);
         _offscreenSur = nil;       
@@ -257,14 +247,18 @@ defer:(BOOL)flag;
 
 - (void)layout {
     [super layout];
-    if(_offscreenSur!=nil){
-        cairo_surface_destroy(_offscreenSur);
-        _offscreenSur = nil;
-    }
     NSRect rect = self.frame;
     float scale = [self.window backingScaleFactor];
     int wid = (int)(rect.size.width * scale);
     int hei = (int)(rect.size.height * scale);
+    if(_offscreenSur!=nil){
+        int oldWid = cairo_image_surface_get_width(_offscreenSur);
+        int oldHei = cairo_image_surface_get_height(_offscreenSur);
+        if(oldWid == wid && oldHei == hei)
+            return;
+        cairo_surface_destroy(_offscreenSur);
+        _offscreenSur = nil;
+    }
     _offscreenSur = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, wid, hei);
 }
 
@@ -934,15 +928,15 @@ defer:(BOOL)flag
     }   
 }
 
-
-// 在窗口即将关闭时调用
 - (void)close {
     if(m_pCapture){
-        [m_pCapture stopCapture];
+        [self releaseCapture:m_pCapture];
     }
     SNsWindow * root = self.contentView;
+    [self setContentView:nil];
     SLOG_STMI()<<"window close, hwnd="<<root->m_hWnd;
     [root destroy];
+    [self setDelegate:nil];
     [super close]; 
 }
 
@@ -1063,153 +1057,6 @@ defer:(BOOL)flag
 @end
 
 
-// SNsPanelHost 实现
-@implementation SNsPanelHost{
-        id eventMonitor;
-        BOOL m_bSizing;
-        SNsWindow *m_pCapture;
-}
-
-- (instancetype)initWithContentRect : (NSRect)contentRect 
-styleMask:(NSWindowStyleMask)styleMask 
-backing:(NSBackingStoreType)backingType 
-defer:(BOOL)flag
-{
-    self = [super initWithContentRect:contentRect
-                            styleMask:styleMask 
-                              backing:backingType
-                                defer:flag];
-    [self setAcceptsMouseMovedEvents:YES];
-    [self setDelegate:self];
-    eventMonitor=nil;
-    m_bSizing = FALSE;
-    return self;
-}
-
--(BOOL)setCapture:(SNsWindow *)pWin{
-    if (eventMonitor) 
-        return FALSE;
-    m_pCapture = pWin;
-
-    __weak typeof(self) weakSelf = self;
-    eventMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:
-                        NSEventMaskLeftMouseDown | 
-                        NSEventMaskLeftMouseUp |
-                        NSEventMaskRightMouseDown |
-                        NSEventMaskRightMouseUp|
-                        NSEventMaskOtherMouseDown|
-                        NSEventMaskOtherMouseUp|
-                        NSEventMaskMouseMoved
-                        handler:^NSEvent *(NSEvent *event) {
-        [weakSelf sendEvent:event];
-        return nil;
-    }];
-
-    return TRUE;
-}
-
--(BOOL)releaseCapture:(SNsWindow *)pWin{
-    if(m_pCapture != pWin)
-        return FALSE;
-    if (!eventMonitor) 
-        return FALSE;
-    [NSEvent removeMonitor:eventMonitor];
-    eventMonitor = nil;
-    m_pCapture = nil;
-    return TRUE;
-}
-
--(void)setSizeingMark:(BOOL) bSizeing{
-    m_bSizing = bSizeing;
-}
-
- - (void)mouseMoved:(NSEvent *)event{
-    if(m_pCapture){
-        [m_pCapture mouseMoved:(NSEvent *)event];
-    }
-    NSView * pView = [self.contentView hitTest:event.locationInWindow];
-    if([pView isKindOfClass:[SNsWindow class]]){
-        SNsWindow * pNsWin = (SNsWindow *)pView;
-        [pNsWin mouseMoved:(NSEvent *)event];
-    }
-}
-
-- (void)close {
-    SNsWindow * root = self.contentView;
-    [root destroy];
-    [super close]; 
-}
-
-- (void)windowDidResize:(NSNotification *)notification{
-    if(m_bSizing)
-        return;
-    SNsWindow * root = self.contentView;
-    NSRect contentRect = [self contentRectForFrameRect:[self frame]];
-    NSScreen *screen = [self screen];
-    ConvertNSRect(screen, FALSE, &contentRect);
-    float scale = [screen backingScaleFactor];
-    contentRect.origin.x *= scale;
-    contentRect.origin.y *= scale;
-    contentRect.size.width *= scale;
-    contentRect.size.height *= scale;
-    m_bSizing=TRUE;
-    RECT rc = NSRect2Rect(contentRect);
-    SetWindowPos(root->m_hWnd, 0, rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top, SWP_NOZORDER|SWP_NOACTIVATE);
-    m_bSizing=FALSE;  
-    BOOL bZoomed = [self isZoomed];
-    if(bZoomed){
-        [root onStateChange:SIZE_MAXIMIZED];
-    }else {
-        [root onStateChange:SIZE_RESTORED];
-    }
-}
-
-- (void)windowDidMove:(NSNotification *)notification {
-    if(m_bSizing)
-        return;
-    NSRect contentRect = [self contentRectForFrameRect:[self frame]];
-    NSScreen *screen = [self screen];
-    ConvertNSRect(screen, FALSE, &contentRect);
-    float scale = [screen backingScaleFactor];
-    contentRect.origin.x *= scale;
-    contentRect.origin.y *= scale;
-    contentRect.size.width *= scale;
-    contentRect.size.height *= scale;
-
-    SNsWindow * root = self.contentView;
-    m_bSizing=TRUE;
-    RECT rc = NSRect2Rect(contentRect);
-    SetWindowPos(root->m_hWnd, 0, rc.left, rc.top, 0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
-    m_bSizing=FALSE;
-}
-
-
-- (void)setFrame:(NSRect)frameRect display:(BOOL)flag{
-    if(m_bSizing)
-        return;
-    [super setFrame:frameRect display:flag];
-}
-
-- (void)windowDidResignKey:(NSNotification *)notification {
-    SNsWindow * root = self.contentView;
-    [root onActive:FALSE];
-}
-
-- (void)windowDidBecomeKey:(NSNotification *)notification {
-    SNsWindow * root = self.contentView;
-    [root onActive:TRUE];
-    NSEvent * event = [NSApp currentEvent];
-    if(event.type == NSEventTypeLeftMouseDown || event.type == NSEventTypeRightMouseDown || event.type == NSEventTypeOtherMouseDown)
-    {
-        [self sendEvent:event];
-    }
-}
-
-- (BOOL)canBecomeKeyWindow {
-    return NO;
-}
-@end
-
 static NSScreen * getNsScreen(HWND hWnd){
     @autoreleasepool {
         if(hWnd){
@@ -1293,12 +1140,7 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
 
                 ConvertNSRect(screen, FALSE, &rect);
 
-                NSWindow * host = nil;
-                if(dwExStyle & (WS_EX_NOACTIVATE)){
-                    host = [[SNsPanelHost alloc] initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
-                }else{
-                    host = [[SNsWindowHost alloc] initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
-                }
+                NSWindow * host = [[SNsWindowHost alloc] initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
                 [host setContentView:nswindow];
                 [host setAnimationBehavior:NSWindowAnimationBehaviorNone];
                 assert(nswindow.window != nil);
@@ -1417,7 +1259,8 @@ BOOL setNsWindowSize(HWND hWnd, int cx, int cy){
 
 void closeNsWindow(HWND hWnd)
 {
-    @autoreleasepool {
+    //todo:hjx, 2015.07.01 open autorelease pool result in crash, fix it later
+    //@autoreleasepool {
 	SNsWindow* pWin = s_hwnd2nsWin.get(hWnd);
 	if(pWin)
 	{
@@ -1431,7 +1274,8 @@ void closeNsWindow(HWND hWnd)
         }
 		s_hwnd2nsWin.remove(hWnd);
 	}
-    }
+    pWin = nil;
+    //}
 }
 
 HWND getNsWindow(HWND hParent, int code)
@@ -1921,6 +1765,7 @@ POINT GetIconHotSpot(HICON hIcon);
 static NSCursor *cursorFromHCursor(HCURSOR cursor){
     @autoreleasepool {
     WORD cursorID = GetCursorID(cursor);
+    //SLOG_STMI()<<"hjx, cursorID: "<<cursorID;
     switch(cursorID){
         case CIDC_ARROW:
             return [NSCursor arrowCursor];
