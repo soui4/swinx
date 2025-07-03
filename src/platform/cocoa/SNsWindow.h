@@ -54,4 +54,7 @@ HRESULT doNsDragDrop(IDataObject *pDataObject,
 BOOL getNsCursorPos(LPPOINT ppt);
 
 int getNsDpi(bool bx);
+
+HWND findNsKeyWindow();
+
 #endif//_SNSWINDOW_H_

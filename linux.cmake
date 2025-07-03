@@ -1,9 +1,18 @@
+find_package(PkgConfig REQUIRED)
+
+pkg_search_module(CAIRO REQUIRED cairo)
+if (NOT CAIRO_FOUND)
+    message(FATAL_ERROR "Cairo not found")
+endif()
+
+include_directories(${CAIRO_INCLUDE_DIRS})
+link_directories(${CAIRO_LIBRARY_DIRS} )
 
 option(USING_GTK3_DLG "Using GTK3 to show common dialog" ON)
 
 #set(USING_GTK3_DLG OFF)
 if(USING_GTK3_DLG)
-find_package(PkgConfig REQUIRED)
+
 pkg_check_modules(GTK3 QUIET gtk+-3.0)  # 检查 GTK 3.0 版本
 # 如果找到 GTK，则设置相关变量
 if(GTK3_FOUND)
@@ -35,11 +44,8 @@ file(GLOB SRCS
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
     src/platform/linux/*.cpp
+    src/platform/linux/gtk/*.cpp
     )
-file(GLOB GTK_DEPS src/platform/linux/gtk/*.*)
-if(GTK3_FOUND)
-set(SRCS ${SRCS} ${GTK_DEPS})
-endif(GTK3_FOUND)
 
 source_group("Header Files" FILES ${HEADERS})
 source_group("Source Files" FILES ${SRCS})

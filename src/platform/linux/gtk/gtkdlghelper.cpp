@@ -1,5 +1,9 @@
 
 #include "gtkdlghelper.h"
+#ifdef ENABLE_GTK
+#include <stdint.h>
+#include <string>
+#include <list>
 #include <gtk/gtk.h>
 #include <gdk/gdkx.h>
 #include <gtk/gtkfilechooser.h>
@@ -61,7 +65,7 @@ static GtkWindow * native2GtkWindow(HWND winid){
 }
 
 static bool nativeFileDialog(HWND parent,
-                      Gtk::Mode mode,
+                      DlgMode mode,
                       char*** filenames,
                       int* files_count,
                       const char* title,
@@ -86,14 +90,14 @@ static bool nativeFileDialog(HWND parent,
                                          actions[mode],
                                          g_dgettext("gtk30", "_Cancel"),
                                          GTK_RESPONSE_CANCEL,
-                                         mode == Gtk::Mode::OPEN || mode == Gtk::Mode::FOLDER  ?
+                                         mode == DlgMode::OPEN || mode == DlgMode::FOLDER  ?
                                              g_dgettext("gtk30", "_Open") : g_dgettext("gtk30", "_Save"),
                                          GTK_RESPONSE_ACCEPT,
                                          NULL);
 
     gtk_window_set_skip_taskbar_hint(GTK_WINDOW(dialog), TRUE);
     GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
-    if (mode == Gtk::Mode::OPEN || mode == Gtk::Mode::FOLDER) {
+    if (mode == DlgMode::OPEN || mode == DlgMode::FOLDER) {
         gtk_file_chooser_set_current_folder(chooser, path);
         gtk_file_chooser_set_select_multiple (chooser, sel_multiple ? TRUE : FALSE);
     } else {
@@ -104,7 +108,7 @@ static bool nativeFileDialog(HWND parent,
 
     // Filters
     GSList *list = NULL;
-    if (mode != Gtk::Mode::FOLDER) {
+    if (mode != DlgMode::FOLDER) {
         parseString(&list, flt, ";;");
         for (guint i = 0; i < g_slist_length(list); i++) {
             if (char *flt_name = (char*)g_slist_nth(list, i)->data) {
@@ -112,7 +116,7 @@ static bool nativeFileDialog(HWND parent,
                 char *start = strchr(flt_name, '(');
                 char *end = strchr(flt_name, ')');
                 char *short_flt_name = NULL;
-                if (mode == Gtk::Mode::OPEN && strlen(flt_name) > 255 && start != NULL) {
+                if (mode == DlgMode::OPEN && strlen(flt_name) > 255 && start != NULL) {
                     int end_index = (int)(start - flt_name - 1);
                     if (end_index > 0)
                         short_flt_name = substr(flt_name, 0, end_index);
@@ -162,7 +166,7 @@ static bool nativeFileDialog(HWND parent,
         }
         ret = true;
     }
-    if (mode != Gtk::Mode::FOLDER) {
+    if (mode != DlgMode::FOLDER) {
         GtkFileFilter *s_filter = gtk_file_chooser_get_filter(chooser);
         if (sel_filter && *sel_filter)
             free(*sel_filter);
@@ -180,7 +184,7 @@ static bool nativeFileDialog(HWND parent,
 
 bool openGtkFileChooser( std::list<std::string> &files,
                                HWND parent,
-                               Mode mode,
+                               DlgMode mode,
                                const std::string &title,
                                const std::string &file,
                                const std::string &path,
@@ -251,3 +255,69 @@ bool gtk_choose_color(HWND parent,COLORREF *out){
 
 
 }//end of ns Gtk
+
+BOOL SChooseColor(HWND parent,const COLORREF initClr[16],COLORREF *out){
+    return Gtk::gtk_choose_color(parent,out);
+}
+
+BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
+{
+    std::list<std::string> lstRet;
+    bool ret = Gtk::openGtkFileChooser(lstRet, p->hwndOwner, (DlgMode)mode, "", "", p->lpstrInitialDir ? p->lpstrInitialDir : "", p->lpstrFilter ? p->lpstrFilter : "", NULL, p->Flags & OFN_ALLOWMULTISELECT);
+    if (!ret || lstRet.empty())
+        return FALSE;
+    auto it = lstRet.begin();
+    std::string &file = *it;
+    int pos = file.rfind('/');
+    if (!pos)
+        return FALSE;
+    if (p->lpstrFileTitle && p->nMaxFileTitle > file.length() - (pos + 1))
+    {
+        strcpy(p->lpstrFileTitle, file.c_str() + pos + 1);
+    }
+    p->nFileOffset = 0;
+    if (p->Flags & OFN_ALLOWMULTISELECT)
+    {
+        std::stringstream ss;
+        std::string path = file.substr(0, pos);
+        ss << path;
+        ss << "\0";
+        p->nFileOffset = pos + 1;
+        while (it != lstRet.end())
+        {
+            file = *it;
+            if (file.length() > pos + 1)
+            {
+                ss << file.substr(pos + 1);
+                ss << "\0";
+            }
+            it++;
+        }
+        ss << "\0";
+        if (p->nMaxFile < ss.str().length())
+        {
+            SetLastError(SEC_E_INSUFFICIENT_MEMORY);
+            return FALSE;
+        }
+        memcpy(p->lpstrFile, ss.str().c_str(), ss.str().length());
+    }
+    else
+    {
+        if (p->nMaxFile < lstRet.front().length())
+        {
+            SetLastError(SEC_E_INSUFFICIENT_MEMORY);
+            return FALSE;
+        }
+        strcpy(p->lpstrFile, lstRet.front().c_str());
+    }
+    return TRUE;
+}
+#else
+    BOOL SChooseColor(HWND parent,const COLORREF initClr[16],COLORREF *out){
+        return FALSE;
+    }
+
+    BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode){
+        return FALSE;
+    }
+#endif//EABLE_GTK

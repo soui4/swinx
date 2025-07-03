@@ -1,76 +1,12 @@
 #include <windows.h>
 #include <commdlg.h>
 #include "tostring.hpp"
-#ifdef ENABLE_GTK
-#include "gtk/gtkdlghelper.h"
-#endif//ENABLE_GTK
 #include "log.h"
 #define kLogTag "commondlg"
 
-enum Mode{
-    OPEN=0,
-    SAVE,
-    FOLDER,
-};
-
-static BOOL _GetOpenFileNameA(LPOPENFILENAMEA p, Mode mode)
-{
-#ifdef ENABLE_GTK
-    std::list<std::string> lstRet;
-    bool ret = Gtk::openGtkFileChooser(lstRet, p->hwndOwner, (Gtk::Mode)mode, "", "", p->lpstrInitialDir ? p->lpstrInitialDir : "", p->lpstrFilter ? p->lpstrFilter : "", NULL, p->Flags & OFN_ALLOWMULTISELECT);
-    if (!ret || lstRet.empty())
-        return FALSE;
-    auto it = lstRet.begin();
-    std::string &file = *it;
-    int pos = file.rfind('/');
-    if (!pos)
-        return FALSE;
-    if (p->lpstrFileTitle && p->nMaxFileTitle > file.length() - (pos + 1))
-    {
-        strcpy(p->lpstrFileTitle, file.c_str() + pos + 1);
-    }
-    p->nFileOffset = 0;
-    if (p->Flags & OFN_ALLOWMULTISELECT)
-    {
-        std::stringstream ss;
-        std::string path = file.substr(0, pos);
-        ss << path;
-        ss << "\0";
-        p->nFileOffset = pos + 1;
-        while (it != lstRet.end())
-        {
-            file = *it;
-            if (file.length() > pos + 1)
-            {
-                ss << file.substr(pos + 1);
-                ss << "\0";
-            }
-            it++;
-        }
-        ss << "\0";
-        if (p->nMaxFile < ss.str().length())
-        {
-            SetLastError(SEC_E_INSUFFICIENT_MEMORY);
-            return FALSE;
-        }
-        memcpy(p->lpstrFile, ss.str().c_str(), ss.str().length());
-    }
-    else
-    {
-        if (p->nMaxFile < lstRet.front().length())
-        {
-            SetLastError(SEC_E_INSUFFICIENT_MEMORY);
-            return FALSE;
-        }
-        strcpy(p->lpstrFile, lstRet.front().c_str());
-    }
-    return TRUE;
-#else
-    return FALSE;
-#endif // ENABLE_GTK
-}
-
-BOOL _GetOpenFileNameW(LPOPENFILENAMEW p, Mode mode)
+extern BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode);
+extern BOOL SChooseColor(HWND parent,const COLORREF initClr[16],COLORREF *out);
+static BOOL _GetOpenFileNameW(LPOPENFILENAMEW p, DlgMode mode)
 {
     std::string strFilter, strCustomFilter, strFile, strFileTitle, strInitDir, strTitle, strDefExt;
     tostring(p->lpstrFilter, -1, strFilter);
@@ -100,7 +36,7 @@ BOOL _GetOpenFileNameW(LPOPENFILENAMEW p, Mode mode)
     openFile.lCustData = p->lCustData;
     openFile.FlagsEx = p->FlagsEx;
 
-    BOOL ret = _GetOpenFileNameA(&openFile, mode);
+    BOOL ret = SGetOpenFileNameA(&openFile, mode);
     {
         std::wstring str;
         towstring(openFile.lpstrFileTitle, -1, str);
@@ -132,7 +68,7 @@ BOOL _GetOpenFileNameW(LPOPENFILENAMEW p, Mode mode)
 
 BOOL GetOpenFileNameA(LPOPENFILENAMEA p)
 {
-    return _GetOpenFileNameA(p, OPEN);
+    return SGetOpenFileNameA(p, OPEN);
 }
 
 BOOL GetOpenFileNameW(LPOPENFILENAMEW p)
@@ -142,7 +78,7 @@ BOOL GetOpenFileNameW(LPOPENFILENAMEW p)
 
 BOOL GetSaveFileNameA(LPOPENFILENAMEA p)
 {
-    return _GetOpenFileNameA(p, SAVE);
+    return SGetOpenFileNameA(p, SAVE);
 }
 BOOL GetSaveFileNameW(LPOPENFILENAMEW p)
 {
@@ -152,20 +88,12 @@ BOOL GetSaveFileNameW(LPOPENFILENAMEW p)
 
 BOOL ChooseColorA(LPCHOOSECOLORA p)
 {
-#ifdef ENABLE_GTK
-    return Gtk::gtk_choose_color(p->hwndOwner, &p->rgbResult);
-#else
-    return FALSE;
-#endif // ENABLE_GTK
+    return SChooseColor(p->hwndOwner,p->lpCustColors, &p->rgbResult);
 }
 
 BOOL ChooseColorW(LPCHOOSECOLORW p)
 {
-#ifdef ENABLE_GTK
-    return Gtk::gtk_choose_color(p->hwndOwner, &p->rgbResult);
-#else
-    return FALSE;
-#endif // ENABLE_GTK
+    return SChooseColor(p->hwndOwner,p->lpCustColors, &p->rgbResult);
 }
 
 BOOL WINAPI PickFolderA(_In_ LPBROWSEINFOA lpbi)
@@ -178,7 +106,7 @@ BOOL WINAPI PickFolderA(_In_ LPBROWSEINFOA lpbi)
     of.lpstrFile = lpbi->lpszPath;
     of.hwndOwner = lpbi->hwndOwner;
     of.lpstrInitialDir = lpbi->strlRoot;
-    return _GetOpenFileNameA(&of, FOLDER);
+    return SGetOpenFileNameA(&of, FOLDER);
 }
 
 BOOL WINAPI PickFolderW(_In_ LPBROWSEINFOW lpbi)

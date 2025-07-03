@@ -60,49 +60,20 @@ static void RevertNSRect(NSScreen *screen, BOOL fullscreen, NSRect *r)
 
 @class SNsWindow;
 
-class NsWndMap{
-  public:
-    NsWndMap(){
-    }
-    ~NsWndMap(){
-        std::lock_guard<std::mutex> lock(m_mutex);
-        SLOG_STMW()<<"remain "<<m_map.size()<<" windows";
-        m_map.clear();
-    }
-    SNsWindow* get(HWND hWnd){
-        std::lock_guard<std::mutex> lock(m_mutex);
-        auto it = m_map.find(hWnd);
-        if(it == m_map.end())
-            return nullptr;
-        return it->second;
-    }
-    void set(HWND hWnd, SNsWindow* pWin){
-      std::lock_guard<std::mutex> lock(m_mutex);
-        m_map[hWnd] = pWin;
-    }
-    void remove(HWND hWnd){
-        std::lock_guard<std::mutex> lock(m_mutex);
-        auto it = m_map.find(hWnd);
-        if(it == m_map.end())
-            return;
-        m_map.erase(hWnd);
-    }
-  private:
-    std::map<HWND, SNsWindow*> m_map;
-    std::mutex m_mutex;
-};
-
-static NsWndMap s_hwnd2nsWin;
-
-
-
-BOOL IsNsWindow(HWND hWnd){
-	return s_hwnd2nsWin.get(hWnd)!=nullptr;
-}
 
 SNsWindow *getNsWindow(HWND hWnd){
-	return s_hwnd2nsWin.get(hWnd);
+    @try{
+        return (__bridge SNsWindow *)(void*)hWnd;
+    }@catch(NSException *exception){
+        SLOG_STMW()<<"getNsWindow() exception:"<<exception.description.UTF8String;
+        return nil;
+    }
 }
+
+BOOL IsNsWindow(HWND hWnd){
+	return getNsWindow(hWnd) != nil;
+}
+
 
 @protocol MouseCapture 
     -(BOOL)setCapture:(SNsWindow *)pWin;
@@ -115,6 +86,19 @@ SNsWindow *getNsWindow(HWND hWnd){
 
 // 自定义窗口类
 @interface SNsWindowHost : NSWindow<NSWindowDelegate,MouseCapture, SizeingMark>
+- (instancetype)initWithContentRect : (NSRect)contentRect 
+styleMask:(NSWindowStyleMask)styleMask 
+backing:(NSBackingStoreType)backingType 
+defer:(BOOL)flag;
+
+-(BOOL)setCapture:(SNsWindow *)pWin;
+-(BOOL)releaseCapture:(SNsWindow *)pWin;
+-(void)unzoom;
+-(void)setSizeingMark:(BOOL) bSizeing;
+@end
+
+// 自定义窗口类
+@interface SNsPanelHost : NSPanel<NSWindowDelegate,MouseCapture, SizeingMark>
 - (instancetype)initWithContentRect : (NSRect)contentRect 
 styleMask:(NSWindowStyleMask)styleMask 
 backing:(NSBackingStoreType)backingType 
@@ -162,7 +146,7 @@ defer:(BOOL)flag;
 - (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent{
     m_pListener = listener;
     m_rcPos = frameRect;
-    m_hWnd = (HWND)(__bridge void *)self;
+    m_hWnd = (HWND)(__bridge_retained void *)self;
     NSScreen * screen = [NSScreen mainScreen];//todo, get screen from position.
     float scale = [screen backingScaleFactor];
     frameRect.origin.x /= scale;
@@ -189,7 +173,7 @@ defer:(BOOL)flag;
 
 - (void)dealloc
 {
-    SLOG_STMI()<<"SNsWindow dealloc, m_hWnd="<<m_hWnd;
+    //SLOG_STMI()<<"SNsWindow dealloc, m_hWnd="<<m_hWnd;
     if(_offscreenSur){
         cairo_surface_destroy(_offscreenSur);
         _offscreenSur = nil;       
@@ -351,12 +335,12 @@ defer:(BOOL)flag;
 }
 
 - (void) mouseDown: (NSEvent *) theEvent {
-    SLOG_STMI()<<"mouseDown,m_hWnd="<<m_hWnd;
+//    SLOG_STMI()<<"mouseDown,m_hWnd="<<m_hWnd;
     [self onMouseEvent:theEvent withMsgId:WM_LBUTTONDOWN];
 }
 
 - (void) mouseUp: (NSEvent *) theEvent {
-        SLOG_STMI()<<"mouseUp,m_hWnd="<<m_hWnd;
+//        SLOG_STMI()<<"mouseUp,m_hWnd="<<m_hWnd;
     [self onMouseEvent:theEvent withMsgId:WM_LBUTTONUP];
 }
 
@@ -525,11 +509,11 @@ defer:(BOOL)flag;
 
 - (void) destroy{
     m_pListener->OnNsEvent(m_hWnd, WM_DESTROY, 0, 0);
+    //SLOG_STMI()<<"hjx destroy: hWnd="<<m_hWnd;
+    CFBridgingRelease((void*)m_hWnd);
 }
 
 - (void)onActive: (BOOL)isActive{
-    if(m_bSetActive)
-        return;
     SLOG_STMI()<<"hjx onActive:"<<isActive<<" hWnd="<<m_hWnd;
     m_pListener->OnNsActive(m_hWnd, isActive);
 }
@@ -831,6 +815,10 @@ defer:(BOOL)flag
     return TRUE;
 }
 
+-(void) dealloc {
+    //SLOG_STMI()<<"Dealloc SNsWindowHost, self="<<self;
+}
+
 -(BOOL)releaseCapture:(SNsWindow *)pWin{
     if(m_pCapture != pWin)
         return FALSE;
@@ -890,11 +878,8 @@ defer:(BOOL)flag
                 break;
         }
     }
-
     else if(event.type==NSEventTypeLeftMouseDragged || event.type==NSEventTypeRightMouseDragged || event.type==NSEventTypeOtherMouseDragged ){
         [self mouseDragged:event];
-    }else if(event.type==NSEventTypeMouseMoved){
-        [self mouseMoved:event];
     }
     else
     {
@@ -932,12 +917,12 @@ defer:(BOOL)flag
     if(m_pCapture){
         [self releaseCapture:m_pCapture];
     }
+    [self orderOut:nil];
     SNsWindow * root = self.contentView;
     [self setContentView:nil];
-    SLOG_STMI()<<"window close, hwnd="<<root->m_hWnd;
+    //SLOG_STMI()<<"window close, hwnd="<<root->m_hWnd;
     [root destroy];
     [self setDelegate:nil];
-    [super close]; 
 }
 
 - (void)windowDidDeminiaturize:(NSNotification *)notification {
@@ -1021,6 +1006,8 @@ defer:(BOOL)flag
 
 - (BOOL)canBecomeKeyWindow {
     SNsWindow * root = self.contentView;
+    if(!root)
+        return NO;
     DWORD dwStyle= GetWindowLongA(root->m_hWnd, GWL_STYLE);
     DWORD dwExStyle= GetWindowLongA(root->m_hWnd, GWL_EXSTYLE);
     if(dwExStyle & (WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW))
@@ -1057,6 +1044,309 @@ defer:(BOOL)flag
 @end
 
 
+
+// SNsPanelHost 实现
+@implementation SNsPanelHost{
+        id eventMonitor;
+        BOOL m_bSizing;
+        NSRect m_defSize;
+        SNsWindow *m_pCapture;
+        NSView * m_pHover;
+}
+
+- (instancetype)initWithContentRect : (NSRect)contentRect 
+styleMask:(NSWindowStyleMask)styleMask 
+backing:(NSBackingStoreType)backingType 
+defer:(BOOL)flag
+{
+    self = [super initWithContentRect:contentRect
+                            styleMask:styleMask 
+                              backing:backingType
+                                defer:flag];
+    [self setAcceptsMouseMovedEvents:YES];
+    [self setLevel:(NSWindowLevel)NSNormalWindowLevel];
+    [self setDelegate:self];
+    self.ignoresMouseEvents = NO;
+    self.movableByWindowBackground = NO;
+    eventMonitor=nil;
+    m_bSizing = FALSE;
+    m_pCapture = nil;
+    return self;
+}
+
+-(BOOL)setCapture:(SNsWindow *)pWin{
+    if (eventMonitor) 
+        return FALSE;
+//    SLOG_STMI()<<"setCapture hWnd="<<pWin->m_hWnd;
+    m_pCapture = pWin;
+
+    __weak typeof(self) weakSelf = self;
+    eventMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:
+                        NSEventMaskLeftMouseDown | 
+                        NSEventMaskLeftMouseUp |
+                        NSEventMaskRightMouseDown |
+                        NSEventMaskRightMouseUp|
+                        NSEventMaskOtherMouseDown|
+                        NSEventMaskOtherMouseUp|
+                        NSEventMaskMouseMoved
+                        handler:^NSEvent *(NSEvent *event) {
+        
+        typeof(self) strongSelf = weakSelf;
+        if (!strongSelf) return event;
+
+        if(event.windowNumber != strongSelf.windowNumber){
+            NSPoint ptScreen = [event locationInWindow];
+            if(event.window != nil){
+                ptScreen = [event.window convertPointToScreen:ptScreen];
+            }
+            NSWindow *targetWindow = strongSelf;
+            NSPoint point = [targetWindow convertPointFromScreen:ptScreen];
+
+            event = [NSEvent mouseEventWithType:event.type
+                                            location:point
+                                       modifierFlags:event.modifierFlags
+                                           timestamp:event.timestamp
+                                        windowNumber:strongSelf.windowNumber
+                                             context:event.context
+                                          eventNumber:event.eventNumber
+                                       clickCount:event.clickCount
+                                         pressure:event.pressure];            
+        }
+        switch(event.type){
+            case NSLeftMouseDown:
+                [m_pCapture mouseDown:event];
+                break;
+            case NSLeftMouseUp:
+                [m_pCapture mouseUp:event];
+                break;
+            case NSRightMouseDown:
+                [m_pCapture rightMouseDown:event];
+                break;
+            case NSRightMouseUp:
+                [m_pCapture rightMouseUp:event];
+                break;
+            case NSOtherMouseDown:
+                [m_pCapture otherMouseDown:event];
+                break;
+            case NSOtherMouseUp:
+                [m_pCapture otherMouseUp:event];
+                break;
+            case NSMouseMoved:
+                [m_pCapture mouseMoved:event];
+                break;
+            default:
+                break;
+        }
+        return nil;
+    }];
+
+    return TRUE;
+}
+
+-(void) dealloc {
+    //SLOG_STMI()<<"Dealloc SNsPanelHost, self="<<self;
+}
+
+-(BOOL)releaseCapture:(SNsWindow *)pWin{
+    if(m_pCapture != pWin)
+        return FALSE;
+    if (!eventMonitor) 
+        return FALSE;
+//    SLOG_STMI()<<"releaseCapture hWnd="<<pWin->m_hWnd;
+    [NSEvent removeMonitor:eventMonitor];
+    eventMonitor = nil;
+    m_pCapture = nil;
+    return TRUE;
+}
+
+-(void)setSizeingMark:(BOOL) bSizeing{
+    m_bSizing = bSizeing;
+}
+
+-(void)mouseExited:(NSEvent *)event {
+    if(!m_pCapture){
+        [self.contentView mouseExited:event];
+        [[NSCursor arrowCursor] set];
+    }
+}
+
+- (void)sendEvent:(NSEvent *)event {
+    if (event.type == NSEventTypeMouseMoved) {
+        [self mouseMoved:event];
+    }else if(event.type == NSEventTypeLeftMouseDown || event.type == NSEventTypeRightMouseDown || event.type == NSEventTypeOtherMouseDown)
+    {
+        NSView *view = m_pCapture?m_pCapture:[self.contentView hitTest:event.locationInWindow];
+        switch(event.type){
+            case NSEventTypeLeftMouseDown:
+                [view mouseDown:event];                
+                break;
+            case NSEventTypeRightMouseDown:
+                [view rightMouseDown:event];               
+                break;
+            case NSEventTypeOtherMouseDown:
+                [view otherMouseDown:event];
+                break;
+            default:
+                break;
+        }
+    }
+    else if(event.type==NSEventTypeLeftMouseUp || event.type==NSEventTypeRightMouseUp || event.type==NSEventTypeOtherMouseDragged ){
+        NSView *view = m_pCapture?m_pCapture:[self.contentView hitTest:event.locationInWindow];
+        switch(event.type){
+            case NSEventTypeLeftMouseUp:
+                [view mouseUp:event];                
+                break;
+            case NSEventTypeRightMouseUp:
+                [view rightMouseUp:event];               
+                break;
+            case NSEventTypeOtherMouseUp:
+                [view otherMouseUp:event];
+                break;
+            default:
+                break;
+        }
+    }
+    else if(event.type==NSEventTypeLeftMouseDragged || event.type==NSEventTypeRightMouseDragged || event.type==NSEventTypeOtherMouseDragged ){
+        [self mouseDragged:event];
+    }
+    else
+    {
+        [super sendEvent:event];
+    }
+}
+
+- (void)mouseDragged:(NSEvent *)event {
+    [self mouseMoved:event];
+}
+
+- (void)mouseMoved:(NSEvent *)event{
+    if(m_pCapture){
+        [m_pCapture mouseMoved:(NSEvent *)event];
+        return;
+    }
+    NSView * pHover = [self.contentView hitTest:event.locationInWindow];
+    if(m_pHover != pHover){
+        if(m_pHover){
+            [m_pHover mouseExited:event];
+            m_pHover = nil;
+        }
+        m_pHover = pHover;
+        if(m_pHover){
+            [m_pHover mouseEntered:event];
+        }
+    }
+    if(pHover)
+    {
+        [pHover mouseMoved:(NSEvent *)event];
+    }   
+}
+
+- (void)close {
+    if(m_pCapture){
+        [self releaseCapture:m_pCapture];
+    }
+    [self orderOut:nil];
+    SNsWindow * root = self.contentView;
+    [self setContentView:nil];
+    //SLOG_STMI()<<"window close, hwnd="<<root->m_hWnd;
+    [root destroy];
+    [self setDelegate:nil];
+}
+
+- (void)windowDidDeminiaturize:(NSNotification *)notification {
+    SNsWindow * root = self.contentView;
+    BOOL bZoomed = [self isZoomed];
+    if(bZoomed){
+        [root onStateChange:SIZE_MAXIMIZED];
+    }else {
+        [root onStateChange:SIZE_RESTORED];
+    }
+}
+
+- (void)windowDidMiniaturize:(NSNotification *)notification {
+    SNsWindow * root = self.contentView;
+    [root onStateChange:SIZE_MINIMIZED];
+}
+
+- (void)windowDidResize:(NSNotification *)notification{
+    if(m_bSizing)
+        return;
+    SNsWindow * root = self.contentView;
+    NSRect contentRect = [self contentRectForFrameRect:[self frame]];
+    NSScreen *screen = [self screen];
+    ConvertNSRect(screen, FALSE, &contentRect);
+    float scale = [screen backingScaleFactor];
+    contentRect.origin.x *= scale;
+    contentRect.origin.y *= scale;
+    contentRect.size.width *= scale;
+    contentRect.size.height *= scale;
+    m_bSizing=TRUE;
+    RECT rc = NSRect2Rect(contentRect);
+    SetWindowPos(root->m_hWnd,0,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOACTIVATE);
+    m_bSizing=FALSE;  
+    BOOL bZoomed = [self isZoomed];
+    if(bZoomed){
+        [root onStateChange:SIZE_MAXIMIZED];
+    }else {
+        [root onStateChange:SIZE_RESTORED];
+    }
+}
+
+- (void)windowDidMove:(NSNotification *)notification {
+    if(m_bSizing)
+        return;
+    NSRect contentRect = [self contentRectForFrameRect:[self frame]];
+    NSScreen *screen = [self screen];
+    ConvertNSRect(screen, FALSE, &contentRect);
+    float scale = [screen backingScaleFactor];
+    contentRect.origin.x *= scale;
+    contentRect.origin.y *= scale;
+    contentRect.size.width *= scale;
+    contentRect.size.height *= scale;
+
+    SNsWindow * root = self.contentView;
+    m_bSizing=TRUE;
+    RECT rc = NSRect2Rect(contentRect);
+    SetWindowPos(root->m_hWnd,0,rc.left,rc.top,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
+    m_bSizing=FALSE;
+}
+
+- (void)setFrame:(NSRect)frameRect display:(BOOL)flag{
+    if(m_bSizing)
+        return;
+    [super setFrame:frameRect display:flag];
+}
+
+- (BOOL)canBecomeKeyWindow {
+    return NO;
+}
+- (BOOL)acceptsFirstResponder {
+    return YES;
+}
+
+- (void) windowDidEnterFullScreen:(NSNotification *)notification {
+    SNsWindow * root = self.contentView;
+    SLOG_STMI()<<"windowDidEnterFullScreen,hWnd="<<root->m_hWnd;
+}
+
+- (void) windowDidExitFullScreen:(NSNotification *)notification {
+    SNsWindow * root = self.contentView;
+    SLOG_STMI()<<"windowDidExitFullScreen,hWnd="<<root->m_hWnd;
+}
+
+-(void)unzoom{
+    if([self isZoomed]){
+        [self setFrame:m_defSize display:YES animate:YES];
+    }
+}
+
+- (void)zoom:(nullable id)sender;{
+    m_defSize = [self frame];
+    [super zoom:sender];
+}
+
+@end
+
 static NSScreen * getNsScreen(HWND hWnd){
     @autoreleasepool {
         if(hWnd){
@@ -1076,9 +1366,7 @@ HWND createNsWindow(HWND hParent, DWORD dwStyle,DWORD dwExStyle, LPCSTR pszTitle
     if(!(dwStyle&WS_CHILD))
         hParent=0;
     SNsWindow * nswindow = [[SNsWindow alloc] initWithFrame:rect withListener:pListener withParent:hParent];
-    HWND hWnd  = nswindow->m_hWnd;
-	s_hwnd2nsWin.set(hWnd, nswindow);
-	return hWnd;
+    return nswindow->m_hWnd;
     }
 }
 
@@ -1139,8 +1427,11 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
                 rect.size.height /= scale;
 
                 ConvertNSRect(screen, FALSE, &rect);
-
-                NSWindow * host = [[SNsWindowHost alloc] initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
+                NSWindow *host=nil;
+                if(dwExStyle & WS_EX_NOACTIVATE)
+                    host = [[SNsPanelHost alloc] initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
+                else
+                    host = [[SNsWindowHost alloc] initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
                 [host setContentView:nswindow];
                 [host setAnimationBehavior:NSWindowAnimationBehaviorNone];
                 assert(nswindow.window != nil);
@@ -1259,23 +1550,23 @@ BOOL setNsWindowSize(HWND hWnd, int cx, int cy){
 
 void closeNsWindow(HWND hWnd)
 {
-    //todo:hjx, 2015.07.01 open autorelease pool result in crash, fix it later
-    //@autoreleasepool {
-	SNsWindow* pWin = s_hwnd2nsWin.get(hWnd);
+    @autoreleasepool {
+	SNsWindow* pWin = getNsWindow(hWnd);
 	if(pWin)
 	{
         if(IsRootView(pWin)){
             if(pWin.window){
                 [pWin.window close];
-                SLOG_STMI()<<"closeNsWindow: hWnd="<<pWin->m_hWnd;
+//                SLOG_STMI()<<"closeNsWindow: hWnd="<<pWin->m_hWnd;
             }
         }else{
             [pWin removeFromSuperview];
+            [pWin destroy];
         }
-		s_hwnd2nsWin.remove(hWnd);
-	}
-    pWin = nil;
-    //}
+	}else{
+        SLOG_STMW()<<"hjx closeNsWindow: hWnd="<<hWnd<<" not found";
+    }
+    }
 }
 
 HWND getNsWindow(HWND hParent, int code)
@@ -1341,9 +1632,10 @@ BOOL setNsActiveWindow(HWND hWnd){
         return FALSE;
     if(nswindow.window == nil)
         return FALSE;
-    SLOG_STMI()<<"setNsActiveWindow: hWnd="<<hWnd;
+    //SLOG_STMI()<<"setNsActiveWindow: hWnd="<<hWnd;
     nswindow->m_bSetActive = TRUE;
     [nswindow.window makeKeyWindow];
+//    [nswindow onActive:TRUE];
     nswindow->m_bSetActive = FALSE;
     return TRUE;
     }
@@ -1862,4 +2154,21 @@ int getNsDpi(bool bx) {
     float scale = [screen backingScaleFactor];
     return scale * 96;
     }
+}
+
+HWND findNsKeyWindow(){
+    @autoreleasepool{
+        NSArray<NSWindow *> *windows = [NSApp windows];
+        for (NSWindow *window in windows) {
+            if ([window canBecomeKeyWindow] && [window isVisible]) {
+                NSView *view = window.contentView;
+                if([view isKindOfClass: [SNsWindow class]])
+                {
+                    SNsWindow *win = (SNsWindow *)view;
+                    return win->m_hWnd;
+                }
+            }
+        }
+    }
+    return NULL;
 }

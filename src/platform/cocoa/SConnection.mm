@@ -506,7 +506,7 @@ void SConnection::updateMsgQueue(DWORD dwTimeout) {
             }
         }
     }
-    //@autoreleasepool
+    @autoreleasepool
     {//todo:hjx add autoreleasepool result in crash, fix it later.
         NSDate *timeoutDate = nil;
         if(dwTimeout == 0)
@@ -1364,6 +1364,17 @@ HWND SConnection::OnWindowCreate(_Window *wnd, CREATESTRUCT *cs, int depth) {
 
 void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd) {
     closeNsWindow(hWnd);
+    if(m_hFocus == hWnd)
+        m_hFocus = 0;
+    if(m_hForeground == hWnd)
+        m_hForeground = 0;
+    if(m_hActive == hWnd){
+        m_hActive = 0;
+        HWND hkeyWindow = findNsKeyWindow();
+        if(hkeyWindow){
+            setNsActiveWindow(hkeyWindow);
+        }
+    }
 }
 
 void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, bool bVisible, int nCmdShow) { 

@@ -54,8 +54,6 @@ struct OsState {
 
 OsState::OsState(SConnBase *pListener) : m_pOsListener(pListener) {
   @autoreleasepool {
-      NSDebugEnabled=        YES;
-      NSZombieEnabled=    YES;
     SwinXApplication *nsApp = [SwinXApplication sharedApplication];
     [nsApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     [nsApp activateIgnoringOtherApps:YES];
@@ -66,7 +64,6 @@ OsState::OsState(SConnBase *pListener) : m_pOsListener(pListener) {
   }
 }
 OsState::~OsState() {
-  [NSApp terminate:nil];
 }
 
 static OsState *s_OsState = nil;
