@@ -3506,11 +3506,17 @@ int AddFontResource(LPCSTR lpszFilename)
     return AddFontResourceEx(lpszFilename, 0, 0);
 }
 
+#if defined(CAIRO_HAS_QUARTZ_FONT) && CAIRO_HAS_QUARTZ_FONT
+    extern int macos_register_font(const char *path);
+#endif
 int AddFontResourceEx(LPCSTR lpszFilename, // font file name
                       DWORD fl,            // font characteristics
                       PVOID pdv            // reserved
 )
 {
+    #if defined(CAIRO_HAS_QUARTZ_FONT) && CAIRO_HAS_QUARTZ_FONT
+        return macos_register_font(lpszFilename);
+    #else
     int ret = 0;
     do
     {
@@ -3545,4 +3551,5 @@ int AddFontResourceEx(LPCSTR lpszFilename, // font file name
     } while (false);
 
     return ret;
+    #endif//
 }
