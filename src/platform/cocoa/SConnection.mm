@@ -121,15 +121,22 @@ SConnection::SConnection(int screenNum)
     memset(&m_caretInfo, 0, sizeof(m_caretInfo));
 }
 
-SConnection::~SConnection()
-{
-    delete m_clipboard;
-    delete m_trayIconMgr;
-    for (auto it = m_msgStack.rbegin(); it != m_msgStack.rend(); it++)
-    {
-        delete *it;
-    }
-    m_msgStack.clear();
+SConnection::~SConnection() {
+  std::unique_lock<std::recursive_mutex> lock(m_mutex);
+  delete m_clipboard;
+  delete m_trayIconMgr;
+  for (auto it = m_msgStack.rbegin(); it != m_msgStack.rend(); it++) {
+    delete *it;
+  }
+  m_msgStack.clear();
+  if (m_msgPeek && m_bMsgNeedFree) {
+    delete m_msgPeek;
+    m_msgPeek = nullptr;
+  }
+  for (auto &msg : m_msgQueue) {
+    delete msg;
+  }
+  m_msgQueue.clear();
   DeleteDC(m_deskDC);
   DeleteObject(m_deskBmp);
   swinx::shutdown();
@@ -338,8 +345,10 @@ static NSEvent *nextEvent(NSDate *timeoutDate, SConnection *connection) {
       if (nsEvent.window != nil) {
         mouseLocation = [nsEvent.window convertPointToScreen:mouseLocation];
       }
-      static NSWindow *lastHit = nil;
+      static __weak NSWindow *lastHitWeak = nil;
       // find the window by its mouse location
+      @autoreleasepool{
+      NSWindow *lastHit = lastHitWeak;
       NSWindow *wndHit = nil;
       auto windows = [NSApp windows];
       for (int i = [windows count] - 1; i >= 0; i--) {
@@ -359,7 +368,7 @@ static NSEvent *nextEvent(NSDate *timeoutDate, SConnection *connection) {
         if(wndHit != nil){
           [wndHit mouseEntered:nsEvent];
         }
-        lastHit = wndHit;
+        lastHitWeak = wndHit;
       }
       if (wndHit == nil)
         return nil;
@@ -375,6 +384,7 @@ static NSEvent *nextEvent(NSDate *timeoutDate, SConnection *connection) {
                                   eventNumber:0
                                    clickCount:0
                                      pressure:0.0];
+      }
       }
     }
     return nsEvent;
@@ -399,8 +409,7 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
             timeoutDate = [NSDate dateWithTimeIntervalSinceNow:timeout/1000.0];
         do
         {
-          DWORD ts1=GetTickCount();
-          NSRunLoop *currentRunLoop = [NSRunLoop currentRunLoop];
+            DWORD ts1=GetTickCount();
             NSEvent * nsEvent = nextEvent(timeoutDate, this);
             if(nsEvent == nil)
                 break;

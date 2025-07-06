@@ -749,6 +749,7 @@ defer:(BOOL)flag
     m_bSizing = FALSE;
     m_bZoomed = FALSE;
     m_pCapture = nil;
+    m_pHover = nil;
     return self;
 }
 
@@ -920,13 +921,18 @@ defer:(BOOL)flag
 }
 
 - (void)close {
+    m_pHover = nil;
     if(m_pCapture){
         [self releaseCapture:m_pCapture];
     }
-    [self orderOut:nil];
+    [self makeFirstResponder:nil];
     [self setContentView:nil];
-    //SLOG_STMI()<<"window close, hwnd="<<root->m_hWnd;
     [self setDelegate:nil];
+    [self orderOut:nil];
+    [self update];
+    //[self setReleasedWhenClosed:YES];
+    //[super close];
+    //SLOG_STMI()<<"window close, hwnd="<<root->m_hWnd;
 }
 
 - (void)windowDidDeminiaturize:(NSNotification *)notification {
@@ -1087,6 +1093,7 @@ defer:(BOOL)flag
     m_bSizing = FALSE;
     m_bZoomed = FALSE;
     m_pCapture = nil;
+    m_pHover = nil;
     return self;
 }
 
@@ -1258,15 +1265,17 @@ defer:(BOOL)flag
 }
 
 - (void)close {
+    m_pHover = nil;
     if(m_pCapture){
         [self releaseCapture:m_pCapture];
     }
-    [self orderOut:nil];
-    SNsWindow * root = self.contentView;
+    [self makeFirstResponder:nil];
     [self setContentView:nil];
-    //SLOG_STMI()<<"window close, hwnd="<<root->m_hWnd;
-    [root destroy];
     [self setDelegate:nil];
+    [self orderOut:nil];
+    [self update];
+    //[super close];
+    //SLOG_STMI()<<"window close, hwnd="<<root->m_hWnd;
 }
 
 - (void)windowDidDeminiaturize:(NSNotification *)notification {
