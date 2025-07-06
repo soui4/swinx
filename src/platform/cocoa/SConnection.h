@@ -18,7 +18,7 @@
 #include "SConnBase.h"
 #include "SNsWindow.h"
 #include "SClipboard.h"
-#include "SScreen.h"
+
 struct TimerInfo
 {
     UINT_PTR id;
@@ -210,10 +210,6 @@ public:
                           DWORD dwOKEffect,     
                           DWORD *pdwEffect);
 
-      void SendXdndStatus(HWND hTarget, HWND hSource, bool accept, DWORD dwEffect);
-      void SendXdndFinish(HWND hTarget, HWND hSource, bool accept, DWORD dwEffect);
-      std::shared_ptr< std::vector<char>> readSelection(bool bXdnd,uint32_t fmt);
-
       HWND OnWindowCreate(_Window *wnd,CREATESTRUCT *cs,int depth);
       void OnWindowDestroy(HWND hWnd,_Window *wnd);
       void SetWindowVisible(HWND hWnd, _Window *wnd, bool bVisible, int nCmdShow);
@@ -250,7 +246,6 @@ public:
       std::list<Msg *> m_msgStack; // msg stack that are handling
       std::list<CbTask *> m_lstCallbackTask;
       
-      std::vector<VideoDisplay> m_lstDisplay;
       tid_t m_tid;
 
       HDC m_deskDC;

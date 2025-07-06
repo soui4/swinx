@@ -144,9 +144,7 @@ defer:(BOOL)flag;
 }
 
 - (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent{
-    m_pListener = listener;
     m_rcPos = frameRect;
-    m_hWnd = (HWND)(__bridge_retained void *)self;
     NSScreen * screen = [NSScreen mainScreen];//todo, get screen from position.
     float scale = [screen backingScaleFactor];
     frameRect.origin.x /= scale;
@@ -155,25 +153,37 @@ defer:(BOOL)flag;
     frameRect.size.height /= scale;
 
     self = [super initWithFrame:frameRect];
-    if (self) {
-        m_byAlpha = 255;
-        m_bMsgTransparent = FALSE;
-         m_bCommitCache = FALSE;
-         m_bSetActive = FALSE;
-         m_modifierFlags = 0;
-         _markedText = nil;
-         _offscreenSur = nil;
-    }
+    if (!self)
+        return nil;
+    m_hWnd = (HWND)(__bridge_retained void *)self;
+    SLOG_STMI()<<"hjx SNsWindow initWithFrame, m_hWnd="<<m_hWnd;
+    m_pListener = listener;
+    m_byAlpha = 255;
+    m_bMsgTransparent = FALSE;
+    m_bCommitCache = FALSE;
+    m_bSetActive = FALSE;
+    m_modifierFlags = 0;
+    _markedText = nil;
+    _offscreenSur = nil;
+
     SNsWindow *parent = getNsWindow(hParent);
-    if(parent){
-        [parent addSubview:self];
+    if (parent) {
+      [parent addSubview:self];
     }
     return self;
 }
 
+
+- (void) destroy{
+    [self removeFromSuperview];
+    m_pListener->OnNsEvent(m_hWnd, WM_DESTROY, 0, 0);
+    SLOG_STMI()<<"hjx destroy: hWnd="<<m_hWnd;
+    CFBridgingRelease((void*)m_hWnd);
+}
+
 - (void)dealloc
 {
-    //SLOG_STMI()<<"SNsWindow dealloc, m_hWnd="<<m_hWnd;
+    SLOG_STMI()<<"hjx SNsWindow dealloc, m_hWnd="<<m_hWnd;
     if(_offscreenSur){
         cairo_surface_destroy(_offscreenSur);
         _offscreenSur = nil;       
@@ -507,12 +517,6 @@ defer:(BOOL)flag;
     m_modifierFlags = current;
 }
 
-- (void) destroy{
-    m_pListener->OnNsEvent(m_hWnd, WM_DESTROY, 0, 0);
-    //SLOG_STMI()<<"hjx destroy: hWnd="<<m_hWnd;
-    CFBridgingRelease((void*)m_hWnd);
-}
-
 - (void)onActive: (BOOL)isActive{
     SLOG_STMI()<<"hjx onActive:"<<isActive<<" hWnd="<<m_hWnd;
     m_pListener->OnNsActive(m_hWnd, isActive);
@@ -721,6 +725,7 @@ defer:(BOOL)flag;
 @implementation SNsWindowHost{
         id eventMonitor;
         BOOL m_bSizing;
+        BOOL m_bZoomed;
         NSRect m_defSize;
         SNsWindow *m_pCapture;
         NSView * m_pHover;
@@ -742,6 +747,7 @@ defer:(BOOL)flag
     self.movableByWindowBackground = NO;
     eventMonitor=nil;
     m_bSizing = FALSE;
+    m_bZoomed = FALSE;
     m_pCapture = nil;
     return self;
 }
@@ -816,7 +822,7 @@ defer:(BOOL)flag
 }
 
 -(void) dealloc {
-    //SLOG_STMI()<<"Dealloc SNsWindowHost, self="<<self;
+    SLOG_STMI()<<"hjx dealloc SNsWindowHost, self="<<(long long)self;
 }
 
 -(BOOL)releaseCapture:(SNsWindow *)pWin{
@@ -918,10 +924,8 @@ defer:(BOOL)flag
         [self releaseCapture:m_pCapture];
     }
     [self orderOut:nil];
-    SNsWindow * root = self.contentView;
     [self setContentView:nil];
     //SLOG_STMI()<<"window close, hwnd="<<root->m_hWnd;
-    [root destroy];
     [self setDelegate:nil];
 }
 
@@ -1032,13 +1036,23 @@ defer:(BOOL)flag
 
 -(void)unzoom{
     if([self isZoomed]){
+        m_bZoomed = FALSE;
         [self setFrame:m_defSize display:YES animate:YES];
     }
 }
 
 - (void)zoom:(nullable id)sender;{
+    if([self isZoomed])
+        return;
     m_defSize = [self frame];
-    [super zoom:sender];
+    NSScreen * screen = [self screen];
+    NSRect frame = [screen visibleFrame];
+    m_bZoomed = TRUE;
+    [self setFrame:frame display:YES animate:YES];
+}
+
+-(BOOL)isZoomed{
+    return m_bZoomed;
 }
 
 @end
@@ -1410,8 +1424,8 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
                 {
                     styleMask |= NSWindowStyleMaskTitled;
                 }
-                if(dwStyle & WS_THICKFRAME)
-                    styleMask |= NSWindowStyleMaskResizable;
+                // if(dwStyle & WS_THICKFRAME)
+                //     styleMask |= NSWindowStyleMaskResizable;
                 if(dwStyle & WS_MAXIMIZEBOX)
                     styleMask |= NSWindowStyleMaskMiniaturizable;
                 if(dwStyle & WS_SYSMENU)
@@ -1550,19 +1564,19 @@ BOOL setNsWindowSize(HWND hWnd, int cx, int cy){
 
 void closeNsWindow(HWND hWnd)
 {
-    @autoreleasepool {
+    @autoreleasepool 
+    {
 	SNsWindow* pWin = getNsWindow(hWnd);
 	if(pWin)
 	{
-        if(IsRootView(pWin)){
+        BOOL bRoot = IsRootView(pWin);
+        if(bRoot && pWin.window){
             if(pWin.window){
                 [pWin.window close];
-//                SLOG_STMI()<<"closeNsWindow: hWnd="<<pWin->m_hWnd;
+                SLOG_STMW()<<"hjx closeNsWindow: hWnd="<<hWnd;
             }
-        }else{
-            [pWin removeFromSuperview];
-            [pWin destroy];
         }
+        [pWin destroy];
 	}else{
         SLOG_STMW()<<"hjx closeNsWindow: hWnd="<<hWnd<<" not found";
     }
@@ -1571,6 +1585,7 @@ void closeNsWindow(HWND hWnd)
 
 HWND getNsWindow(HWND hParent, int code)
 {
+    @autoreleasepool {
     SNsWindow *nsParent = getNsWindow(hParent);
     if(!nsParent)
         return 0;
@@ -1623,6 +1638,7 @@ HWND getNsWindow(HWND hParent, int code)
         break;
     }
     return hRet;
+    }
 }
 
 BOOL setNsActiveWindow(HWND hWnd){

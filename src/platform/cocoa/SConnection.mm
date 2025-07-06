@@ -1,5 +1,4 @@
-﻿#include "src/platform/cocoa/SNsWindow.h"
-#import <Cocoa/Cocoa.h>
+﻿#import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
@@ -9,12 +8,12 @@
 #include <memory>
 #include <map>
 #include <cairo-quartz.h>
+#include "SNsWindow.h"
 #include "SConnection.h"
 #include <synhandle.h>
 #include <sdc.h>
 #include <wndobj.h>
 #include <log.h>
-#include "SScreen.h"
 #include "os_state.h"
 #include "tostring.hpp"
 #include "STrayIconMgr.h"
@@ -58,24 +57,29 @@ static void RevertNSRect(NSScreen *screen, bool fullscreen, NSRect *r)
 }
 
 
+static RECT NSRectToRECT(NSRect rect)
+{
+    RECT r;
+    r.left = rect.origin.x;
+    r.top = rect.origin.y;
+    r.right = rect.origin.x + rect.size.width;
+    r.bottom = rect.origin.y + rect.size.height;
+    return r; 
+}
 int SConnection::GetDisplayBounds(int displayIndex, RECT *rect)
 {
     assert(rect);
-    VideoDisplay &display = m_lstDisplay[displayIndex];
-
-    Cocoa_GetDisplayBounds(&display, rect);
-    /* Assume that the displays are left to right */
-    if (displayIndex == 0) {
-        rect->left = 0;
-        rect->top = 0;
-    } else {
-        GetDisplayBounds(displayIndex - 1, rect);
-        rect->left = rect->right;
+    @autoreleasepool{
+        NSArray<NSScreen*> *screens = [NSScreen screens];
+        if(displayIndex >= [screens count])
+            return -1;
+        NSScreen *screen = [screens objectAtIndex:displayIndex];
+        NSRect nsrc = [screen frame];
+        *rect = NSRectToRECT(nsrc);
+        return 0;
     }
-    rect->right = rect->left + display.GetCurrentMode().w;
-    rect->bottom = rect->top +  display.GetCurrentMode().h;
-    return 0;
 }
+
 
 int SConnection::GetRectDisplayIndex(int x, int y, int w, int h)
 {
@@ -83,18 +87,22 @@ int SConnection::GetRectDisplayIndex(int x, int y, int w, int h)
     RECT rcInterMax={0};
     int  rcMaxArea= 0;
     int closest = -1;
-    for (int i = 0; i < m_lstDisplay.size(); ++i) {
-            RECT display_rect;
-            GetDisplayBounds(i, &display_rect);
+
+    @autoreleasepool{
+        NSArray<NSScreen*> *screens = [NSScreen screens];
+        for (int i = 0; i < [screens count]; ++i) {
+            NSScreen *screen = [screens objectAtIndex:i];
+            NSRect rect = [screen frame];
+            RECT rcDisplay = NSRectToRECT(rect);
             RECT rcInter;
-            IntersectRect(&rcInter, &rcSrc, &display_rect);
+            IntersectRect(&rcInter, &rcSrc, &rcDisplay);
             int area = (rcInter.right - rcInter.left) * (rcInter.bottom - rcInter.top);
             if(area > rcMaxArea){
                 rcMaxArea = area;
                 closest = i;
             } 
+        }
     }
-
     return closest;
 }
 
@@ -107,8 +115,6 @@ SConnection::SConnection(int screenNum)
   m_tid = GetCurrentThreadId();
   m_clipboard = new SClipboard();
   m_trayIconMgr = new STrayIconMgr();
-  //init displays
-    Cocoa_InitDisplayModes(&m_lstDisplay);
     m_deskDC = new _SDC(0);
     m_deskBmp = CreateCompatibleBitmap(m_deskDC, 1, 1);
     SelectObject(m_deskDC, m_deskBmp);
@@ -507,7 +513,7 @@ void SConnection::updateMsgQueue(DWORD dwTimeout) {
         }
     }
     @autoreleasepool
-    {//todo:hjx add autoreleasepool result in crash, fix it later.
+    {
         NSDate *timeoutDate = nil;
         if(dwTimeout == 0)
             timeoutDate = [NSDate distantPast];
@@ -1277,7 +1283,7 @@ UINT SConnection::GetCaretBlinkTime() const {
 void SConnection::GetWorkArea(HMONITOR hMonitor, RECT* prc) {
     @autoreleasepool {
         NSScreen *screen = (__bridge NSScreen *)hMonitor;
-        NSRect rect = [screen frame];
+        NSRect rect = [screen visibleFrame];
         float scale = [screen backingScaleFactor];
         prc->left = rect.origin.x * scale;
         prc->top = rect.origin.y* scale;
@@ -1343,27 +1349,14 @@ HRESULT SConnection::DoDragDrop(IDataObject *pDataObject,
     return doNsDragDrop(pDataObject, pDropSource, dwOKEffect, pdwEffect);
                           }
 
-void SConnection::SendXdndStatus(HWND hTarget, HWND hSource, bool accept, DWORD dwEffect) {
-    // Empty implementation
-}
-
-void SConnection::SendXdndFinish(HWND hTarget, HWND hSource, bool accept, DWORD dwEffect) {
-    // Empty implementation
-}
-
-std::shared_ptr<std::vector<char>> SConnection::readSelection(bool bXdnd, uint32_t fmt) {
-    // Empty implementation
-    return std::shared_ptr<std::vector<char>>(new std::vector<char>());
-}
-
 HWND SConnection::OnWindowCreate(_Window *wnd, CREATESTRUCT *cs, int depth) {
-  @autoreleasepool {
-    HWND ret = createNsWindow(cs->hwndParent, cs->style, cs->dwExStyle, cs->lpszName, cs->x, cs->y, cs->cx, cs->cy,this);
-    return ret;
-  }}
+    return createNsWindow(cs->hwndParent, cs->style, cs->dwExStyle, cs->lpszName, cs->x, cs->y, cs->cx, cs->cy,this);
+}
 
 void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd) {
     closeNsWindow(hWnd);
+    if(hWnd == m_hWndCapture)
+        m_hWndCapture = 0;
     if(m_hFocus == hWnd)
         m_hFocus = 0;
     if(m_hForeground == hWnd)
@@ -1378,13 +1371,7 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd) {
 }
 
 void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, bool bVisible, int nCmdShow) { 
-  @autoreleasepool {
-      NSWindow * nsWnd = getNsWindow(hWnd);
-      if(!nsWnd)
-      {
-        SetLastError(ERROR_INVALID_HANDLE);
-        return;
-      }  
+    assert(wndObj);
     if (bVisible)
     {
         if (0 == (wndObj->dwStyle & WS_CHILD))
@@ -1402,7 +1389,6 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, bool bVisible, in
         showNsWindow(hWnd,SW_HIDE);
         wndObj->dwStyle &= ~WS_VISIBLE;
     }
-  }
 }
 
 void SConnection::SetParent(HWND hWnd, _Window *wnd, HWND parent) {

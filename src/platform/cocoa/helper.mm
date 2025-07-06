@@ -67,3 +67,14 @@ BOOL macos_register_font(const char *utf8Path) {
     }
 }
 #endif
+
+
+extern "C"   BOOL WINAPI GetAppleBundlePath(char *path, int maxLen){
+    @autoreleasepool {
+        NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
+        if (bundlePath.length >= maxLen)
+            return FALSE;
+        [bundlePath getCString:path maxLength:maxLen encoding:NSUTF8StringEncoding];
+        return TRUE;
+    }
+}
