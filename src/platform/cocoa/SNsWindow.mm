@@ -1035,20 +1035,20 @@ defer:(BOOL)flag
 }
 
 -(void)unzoom{
-    if([self isZoomed]){
+    if(m_bZoomed){
         m_bZoomed = FALSE;
         [self setFrame:m_defSize display:YES animate:YES];
     }
 }
 
 - (void)zoom:(nullable id)sender;{
-    if([self isZoomed])
-        return;
-    m_defSize = [self frame];
-    NSScreen * screen = [self screen];
-    NSRect frame = [screen visibleFrame];
-    m_bZoomed = TRUE;
-    [self setFrame:frame display:YES animate:YES];
+    if(!m_bZoomed){
+        m_defSize = [self frame];
+        NSScreen * screen = [self screen];
+        NSRect frame = [screen visibleFrame];
+        m_bZoomed = TRUE;
+        [self setFrame:frame display:YES animate:YES];
+    }
 }
 
 -(BOOL)isZoomed{
@@ -1063,6 +1063,7 @@ defer:(BOOL)flag
 @implementation SNsPanelHost{
         id eventMonitor;
         BOOL m_bSizing;
+        BOOL m_bZoomed;
         NSRect m_defSize;
         SNsWindow *m_pCapture;
         NSView * m_pHover;
@@ -1084,6 +1085,7 @@ defer:(BOOL)flag
     self.movableByWindowBackground = NO;
     eventMonitor=nil;
     m_bSizing = FALSE;
+    m_bZoomed = FALSE;
     m_pCapture = nil;
     return self;
 }
@@ -1349,16 +1351,25 @@ defer:(BOOL)flag
 }
 
 -(void)unzoom{
-    if([self isZoomed]){
+    if(m_bZoomed){
+        m_bZoomed = FALSE;
         [self setFrame:m_defSize display:YES animate:YES];
     }
 }
 
 - (void)zoom:(nullable id)sender;{
-    m_defSize = [self frame];
-    [super zoom:sender];
+    if(!m_bZoomed){
+        m_defSize = [self frame];
+        NSScreen * screen = [self screen];
+        NSRect frame = [screen visibleFrame];
+        m_bZoomed = TRUE;
+        [self setFrame:frame display:YES animate:YES];
+    }
 }
 
+-(BOOL) isZoomed {
+    return m_bZoomed;
+}
 @end
 
 static NSScreen * getNsScreen(HWND hWnd){
@@ -1423,9 +1434,9 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
                 if(dwStyle & WS_CAPTION)
                 {
                     styleMask |= NSWindowStyleMaskTitled;
+                    if(dwStyle & WS_THICKFRAME)//keep resize only for window with caption 
+                        styleMask |= NSWindowStyleMaskResizable;
                 }
-                // if(dwStyle & WS_THICKFRAME)
-                //     styleMask |= NSWindowStyleMaskResizable;
                 if(dwStyle & WS_MAXIMIZEBOX)
                     styleMask |= NSWindowStyleMaskMiniaturizable;
                 if(dwStyle & WS_SYSMENU)
@@ -1651,7 +1662,7 @@ BOOL setNsActiveWindow(HWND hWnd){
     //SLOG_STMI()<<"setNsActiveWindow: hWnd="<<hWnd;
     nswindow->m_bSetActive = TRUE;
     [nswindow.window makeKeyWindow];
-//    [nswindow onActive:TRUE];
+    [nswindow onActive:TRUE];
     nswindow->m_bSetActive = FALSE;
     return TRUE;
     }
