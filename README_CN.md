@@ -1,17 +1,18 @@
-<!-- README_CN.md -->
+ï»¿<!-- README_CN.md -->
 # SwinX
-## ¼ò½é
-ÕâÊÇÒ»¸öÀàËÆwineµÄ°ïÖúwindowsÆ½Ì¨³ÌÐòÔËÐÐµ½LinuxÆ½Ì¨£¨¼°½«À´µÄmacosÆ½Ì¨£©ÉÏµÄ½ºË®¿â¡£
-## ¹¦ÄÜ
-SwinXÊÇÎªSOUI5(https://github.com/soui4/soui)Ö§³Ö¿çÆ½Ì¨¶ø¿ª·¢£¬µ±È»ÆäËüÏîÄ¿Ò²¿ÉÒÔÊ¹ÓÃSwinXÀ´Ö§³Ö¿çÆ½Ì¨¡£
-SwinXÍ¨¹ýÔÚlinuxÆ½Ì¨ÊµÏÖwindows¿Í»§¶Ë±ØÐëµÄAPI£¬ÈÃwindows¿Í»§¶Ë´úÂëÁ´½ÓSwinXºó¼´¿ÉÏñÔÚWindowsÆ½Ì¨Ò»ÏÂÔÚLinuxÆ½Ì¨ÔËÐÐ¡£Ä¿Ç°SOUI5ÒÑ¾­ÄÜ¹»ÔÚ»ù±¾²»ÐÞ¸Ä´úÂëµÄÇ°ÌáÏÂÔÚlinuxÉÏÔËÐÐ99£¥µÄ¹¦ÄÜ¡£
-## ÏÞÖÆ
-±¾ÏîÄ¿ÔÚLinuxÆ½Ì¨ÊµÏÖµÄWindowsÆ½Ì¨±ØÐëµÄHWND£¬Ä¿Ç°HWNDµÄ·Ç¿Í»§ÇøÖ»Ö§³Ö¹ö¶¯Ìõ£¬²»Ö§³ÖÆäËüÈç±êÌâÀ¸£¬²Ëµ¥¡£´ËÍâÒ²²»Ö§³ÖMDI´°¿ÚÀàÐÍ¡£
-## ¼ÓÈëÎÒÃÇ 
-±¾ÏîÄ¿»¹ÔÚ³ÖÐø½ø»¯ÖÐ£¬»¶Ó­ÓÐÐËÈ¤µÄÅóÓÑ¼ÓÈëÒ»Æð¿ª·¢£¬QQÈº£º229313785, 385438344
-## ¿ªÔ´Ð­Òé
-±¾ÏîÄ¿¿ªÔ´µ«²»Ãâ·Ñ£¬²ÎÓëÏîÄ¿²¢¹±Ï×ÓÐÖÊÁ¿µÄÌá½»½«×Ô¶¯»ñµÃSwinXµÄÖÕÉíÃâ·ÑÊÚÈ¨£¨¼ûContributors.md)£¬ÖØÒª¹±Ï×ÈËÔ±½«°´ÕÕÒ»¶¨±ÈÀý£¨½âÊÍÈ¨¹é×÷ÕßËùÓÐ£©»ñµÃÏîÄ¿ÊÕÒæ¡£
+## ç®€ä»‹
+è¿™æ˜¯ä¸€ä¸ªç±»ä¼¼wineçš„å¸®åŠ©windowså¹³å°ç¨‹åºè¿è¡Œåˆ°Linux,macoså¹³å°ä¸Šçš„èƒ¶æ°´åº“ã€‚
+## åŠŸèƒ½
+SwinXæ˜¯ä¸ºSOUI5(https://gitee.com/setoutsoft/soui4)æ”¯æŒè·¨å¹³å°è€Œå¼€å‘ï¼Œå½“ç„¶å…¶å®ƒé¡¹ç›®ä¹Ÿå¯ä»¥ä½¿ç”¨SwinXæ¥æ”¯æŒè·¨å¹³å°ã€‚
+SwinXé€šè¿‡åœ¨linuxå¹³å°å®žçŽ°windowså®¢æˆ·ç«¯å¿…é¡»çš„APIï¼Œè®©windowså®¢æˆ·ç«¯ä»£ç é“¾æŽ¥SwinXåŽå³å¯åƒåœ¨Windowså¹³å°ä¸€ä¸‹åœ¨LinuxåŠmacoså¹³å°è¿è¡Œã€‚ç›®å‰SOUI5æ‰€æœ‰åŠŸèƒ½éƒ½å·²ç»é€šè¿‡swinxå®žçŽ°è·¨å¹³å°ã€‚
+## é™åˆ¶
+æœ¬é¡¹ç›®åœ¨Linuxå¹³å°å®žçŽ°çš„Windowså¹³å°å¿…é¡»çš„HWNDï¼Œç›®å‰HWNDçš„éžå®¢æˆ·åŒºåªæ”¯æŒæ»šåŠ¨æ¡ï¼Œä¸æ”¯æŒå…¶å®ƒå¦‚æ ‡é¢˜æ ï¼Œèœå•ã€‚æ­¤å¤–ä¹Ÿä¸æ”¯æŒMDIçª—å£ç±»åž‹ã€‚
+## åŠ å…¥æˆ‘ä»¬ 
+æœ¬é¡¹ç›®è¿˜åœ¨æŒç»­è¿›åŒ–ä¸­ï¼Œæ¬¢è¿Žæœ‰å…´è¶£çš„æœ‹å‹åŠ å…¥ä¸€èµ·å¼€å‘ï¼ŒQQç¾¤ï¼š229313785, 385438344
+## å¼€æºåè®®
+æœ¬é¡¹ç›®å¼€æºä½†ä¸å…è´¹ï¼Œå‚ä¸Žé¡¹ç›®å¹¶è´¡çŒ®æœ‰è´¨é‡çš„æäº¤å°†è‡ªåŠ¨èŽ·å¾—SwinXçš„ç»ˆèº«å…è´¹æŽˆæƒ(è§Contributors.md)ï¼Œé‡è¦è´¡çŒ®äººå‘˜å°†æŒ‰ç…§ä¸€å®šæ¯”ä¾‹ï¼ˆè§£é‡Šæƒå½’ä½œè€…æ‰€æœ‰ï¼‰èŽ·å¾—é¡¹ç›®æ”¶ç›Šã€‚
 
-# °æ±¾£º
+# ç‰ˆæœ¬ï¼š
+## 1.1  2025.7.07
 ## 1.0  2025.3.11
 ## 0.1  2025.1.12
