@@ -2473,7 +2473,11 @@ HGDIOBJ GetStockObject(int i)
     case DEFAULT_GUI_FONT:
     {
         static LOGFONT lf = { 0 };
+        #ifdef _WIN32
         strcpy(lf.lfFaceName, "宋体");
+        #else
+        strcpy(lf.lfFaceName, "simsun");
+        #endif//_WIN32
         lf.lfHeight = 20;
         lf.lfWeight = 400;
         static _Handle font(OBJ_FONT, &lf, nullptr);

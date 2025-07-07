@@ -1,4 +1,5 @@
 #import <Cocoa/Cocoa.h>
+#import <QuartzCore/QuartzCore.h>
 #include <objc/objc.h>
 #include <objc/NSObjCRuntime.h>
 #include <cairo-quartz.h>
@@ -115,7 +116,6 @@ defer:(BOOL)flag;
     @public
     NSRect m_rcPos;
     HWND   m_hWnd;
-    BOOL m_bSetActive;
     @private
     NSString *_markedText;
     NSRange   _markedRange;
@@ -161,7 +161,6 @@ defer:(BOOL)flag;
     m_byAlpha = 255;
     m_bMsgTransparent = FALSE;
     m_bCommitCache = FALSE;
-    m_bSetActive = FALSE;
     m_modifierFlags = 0;
     _markedText = nil;
     _offscreenSur = nil;
@@ -179,15 +178,15 @@ defer:(BOOL)flag;
     m_pListener->OnNsEvent(m_hWnd, WM_DESTROY, 0, 0);
     SLOG_STMI()<<"hjx destroy: hWnd="<<m_hWnd;
     CFBridgingRelease((void*)m_hWnd);
+    if(_offscreenSur){
+        cairo_surface_destroy(_offscreenSur);
+        _offscreenSur = nil;       
+    }
 }
 
 - (void)dealloc
 {
     SLOG_STMI()<<"hjx SNsWindow dealloc, m_hWnd="<<m_hWnd;
-    if(_offscreenSur){
-        cairo_surface_destroy(_offscreenSur);
-        _offscreenSur = nil;       
-    }
 }
 
 - (void)updateRect:(NSRect)rc;{
@@ -1668,11 +1667,8 @@ BOOL setNsActiveWindow(HWND hWnd){
         return FALSE;
     if(nswindow.window == nil)
         return FALSE;
-    //SLOG_STMI()<<"setNsActiveWindow: hWnd="<<hWnd;
-    nswindow->m_bSetActive = TRUE;
+    SLOG_STMI()<<"setNsActiveWindow: hWnd="<<hWnd;
     [nswindow.window makeKeyWindow];
-    [nswindow onActive:TRUE];
-    nswindow->m_bSetActive = FALSE;
     return TRUE;
     }
 }
@@ -2207,4 +2203,70 @@ HWND findNsKeyWindow(){
         }
     }
     return NULL;
+}
+
+HWND getHwndFromView(NSView *view){
+    @autoreleasepool{
+        if([view isKindOfClass: [SNsWindow class]])
+        {
+            SNsWindow *win = (SNsWindow *)view;
+            return win->m_hWnd;
+        }
+    }
+    return NULL;
+}
+
+static CGPathRef CGPathCreateFromNSBezierPath(NSBezierPath *bezierPath) {
+    // 创建一个可变的 CGPath
+    CGMutablePathRef cgPath = CGPathCreateMutable();
+    
+    // 获取路径的各个部分
+    NSInteger elementCount = bezierPath.elementCount;
+    
+    for (NSInteger i = 0; i < elementCount; i++) {
+        NSPoint points[3]; // 存储贝塞尔曲线的点
+        NSBezierPathElement element = [bezierPath elementAtIndex:i associatedPoints:points];
+        
+        switch (element) {
+            case NSMoveToBezierPathElement:
+                CGPathMoveToPoint(cgPath, NULL, points[0].x, points[0].y);
+                break;
+            case NSLineToBezierPathElement:
+                CGPathAddLineToPoint(cgPath, NULL, points[0].x, points[0].y);
+                break;
+            case NSCurveToBezierPathElement:
+                CGPathAddCurveToPoint(cgPath, NULL, points[0].x, points[0].y, points[1].x, points[1].y, points[2].x, points[2].y);
+                break;
+            case NSClosePathBezierPathElement:
+                CGPathCloseSubpath(cgPath);
+                break;
+            default:
+                break;
+        }
+    }
+    
+    return cgPath; // 返回 CGPathRef
+}
+
+BOOL setNsWindowRgn(HWND hWnd, const RECT *prc, int nCount){
+    @autoreleasepool{
+        SNsWindow *win = getNsWindow(hWnd);
+        if(win){
+            NSBezierPath *path = [NSBezierPath bezierPath];
+            for(int i = 0; i < nCount; i++){
+                const RECT &rc = prc[i];
+                [path appendBezierPathWithRect: NSMakeRect(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top)];
+            }
+            CAShapeLayer *maskLayer = [CAShapeLayer layer];
+            
+            maskLayer.path = CGPathCreateFromNSBezierPath(path);  // 转换为CGPath
+            win.layer.mask = maskLayer;
+            win.layer.masksToBounds = YES;
+
+            [win setNeedsDisplay: YES];
+            [win displayIfNeeded];
+            return TRUE;
+        }
+        return FALSE;
+    }
 }

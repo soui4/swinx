@@ -907,8 +907,13 @@ bool SConnection::SetWindowOpacity(HWND hWnd, BYTE byAlpha) {
 }
 
 bool SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn) {
-    // Empty implementation
+  RGNDATA rgnData;
+  DWORD len = GetRegionData(hRgn, 0, nullptr);
+  if (!len)
     return FALSE;
+  GetRegionData(hRgn, len, &rgnData);
+  const LPRECT prc=(LPRECT)rgnData.Buffer;
+  return setNsWindowRgn(hWnd, prc, rgnData.rdh.nCount);
 }
 
 HKL SConnection::ActivateKeyboardLayout(HKL hKl) {
@@ -1011,8 +1016,33 @@ HWND SConnection::OnFindWindowEx(HWND hParent, HWND hChildAfter, LPCSTR lpClassN
     return NULL;
 }
 
+extern HWND getHwndFromView(NSView *view);
 bool SConnection::OnEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEnumFunc, LPARAM lParam) {
-    return FALSE;  
+    @autoreleasepool {
+        if(!hParent){
+            //enum all top level windows
+            auto windows = [NSApp windows];
+            for (NSWindow *window in windows) {
+                HWND hWnd = getHwndFromView(window.contentView);
+                if(!hWnd)
+                    continue;
+                if(!lpEnumFunc(hWnd, lParam))
+                    break;
+            }
+            return TRUE;
+        }else{
+            NSView * nsParent = (__bridge NSView *)(void*)hParent;
+            auto windows = [nsParent subviews];
+            for (NSView *view in windows) {
+                HWND hWnd = getHwndFromView(view);
+                if(!hWnd)
+                    continue;
+                if(!lpEnumFunc(hWnd, lParam))
+                    break;
+            }
+            return TRUE;
+        }
+    }
 }
 
 HWND SConnection::_GetRoot(HWND hWnd){

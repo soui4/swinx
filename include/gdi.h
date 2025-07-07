@@ -1,5 +1,7 @@
 ﻿#ifndef _LINUX_GDI_H_
 #define _LINUX_GDI_H_
+#include <ctypes.h>
+#include <winuser.h>
 #ifdef __cplusplus
 extern "C"
 {
