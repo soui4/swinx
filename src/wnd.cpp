@@ -1379,7 +1379,8 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         CloseHandle(hEvt);
         return ret == WAIT_OBJECT_0;
     }
-
+    if(pWnd->bDestroyed)
+        return 0;
     SConnection *connWnd = SConnMgr::instance()->getConnection(pWnd->tid);
     if (!connWnd)
         return 0;
