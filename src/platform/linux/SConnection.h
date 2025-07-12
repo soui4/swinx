@@ -75,7 +75,7 @@ class SConnection {
     xcb_screen_t *screen = nullptr;
     const xcb_setup_t *m_setup = nullptr;
     xcb_visualtype_t * rgba_visual=nullptr;
-    int  m_forceDpi=false;
+    int  m_forceDpi=-1;
     SAtoms atoms;
   public:
     SHORT GetKeyState(int vk);
@@ -168,6 +168,7 @@ class SConnection {
     cairo_surface_t * ResizeSurface(cairo_surface_t *surface,HWND hWnd, uint32_t visualId, int width, int height);
     
     void SendSysCommand(HWND hWnd,int nCmd);
+    BOOL EnableWindow(HWND hWnd, BOOL bEnable);
   public:
     struct CaretInfo
     {
@@ -283,12 +284,13 @@ public:
     int _waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, DWORD dwWaitMask);
     void readXResources();
     void initializeXFixes();
+    void clearSystemCursor();
     bool event2Msg(bool bTimeout, int elapse, uint64_t ts);
     void OnFocusChanged(HWND hFocus);
     void OnActiveChange(HWND hWnd,BOOL bActive);
     xcb_cursor_t createXcbCursor(HCURSOR cursor);
     uint32_t netWmStates(HWND hWnd);
-
+    void updateWmclass(HWND hWnd, _Window *wndObj);
     DWORD XdndAction2Effect(xcb_atom_t action);
 
     xcb_atom_t XdndEffect2Action(DWORD dwEffect);
@@ -339,6 +341,7 @@ public:
 
     HWND m_hWndActive;
     HWND m_hFocus;
+    xcb_window_t m_setting_owner=0;
     std::map<HCURSOR, xcb_cursor_t> m_sysCursor;
     std::map<HWND,HCURSOR>          m_wndCursor;
     SKeyboard *m_keyboard;

@@ -51,6 +51,8 @@ class SAtoms {
     _NET_WORKAREA,
     _NET_ACTIVE_WINDOW,
     _NET_DOUBLE_CLICK_TIME,
+    _XSETTINGS_S0,
+    _XSETTINGS_SETTINGS,
     CLIPBOARD,
     INCR,
     TARGETS,
@@ -140,7 +142,8 @@ class SAtoms {
             "_NET_WORKAREA",
             "_NET_ACTIVE_WINDOW",
             "_NET_DOUBLE_CLICK_TIME",
-
+            "_XSETTINGS_S%d",
+            "_XSETTINGS_SETTINGS",
             "CLIPBOARD",
             "INCR",
             "TARGETS",

@@ -243,7 +243,6 @@ void SConnection::xim_open_callback(xcb_xim_t *im, void *user_data)
 SConnection::SConnection(int screenNum)
     : m_keyboard(nullptr)
     , m_hook_table(nullptr)
-    , m_forceDpi(-1)
     , connection(nullptr)
     , m_xim(nullptr)
 {
@@ -309,6 +308,24 @@ SConnection::SConnection(int screenNum)
     m_tid = GetCurrentThreadId();
 
     atoms.Init(connection, screenNum);
+    do{//init settings owner
+        xcb_get_selection_owner_cookie_t selection_cookie = xcb_get_selection_owner(connection, atoms._XSETTINGS_S0);
+        xcb_generic_error_t *error = nullptr;
+        xcb_get_selection_owner_reply_t *selection_result = xcb_get_selection_owner_reply(connection, selection_cookie, &error);
+        if (error) {
+            free(error);
+            break;
+        }
+        m_setting_owner = selection_result->owner;
+        free(selection_result);
+        if (!m_setting_owner) {
+            break;
+        }
+        const uint32_t event = XCB_CW_EVENT_MASK;
+        const uint32_t event_mask[] = { XCB_EVENT_MASK_STRUCTURE_NOTIFY|XCB_EVENT_MASK_PROPERTY_CHANGE };
+        xcb_change_window_attributes(connection,m_setting_owner,event,event_mask);
+    }while(0);
+
     m_tsDoubleSpan = GetDoubleClickSpan(connection, screen);
 
     m_bQuit = false;
@@ -365,13 +382,8 @@ SConnection::~SConnection()
     delete m_keyboard;
     delete m_clipboard;
     delete m_trayIconMgr;
-    for (auto it : m_sysCursor)
-    {
-        xcb_free_cursor(connection, it.second);
-    }
-    m_sysCursor.clear();
-
     delete m_deskDC;
+    clearSystemCursor();
     DeleteObject(m_deskBmp);
     DestroyCaret();
 
@@ -452,11 +464,13 @@ void SConnection::readXResources()
 
     std::string line;
     static const char kDpiDesc[] = "Xft.dpi:\t";
+    SLOG_STMI()<<"settings:"<<resources.str().c_str();
     while (std::getline(resources, line, '\n'))
     {
         if (line.length() > ARRAYSIZE(kDpiDesc) - 1 && strncmp(line.c_str(), kDpiDesc, ARRAYSIZE(kDpiDesc) - 1) == 0)
         {
             m_forceDpi = atoi(line.c_str() + ARRAYSIZE(kDpiDesc) - 1);
+            break;
         }
     }
 }
@@ -479,6 +493,15 @@ void SConnection::initializeXFixes()
     }
     free(xfixes_query);
     SLOG_STMI() << "hasXFixes()=" << hasXFixes();
+}
+
+void SConnection::clearSystemCursor()
+{
+    for (auto it : m_sysCursor)
+    {
+        xcb_free_cursor(connection, it.second);
+    }
+    m_sysCursor.clear();
 }
 
 bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
@@ -1301,20 +1324,7 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms._NET_WM_PID, XCB_ATOM_CARDINAL, 32, 1, &pid);
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
 
-    { // set window clas
-        char szPath[MAX_PATH];
-        GetModuleFileName(nullptr, szPath, MAX_PATH);
-        char *szName = strrchr(szPath, '/') + 1;
-        int nNameLen = strlen(szName);
-        char szClassName[MAX_PATH + 1] = { 0 };
-        int clsLen = GetAtomNameA(pWnd->clsAtom, szClassName, MAX_PATH);
-        int nLen = nNameLen + 1 + clsLen + 1;
-        char *pszCls = new char[nLen];
-        strcpy(pszCls, szName);
-        strcpy(pszCls + nNameLen + 1, szClassName);
-        xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_CLASS, XCB_ATOM_STRING, 8, nLen, pszCls);
-        delete[] pszCls;
-    }
+    updateWmclass(hWnd,pWnd);
 
     setMotifWindowFlags(this, hWnd, pWnd->dwStyle, pWnd->dwExStyle);
     {
@@ -1371,6 +1381,9 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
 {
     if (bVisible)
     {
+        if (wndObj->dwStyle & WS_VISIBLE)
+            return; // already visible.
+        RECT rc= wndObj->rc;
         if (0 == (wndObj->dwStyle & WS_CHILD))
         { // show a popup window, auto release capture.
             ReleaseCapture();
@@ -1381,6 +1394,10 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
         if (nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA && !(wndObj->dwStyle & WS_CHILD) && wndObj->mConnection->GetActiveWnd() == 0)
             SetActiveWindow(hWnd);
         sync();
+        if (0 == (wndObj->dwStyle & WS_CHILD)){
+            //to avoid the position might been changed by linux window manage, reset window pos again.
+            SetWindowPos(hWnd,rc.left,rc.top);
+        }
     }
     else
     {
@@ -1893,8 +1910,7 @@ HCURSOR SConnection::SetCursor(HWND hWnd,HCURSOR cursor)
     }
     xcb_cursor_t xcbCursor = getXcbCursor(cursor);
     if (xcbCursor){
-        uint32_t val[] = { xcbCursor };
-        xcb_change_window_attributes(connection, hWnd, XCB_CW_CURSOR, val);
+        xcb_change_window_attributes(connection, hWnd, XCB_CW_CURSOR, &xcbCursor);
         m_wndCursor[hWnd] = cursor; // update window cursor    
     }
     // SLOG_STMI()<<"SetCursor, hWnd="<<hWnd<<" cursor="<<cursor<<" xcb cursor="<<xcbCursor;
@@ -2269,7 +2285,7 @@ BOOL SConnection::SetFocus(HWND hWnd)
     }
     else
     {
-        SLOG_STMI() << "SetFocus, oldFocus=" << hRet << " newFocus=" << hWnd;
+        //SLOG_STMI() << "SetFocus, oldFocus=" << hRet << " newFocus=" << hWnd;
         OnFocusChanged(hWnd);
         return TRUE;
     }
@@ -2334,6 +2350,20 @@ uint32_t SConnection::netWmStates(HWND hWnd)
     return result;
 }
 
+void SConnection::updateWmclass(HWND hWnd, _Window *pWnd)
+{
+    char szPath[MAX_PATH];
+    GetModuleFileName(nullptr, szPath, MAX_PATH);
+    char *szName = strrchr(szPath, '/') + 1;
+    int nNameLen = strlen(szName);
+    int nLen = nNameLen + 1 + pWnd->title.length() + 1;
+    char *pszCls = new char[nLen];
+    strcpy(pszCls, szName);
+    strcpy(pszCls + nNameLen + 1, pWnd->title.c_str());
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_CLASS, XCB_ATOM_STRING, 8, nLen, pszCls);
+    delete[] pszCls;
+}
+
 DWORD SConnection::XdndAction2Effect(xcb_atom_t action)
 {
     if (action == atoms.XdndActionMove)
@@ -2364,6 +2394,13 @@ xcb_atom_t SConnection::XdndEffect2Action(DWORD dwEffect)
     else if (dwEffect & DROPEFFECT_COPY)
         action = atoms.XdndActionCopy;
     return action;
+}
+
+
+static int CALLBACK CbEnumPopupWindow(HWND hwnd, LPARAM lParam){
+    std::list<HWND> *lstPopups = (std::list<HWND> *)lParam;
+    lstPopups->push_back(hwnd);
+    return 1;
 }
 
 bool SConnection::pushEvent(xcb_generic_event_t *event)
@@ -2475,6 +2512,23 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         if (e2->atom == atoms._NET_WORKAREA)
         {
             updateWorkArea();
+        }else if(e2->atom == atoms._XSETTINGS_SETTINGS){
+            if(e2->window == m_setting_owner){
+                //upate xsettings
+                int oldDpi = m_forceDpi;
+                readXResources();
+                int newDpi = m_forceDpi;
+                if(oldDpi != newDpi){                  
+                    std::list<HWND> lstPopups;
+                    OnEnumWindows(0,0,CbEnumPopupWindow,(LPARAM)&lstPopups);
+                    for(auto it:lstPopups){
+                        WndObj wndObj = WndMgr::fromHwnd(it);
+                        if(wndObj){
+                            postMsg(it,UM_SETTINGS,SETTINGS_DPI,MAKELONG(newDpi,oldDpi));
+                        }
+                    }
+                }
+            }
         }
         else if (e2->atom == atoms._NET_WM_STATE || e2->atom == atoms.WM_STATE)
         {
@@ -2549,9 +2603,8 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                 break;
             }
         }
-        bool fromSendEvent = (event->response_type & 0x80);
         POINT pos = { e2->x, e2->y };
-        if (!GetParent(e2->window) && !fromSendEvent)
+        if (!GetParent(e2->window))
         {
             // Do not trust the position, query it instead.
             xcb_translate_coordinates_cookie_t cookie = xcb_translate_coordinates(connection, e2->window, screen->root, 0, 0);
@@ -3132,6 +3185,7 @@ BOOL SConnection::OnSetWindowText(HWND hWnd, _Window *wndObj, LPCSTR lpszString)
     wndObj->title = lpszString ? lpszString : "";
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_NAME, atoms.UTF8_STRING, 8, wndObj->title.length(), wndObj->title.c_str());
     xcb_flush(connection);
+    updateWmclass(hWnd,wndObj);
     return TRUE;
 }
 
@@ -3705,4 +3759,28 @@ void SConnection::updateWindow(HWND hWnd, const RECT &rc){
 
 void SConnection::commitCanvas(HWND hWnd, const RECT &rc){
     flush();
+}
+
+BOOL SConnection::EnableWindow(HWND hWnd, BOOL bEnable){
+    const uint32_t actionMask = (XCB_EVENT_MASK_BUTTON_PRESS |
+        XCB_EVENT_MASK_BUTTON_RELEASE |
+        XCB_EVENT_MASK_KEY_PRESS |
+        XCB_EVENT_MASK_KEY_RELEASE);
+   xcb_get_window_attributes_cookie_t cookie = xcb_get_window_attributes(connection, hWnd);
+   xcb_get_window_attributes_reply_t *reply = xcb_get_window_attributes_reply(connection, cookie, NULL);
+   if (!reply) {
+       return FALSE;
+   }
+   uint32_t event_mask = reply->all_event_masks; 
+   uint32_t new_event_mask;
+   if (bEnable) {
+       new_event_mask = event_mask | actionMask;
+   } else {
+       new_event_mask = event_mask & (~actionMask); 
+   }
+   uint32_t values[1] = {new_event_mask};
+   xcb_change_window_attributes(connection, hWnd, XCB_CW_EVENT_MASK, values);
+
+   free(reply);
+   return TRUE;
 }

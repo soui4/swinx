@@ -1099,6 +1099,28 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         ReleaseDC(hWnd, hdc);
         break;
     }
+    case UM_SETTINGS:
+    {
+        if(wp == SETTINGS_DPI){
+            int oldDpi = HIWORD(lp);
+            int newDpi = LOWORD(lp);
+            float scale = newDpi*1.0f/oldDpi;
+            RECT rc= wndObj->rc;
+            POINT ptCenter = {(rc.left+rc.right)/2,(rc.top+rc.bottom)/2};
+            int wid = rc.right-rc.left;
+            int hei = rc.bottom -rc.top;
+            ptCenter.x *= scale;
+            ptCenter.y *= scale;
+            wid *= scale;
+            hei *= scale;
+            rc.left = rc.right=ptCenter.x;
+            rc.top = rc.bottom = ptCenter.y;
+            InflateRect(&rc, wid/2, hei/2);
+            SLOG_STMI()<<"WM_DPICHANGED, hWnd="<<hWnd<<" scale="<<scale<<" rc.left="<<rc.left<<" rc.top="<<rc.top<<" rc.right="<<rc.right<<" rc.bottom="<<rc.bottom;
+            CallWindowProcPriv(proc, hWnd, WM_DPICHANGED, MAKELONG(newDpi, newDpi),(LPARAM)&rc);
+        }
+        return 1;
+    }
     case UM_STATE:
         switch (wp)
         {
@@ -1305,8 +1327,25 @@ class CallStackCount {
     }
 };
 
+static int CALLBACK CbEnumPopupWindow(HWND hwnd, LPARAM lParam){
+    std::list<HWND> *lstPopups = (std::list<HWND> *)lParam;
+    lstPopups->push_back(hwnd);
+    return 1;
+}
+
 static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, UINT fuFlags, UINT uTimeout, PDWORD_PTR lpdwResult)
 {
+    if(hWnd == HWND_BROADCAST){
+        //send message to all popup window owned by this process.
+        if(uTimeout == INFINITE || uTimeout>500)
+            uTimeout=500;
+        std::list<HWND> lstPopups;
+        EnumWindows(CbEnumPopupWindow, (LPARAM)&lstPopups);
+        for(auto it:lstPopups){
+            _SendMessageTimeout(bWideChar,it,msg,wp,lp,fuFlags,uTimeout,NULL);
+        }
+        return 0;
+    }
     CallStackCount stackCount;
     if (s_nCallStack > kMaxSendMsgStack)
         return -2;
@@ -1326,7 +1365,7 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         {
             return 0;
         }
-        if (uTimeout != -1)
+        if (uTimeout == INFINITE)
             uTimeout = 1000;
         _SynHandle *handle = GetSynHandle(hEvt);
         // SLOG_STMI() << "ipc event name=" << handle->getName();
@@ -1981,6 +2020,7 @@ BOOL EnableWindow(HWND hWnd, BOOL bEnable)
         wndObj->dwStyle &= ~WS_DISABLED;
     else
         wndObj->dwStyle |= WS_DISABLED;
+    wndObj->mConnection->EnableWindow(hWnd, bEnable);
     if (!bEnable)
     {
         // restore cursor to default cursor.

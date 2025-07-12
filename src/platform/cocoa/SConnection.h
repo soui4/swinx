@@ -160,6 +160,7 @@ class SConnection : public SConnBase{
     HMONITOR GetScreen(DWORD dwFlags) const;
     void updateWindow(HWND hWnd, const RECT &rc);
     void commitCanvas(HWND hWnd, const RECT &rc);
+    void EnableWindow(HWND hWnd, BOOL bEnable);
   public:
     struct CaretInfo
     {

@@ -116,12 +116,6 @@ defer:(BOOL)flag;
     @public
     NSRect m_rcPos;
     HWND   m_hWnd;
-    @private
-    NSString *_markedText;
-    NSRange   _markedRange;
-    NSRange   _selectedRange;
-    NSRect    _inputRect;
-    cairo_surface_t * _offscreenSur;
 }
 - (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent;
 - (void)destroy;
@@ -133,6 +127,7 @@ defer:(BOOL)flag;
 - (void)updateRect:(NSRect)rc;
 - (void)invalidRect:(NSRect)rc;
 - (void)onStateChange:(int) nState;
+- (void)setEnabled:(BOOL)bEnabled;
 @end
 
 @implementation SNsWindow{
@@ -141,6 +136,13 @@ defer:(BOOL)flag;
     BOOL m_bMsgTransparent;
     BOOL m_bCommitCache;
     NSEventModifierFlags m_modifierFlags;
+
+    NSString *_markedText;
+    NSRange   _markedRange;
+    NSRange   _selectedRange;
+    NSRect    _inputRect;
+    BOOL      _bEnabled;
+    cairo_surface_t * _offscreenSur;
 }
 
 - (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent{
@@ -164,6 +166,7 @@ defer:(BOOL)flag;
     m_modifierFlags = 0;
     _markedText = nil;
     _offscreenSur = nil;
+    _bEnabled = TRUE;
 
     SNsWindow *parent = getNsWindow(hParent);
     if (parent) {
@@ -172,8 +175,14 @@ defer:(BOOL)flag;
     return self;
 }
 
+-(void)setEnabled:(BOOL)bEnabled {
+    _bEnabled = bEnabled;
+    [self setNeedsDisplay:TRUE];
+}
 
 - (void) destroy{
+    [[NSNotificationCenter defaultCenter] removeObserver:self]; 
+    //[self removeObserver:self forKeyPath:(nonnull NSString *)]
     [self removeFromSuperview];
     m_pListener->OnNsEvent(m_hWnd, WM_DESTROY, 0, 0);
     SLOG_STMI()<<"hjx destroy: hWnd="<<m_hWnd;
@@ -303,6 +312,8 @@ defer:(BOOL)flag;
 }
 
 - (void) onMouseEvent: (NSEvent *) theEvent withMsgId:(UINT) msg{
+    if(!_bEnabled && msg != WM_MOUSEMOVE)
+        return;
     UINT uFlags = 0;
     NSEventModifierFlags modifiers = [theEvent modifierFlags];
     NSUInteger pressedButtons = [NSEvent pressedMouseButtons];
@@ -344,7 +355,6 @@ defer:(BOOL)flag;
 }
 
 - (void) mouseDown: (NSEvent *) theEvent {
-//    SLOG_STMI()<<"mouseDown,m_hWnd="<<m_hWnd;
     [self onMouseEvent:theEvent withMsgId:WM_LBUTTONDOWN];
 }
 
@@ -435,6 +445,8 @@ defer:(BOOL)flag;
 }
 
 - (void)keyDown:(NSEvent *)event {
+    if(!_bEnabled)
+        return;
     if([self isFunKey: [event keyCode]]){
         [self onKeyDown:event];
         return;
@@ -460,6 +472,8 @@ defer:(BOOL)flag;
 }
 
 - (void)keyUp:(NSEvent *)event{
+    if(!_bEnabled)
+        return;
     if([self isFunKey: [event keyCode]]){
         [self onKeyUp:event];
         return;
@@ -753,7 +767,10 @@ defer:(BOOL)flag
 }
 
 -(BOOL)setCapture:(SNsWindow *)pWin{
+    return TRUE;
     if (eventMonitor) 
+        return FALSE;
+    if(m_pCapture!=nil)
         return FALSE;
 //    SLOG_STMI()<<"setCapture hWnd="<<pWin->m_hWnd;
     m_pCapture = pWin;
@@ -792,25 +809,25 @@ defer:(BOOL)flag
         }
         switch(event.type){
             case NSLeftMouseDown:
-                [m_pCapture mouseDown:event];
+                [strongSelf->m_pCapture mouseDown:event];
                 break;
             case NSLeftMouseUp:
-                [m_pCapture mouseUp:event];
+                [strongSelf->m_pCapture mouseUp:event];
                 break;
             case NSRightMouseDown:
-                [m_pCapture rightMouseDown:event];
+                [strongSelf->m_pCapture rightMouseDown:event];
                 break;
             case NSRightMouseUp:
-                [m_pCapture rightMouseUp:event];
+                [strongSelf->m_pCapture rightMouseUp:event];
                 break;
             case NSOtherMouseDown:
-                [m_pCapture otherMouseDown:event];
+                [strongSelf->m_pCapture otherMouseDown:event];
                 break;
             case NSOtherMouseUp:
-                [m_pCapture otherMouseUp:event];
+                [strongSelf->m_pCapture otherMouseUp:event];
                 break;
             case NSMouseMoved:
-                [m_pCapture mouseMoved:event];
+                [strongSelf->m_pCapture mouseMoved:event];
                 break;
             default:
                 break;
@@ -826,6 +843,7 @@ defer:(BOOL)flag
 }
 
 -(BOOL)releaseCapture:(SNsWindow *)pWin{
+        return TRUE;
     if(m_pCapture != pWin)
         return FALSE;
     if (!eventMonitor) 
@@ -1097,7 +1115,10 @@ defer:(BOOL)flag
 }
 
 -(BOOL)setCapture:(SNsWindow *)pWin{
+        return TRUE;
     if (eventMonitor) 
+        return FALSE;
+    if(m_pCapture!=nil)
         return FALSE;
 //    SLOG_STMI()<<"setCapture hWnd="<<pWin->m_hWnd;
     m_pCapture = pWin;
@@ -1136,25 +1157,25 @@ defer:(BOOL)flag
         }
         switch(event.type){
             case NSLeftMouseDown:
-                [m_pCapture mouseDown:event];
+                [strongSelf->m_pCapture mouseDown:event];
                 break;
             case NSLeftMouseUp:
-                [m_pCapture mouseUp:event];
+                [strongSelf->m_pCapture mouseUp:event];
                 break;
             case NSRightMouseDown:
-                [m_pCapture rightMouseDown:event];
+                [strongSelf->m_pCapture rightMouseDown:event];
                 break;
             case NSRightMouseUp:
-                [m_pCapture rightMouseUp:event];
+                [strongSelf->m_pCapture rightMouseUp:event];
                 break;
             case NSOtherMouseDown:
-                [m_pCapture otherMouseDown:event];
+                [strongSelf->m_pCapture otherMouseDown:event];
                 break;
             case NSOtherMouseUp:
-                [m_pCapture otherMouseUp:event];
+                [strongSelf->m_pCapture otherMouseUp:event];
                 break;
             case NSMouseMoved:
-                [m_pCapture mouseMoved:event];
+                [strongSelf->m_pCapture mouseMoved:event];
                 break;
             default:
                 break;
@@ -1170,6 +1191,7 @@ defer:(BOOL)flag
 }
 
 -(BOOL)releaseCapture:(SNsWindow *)pWin{
+        return TRUE;
     if(m_pCapture != pWin)
         return FALSE;
     if (!eventMonitor) 
@@ -2265,6 +2287,27 @@ BOOL setNsWindowRgn(HWND hWnd, const RECT *prc, int nCount){
 
             [win setNeedsDisplay: YES];
             [win displayIfNeeded];
+            return TRUE;
+        }
+        return FALSE;
+    }
+}
+
+int  getNsWindowId(HWND hWnd){
+    @autoreleasepool{
+        SNsWindow *win = getNsWindow(hWnd);
+        if(win && win.window ){
+            return win.window.windowNumber;
+        }
+        return 0;
+    }
+}
+
+BOOL enableNsWindow(HWND hWnd, BOOL bEnable){
+    @autoreleasepool{
+        SNsWindow *win = getNsWindow(hWnd);
+        if(win ){
+            [win setEnabled:bEnable];
             return TRUE;
         }
         return FALSE;

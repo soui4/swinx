@@ -290,6 +290,7 @@ struct CallHookData
 
 enum {
     UM_STATE = (WM_INTERNAL + 1),
+    UM_SETTINGS,
     UM_MAPNOTIFY,
     UM_CALLHOOK,
     UM_XDND_DRAG_ENTER=0x400,
@@ -298,6 +299,10 @@ enum {
     UM_XDND_DRAG_DROP,
     UM_XDND_FINISH,
     UM_XDND_STATUS,
+};
+
+enum{
+    SETTINGS_DPI=1,
 };
 
 #ifdef __linux__

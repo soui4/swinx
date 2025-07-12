@@ -1604,3 +1604,7 @@ void SConnection::AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESUL
         delete lastMsg;
     }
 }
+
+void SConnection::EnableWindow(HWND hWnd, BOOL bEnable){
+    enableNsWindow(hWnd, bEnable);
+}

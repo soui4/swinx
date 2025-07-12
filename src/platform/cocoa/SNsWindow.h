@@ -58,5 +58,6 @@ int getNsDpi(bool bx);
 HWND findNsKeyWindow();
 
 BOOL setNsWindowRgn(HWND hWnd, const RECT *prc, int nCount);
-
+int  getNsWindowId(HWND hWnd);
+BOOL enableNsWindow(HWND hWnd, BOOL bEnable);
 #endif//_SNSWINDOW_H_

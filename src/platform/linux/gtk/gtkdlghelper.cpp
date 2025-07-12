@@ -11,16 +11,14 @@
 #include "log.h"
 #define kLogTag "gtk"
 namespace Gtk{
-
-class GtkInit{
-public:
-GtkInit(){
+static void Init(){
+    static bool s_inited = false;
+    if(s_inited) return;
+    s_inited = true;
     int argc=0;
     gtk_init(&argc,nullptr);
     SLOG_STMI()<<"init gtk done";
 }
-};
-static GtkInit s_gtkInit;
 
 static char* substr(const char *src, int m, int n)
 {
@@ -257,11 +255,13 @@ bool gtk_choose_color(HWND parent,COLORREF *out){
 }//end of ns Gtk
 
 BOOL SChooseColor(HWND parent,const COLORREF initClr[16],COLORREF *out){
+    Gtk::Init();
     return Gtk::gtk_choose_color(parent,out);
 }
 
 BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
 {
+    Gtk::Init();
     std::list<std::string> lstRet;
     bool ret = Gtk::openGtkFileChooser(lstRet, p->hwndOwner, (DlgMode)mode, "", "", p->lpstrInitialDir ? p->lpstrInitialDir : "", p->lpstrFilter ? p->lpstrFilter : "", NULL, p->Flags & OFN_ALLOWMULTISELECT);
     if (!ret || lstRet.empty())
