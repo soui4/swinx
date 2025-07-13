@@ -265,6 +265,10 @@ extern "C"
 #define WM_NCMOUSEHOVER 0x02A0
 #define WM_NCMOUSELEAVE 0x02A2
 
+#ifndef WM_DPICHANGED
+#define WM_DPICHANGED   0x02E0
+#endif
+
 #define WM_CUT               0x0300
 #define WM_COPY              0x0301
 #define WM_PASTE             0x0302

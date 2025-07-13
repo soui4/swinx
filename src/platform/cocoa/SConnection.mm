@@ -907,13 +907,19 @@ bool SConnection::SetWindowOpacity(HWND hWnd, BYTE byAlpha) {
 }
 
 bool SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn) {
-  RGNDATA rgnData;
-  DWORD len = GetRegionData(hRgn, 0, nullptr);
-  if (!len)
-    return FALSE;
-  GetRegionData(hRgn, len, &rgnData);
-  const LPRECT prc=(LPRECT)rgnData.Buffer;
-  return setNsWindowRgn(hWnd, prc, rgnData.rdh.nCount);
+    if(hRgn){
+        DWORD len = GetRegionData(hRgn, 0, nullptr);
+        if (!len)
+            return FALSE;
+        RGNDATA *pData = (RGNDATA *)malloc(len);
+        GetRegionData(hRgn, len, pData);
+        const LPRECT prc=(LPRECT)pData->Buffer;
+        bool ret = setNsWindowRgn(hWnd, prc, pData->rdh.nCount);
+        free(pData);
+        return ret;
+    }else{
+        return setNsWindowRgn(hWnd, nullptr, 0);
+    }
 }
 
 HKL SConnection::ActivateKeyboardLayout(HKL hKl) {

@@ -95,13 +95,12 @@ BOOL SChooseColor(HWND parent,const COLORREF initClr[16], COLORREF *out){
 static BOOL GetOpenFileNameMac(OPENFILENAME *lpofn) {
     @autoreleasepool {
         NSOpenPanel *panel = [NSOpenPanel openPanel];
-        
         // 设置父窗口
         if (lpofn->hwndOwner) {
             int parentId = getNsWindowId(lpofn->hwndOwner);
             NSWindow *parentWindow = [NSApp windowWithWindowNumber:parentId];
             if (parentWindow) {
-                [panel beginSheetModalForWindow:parentWindow completionHandler:nil];
+                [panel beginSheetModalForWindow:parentWindow completionHandler:^(NSInteger c){}];
             }
         }
         
@@ -241,7 +240,7 @@ static BOOL GetSaveFileNameMac(OPENFILENAME *lpofn) {
             int parentId = getNsWindowId(lpofn->hwndOwner);
             NSWindow *parentWindow = [NSApp windowWithWindowNumber:parentId];
             if (parentWindow) {
-                [panel beginSheetModalForWindow:parentWindow completionHandler:nil];
+                [panel beginSheetModalForWindow:parentWindow completionHandler:^(NSInteger c){}];
             }
         }
         
@@ -333,7 +332,7 @@ static BOOL SelectFolderMac(HWND hwndOwner,const char * lpszTitle,char * lpszFol
             int parentId = getNsWindowId(hwndOwner);
             NSWindow *parentWindow = [NSApp windowWithWindowNumber:parentId];
             if (parentWindow) {
-                [panel beginSheetModalForWindow:parentWindow completionHandler:nil];
+                [panel beginSheetModalForWindow:parentWindow completionHandler:^(NSInteger c){}];
             }
         }
         

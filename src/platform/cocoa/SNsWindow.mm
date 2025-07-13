@@ -342,7 +342,8 @@ defer:(BOOL)flag;
     float scale = [self.window backingScaleFactor];
     locationInView.x *= scale;
     locationInView.y *= scale;
-    LPARAM lParam = MAKELPARAM((int)floor(locationInView.x+0.5f),(int)floor(locationInView.y+0.5f));
+
+    LPARAM lParam = MAKELPARAM(float2int(locationInView.x),float2int(locationInView.y));
     m_pListener->OnNsEvent(m_hWnd,msg,uFlags,lParam);
 }
 
@@ -410,24 +411,20 @@ defer:(BOOL)flag;
 - (void)scrollWheel:(NSEvent *)event{
     CGFloat deltaY = [event scrollingDeltaY];  // 垂直滚动量
     CGFloat deltaX = [event scrollingDeltaX];  // 水平滚动量
-    NSPoint location = [event locationInWindow]; // 鼠标位置
-    
-    // 转换为 Windows 消息参数
-    // WM_MOUSEWHEEL 的 wParam 和 lParam:
-    // wParam: 高16位是 delta (120单位为一个"刻度")，低16位是按键状态
-    // lParam: 低16位是x坐标，高16位是y坐标
-    
-    // 模拟 WM_MOUSEWHEEL 消息
+    NSPoint location = [NSEvent mouseLocation];
+    location.y = [self.window.screen frame].size.height - location.y;//convert to ns coordinate
+    float scale = [self.window backingScaleFactor];
+    location.x *= scale;
+    location.y *= scale;
     WPARAM wParam = MAKEWPARAM([self getKeyModifiers], (short)(deltaY * 120));
-    LPARAM lParam = MAKELPARAM((short)location.x, (short)location.y);
-    
+    LPARAM lParam = MAKELPARAM(float2int(location.x),float2int(location.y));    
     // 发送到 Windows 窗口
     m_pListener->OnNsEvent(m_hWnd, WM_MOUSEWHEEL, wParam, lParam);
 }
 
 - (void)onKeyDown:(NSEvent *)event{ 
     NSUInteger keyCode = [event keyCode];     // 物理键码
-    SLOG_STMI()<<"hjx onkeyDown:"<<keyCode;
+    //SLOG_STMI()<<"hjx onkeyDown:"<<keyCode;
     UINT vkCode = convertKeyCodeToVK(keyCode);
     Keyboard::instance().setKeyState(vkCode, 1);
     SHORT repCount=[event isARepeat]?1:0;
@@ -459,7 +456,7 @@ defer:(BOOL)flag;
 
 - (void)onKeyUp:(NSEvent *)event{
     NSUInteger keyCode = [event keyCode];     // 物理键码
-    SLOG_STMI()<<"hjx onkeyUp:"<<keyCode;
+    //SLOG_STMI()<<"hjx onkeyUp:"<<keyCode;
     UINT vkCode = convertKeyCodeToVK(keyCode);
     Keyboard::instance().setKeyState(vkCode, 0);
     SHORT repCount=[event isARepeat]?1:0;
@@ -767,10 +764,9 @@ defer:(BOOL)flag
 }
 
 -(BOOL)setCapture:(SNsWindow *)pWin{
-    return TRUE;
-    if (eventMonitor) 
-        return FALSE;
-    if(m_pCapture!=nil)
+    if (m_pCapture==pWin)
+        return TRUE;    
+    if (eventMonitor || m_pCapture) 
         return FALSE;
 //    SLOG_STMI()<<"setCapture hWnd="<<pWin->m_hWnd;
     m_pCapture = pWin;
@@ -843,7 +839,6 @@ defer:(BOOL)flag
 }
 
 -(BOOL)releaseCapture:(SNsWindow *)pWin{
-        return TRUE;
     if(m_pCapture != pWin)
         return FALSE;
     if (!eventMonitor) 
@@ -2273,23 +2268,28 @@ static CGPathRef CGPathCreateFromNSBezierPath(NSBezierPath *bezierPath) {
 BOOL setNsWindowRgn(HWND hWnd, const RECT *prc, int nCount){
     @autoreleasepool{
         SNsWindow *win = getNsWindow(hWnd);
-        if(win){
+        if(!win)
+            return FALSE;
+        if(prc && nCount){
             NSBezierPath *path = [NSBezierPath bezierPath];
             for(int i = 0; i < nCount; i++){
                 const RECT &rc = prc[i];
                 [path appendBezierPathWithRect: NSMakeRect(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top)];
             }
+
             CAShapeLayer *maskLayer = [CAShapeLayer layer];
-            
             maskLayer.path = CGPathCreateFromNSBezierPath(path);  // 转换为CGPath
+            win.wantsLayer = YES;
             win.layer.mask = maskLayer;
             win.layer.masksToBounds = YES;
-
-            [win setNeedsDisplay: YES];
-            [win displayIfNeeded];
-            return TRUE;
+        }else{
+            win.layer.mask = nil;
+            win.layer.masksToBounds = NO;
+            win.wantsLayer = NO;
         }
-        return FALSE;
+        [win setNeedsDisplay: YES];
+        [win displayIfNeeded];
+        return TRUE;
     }
 }
 

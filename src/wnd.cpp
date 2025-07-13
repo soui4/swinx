@@ -742,6 +742,9 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
         case HTSIZE:
             cursorId = IDC_SIZE;
             break;
+        default:
+            cursorId = IDC_ARROW;
+            break;
         }
         //SLOG_STMI()<<"UpdateWindowCursor, hWnd="<<hWnd<<" cursor="<<(WORD)(ULONG_PTR)cursorId;
         wndObj->mConnection->SetCursor(hWnd,LoadCursor(wndObj->hInstance, cursorId));

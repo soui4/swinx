@@ -1349,6 +1349,10 @@ int GetSystemMetrics(int nIndex)
         printf("unknown index for GetSystemMetrics, index=%d\n", nIndex);
         break;
     }
+    #ifdef __APPLE__
+    if(nIndex==SM_CXCURSOR || nIndex==SM_CYCURSOR)
+        return ret;
+    #endif
     return ret * GetSystemScale() / 100;
 }
 
