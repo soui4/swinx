@@ -856,7 +856,10 @@ defer:(BOOL)flag
 
 -(void)mouseExited:(NSEvent *)event {
     if(!m_pCapture){
-        [self.contentView mouseExited:event];
+        if(m_pHover){
+            [m_pHover mouseExited:event];
+            m_pHover = nil;
+        }
         [[NSCursor arrowCursor] set];
     }
 }

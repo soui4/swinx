@@ -2487,6 +2487,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         RECT rc = { expose->x, expose->y, expose->x + expose->width, expose->y + expose->height };
         HRGN hrgn = CreateRectRgnIndirect(&rc);
         std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+        //combine pending paint messages.
         for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++)
         {
             if ((*it)->message == WM_PAINT && (*it)->hwnd == expose->window)

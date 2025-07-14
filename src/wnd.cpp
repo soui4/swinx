@@ -227,15 +227,6 @@ static int ScrollBarHitTest(BOOL bVert, const SCROLLINFO *pSi, LPCRECT rcAll, PO
     return -1;
 }
 
-static void RedrawNcRect(HWND hWnd, const RECT *lpRect)
-{
-    if (IsRectEmpty(lpRect))
-        return;
-    HRGN rgn = CreateRectRgnIndirect(lpRect);
-    SendMessageA(hWnd, WM_NCPAINT, (WPARAM)rgn, 0);
-    DeleteObject(rgn);
-}
-
 BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
@@ -607,6 +598,11 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
                 wndObj->mConnection->postMsg(msg.hwnd, msg.message, msg.wParam, msg.lParam);
                 break;
             }
+            else if(msg.message == WM_CANCELMODE)
+            {
+                bQuit = TRUE;
+                break;
+            }
             else if (msg.message == WM_LBUTTONUP)
             {
                 SLOG_STMI() << "HandleNcTestCode,WM_LBUTTONUP";
@@ -784,11 +780,18 @@ static BOOL ActiveWindow(HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
     return bRet;
 }
 
-static void _DrawCaret(HWND hWnd, WndObj &wndObj)
+static void _InvalidCaret(HWND hWnd, WndObj &wndObj)
 {
     const SConnection::CaretInfo *info = wndObj->mConnection->GetCaretInfo();
     assert(info->hOwner == hWnd);
-    HDC hdc = GetDC(hWnd);
+    RECT rc = { info->x, info->y, info->x + info->nWidth, info->y + info->nHeight };
+    InvalidateRect(hWnd, &rc, FALSE);
+}
+
+static void _DrawCaret(HWND hWnd, HDC hdc, WndObj &wndObj)
+{
+    const SConnection::CaretInfo *info = wndObj->mConnection->GetCaretInfo();
+    assert(info->hOwner == hWnd);
     if (info->hBmp)
     {
         BITMAP bm;
@@ -804,7 +807,6 @@ static void _DrawCaret(HWND hWnd, WndObj &wndObj)
         RECT rc = { info->x, info->y, info->x + info->nWidth, info->y + info->nHeight };
         InvertRect(hdc, &rc);
     }
-    ReleaseDC(hWnd, hdc);
 }
 
 LRESULT CallWindowProc(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -1063,7 +1065,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         }
         if (wp == SConnection::TM_CARET && IsWindowVisible(hWnd))
         {
-            _DrawCaret(hWnd, wndObj);
+            _InvalidCaret(hWnd, wndObj);
             wndObj->bCaretVisible = !wndObj->bCaretVisible;
             bSkipMsg = TRUE;
         }
@@ -1079,29 +1081,8 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         break;
     }
     case WM_PAINT:
-    {
-        HDC hdc = GetDC(hWnd);
-        if (lp)
-        {
-            HGDIOBJ hrgn = (HGDIOBJ)lp;
-            int cxEdge = GetSystemMetrics(SM_CXEDGE);
-            int cyEdge = GetSystemMetrics(SM_CYEDGE);
-            if (wndObj->dwStyle & WS_BORDER)
-                OffsetRgn(hrgn, -cxEdge, -cxEdge);
-            CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, hrgn, RGN_OR);
-            if (wndObj->dwStyle & WS_BORDER)
-                OffsetRgn(hrgn, cxEdge, cxEdge);
-        }
-        SelectClipRgn(hdc, wndObj->invalid.hRgn);
         wndObj->nPainting++;
-        if (wndObj->invalid.bErase || lp != 0)
-        {
-            CallWindowObjProc(wndObj, proc, hWnd, WM_ERASEBKGND, (WPARAM)hdc, 0);
-            wndObj->invalid.bErase = FALSE;
-        }
-        ReleaseDC(hWnd, hdc);
         break;
-    }
     case UM_SETTINGS:
     {
         if(wp == SETTINGS_DPI){
@@ -1197,7 +1178,46 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             bSkipMsg = CallHook(WH_CALLWNDPROC, HC_ACTION, 0, (LPARAM)&st);
         }
         if (!bSkipMsg)
-            ret = CallWindowObjProc(wndObj, proc, hWnd, msg, wp, lp2);
+        {
+            if (msg == WM_PAINT)
+            {
+                HDC hdc = GetDC(hWnd);
+                if (lp)
+                {
+                    HGDIOBJ hrgn = (HGDIOBJ)lp;
+                    int cxEdge = GetSystemMetrics(SM_CXEDGE);
+                    int cyEdge = GetSystemMetrics(SM_CYEDGE);
+                    if (wndObj->dwStyle & WS_BORDER)
+                        OffsetRgn(hrgn, -cxEdge, -cxEdge);
+                    CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, hrgn, RGN_OR);
+                    if (wndObj->dwStyle & WS_BORDER)
+                        OffsetRgn(hrgn, cxEdge, cxEdge);
+                }
+                SelectClipRgn(hdc, wndObj->invalid.hRgn);
+                {//paint client.
+                    int nState = SaveDC(hdc);
+                    RECT rcClient;
+                    GetClientRect(hWnd,&rcClient);
+                    IntersectClipRect(hdc,rcClient.left,rcClient.top,rcClient.right,rcClient.bottom);
+                    if (wndObj->invalid.bErase || lp != 0)
+                    {
+                        CallWindowObjProc(wndObj, proc, hWnd, WM_ERASEBKGND, (WPARAM)hdc, 0);
+                        wndObj->invalid.bErase = FALSE;
+                    }
+                    ret = CallWindowObjProc(wndObj, proc, hWnd, msg, wp, lp2);
+                    if (wndObj->bCaretVisible)
+                    {
+                        _DrawCaret(hWnd, hdc, wndObj);
+                    }
+                    RestoreDC(hdc,nState);
+                }
+                CallWindowObjProc(wndObj,proc,hWnd, WM_NCPAINT, (WPARAM)wndObj->invalid.hRgn, 0);            // call ncpaint
+                SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0); // clear current region
+                ReleaseDC(hWnd, hdc);
+            }else{
+                ret = CallWindowObjProc(wndObj, proc, hWnd, msg, wp, lp2);
+            }
+        }    
         {
             CWPRETSTRUCT st;
             st.hwnd = hWnd;
@@ -1206,16 +1226,6 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             st.lParam = lp;
             st.lResult = ret;
             CallHook(WH_CALLWNDPROCRET, HC_ACTION, 0, (LPARAM)&st);
-        }
-        if (msg == WM_PAINT)
-        {
-            if (wndObj->bCaretVisible)
-            {
-                _DrawCaret(hWnd, wndObj);
-            }
-            if (lp)
-                proc(hWnd, WM_NCPAINT, lp, 0);            // call ncpaint
-            SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0); // clear current region
         }
     }
     wndObj->mConnection->AfterProcMsg(hWnd, msg, wp, lp, ret);
@@ -1909,8 +1919,8 @@ BOOL DestroyCaret(VOID)
         if (wndObj && wndObj->bCaretVisible)
         {
             // clear caret
-            _DrawCaret(caretInfo->hOwner, wndObj);
             wndObj->bCaretVisible = FALSE;
+            _InvalidCaret(caretInfo->hOwner, wndObj);
         }
     }
     return pConn->DestroyCaret();
@@ -1932,8 +1942,8 @@ BOOL HideCaret(HWND hWnd)
         if (wndObj->bCaretVisible)
         {
             // clear old caret
-            _DrawCaret(hWnd, wndObj);
             wndObj->bCaretVisible = FALSE;
+            _InvalidCaret(hWnd, wndObj);
         }
     }
     return TRUE;
@@ -1952,8 +1962,8 @@ BOOL ShowCaret(HWND hWnd)
     if (pConn->GetCaretInfo()->nVisible == 1)
     {
         // auto show caret
-        _DrawCaret(hWnd, wndObj);
         wndObj->bCaretVisible = TRUE;
+        _InvalidCaret(hWnd, wndObj);
     }
     return TRUE;
 }
@@ -1962,17 +1972,19 @@ BOOL SetCaretPos(int X, int Y)
 {
     SConnection *pConn = SConnMgr::instance()->getConnection();
     const SConnection::CaretInfo *caretInfo = pConn->GetCaretInfo();
-    if (caretInfo->hOwner)
+    WndObj wndObj = WndMgr::fromHwnd(caretInfo->hOwner);
+    if (wndObj && wndObj->bCaretVisible)
     {
-        WndObj wndObj = WndMgr::fromHwnd(caretInfo->hOwner);
-        assert(wndObj);
-        if (wndObj->bCaretVisible)
-        {
-            // clear caret
-            _DrawCaret(caretInfo->hOwner, wndObj);
-        }
+        // clear caret
+        _InvalidCaret(caretInfo->hOwner, wndObj);
     }
-    return pConn->SetCaretPos(X, Y);
+    BOOL ret = pConn->SetCaretPos(X, Y);
+    if(ret){
+        WndObj wndObj = WndMgr::fromHwnd(caretInfo->hOwner);
+        if(wndObj && wndObj->bCaretVisible)
+            _InvalidCaret(caretInfo->hOwner, wndObj);
+    }
+    return ret;
 }
 
 BOOL GetCaretPos(LPPOINT lpPoint)
@@ -2400,7 +2412,7 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
     RECT rcPart = GetScrollBarPartRect(bVert, sb, iPart, pRcAll);
     RECT rcRail = GetScrollBarPartRect(bVert, sb, SB_RAIL, pRcAll);
     int railLen = bVert ? (rcRail.bottom - rcRail.top) : (rcRail.right - rcRail.left);
-    RedrawNcRect(hWnd, &rcPart);
+    InvalidateRect(hWnd, &rcPart,TRUE);
     if (iPart != SB_THUMBTRACK)
     {
         SendMessageA(hWnd, bVert ? WM_VSCROLL : WM_HSCROLL, iPart, 0);
@@ -2421,6 +2433,8 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
         if (msg.message == WM_QUIT)
             break;
         PeekMessage(&msg, 0, 0, 0, PM_REMOVE);
+        if(msg.message == WM_CANCELMODE)
+            break;
         if (CallMsgFilter(&msg, MSGF_SCROLLBAR))
             continue;
 
@@ -2457,13 +2471,13 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
                 if (sb->iHitTest != -1)
                 {
                     RECT rc = GetScrollBarPartRect(bVert, sb, sb->iHitTest, pRcAll);
-                    UnionRect(&rcInvalid, &rcInvalid, &rc);
+                    InvalidateRect(hWnd,&rc,TRUE);
                 }
                 sb->iHitTest = iHitTest;
                 if (sb->iHitTest != -1)
                 {
                     RECT rc = GetScrollBarPartRect(bVert, sb, sb->iHitTest, pRcAll);
-                    UnionRect(&rcInvalid, &rcInvalid, &rc);
+                    InvalidateRect(hWnd,&rc,TRUE);
                 }
             }
             if (iPart == SB_THUMBTRACK)
@@ -2471,7 +2485,6 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
                 // drag scrollbar.
                 int diff = bVert ? (pt.y - ptStart.y) : (pt.x - ptStart.x);
                 RECT rcThumb = GetScrollBarPartRect(bVert, sb, SB_THUMBTRACK, pRcAll);
-                UnionRect(&rcInvalid, &rcInvalid, &rcThumb);
                 int nThumbLen = bVert ? (rcThumb.bottom - rcThumb.top) : (rcThumb.right - rcThumb.left);
                 int nEmptyHei = railLen - nThumbLen;
                 int nSlide = (int)((nEmptyHei == 0) ? 0 : (diff * (__int64)(sb->nMax - sb->nMin - sb->nPage + 1) / nEmptyHei));
@@ -2485,12 +2498,9 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
                     nNewTrackPos = sb->nMax - sb->nMin - sb->nPage + 1;
                 }
                 sb->nTrackPos = nNewTrackPos;
-                UnionRect(&rcInvalid, &rcInvalid, &rcThumb);
-                rcThumb = GetScrollBarPartRect(bVert, sb, SB_THUMBTRACK, pRcAll);
-                UnionRect(&rcInvalid, &rcInvalid, &rcThumb);
+                InvalidateRect(hWnd,&rcRail,TRUE);
                 SendMessageA(hWnd, bVert ? WM_VSCROLL : WM_HSCROLL, MAKEWPARAM(SB_THUMBTRACK, nNewTrackPos), 0);
             }
-            RedrawNcRect(hWnd, &rcInvalid);
         }
         else
         {
@@ -2510,7 +2520,7 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
         SendMessageA(hWnd, bVert ? WM_VSCROLL : WM_HSCROLL, MAKEWPARAM(SB_THUMBPOSITION, sb->nTrackPos), 0);
         SendMessageA(hWnd, bVert ? WM_VSCROLL : WM_HSCROLL, MAKEWPARAM(SB_ENDSCROLL, 0), 0);
         sb->nTrackPos = -1;
-        RedrawNcRect(hWnd, &rcRail);
+        InvalidateRect(hWnd, &rcRail,TRUE);
     }
     sb->iHitTest = -1;
     sb->bDraging = FALSE;
@@ -2684,46 +2694,43 @@ LRESULT OnMsgW2A(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
     return ret;
 }
 
-static void UpdateScroll(HWND hWnd, WndObj &wndObj, ScrollBar &sb, RECT &rcSb, int htSb)
+static void UpdateScroll(HWND hWnd, WndObj &wndObj, BOOL bVert,ScrollBar &sb, RECT &rcSb, int htSb)
 {
-    if (htSb != wndObj->sbVert.iHitTest)
+    if (htSb != sb.iHitTest)
     {
-        RECT rcInvalid = { 0 };
         if (htSb != -1)
         {
-            RECT rcPart = GetScrollBarPartRect(TRUE, &wndObj->sbVert, htSb, &rcSb);
-            UnionRect(&rcInvalid, &rcInvalid, &rcPart);
+            RECT rcPart = GetScrollBarPartRect(bVert, &sb, htSb, &rcSb);
+            InvalidateRect(hWnd, &rcPart, TRUE);
         }
-        if (wndObj->sbVert.iHitTest != -1)
+        if (sb.iHitTest != -1)
         {
-            RECT rcPart = GetScrollBarPartRect(TRUE, &wndObj->sbVert, wndObj->sbVert.iHitTest, &rcSb);
-            UnionRect(&rcInvalid, &rcInvalid, &rcPart);
+            RECT rcPart = GetScrollBarPartRect(bVert, &sb, sb.iHitTest, &rcSb);
+            InvalidateRect(hWnd, &rcPart, TRUE);
         }
         sb.iHitTest = htSb;
-        RedrawNcRect(hWnd, &rcInvalid);
     }
 }
 
 static LRESULT OnNcMouseHover(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
 {
-    int htCode = (int)wp;
     POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
-    MapWindowPoints(0, hWnd, &pt, 1); // todo:hjx
+    MapWindowPoints(0, hWnd, &pt, 1);
     if (wndObj->dwStyle & WS_VSCROLL)
     {
         RECT rcSb;
         GetScrollBarRect(hWnd, SB_VERT, &rcSb);
         ScrollBar &sb = wndObj->sbVert;
         int htSb = ScrollBarHitTest(TRUE, &sb, &rcSb, pt);
-        UpdateScroll(hWnd, wndObj, sb, rcSb, htSb);
+        UpdateScroll(hWnd, wndObj, TRUE, sb, rcSb, htSb);
     }
     if (wndObj->dwStyle & WS_HSCROLL)
     {
         RECT rcSb;
         GetScrollBarRect(hWnd, SB_HORZ, &rcSb);
         ScrollBar &sb = wndObj->sbHorz;
-        int htSb = ScrollBarHitTest(TRUE, &sb, &rcSb, pt);
-        UpdateScroll(hWnd, wndObj, sb, rcSb, htSb);
+        int htSb = ScrollBarHitTest(FALSE, &sb, &rcSb, pt);
+        UpdateScroll(hWnd, wndObj,FALSE, sb, rcSb, htSb);
     }
     return 0;
 }
@@ -2735,14 +2742,14 @@ static LRESULT OnNcMouseLeave(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
         RECT rcSb;
         GetScrollBarRect(hWnd, SB_VERT, &rcSb);
         ScrollBar &sb = wndObj->sbVert;
-        UpdateScroll(hWnd, wndObj, sb, rcSb, -1);
+        UpdateScroll(hWnd, wndObj,TRUE, sb, rcSb, -1);
     }
     if (wndObj->dwStyle & WS_HSCROLL)
     {
         RECT rcSb;
         GetScrollBarRect(hWnd, SB_HORZ, &rcSb);
         ScrollBar &sb = wndObj->sbHorz;
-        UpdateScroll(hWnd, wndObj, sb, rcSb, -1);
+        UpdateScroll(hWnd, wndObj,FALSE, sb, rcSb, -1);
     }
     return 0;
 }
@@ -3460,13 +3467,13 @@ int SetScrollInfo(HWND hWnd, int fnBar, LPCSCROLLINFO lpsi, BOOL fRedraw)
         {
             RECT rcWnd = wndObj->rc;
             OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top);
-            RedrawNcRect(hWnd, &rcWnd);
+            InvalidateRect(hWnd, &rcWnd,TRUE);
         }
         else
         {
             RECT rcBar;
             if (GetScrollBarRect(hWnd, fnBar, &rcBar))
-                RedrawNcRect(hWnd, &rcBar);
+                InvalidateRect(hWnd, &rcBar,TRUE);
         }
     }
     return TRUE;
