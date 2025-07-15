@@ -1569,13 +1569,16 @@ void SConnection::OnDrawRect(HWND hWnd, const RECT &rc, cairo_t *ctx){
   assert(wndObj->hdc);
   cairo_t * oldCtx = wndObj->hdc->cairo;
   wndObj->hdc->cairo = ctx;
-  HRGN oldRgn = wndObj->invalid.hRgn;
-  wndObj->invalid.hRgn = CreateRectRgnIndirect(&rc);
-  SendMessage(hWnd, WM_ERASEBKGND, (LPARAM)wndObj->hdc,0);
-  SendMessage(hWnd, WM_PAINT, 0,(LPARAM)wndObj->invalid.hRgn);
+  if(wndObj->invalid.hRgn){
+    HRGN hRgn = CreateRectRgnIndirect(&rc);
+    CombineRgn(wndObj->invalid.hRgn, hRgn, wndObj->invalid.hRgn, RGN_OR);
+    DeleteObject(hRgn);
+  }
+  SendMessageA(hWnd, WM_PAINT, 0,(LPARAM)wndObj->invalid.hRgn);
   wndObj->hdc->cairo = oldCtx;
-  DeleteObject(wndObj->invalid.hRgn);
-  wndObj->invalid.hRgn = oldRgn;
+  if(wndObj->invalid.hRgn){
+      SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0);
+  }
 }
 
 void SConnection::updateWindow(HWND hWnd, const RECT &rc){
