@@ -3086,7 +3086,7 @@ HICON CreateIconIndirect(PICONINFO piconinfo)
     _IconObj *icon = new _IconObj;
     icon->fIcon = piconinfo->fIcon;
     icon->xHotspot = piconinfo->xHotspot;
-    icon->yHotspot = piconinfo->xHotspot;
+    icon->yHotspot = piconinfo->yHotspot;
     icon->hbmColor = RefGdiObj(piconinfo->hbmColor);
     icon->hbmMask = RefGdiObj(piconinfo->hbmMask);
     return icon;
@@ -3518,9 +3518,6 @@ int AddFontResourceEx(LPCSTR lpszFilename, // font file name
                       PVOID pdv            // reserved
 )
 {
-    #if defined(CAIRO_HAS_QUARTZ_FONT) && CAIRO_HAS_QUARTZ_FONT
-        return macos_register_font(lpszFilename);
-    #else
     int ret = 0;
     do
     {
@@ -3553,7 +3550,9 @@ int AddFontResourceEx(LPCSTR lpszFilename, // font file name
         FcConfigBuildFonts(config);
         ret = 1;
     } while (false);
-
-    return ret;
-    #endif//
+    #if defined(CAIRO_HAS_QUARTZ_FONT) && CAIRO_HAS_QUARTZ_FONT
+        return macos_register_font(lpszFilename);
+    #else
+        return ret;
+    #endif//CAIRO_HAS_QUARTZ_FONT
 }

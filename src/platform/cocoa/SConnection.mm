@@ -31,11 +31,60 @@ static const NSInteger kFDReadyEventSubtype = 100; // 自定义子类型
 
 NSWindow *getNsWindow(HWND hWnd);
 
-cairo_t * getNsWindowCanvas(HWND hWnd){
-  WndObj wndObj = WndMgr::fromHwnd(hWnd);
-  assert(wndObj);
-  assert(wndObj->hdc);
-  return wndObj->hdc->cairo;
+
+#if defined(CAIRO_HAS_QUARTZ_FONT) && CAIRO_HAS_QUARTZ_FONT
+
+BOOL macos_register_font(const char *utf8Path) {
+    @autoreleasepool {
+        // 1. 将UTF-8路径转换为NSString
+        NSString *path = [NSString stringWithUTF8String:utf8Path];
+        if (!path) {
+            SLOG_STMI()<<"Invalid UTF-8 path="<<utf8Path;
+            return NO;
+        }
+        
+        // 2. 创建文件URL
+        NSURL *fontURL = [NSURL fileURLWithPath:path];
+        if (!fontURL) {
+            SLOG_STMI()<<"create fileURL failed, path="<<utf8Path;
+            return NO;
+        }
+        
+        CFErrorRef error= NULL;
+        // 4. 注册字体(仅当前进程有效)
+        BOOL success = CTFontManagerRegisterFontsForURL((__bridge CFURLRef)fontURL, 
+                                                     kCTFontManagerScopeProcess, 
+                                                     &error);
+        BOOL ret = success;
+        if (!success) {
+            CFIndex errorCode = CFErrorGetCode(error);
+            if (errorCode != kCTFontManagerErrorAlreadyRegistered){
+                CFStringRef errorDescription = CFErrorCopyDescription(error);
+                if(errorDescription){
+                    SLOG_STMW() << "Failed to register font: " << utf8Path << " error="<< CFStringGetCStringPtr(errorDescription, kCFStringEncodingUTF8);
+                    CFRelease(errorDescription);
+                }else{
+                    SLOG_STMW() << "Failed to register font: " << utf8Path;
+                }
+            }else{
+                ret = YES;
+            }
+            CFRelease(error);
+        }
+        return ret;
+    }
+}
+#endif
+
+
+extern "C"   BOOL WINAPI GetAppleBundlePath(char *path, int maxLen){
+    @autoreleasepool {
+        NSString *bundlePath = [[NSBundle mainBundle] bundlePath];
+        if (bundlePath.length >= maxLen)
+            return FALSE;
+        [bundlePath getCString:path maxLength:maxLen encoding:NSUTF8StringEncoding];
+        return TRUE;
+    }
 }
 
 static void ConvertNSRect(NSScreen *screen, bool fullscreen, NSRect *r)
@@ -166,6 +215,9 @@ SHORT SConnection::GetKeyState(int vk) {
                 return [NSEvent modifierFlags] & NSAlternateKeyMask ? 0x8000 : 0;
             case VK_CAPITAL:
                 return [NSEvent modifierFlags] & NSAlphaShiftKeyMask ? 0x8000 : 0;
+            case VK_LWIN:
+            case VK_RWIN:
+                return [NSEvent modifierFlags] & NSCommandKeyMask ? 0x8000 : 0;
             default:
                 return isKeyPressed(convertVKToKeyCode(vk)) ? 0x8000 : 0;
         }
@@ -470,7 +522,7 @@ bool SConnection::TranslateMessage(const MSG *pMsg) {
         if(GetKeyState(VK_MENU) & 0x8000)
             modifiers |= optionKey;
         uint8_t c = scanCodeToASCII(HIWORD(pMsg->lParam),modifiers);
-        if (c != 0 && !GetKeyState(VK_CONTROL) && !GetKeyState(VK_MENU))
+        if (c != 0 && !GetKeyState(VK_CONTROL) && !GetKeyState(VK_MENU) && !GetKeyState(VK_LWIN))
         {
             std::unique_lock<std::recursive_mutex> lock(m_mutex);
             Msg *msg = new Msg;
@@ -1449,7 +1501,7 @@ void SConnection::SetWindowMsgTransparent(HWND hWnd, _Window *wndObj, bool bTran
 }
 
 void SConnection::AssociateHIMC(HWND hWnd, _Window *wndObj, HIMC hIMC) {
-    // Empty implementation
+    enableNsWindowIme(hWnd,hIMC!=0);
 }
 
 void SConnection::flush() {
@@ -1569,16 +1621,10 @@ void SConnection::OnDrawRect(HWND hWnd, const RECT &rc, cairo_t *ctx){
   assert(wndObj->hdc);
   cairo_t * oldCtx = wndObj->hdc->cairo;
   wndObj->hdc->cairo = ctx;
-  if(wndObj->invalid.hRgn){
-    HRGN hRgn = CreateRectRgnIndirect(&rc);
-    CombineRgn(wndObj->invalid.hRgn, hRgn, wndObj->invalid.hRgn, RGN_OR);
-    DeleteObject(hRgn);
-  }
+  SetRectRgn(wndObj->invalid.hRgn, rc.left, rc.top, rc.right, rc.bottom);
   SendMessageA(hWnd, WM_PAINT, 0,(LPARAM)wndObj->invalid.hRgn);
   wndObj->hdc->cairo = oldCtx;
-  if(wndObj->invalid.hRgn){
-      SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0);
-  }
+  SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0);
 }
 
 void SConnection::updateWindow(HWND hWnd, const RECT &rc){

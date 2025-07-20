@@ -1,8 +1,9 @@
 #include <windows.h>
 #include <objbase.h>
 #include <oaidl.h>
+#include <shlobj.h>
 #include <uuid/uuid.h>
-
+#include <sdragsourcehelper.h>
 static inline void *AllocateForBSTR(size_t cb)
 {
     return ::malloc(cb);
@@ -190,6 +191,10 @@ HRESULT WINAPI CLSIDFromProgID(LPCOLESTR progid, CLSID *clsid)
 
 HRESULT WINAPI CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID FAR *ppv)
 {
+    if(IsEqualGUID(riid, IID_IDragSourceHelper)){
+        SDragSourceHelper *pDragSourceHelper = new SDragSourceHelper();
+        return pDragSourceHelper->QueryInterface(riid, ppv);
+    }
     return E_NOTIMPL;
 }
 

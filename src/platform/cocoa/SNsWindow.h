@@ -2,14 +2,12 @@
 #define _SNSWINDOW_H_
 
 #include <ctypes.h>
-#include <cairo.h>
 #include <string>
 #include "SConnBase.h"
 
 HWND createNsWindow(HWND hParent,DWORD dwStyle,DWORD dwExStyle, LPCSTR pszTitle, int x,int y,int cx,int cy, SConnBase *pListener);
 void closeNsWindow(HWND hWnd);
 BOOL IsNsWindow(HWND hWnd);
-cairo_t * getNsWindowCanvas(HWND hWnd);
 BOOL showNsWindow(HWND hWnd,int nCmdShow);
 BOOL setNsWindowPos(HWND hWnd, int x, int y);
 BOOL setNsWindowSize(HWND hWnd, int cx, int cy);
@@ -49,7 +47,7 @@ struct IDataObject;
 struct IDropSource;
 HRESULT doNsDragDrop(IDataObject *pDataObject,
                           IDropSource *pDropSource,
-                          DWORD dwOKEffect,     
+                          DWORD dwOKEffect,
                           DWORD *pdwEffect);
 BOOL getNsCursorPos(LPPOINT ppt);
 
@@ -60,4 +58,7 @@ HWND findNsKeyWindow();
 BOOL setNsWindowRgn(HWND hWnd, const RECT *prc, int nCount);
 int  getNsWindowId(HWND hWnd);
 BOOL enableNsWindow(HWND hWnd, BOOL bEnable);
+void enableNsWindowIme(HWND hWnd, BOOL bEnable);
+BOOL isNsWindowEnableIme(HWND hWnd);
+
 #endif//_SNSWINDOW_H_

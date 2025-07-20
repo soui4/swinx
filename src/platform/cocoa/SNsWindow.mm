@@ -1,3 +1,4 @@
+#include "sysapi.h"
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
 #include <objc/objc.h>
@@ -5,30 +6,254 @@
 #include <cairo-quartz.h>
 #include <map>
 #include <mutex>
-#include <ctypes.h>
-#include <winuser.h>
-#include <vector>
-#include <sysapi.h>
+#include <assert.h>
+#include <windows.h>
 #include "SNsWindow.h"
-#include "ctrl_types.h"
-#include "wnd.h"
+#include "SNsDataObjectProxy.h"
+#include "wndobj.h"
 #include "keyboard.h"
-#include "helper.h"
+#include "sdragsourcehelper.h"
 #include "tostring.hpp"
 #include <uimsg.h>
 #include <cursorid.h>
 #include "log.h"
 
+#undef interface    //interface is keyword usedd in macos sdk.
 #define kLogTag "SNsWindow"
 
-static NSString *NSPasteboardTypeSOUI = @"NSPasteboardTypeSOUI";
-
-
-extern "C"{
-    LONG_PTR GetWindowLongPtrA(HWND hWnd, int nIndex);
+typedef BOOL (*FUNENUMDATOBOJECT)(WORD fmt, HGLOBAL hMem, NSPasteboardItem *param);
+static BOOL EnumDataOjbect(IDataObject *pdo, FUNENUMDATOBOJECT fun, NSPasteboardItem *param){
+    IEnumFORMATETC *enum_fmt;
+    HRESULT hr = pdo->EnumFormatEtc(DATADIR_GET, &enum_fmt);
+    if (FAILED(hr))
+        return FALSE;
+    FORMATETC fmt;
+    while (enum_fmt->Next(1, &fmt, NULL) == S_OK)
+    {
+        STGMEDIUM medium;
+        hr = pdo->GetData(&fmt, &medium);
+        if (FAILED(hr))
+            continue;
+        if (medium.tymed != TYMED_HGLOBAL)
+            continue;
+        if (!fun(fmt.cfFormat, medium.hGlobal, param))
+            break;
+    }
+    enum_fmt->Release();
+    return TRUE;    
 }
 
-cairo_t * getNsWindowCanvas(HWND hWnd);
+// 创建拖拽图像的辅助函数
+static NSImage* CreateDragImageForDataObject(IDataObject *pDataObject,POINT *ptOffset) {
+    // 默认图像大小
+    SHDRAGIMAGE shdi;
+    if(S_OK==SDragSourceHelper::GetDragImage(pDataObject, &shdi))
+    {//using external drag image
+        BITMAP bm;
+        GetObject(shdi.hbmpDragImage, sizeof(BITMAP), &bm);
+        if(bm.bmWidth>0 && bm.bmHeight>0 && bm.bmBitsPixel==32 && bm.bmBits){
+            *ptOffset=shdi.ptOffset;
+            return [[NSImage alloc] initWithData:[NSData dataWithBytes:bm.bmBits length:bm.bmWidthBytes*bm.bmHeight]];
+        }
+    }
+    NSSize imageSize = NSMakeSize(48, 48);
+    ptOffset->x = ptOffset->y = - imageSize.width/2;
+    NSImage *dragImage = [[NSImage alloc] initWithSize:imageSize];
+
+    // 检查是否有文本数据 - 优先检查Unicode文本
+    FORMATETC fmtUnicodeText = {CF_UNICODETEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
+    FORMATETC fmtText = {CF_TEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
+    STGMEDIUM medium;
+    BOOL hasText = FALSE;
+    NSString *textContent = nil;
+
+    // 首先尝试Unicode文本
+    if (SUCCEEDED(pDataObject->GetData(&fmtUnicodeText, &medium))) {
+        hasText = TRUE;
+        const wchar_t * pwstr = (const wchar_t *)GlobalLock(medium.hGlobal);
+        textContent = [[NSString alloc] initWithBytes:pwstr
+                                               length:wcslen(pwstr) * sizeof(wchar_t)
+                                             encoding:NSUTF32LittleEndianStringEncoding];
+        if (!textContent) {
+            // 如果UTF32失败，尝试UTF16
+            textContent = [[NSString alloc] initWithBytes:pwstr
+                                                   length:wcslen(pwstr) * sizeof(wchar_t)
+                                                 encoding:NSUTF16LittleEndianStringEncoding];
+        }
+        GlobalUnlock(medium.hGlobal);
+    }
+    // 如果Unicode失败，尝试ANSI文本
+    else if (SUCCEEDED(pDataObject->GetData(&fmtText, &medium))) {
+        hasText = TRUE;
+        const char * pstr = (const char *)GlobalLock(medium.hGlobal);
+        textContent = [NSString stringWithUTF8String:pstr];
+        if (!textContent) {
+            // 如果UTF8失败，尝试Latin1
+            textContent = [[NSString alloc] initWithBytes:pstr
+                                                   length:strlen(pstr)
+                                                 encoding:NSISOLatin1StringEncoding];
+        }
+        GlobalUnlock(medium.hGlobal);
+    }
+
+    if (hasText && textContent) {
+
+        // 限制文本长度以避免图像过大
+        if (textContent.length > 100) {
+            textContent = [[textContent substringToIndex:97] stringByAppendingString:@"..."];
+        }
+
+        // 设置文本属性
+        NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
+        [paragraphStyle setLineBreakMode:NSLineBreakByWordWrapping];
+        [paragraphStyle setAlignment:NSTextAlignmentLeft];
+
+        NSDictionary *textAttrs = @{
+            NSFontAttributeName: [NSFont systemFontOfSize:11],
+            NSForegroundColorAttributeName: [NSColor blackColor],
+            NSParagraphStyleAttributeName: paragraphStyle
+        };
+
+        // 计算文本所需的尺寸，考虑换行
+        CGFloat maxWidth = 180; // 最大宽度，留出边距
+        CGFloat maxHeight = 80; // 最大高度，留出边距
+
+        NSSize textSize = [textContent boundingRectWithSize:NSMakeSize(maxWidth, maxHeight)
+                                                    options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                                 attributes:textAttrs].size;
+
+        // 添加边距和最小尺寸
+        CGFloat padding = 10;
+        CGFloat minWidth = 60;
+        CGFloat minHeight = 30;
+
+        imageSize.width = MAX(minWidth, MIN(200, textSize.width + padding * 2));
+        imageSize.height = MAX(minHeight, MIN(100, textSize.height + padding * 2));
+
+        // 重新创建适当大小的图像
+        dragImage = [[NSImage alloc] initWithSize:imageSize];
+        ptOffset->x = ptOffset->y = -imageSize.width/2;
+
+        [dragImage lockFocus];
+
+        // 绘制半透明背景
+        [[NSColor colorWithCalibratedWhite:1.0 alpha:0.9] setFill];
+        NSBezierPath *backgroundPath = [NSBezierPath bezierPathWithRoundedRect:NSMakeRect(0, 0, imageSize.width, imageSize.height)
+                                                                       xRadius:4
+                                                                       yRadius:4];
+        [backgroundPath fill];
+
+        // 绘制边框
+        [[NSColor colorWithCalibratedWhite:0.7 alpha:1.0] setStroke];
+        [backgroundPath setLineWidth:1.0];
+        [backgroundPath stroke];
+
+        // 绘制文本内容，支持多行显示
+        NSRect textRect = NSMakeRect(padding, padding, imageSize.width - padding * 2, imageSize.height - padding * 2);
+
+        // 创建NSAttributedString以支持更好的文本渲染
+        NSAttributedString *attributedText = [[NSAttributedString alloc] initWithString:textContent attributes:textAttrs];
+        [attributedText drawInRect:textRect];
+
+        [dragImage unlockFocus];
+
+        // 释放资源
+        ReleaseStgMedium(&medium);
+    } else {
+        // 检查是否有文件数据
+        FORMATETC fmtFile = {CF_HDROP, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
+        BOOL hasFiles = SUCCEEDED(pDataObject->GetData(&fmtFile, &medium));
+
+        if (hasFiles) {
+            // 为文件创建一个文件夹图标
+            [dragImage lockFocus];
+
+            // 绘制文件夹图标
+            [[NSColor colorWithCalibratedRed:0.95 green:0.95 blue:0.7 alpha:1.0] setFill];
+            NSBezierPath *folderPath = [NSBezierPath bezierPathWithRoundedRect:NSMakeRect(4, 4, imageSize.width - 8, imageSize.height - 8)
+                                                                       xRadius:4
+                                                                       yRadius:4];
+            [folderPath fill];
+
+            // 绘制文件夹边框
+            [[NSColor brownColor] setStroke];
+            [folderPath setLineWidth:1.5];
+            [folderPath stroke];
+
+            // 绘制文件夹标签
+            [[NSColor colorWithCalibratedRed:0.9 green:0.8 blue:0.5 alpha:1.0] setFill];
+            NSBezierPath *tabPath = [NSBezierPath bezierPathWithRoundedRect:NSMakeRect(4, imageSize.height - 20, imageSize.width * 0.7, 12)
+                                                                    xRadius:2
+                                                                    yRadius:2];
+            [tabPath fill];
+
+            [dragImage unlockFocus];
+
+            // 释放资源
+            ReleaseStgMedium(&medium);
+        } else {
+            // 默认图像
+            [dragImage lockFocus];
+            [[NSColor colorWithCalibratedRed:0.8 green:0.8 blue:0.8 alpha:0.8] setFill];
+            NSRectFill(NSMakeRect(0, 0, imageSize.width, imageSize.height));
+            [[NSColor darkGrayColor] setStroke];
+            NSBezierPath *path = [NSBezierPath bezierPathWithRect:NSInsetRect(NSMakeRect(0, 0, imageSize.width, imageSize.height), 2, 2)];
+            [path setLineWidth:1.0];
+            [path stroke];
+            [dragImage unlockFocus];
+        }
+    }
+
+    return dragImage;
+}
+
+static SHORT ConvertNSEventFlagsToWindowsFlags(NSEventModifierFlags nsFlags) {
+    SHORT winFlags = 0;
+    
+    if (nsFlags & NSEventModifierFlagShift) {
+        winFlags |= MK_SHIFT;
+    }
+    if (nsFlags & NSEventModifierFlagControl) {
+        winFlags |= MK_CONTROL;
+    }
+    if (nsFlags & NSEventModifierFlagOption) {
+        winFlags |= MK_ALT;  // macOS Option = Windows Alt
+    }
+    if (nsFlags & NSEventModifierFlagCommand) {
+        winFlags |= MK_WINDOW;   // macOS Command = Windows Key
+    }
+    
+    return winFlags;
+}
+
+// 将NSDragOperation转换为DROPEFFECT
+static DWORD convertToDROPEFFECT(NSDragOperation operation) {
+    DWORD effect = DROPEFFECT_NONE;
+
+    if (operation & NSDragOperationCopy)
+        effect = DROPEFFECT_COPY;
+    else if (operation & NSDragOperationMove)
+        effect = DROPEFFECT_MOVE;
+    else if (operation & NSDragOperationLink)
+        effect = DROPEFFECT_LINK;
+
+    return effect;
+}
+
+// 将DROPEFFECT转换为NSDragOperation
+static NSDragOperation convertToNSDragOperation(DWORD effect) {
+    NSDragOperation operation = NSDragOperationNone;
+
+    if (effect & DROPEFFECT_COPY)
+        operation |= NSDragOperationCopy;
+    if (effect & DROPEFFECT_MOVE)
+        operation |= NSDragOperationMove;
+    if (effect & DROPEFFECT_LINK)
+        operation |= NSDragOperationLink;
+
+    return operation;
+}
+
 
 #define float2int(x) (int)floor((x)+0.5f)
 static RECT NSRect2Rect(NSRect r)
@@ -128,21 +353,25 @@ defer:(BOOL)flag;
 - (void)invalidRect:(NSRect)rc;
 - (void)onStateChange:(int) nState;
 - (void)setEnabled:(BOOL)bEnabled;
+- (BOOL)isImeEnabled;
+- (void)setImeEnabled:(BOOL)bEnabled;
 @end
 
 @implementation SNsWindow{
     SConnBase *m_pListener;
     BYTE m_byAlpha;
     BOOL m_bMsgTransparent;
-    BOOL m_bCommitCache;
     NSEventModifierFlags m_modifierFlags;
 
+    BOOL  m_bIsImeEnabled;
     NSString *_markedText;
     NSRange   _markedRange;
     NSRange   _selectedRange;
     NSRect    _inputRect;
     BOOL      _bEnabled;
     cairo_surface_t * _offscreenSur;
+    IDataObject *_doDragging;
+    DWORD _dwDragEffect;
 }
 
 - (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent{
@@ -162,12 +391,13 @@ defer:(BOOL)flag;
     m_pListener = listener;
     m_byAlpha = 255;
     m_bMsgTransparent = FALSE;
-    m_bCommitCache = FALSE;
     m_modifierFlags = 0;
     _markedText = nil;
     _offscreenSur = nil;
     _bEnabled = TRUE;
-
+    _doDragging = nil;
+    _dwDragEffect = DROPEFFECT_NONE;
+    m_bIsImeEnabled = TRUE;
     SNsWindow *parent = getNsWindow(hParent);
     if (parent) {
       [parent addSubview:self];
@@ -199,8 +429,8 @@ defer:(BOOL)flag;
 }
 
 - (void)updateRect:(NSRect)rc;{
-    m_bCommitCache = TRUE;
-    [self displayRect:rc];
+    //todo:hjx
+    [self invalidRect:rc];
 }
 
 - (void)invalidRect:(NSRect)rc;{
@@ -271,20 +501,11 @@ defer:(BOOL)flag;
         self.bounds.size.width,
         self.bounds.size.height
     );
-
     cairo_t *windowCr = cairo_create(windowSurface);
     cairo_rectangle(windowCr, dirtyRect.origin.x, dirtyRect.origin.y, dirtyRect.size.width, dirtyRect.size.height);
     cairo_clip(windowCr);
     float scale = [self.window backingScaleFactor];
     cairo_scale(windowCr, 1.0f/scale, 1.0f/scale);
-    // if(m_bCommitCache){
-    //     cairo_t *cr = getNsWindowCanvas(m_hWnd);
-    //     cairo_surface_t* src_surface = cairo_get_target(cr);
-    //     cairo_set_source_surface(windowCr, src_surface, 0, 0);
-    //     cairo_rectangle(windowCr, dirtyRect.origin.x, dirtyRect.origin.y, dirtyRect.size.width, dirtyRect.size.height);
-    //     cairo_paint(windowCr);
-    //     m_bCommitCache = FALSE;      
-    // }else
     {
         dirtyRect.origin.x *= scale;
         dirtyRect.origin.y *= scale;
@@ -360,7 +581,6 @@ defer:(BOOL)flag;
 }
 
 - (void) mouseUp: (NSEvent *) theEvent {
-//        SLOG_STMI()<<"mouseUp,m_hWnd="<<m_hWnd;
     [self onMouseEvent:theEvent withMsgId:WM_LBUTTONUP];
 }
 
@@ -392,20 +612,7 @@ defer:(BOOL)flag;
 }
 
 - (SHORT) getKeyModifiers{
-    SHORT modifiers = 0;
-    if(m_modifierFlags & NSEventModifierFlagShift){
-        modifiers |= MK_SHIFT;
-    }
-    if(m_modifierFlags & NSEventModifierFlagControl){
-        modifiers |= MK_CONTROL;
-    }
-    if(m_modifierFlags & NSEventModifierFlagOption){
-        //modifiers |= MK_ALT;
-    }
-    if(m_modifierFlags & NSEventModifierFlagCommand){
-        //modifiers |= MK_COMMAND;
-    }
-    return modifiers;
+    return ConvertNSEventFlagsToWindowsFlags(m_modifierFlags);
 }
 
 - (void)scrollWheel:(NSEvent *)event{
@@ -448,6 +655,10 @@ defer:(BOOL)flag;
         [self onKeyDown:event];
         return;
     }
+    if(!m_bIsImeEnabled || [event modifierFlags] & NSEventModifierFlagCommand){
+        [self onKeyDown:event];
+        return;
+    }
     if (self.inputContext && [self.inputContext handleEvent:event]) {
         return;
     }
@@ -475,10 +686,22 @@ defer:(BOOL)flag;
         [self onKeyUp:event];
         return;
     }
+    if(!m_bIsImeEnabled || [event modifierFlags] & NSEventModifierFlagCommand){
+        [self onKeyUp:event];
+        return;
+    }
     if (self.inputContext && [self.inputContext handleEvent:event]) {
         return;
     }
     [self onKeyUp:event];
+}
+
+-(void) setImeEnabled:(BOOL)bEnabled {
+    m_bIsImeEnabled = bEnabled;
+}
+
+-(BOOL) isImeEnabled {
+    return m_bIsImeEnabled;
 }
 
 - (void)checkModifier:(NSEventModifierFlags)modifier 
@@ -540,44 +763,80 @@ defer:(BOOL)flag;
 
 // 当拖动进入视图时调用
 - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
+    assert(!_doDragging);
     NSPasteboard *pboard = [sender draggingPasteboard];
-    
-    // 检查是否是文本类型
-    if ([pboard canReadItemWithDataConformingToTypes:@[NSPasteboardTypeSOUI]]) {
-        return NSDragOperationCopy;
-    }
-    
-    return NSDragOperationNone;
+    _doDragging = new SNsDataObjectProxy(pboard);
+    WndObj wndObj = WndMgr::fromHwnd(m_hWnd);
+    if(!wndObj->dropTarget)
+        return NSDragOperationNone;
+    float scale = [self.window backingScaleFactor];
+    NSPoint nspt = [sender draggingLocation];
+    POINTL pt = {float2int(nspt.x*scale),float2int(nspt.y*scale)};
+    _dwDragEffect = DROPEFFECT_NONE;
+    NSEventModifierFlags modifierFlags = [NSEvent modifierFlags];
+    DWORD modifier = ConvertNSEventFlagsToWindowsFlags(modifierFlags);
+    wndObj->dropTarget->DragEnter(_doDragging, modifier, pt, &_dwDragEffect);
+    return convertToNSDragOperation(_dwDragEffect);
 }
 
 // 当拖动在视图内移动时调用（可选）
 - (NSDragOperation)draggingUpdated:(id<NSDraggingInfo>)sender {
-    return NSDragOperationCopy;
+    float scale = [self.window backingScaleFactor];
+    NSPoint nspt = [sender draggingLocation];
+    nspt = [self.window convertPointToScreen:nspt];
+    nspt.y = [self.window.screen frame].size.height - nspt.y;//convert to ns coordinate.
+    POINTL pt = {float2int(nspt.x*scale),float2int(nspt.y*scale)};
+    WndObj wndObj = WndMgr::fromHwnd(m_hWnd);
+    if(wndObj->dropTarget){
+        NSEventModifierFlags modifierFlags = [NSEvent modifierFlags];
+        DWORD modifier = ConvertNSEventFlagsToWindowsFlags(modifierFlags);
+        wndObj->dropTarget->DragOver(modifier, pt, &_dwDragEffect);
+    }
+    return convertToNSDragOperation(_dwDragEffect);
 }
 
 // 当拖动离开视图时调用
 - (void)draggingExited:(nullable id<NSDraggingInfo>)sender {
-    //self.layer.borderColor = [[NSColor grayColor] CGColor];
+    SLOG_STMI()<<"draggingExited";
+    if(_doDragging){
+        _doDragging->Release();
+        _doDragging = nullptr;
+    }
+    WndObj wndObj = WndMgr::fromHwnd(m_hWnd);
+    if(wndObj->dropTarget)
+        return;
+    wndObj->dropTarget->DragLeave();
 }
+
 
 // 当释放鼠标执行拖放操作时调用
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
+    if(!_doDragging)
+        return NO;
+        SLOG_STMI()<<"performDragOperation";
     NSPasteboard *pboard = [sender draggingPasteboard];
-    
-    // 读取文本内容
-    NSArray *strings = [pboard readObjectsForClasses:@[[NSString class]] options:nil];
-    if (strings.count > 0) {
-        NSString *droppedString = strings[0];
-       
-        return YES;
-    }
-    
-    return NO;
+    WndObj wndObj = WndMgr::fromHwnd(m_hWnd);
+    if(!wndObj->dropTarget)
+        return NO;
+    NSEventModifierFlags modifierFlags = [NSEvent modifierFlags];
+    DWORD modifier = ConvertNSEventFlagsToWindowsFlags(modifierFlags);
+    float scale = [self.window backingScaleFactor];
+    NSPoint nspt = [sender draggingLocation];
+    nspt = [self.window convertPointToScreen:nspt];
+    nspt.y = [self.window.screen frame].size.height - nspt.y;//convert to ns coordinate.
+    POINTL pt = {float2int(nspt.x*scale),float2int(nspt.y*scale)};
+    HRESULT hr =wndObj->dropTarget->Drop(_doDragging, modifier, pt, &_dwDragEffect);
+    return hr==S_OK;
 }
 
 // 拖放操作完成后调用（可选）
 - (void)concludeDragOperation:(nullable id<NSDraggingInfo>)sender {
-
+    SLOG_STMI()<<"concludeDragOperation";
+    [super concludeDragOperation:sender];
+    if(_doDragging){
+        _doDragging->Release();
+        _doDragging = nullptr;
+    }
 }
 
 #pragma mark - NSTextInputClient Protocol
@@ -1742,6 +2001,11 @@ void invalidateNsWindow(HWND hWnd, LPCRECT rc){
         if([nswindow.window isMiniaturized])
             return;
         NSRect rect = NSMakeRect(rc->left, rc->top, rc->right - rc->left, rc->bottom - rc->top);
+        float scale = [nswindow.window backingScaleFactor];
+        rect.origin.x /= scale;
+        rect.origin.y /= scale;
+        rect.size.width /= scale;
+        rect.size.height /= scale;
         [nswindow invalidRect:rect];
     }
 }
@@ -1752,8 +2016,13 @@ void updateNsWindow(HWND hWnd, const RECT &rc){
         SNsWindow * nswindow = getNsWindow(hWnd);
         if(!nswindow)
             return;
-        NSRect nsRect = NSMakeRect(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
-        [nswindow updateRect:nsRect];
+        NSRect rect = NSMakeRect(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
+        float scale = [nswindow.window backingScaleFactor];
+        rect.origin.x /= scale;
+        rect.origin.y /= scale;
+        rect.size.width /= scale;
+        rect.size.height /= scale;
+        [nswindow updateRect:rect];
     }
 }
 
@@ -2054,7 +2323,7 @@ BOOL setNsDropTarget(HWND hWnd, BOOL bEnable){
     if(!nsWindow)
         return FALSE;
     if(bEnable){
-        [nsWindow registerForDraggedTypes:@[NSFilenamesPboardType,NSPasteboardTypeSOUI]];
+        [nsWindow registerForDraggedTypes:@[(__bridge NSString *)kUTTypeItem]];
     }else{
         [nsWindow unregisterDraggedTypes];
     }
@@ -2062,51 +2331,202 @@ BOOL setNsDropTarget(HWND hWnd, BOOL bEnable){
     }
 }
 
-BOOL EnumDataOjbectCb(WORD fmt, HGLOBAL hMem, void *param){
+BOOL EnumDataOjbectCb(WORD fmt, HGLOBAL hMem, NSPasteboardItem *item){
     @autoreleasepool { 
-        NSPasteboardItem * item = (__bridge NSPasteboardItem *)param;
         if(fmt == CF_UNICODETEXT){
+            if([[item types] containsObject:NSPasteboardTypeString])
+                return TRUE;
             const wchar_t *src = (const wchar_t *)GlobalLock(hMem);
-            size_t len = GlobalSize(hMem) / sizeof(wchar_t);
             std::string str;
-            tostring(src, len, str);
+            tostring(src, -1, str);
             GlobalUnlock(hMem);
             [item setString:[NSString stringWithUTF8String:str.c_str()] forType:NSPasteboardTypeString];
         }else if(fmt == CF_TEXT){
+            if([[item types] containsObject:NSPasteboardTypeString])
+                return TRUE;
             const char *src = (const char *)GlobalLock(hMem);
-            size_t len = GlobalSize(hMem);
-            std::string str(src, len);
+            [item setString:[NSString stringWithUTF8String:src] forType:NSPasteboardTypeString];
             GlobalUnlock(hMem);
-            [item setString:[NSString stringWithUTF8String:str.c_str()] forType:NSPasteboardTypeString];
         }else{
             const void *src = GlobalLock(hMem);
             size_t len = GlobalSize(hMem);
             NSData *data = [NSData dataWithBytes:src length:len];
             GlobalUnlock(hMem);
-            [item setData:data forType:[NSString stringWithFormat:@"SOUIClipboardFMT_%d", fmt]];
+            NSString *type = SNsDataObjectProxy::getPasteboardType(fmt);
+            [item setData:data forType:type];
         }
         return TRUE;
     }
 }
 
-HRESULT doNsDragDrop(IDataObject *pDataObject,
-                          IDropSource *pDropSource,
-                          DWORD dwOKEffect,     
-                          DWORD *pdwEffect){
-    @autoreleasepool {
-        //convert dataobject to nsdataobject
-        NSPasteboardItem *item = [[NSPasteboardItem alloc] init];
-        EnumDataOjbect(pDataObject, EnumDataOjbectCb, (__bridge void*)item);
-        if([item types].count == 0)
-            return E_UNEXPECTED;    
-        NSDraggingItem *draggingItem = [[NSDraggingItem alloc] initWithPasteboardWriter:item];
+// 拖拽源代理类，用于处理拖拽过程中的回调
+@interface NSDragSourceProxy : NSObject <NSDraggingSource>
+@property (nonatomic, assign) IDropSource *dropSource;
+@property (nonatomic, assign) DWORD *pdwEffect;
+@property (nonatomic, assign) DWORD dwOKEffect;
+@property (nonatomic, assign) BOOL dragCompleted;
+@property (nonatomic, assign) HRESULT result;
+@end
 
-        return S_OK;
+@implementation NSDragSourceProxy
+- (NSDragOperation)draggingSession:(NSDraggingSession *)session sourceOperationMaskForDraggingContext:(NSDraggingContext)context {
+    NSDragOperation allowedOperations = NSDragOperationNone;
+
+    if (self.dwOKEffect & DROPEFFECT_COPY)
+        allowedOperations |= NSDragOperationCopy;
+    if (self.dwOKEffect & DROPEFFECT_MOVE)
+        allowedOperations |= NSDragOperationMove;
+    if (self.dwOKEffect & DROPEFFECT_LINK)
+        allowedOperations |= NSDragOperationLink;
+
+    // 如果有IDropSource，询问它允许的操作
+    if (self.dropSource) {
+        DWORD effect = self.dwOKEffect;
+        HRESULT hr = self.dropSource->GiveFeedback(effect);
+        if (hr == S_OK) {
+            // 使用IDropSource提供的效果
+            return  convertToNSDragOperation(effect);
+        }
+    }
+
+    return allowedOperations;
+}
+
+- (void)draggingSession:(NSDraggingSession *)session willBeginAtPoint:(NSPoint)screenPoint {
+
+}
+
+- (void)draggingSession:(NSDraggingSession *)session movedToPoint:(NSPoint)screenPoint {
+     // 获取当前拖动操作
+    NSDragOperation operation = [session draggingSequenceNumber];
+    DWORD dwEffect = convertToDROPEFFECT(operation);
+    if(self.pdwEffect){
+        *self.pdwEffect = dwEffect;
+    }
+    if (self.dropSource) {
+        HRESULT hr = self.dropSource->GiveFeedback(dwEffect);
+        if(hr == DRAGDROP_S_USEDEFAULTCURSORS){
+            LPCSTR res = IDC_NODROP;
+            if (dwEffect & DROPEFFECT_MOVE)
+                res = IDC_MOVE;
+            else if (dwEffect & DROPEFFECT_LINK)
+                res = IDC_LINK;
+            else if (dwEffect & DROPEFFECT_COPY)
+                res = IDC_COPY;
+            else
+                res = IDC_NODROP;
+            SetCursor(LoadCursor(0, res));
+        }
     }
 }
 
-WORD GetCursorID(HICON hIcon);
-POINT GetIconHotSpot(HICON hIcon);
+- (void)draggingSession:(NSDraggingSession *)session endedAtPoint:(NSPoint)screenPoint operation:(NSDragOperation)operation {
+    // 拖拽结束，设置结果
+    self.dragCompleted = YES;
+
+    // 转换操作类型
+    DWORD effect =  convertToDROPEFFECT(operation);
+
+    // 设置返回值
+    if (self.pdwEffect) {
+        *(self.pdwEffect) = effect;
+    }
+
+    // 设置结果代码
+    if (operation == NSDragOperationNone) {
+        self.result = DRAGDROP_S_CANCEL;
+    } else {
+        self.result = DRAGDROP_S_DROP;
+    }
+}
+
+@end
+
+HRESULT doNsDragDrop(IDataObject *pDataObject,
+                          IDropSource *pDropSource,
+                          DWORD dwOKEffect,
+                          DWORD *pdwEffect){
+    @autoreleasepool {
+        // 初始化返回值
+        if (pdwEffect) *pdwEffect = DROPEFFECT_NONE;
+
+        // 转换IDataObject到NSPasteboardItem
+        NSPasteboardItem *item = [[NSPasteboardItem alloc] init];
+        if (!EnumDataOjbect(pDataObject, EnumDataOjbectCb, item)) {
+            return E_UNEXPECTED;
+        }
+
+        if([item types].count == 0) {
+            return E_UNEXPECTED;
+        }
+
+        // 创建NSDraggingItem
+        NSDraggingItem *draggingItem = [[NSDraggingItem alloc] initWithPasteboardWriter:item];
+
+        HWND hActive = GetActiveWindow();
+        if(!hActive)
+            return E_FAIL;
+        SNsWindow * nswindow = getNsWindow(hActive);
+        if(!nswindow)
+            return E_FAIL;
+        // 获取当前鼠标位置作为拖拽起始点
+        NSPoint mouseLocation = [NSEvent mouseLocation];
+        // 将鼠标位置转换为窗口坐标
+        NSPoint windowPoint = [nswindow.window convertPointFromScreen:mouseLocation];
+        POINT ptOffset;
+        // 创建拖拽图像
+        NSImage *dragImage = CreateDragImageForDataObject(pDataObject, &ptOffset);
+        NSSize imageSize = dragImage.size;
+
+        // 计算拖拽图像的正确位置，确保图像直接显示在光标位置
+        NSRect imageFrame;
+        imageFrame.origin.x = windowPoint.x + ptOffset.x;
+        imageFrame.origin.y = windowPoint.y + ptOffset.y;
+        imageFrame.size = imageSize;
+        [draggingItem setDraggingFrame:imageFrame contents:dragImage];
+        // 创建拖拽源代理
+        NSDragSourceProxy *proxy = [[NSDragSourceProxy alloc] init];
+        proxy.dropSource = pDropSource;
+        proxy.pdwEffect = pdwEffect;
+        proxy.dwOKEffect = dwOKEffect;
+        proxy.dragCompleted = NO;
+        proxy.result = DRAGDROP_S_CANCEL;
+        NSTimeInterval currentTime = [NSDate timeIntervalSinceReferenceDate];
+        NSEvent *startEvent = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDown
+                                                  location:windowPoint
+                                             modifierFlags:0
+                                                 timestamp:currentTime
+                                              windowNumber:[nswindow.window windowNumber]
+                                                   context:nil
+                                               eventNumber:0
+                                                clickCount:1
+                                                  pressure:1.0];
+
+        // 开始拖拽操作，使用我们的代理作为拖拽源
+        NSDraggingSession *session = [nswindow beginDraggingSessionWithItems:@[draggingItem]
+                                                                        event:startEvent
+                                                                       source:proxy];
+
+        if (!session)
+            return E_FAIL;
+        session.draggingFormation = NSDraggingFormationNone;
+        session.animatesToStartingPositionsOnCancelOrFail = NO; // 取消时不动画回到起始位置
+
+        MSG msg;
+        while (::PeekMessage(&msg, 0, 0, 0, PM_REMOVE)) {
+            ::TranslateMessage(&msg);
+            ::DispatchMessage(&msg);
+            if (msg.message == WM_QUIT)
+                break;
+            if(proxy.dragCompleted)
+                break;
+        }
+        return proxy.result;
+    }
+}
+
+extern WORD GetCursorID(HICON hIcon);
+extern POINT GetIconHotSpot(HICON hIcon);
 
 static NSCursor *cursorFromHCursor(HCURSOR cursor){
     @autoreleasepool {
@@ -2123,16 +2543,8 @@ static NSCursor *cursorFromHCursor(HCURSOR cursor){
             return [NSCursor crosshairCursor];
         case CIDC_UPARROW:
             return [NSCursor pointingHandCursor];
-        case CIDC_SIZE:
-            return [NSCursor arrowCursor];
-        case CIDC_SIZEALL:
-            return [NSCursor arrowCursor];
         case CIDC_ICON:
             return [NSCursor arrowCursor];
-        case CIDC_SIZENWSE:
-            return [NSCursor resizeLeftRightCursor];//todo:hjx
-        case CIDC_SIZENESW:
-            return [NSCursor resizeLeftRightCursor];//todo:hjx
         case CIDC_SIZEWE:
             return [NSCursor resizeLeftRightCursor];
         case CIDC_SIZENS:
@@ -2153,7 +2565,7 @@ static NSCursor *cursorFromHCursor(HCURSOR cursor){
     NSImage  *nsImage = imageFromHICON(cursor);
     POINT hotSpot = GetIconHotSpot(cursor);
     int height = nsImage.size.height;
-    NSCursor *nsCursor = [[NSCursor alloc] initWithImage:nsImage hotSpot:NSMakePoint(hotSpot.x, height-hotSpot.y)];
+    NSCursor *nsCursor = [[NSCursor alloc] initWithImage:nsImage hotSpot:NSMakePoint(hotSpot.x, hotSpot.y)];
     s_cursorMap.insert(std::make_pair(cursor, nsCursor));
     return nsCursor;
     }
@@ -2312,6 +2724,25 @@ BOOL enableNsWindow(HWND hWnd, BOOL bEnable){
         if(win ){
             [win setEnabled:bEnable];
             return TRUE;
+        }
+        return FALSE;
+    }
+}
+
+void enableNsWindowIme(HWND hWnd, BOOL bEnable){
+    @autoreleasepool{
+        SNsWindow *win = getNsWindow(hWnd);
+        if(win ){
+            [win setImeEnabled:bEnable];
+        }
+    }
+}
+
+BOOL isNsWindowEnableIme(HWND hWnd){
+    @autoreleasepool{
+        SNsWindow *win = getNsWindow(hWnd);
+        if(win ){
+            return [win isImeEnabled];
         }
         return FALSE;
     }

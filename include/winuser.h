@@ -447,6 +447,8 @@ extern "C"
 #endif /* _WIN32_WINNT >= 0x0500 */
 
 #endif /* !NOKEYSTATES */
+#define MK_ALT (0x20)
+#define MK_WINDOW (0x40)
 
 #ifndef NOTRACKMOUSEEVENT
 #if (_WIN32_WINNT >= 0x0400)

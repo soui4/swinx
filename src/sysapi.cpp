@@ -9,6 +9,7 @@
 #include <sys/inotify.h>
 #elif defined(__APPLE__) && defined(__MACH__)
 #include <mach-o/dyld.h>
+#include <sys/event.h>
 #endif
 #include <fcntl.h>
 #include <signal.h>
@@ -2712,9 +2713,246 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
 }
 
 #elif defined(__APPLE__) && defined(__MACH__)
+struct NotifyHandle : FdHandle
+{
+    std::vector<int> watchedFds;  // 监控的文件描述符列表
+    std::string rootPath;         // 根路径
+    BOOL watchSubtree;           // 是否监控子目录
+    DWORD notifyFilter;          // 通知过滤器
+
+    NotifyHandle(int kq) : FdHandle(kq)
+    {
+        type = HNotifyHandle;
+    }
+
+    ~NotifyHandle()
+    {
+        // 关闭所有监控的文件描述符
+        for (int watchFd : watchedFds)
+        {
+            close(watchFd);
+        }
+        watchedFds.clear();
+
+        // 关闭kqueue
+        if (fd != -1)
+        {
+            close(fd);
+        }
+    }
+};
+
+// 添加单个路径到kqueue监控
+static bool add_path_to_kqueue(NotifyHandle* handle, const char* path)
+{
+    int pathFd = open(path, O_RDONLY);
+    if (pathFd == -1)
+    {
+        return false;
+    }
+
+    struct kevent kev;
+    uint32_t fflags = 0;
+
+    // 根据通知过滤器设置kqueue事件标志
+    if (handle->notifyFilter & FILE_NOTIFY_CHANGE_FILE_NAME)
+    {
+        fflags |= NOTE_DELETE | NOTE_RENAME;
+    }
+    if (handle->notifyFilter & FILE_NOTIFY_CHANGE_DIR_NAME)
+    {
+        fflags |= NOTE_DELETE | NOTE_RENAME;
+    }
+    if (handle->notifyFilter & FILE_NOTIFY_CHANGE_ATTRIBUTES)
+    {
+        fflags |= NOTE_ATTRIB;
+    }
+    if (handle->notifyFilter & FILE_NOTIFY_CHANGE_SIZE)
+    {
+        fflags |= NOTE_EXTEND | NOTE_WRITE;
+    }
+    if (handle->notifyFilter & FILE_NOTIFY_CHANGE_LAST_WRITE)
+    {
+        fflags |= NOTE_WRITE;
+    }
+    if (handle->notifyFilter & FILE_NOTIFY_CHANGE_LAST_ACCESS)
+    {
+        fflags |= NOTE_WRITE; // macOS kqueue没有直接的访问时间监控
+    }
+    if (handle->notifyFilter & FILE_NOTIFY_CHANGE_CREATION)
+    {
+        fflags |= NOTE_WRITE;
+    }
+    if (handle->notifyFilter & FILE_NOTIFY_CHANGE_SECURITY)
+    {
+        fflags |= NOTE_ATTRIB;
+    }
+
+    // 如果没有指定任何过滤器，监控所有变化
+    if (fflags == 0)
+    {
+        fflags = NOTE_DELETE | NOTE_WRITE | NOTE_EXTEND | NOTE_ATTRIB | NOTE_RENAME;
+    }
+
+    EV_SET(&kev, pathFd, EVFILT_VNODE, EV_ADD | EV_CLEAR, fflags, 0, (void*)(LONG_PTR)pathFd);
+
+    if (kevent(handle->fd, &kev, 1, NULL, 0, NULL) == -1)
+    {
+        close(pathFd);
+        return false;
+    }
+
+    handle->watchedFds.push_back(pathFd);
+    return true;
+}
+
+// 递归添加目录及其子目录到监控
+static void add_directory_watch(NotifyHandle* handle, const char* dirPath)
+{
+    // 添加当前目录
+    if (!add_path_to_kqueue(handle, dirPath))
+    {
+        return;
+    }
+
+    // 如果不需要监控子目录，直接返回
+    if (!handle->watchSubtree)
+    {
+        return;
+    }
+
+    // 遍历子目录
+    DIR* dir = opendir(dirPath);
+    if (!dir)
+    {
+        return;
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        // 跳过 "." 和 ".."
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+        {
+            continue;
+        }
+
+        char fullPath[PATH_MAX];
+        snprintf(fullPath, sizeof(fullPath), "%s/%s", dirPath, entry->d_name);
+
+        struct stat statBuf;
+        if (stat(fullPath, &statBuf) == 0 && S_ISDIR(statBuf.st_mode))
+        {
+            // 递归添加子目录
+            add_directory_watch(handle, fullPath);
+        }
+    }
+
+    closedir(dir);
+}
+
 HANDLE WINAPI FindFirstChangeNotificationA(LPCSTR lpPathName, BOOL bWatchSubtree, DWORD dwNotifyFilter)
 {
-    return INVALID_HANDLE_VALUE;
+    if (!lpPathName)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    // 创建kqueue
+    int kq = kqueue();
+    if (kq == -1)
+    {
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    // 创建通知句柄
+    NotifyHandle* notifyHandle = new NotifyHandle(kq);
+    notifyHandle->rootPath = lpPathName;
+    notifyHandle->watchSubtree = bWatchSubtree;
+    notifyHandle->notifyFilter = dwNotifyFilter;
+
+    // 检查路径是否存在
+    struct stat statBuf;
+    if (stat(lpPathName, &statBuf) != 0)
+    {
+        delete notifyHandle;
+        SetLastError(ERROR_FILE_NOT_FOUND);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    // 根据路径类型添加监控
+    if (S_ISDIR(statBuf.st_mode))
+    {
+        // 目录
+        add_directory_watch(notifyHandle, lpPathName);
+    }
+    else
+    {
+        // 文件
+        if (!add_path_to_kqueue(notifyHandle, lpPathName))
+        {
+            delete notifyHandle;
+            SetLastError(ERROR_ACCESS_DENIED);
+            return INVALID_HANDLE_VALUE;
+        }
+    }
+
+    // 检查是否成功添加了任何监控
+    if (notifyHandle->watchedFds.empty())
+    {
+        delete notifyHandle;
+        SetLastError(ERROR_ACCESS_DENIED);
+        return INVALID_HANDLE_VALUE;
+    }
+
+    return NewSynHandle(notifyHandle);
+}
+
+BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
+{
+    _SynHandle *synHandle = GetSynHandle(hChangeHandle);
+    if (!synHandle || synHandle->getType() != HNotifyHandle)
+        return FALSE;
+
+    NotifyHandle *notifyHandle = (NotifyHandle *)synHandle;
+
+    // 读取并处理kqueue事件
+    struct kevent events[10];
+    struct timespec timeout = {0, 0}; // 非阻塞读取
+
+    int nEvents = kevent(notifyHandle->fd, NULL, 0, events, 10, &timeout);
+    if (nEvents <= 0)
+    {
+        return FALSE; // 没有事件或出错
+    }
+
+    // 处理所有事件，清空事件队列
+    for (int i = 0; i < nEvents; i++)
+    {
+        struct kevent& event = events[i];
+
+        // 检查是否是我们监控的文件描述符
+        bool isWatchedFd = false;
+        for (int watchFd : notifyHandle->watchedFds)
+        {
+            if (event.ident == (uintptr_t)watchFd)
+            {
+                isWatchedFd = true;
+                break;
+            }
+        }
+
+        if (isWatchedFd && (event.fflags & (NOTE_DELETE | NOTE_RENAME | NOTE_WRITE | NOTE_EXTEND | NOTE_ATTRIB)))
+        {
+            // 找到了匹配的文件系统变化事件
+            // 继续读取剩余事件以清空队列，但不处理
+            continue;
+        }
+    }
+
+    return TRUE; // 成功处理了事件
 }
 
 #else

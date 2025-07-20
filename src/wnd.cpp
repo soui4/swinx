@@ -967,12 +967,12 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     }
     break;
     case WM_MOUSEMOVE:
-    {
+    if(wp==0){
         POINT pt;
         wndObj->mConnection->GetCursorPos(&pt);
-        int htCode = proc(hWnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
+        int htCode = CallWindowObjProc(wndObj, proc,hWnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
         //SLOG_STMI()<<"hjx WM_MOUSEMOVE, pt2.x="<<pt.x<<", pt2.y="<<pt.y<<" htCode="<<htCode;
-        if (proc(hWnd, WM_SETCURSOR, hWnd, htCode) == 0)
+        if (CallWindowObjProc(wndObj, proc,hWnd, WM_SETCURSOR, hWnd, htCode) == 0)
         {
             UpdateWindowCursor(wndObj, hWnd, htCode);
         }
@@ -1081,8 +1081,29 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         break;
     }
     case WM_PAINT:
+    {
+        HDC hdc = GetDC(hWnd);
+        if (lp)
+        {
+            HGDIOBJ hrgn = (HGDIOBJ)lp;
+            int cxEdge = GetSystemMetrics(SM_CXEDGE);
+            int cyEdge = GetSystemMetrics(SM_CYEDGE);
+            if (wndObj->dwStyle & WS_BORDER)
+                OffsetRgn(hrgn, -cxEdge, -cxEdge);
+            CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, hrgn, RGN_OR);
+            if (wndObj->dwStyle & WS_BORDER)
+                OffsetRgn(hrgn, cxEdge, cxEdge);
+        }
+        SelectClipRgn(hdc, wndObj->invalid.hRgn);
         wndObj->nPainting++;
+        if (wndObj->invalid.bErase || lp != 0)
+        {
+            CallWindowObjProc(wndObj, proc, hWnd, WM_ERASEBKGND, (WPARAM)hdc, 0);
+            wndObj->invalid.bErase = FALSE;
+        }
+        ReleaseDC(hWnd, hdc);
         break;
+    }
     case UM_SETTINGS:
     {
         if(wp == SETTINGS_DPI){
@@ -1178,46 +1199,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             bSkipMsg = CallHook(WH_CALLWNDPROC, HC_ACTION, 0, (LPARAM)&st);
         }
         if (!bSkipMsg)
-        {
-            if (msg == WM_PAINT)
-            {
-                HDC hdc = GetDC(hWnd);
-                if (lp)
-                {
-                    HGDIOBJ hrgn = (HGDIOBJ)lp;
-                    int cxEdge = GetSystemMetrics(SM_CXEDGE);
-                    int cyEdge = GetSystemMetrics(SM_CYEDGE);
-                    if (wndObj->dwStyle & WS_BORDER)
-                        OffsetRgn(hrgn, -cxEdge, -cxEdge);
-                    CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, hrgn, RGN_OR);
-                    if (wndObj->dwStyle & WS_BORDER)
-                        OffsetRgn(hrgn, cxEdge, cxEdge);
-                }
-                SelectClipRgn(hdc, wndObj->invalid.hRgn);
-                {//paint client.
-                    int nState = SaveDC(hdc);
-                    RECT rcClient;
-                    GetClientRect(hWnd,&rcClient);
-                    IntersectClipRect(hdc,rcClient.left,rcClient.top,rcClient.right,rcClient.bottom);
-                    if (wndObj->invalid.bErase || lp != 0)
-                    {
-                        CallWindowObjProc(wndObj, proc, hWnd, WM_ERASEBKGND, (WPARAM)hdc, 0);
-                        wndObj->invalid.bErase = FALSE;
-                    }
-                    ret = CallWindowObjProc(wndObj, proc, hWnd, msg, wp, lp2);
-                    if (wndObj->bCaretVisible)
-                    {
-                        _DrawCaret(hWnd, hdc, wndObj);
-                    }
-                    RestoreDC(hdc,nState);
-                }
-                CallWindowObjProc(wndObj,proc,hWnd, WM_NCPAINT, (WPARAM)wndObj->invalid.hRgn, 0);            // call ncpaint
-                SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0); // clear current region
-                ReleaseDC(hWnd, hdc);
-            }else{
-                ret = CallWindowObjProc(wndObj, proc, hWnd, msg, wp, lp2);
-            }
-        }    
+            ret = CallWindowObjProc(wndObj, proc, hWnd, msg, wp, lp2);
         {
             CWPRETSTRUCT st;
             st.hwnd = hWnd;
@@ -1226,6 +1208,16 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             st.lParam = lp;
             st.lResult = ret;
             CallHook(WH_CALLWNDPROCRET, HC_ACTION, 0, (LPARAM)&st);
+        }
+        if (msg == WM_PAINT)
+        {
+            if (wndObj->bCaretVisible)
+            {
+                _DrawCaret(hWnd, wndObj->hdc, wndObj);
+            }
+            if (lp)
+                CallWindowObjProc(wndObj, proc, hWnd, WM_NCPAINT, lp, 0);            // call ncpaint
+            SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0); // clear current region
         }
     }
     wndObj->mConnection->AfterProcMsg(hWnd, msg, wp, lp, ret);

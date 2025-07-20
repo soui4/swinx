@@ -17,7 +17,7 @@ ATOM CNativeWnd::RegisterCls(LPCSTR clsName)
 BOOL CNativeWnd::Invalidate()
 {
     RECT rcWnd;
-    if (GetWindowRect(m_hWnd, &rcWnd))
+    if (GetClientRect(m_hWnd, &rcWnd))
     {
         InvalidateRect(m_hWnd, &rcWnd, FALSE);
         return UpdateWindow(m_hWnd);
