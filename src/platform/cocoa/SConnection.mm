@@ -844,7 +844,7 @@ HCURSOR SConnection::SetCursor(HWND hWnd,HCURSOR cursor) {
         if(!m_msgStack.empty()){
             hWnd = m_msgStack.back()->hwnd;
         }else{
-            hWnd = m_hWndActive;
+            hWnd = m_hActive;
         }
     }
     if (!hWnd)
