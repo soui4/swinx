@@ -1215,8 +1215,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             {
                 _DrawCaret(hWnd, wndObj->hdc, wndObj);
             }
-            if (lp)
-                CallWindowObjProc(wndObj, proc, hWnd, WM_NCPAINT, lp, 0);            // call ncpaint
+            CallWindowObjProc(wndObj, proc, hWnd, WM_NCPAINT, (LPARAM)wndObj->invalid.hRgn, 0);            // call ncpaint
             SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0); // clear current region
         }
     }

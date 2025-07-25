@@ -1,4 +1,5 @@
 #include "sysapi.h"
+#include "wnd.h"
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
 #include <objc/objc.h>
@@ -1022,6 +1023,13 @@ defer:(BOOL)flag
     return self;
 }
 
+-(BOOL)windowShouldClose:(NSWindow *)sender {
+    SNsWindow *pWin = (SNsWindow *)self.contentView;
+    if(!pWin)
+        return YES;
+    return SendMessageA(pWin->m_hWnd, WM_CLOSE, 0, 0)!=0;
+}
+
 -(BOOL)setCapture:(SNsWindow *)pWin{
     if (m_pCapture==pWin)
         return TRUE;    
@@ -1129,6 +1137,9 @@ defer:(BOOL)flag
     }else if(event.type == NSEventTypeLeftMouseDown || event.type == NSEventTypeRightMouseDown || event.type == NSEventTypeOtherMouseDown)
     {
         NSView *view = m_pCapture?m_pCapture:[self.contentView hitTest:event.locationInWindow];
+        if(!view){
+            [super sendEvent:event];
+        }
         switch(event.type){
             case NSEventTypeLeftMouseDown:
                 [view mouseDown:event];                
@@ -1145,6 +1156,9 @@ defer:(BOOL)flag
     }
     else if(event.type==NSEventTypeLeftMouseUp || event.type==NSEventTypeRightMouseUp || event.type==NSEventTypeOtherMouseDragged ){
         NSView *view = m_pCapture?m_pCapture:[self.contentView hitTest:event.locationInWindow];
+        if(!view){
+            [super sendEvent:event];
+        }
         switch(event.type){
             case NSEventTypeLeftMouseUp:
                 [view mouseUp:event];                
@@ -1371,6 +1385,13 @@ defer:(BOOL)flag
     return self;
 }
 
+-(BOOL)windowShouldClose:(NSWindow *)sender {
+    SNsWindow *pWin = (SNsWindow *)self.contentView;
+    if(!pWin)
+        return YES;
+    return SendMessageA(pWin->m_hWnd, WM_CLOSE, 0, 0)!=0;
+}
+
 -(BOOL)setCapture:(SNsWindow *)pWin{
         return TRUE;
     if (eventMonitor) 
@@ -1477,6 +1498,9 @@ defer:(BOOL)flag
     }else if(event.type == NSEventTypeLeftMouseDown || event.type == NSEventTypeRightMouseDown || event.type == NSEventTypeOtherMouseDown)
     {
         NSView *view = m_pCapture?m_pCapture:[self.contentView hitTest:event.locationInWindow];
+        if(!view){
+            [super sendEvent:event];
+        }
         switch(event.type){
             case NSEventTypeLeftMouseDown:
                 [view mouseDown:event];                
@@ -1493,6 +1517,9 @@ defer:(BOOL)flag
     }
     else if(event.type==NSEventTypeLeftMouseUp || event.type==NSEventTypeRightMouseUp || event.type==NSEventTypeOtherMouseDragged ){
         NSView *view = m_pCapture?m_pCapture:[self.contentView hitTest:event.locationInWindow];
+        if(!view){
+            [super sendEvent:event];
+        }
         switch(event.type){
             case NSEventTypeLeftMouseUp:
                 [view mouseUp:event];                
@@ -1766,7 +1793,7 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
                 if(hParent){
                     SNsWindow * pParent = getNsWindow(hParent);
                     if(pParent){
-                        [host setParentWindow:pParent.window];
+                        [pParent.window addChildWindow:host ordered:NSWindowAbove];
                     }
                 }
             }else{

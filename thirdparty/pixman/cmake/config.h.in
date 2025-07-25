@@ -1,0 +1,128 @@
+#ifndef PIXMAN_CONFIG_H
+#define PIXMAN_CONFIG_H
+
+/* Define to 1 if you have the <fenv.h> header file. */
+#cmakedefine HAVE_FENV_H 1
+
+/* Define to 1 if you have the <sys/mman.h> header file. */
+#cmakedefine HAVE_SYS_MMAN_H 1
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#cmakedefine HAVE_UNISTD_H 1
+
+/* Define to 1 if you have the `alarm' function. */
+#cmakedefine HAVE_ALARM 1
+
+/* Define to 1 if you have the `mmap' function. */
+#cmakedefine HAVE_MMAP 1
+
+/* Define to 1 if you have the `mprotect' function. */
+#cmakedefine HAVE_MPROTECT 1
+
+/* Define to 1 if you have the `getpagesize' function. */
+#cmakedefine HAVE_GETPAGESIZE 1
+
+/* Define to 1 if you have the `getisax' function. */
+#cmakedefine HAVE_GETISAX 1
+
+/* Define to 1 if you have POSIX threads libraries and header files. */
+#cmakedefine HAVE_PTHREADS 1
+
+/* Define to 1 if you have the `sigaction' function. */
+#cmakedefine HAVE_SIGACTION 1
+
+/* Define to 1 if you have the `posix_memalign' function. */
+#cmakedefine HAVE_POSIX_MEMALIGN 1
+
+/* Define to 1 if you have the `gettimeofday' function. */
+#cmakedefine HAVE_GETTIMEOFDAY 1
+
+/* Define to 1 if you have the `feenableexcept' function. */
+#cmakedefine HAVE_FEENABLEEXCEPT 1
+
+/* Define to 1 if you have the FE_DIVBYZERO symbol. */
+#cmakedefine HAVE_FEDIVBYZERO 1
+
+/* Define to 1 if you have the `clz' builtin function. */
+#cmakedefine HAVE_BUILTIN_CLZ 1
+
+/* Define to 1 if you have float128 support. */
+#cmakedefine HAVE_FLOAT128 1
+
+/* Whether the compiler supports GCC vector extensions */
+#cmakedefine HAVE_GCC_VECTOR_EXTENSIONS 1
+
+/* Define to 1 if toolchain supports constructor attribute. */
+#cmakedefine TOOLCHAIN_SUPPORTS_ATTRIBUTE_CONSTRUCTOR 1
+
+/* Define to 1 if toolchain supports destructor attribute. */
+#cmakedefine TOOLCHAIN_SUPPORTS_ATTRIBUTE_DESTRUCTOR 1
+
+/* Define to 1 to use ARM NEON assembly optimizations */
+#cmakedefine USE_ARM_NEON 1
+
+/* Define to 1 to use ARM A64 NEON assembly optimizations */
+#cmakedefine USE_ARM_A64_NEON 1
+
+/* Define to 1 to use ARM SIMD assembly optimizations */
+#cmakedefine USE_ARM_SIMD 1
+
+/* Define to 1 to use Loongson MMI optimizations */
+#cmakedefine USE_LOONGSON_MMI 1
+
+/* Define to 1 to use MIPS DSPr2 optimizations */
+#cmakedefine USE_MIPS_DSPR2 1
+
+/* Define to 1 to use SSE2 optimizations */
+#cmakedefine USE_SSE2 1
+
+/* Define to 1 to use SSSE3 optimizations */
+#cmakedefine USE_SSSE3 1
+
+/* Define to 1 to use VMX/Altivec optimizations */
+#cmakedefine USE_VMX 1
+
+/* Define to 1 to use x86 MMX optimizations */
+#cmakedefine USE_X86_MMX 1
+
+/* Define to 1 to use RISC-V Vector optimizations */
+#cmakedefine USE_RVV 1
+
+/* Define to 1 to use GNU inline assembly */
+#cmakedefine USE_GCC_INLINE_ASM 1
+
+/* Define to 1 to use OpenMP */
+#cmakedefine USE_OPENMP 1
+
+/* Define to 1 if ASM has .func directive */
+#cmakedefine ASM_HAVE_FUNC_DIRECTIVE 1
+
+/* Define to 1 if ASM has .syntax unified directive */
+#cmakedefine ASM_HAVE_SYNTAX_UNIFIED 1
+
+/* Define to 1 if ASM symbols have leading underscore */
+#cmakedefine ASM_LEADING_UNDERSCORE 1
+
+/* Enable TIMER_* macros */
+#cmakedefine PIXMAN_TIMERS 1
+
+/* Enable gnuplot output */
+#cmakedefine PIXMAN_GNUPLOT 1
+
+/* Define to 1 if you have libpng */
+#cmakedefine HAVE_LIBPNG 1
+
+/* The size of `long', as computed by sizeof. */
+#define SIZEOF_LONG @SIZEOF_LONG@
+
+/* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
+   significant byte first (like Motorola and SPARC, unlike Intel). */
+#cmakedefine WORDS_BIGENDIAN 1
+
+/* The TLS keyword */
+#cmakedefine TLS @TLS@
+
+/* Package name */
+#define PACKAGE "@PACKAGE@"
+
+#endif /* PIXMAN_CONFIG_H */

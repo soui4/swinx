@@ -3057,7 +3057,7 @@ BOOL GetIconInfo(HICON hIcon, PICONINFO piconinfo)
         return FALSE;
     piconinfo->fIcon = hIcon->fIcon;
     piconinfo->xHotspot = hIcon->xHotspot;
-    piconinfo->yHotspot = hIcon->xHotspot;
+    piconinfo->yHotspot = hIcon->yHotspot;
     if (hIcon->hbmColor)
     {
         BITMAP bm;
@@ -3521,15 +3521,9 @@ int AddFontResourceEx(LPCSTR lpszFilename, // font file name
     int ret = 0;
     do
     {
-        // 初始化 Fontconfig
-        if (!FcInit())
-        {
-            SLOG_STMW() << "Failed to initialize Fontconfig";
-            break;
-        }
-
         // 获取当前的 Fontconfig 配置
         FcConfig *config = FcConfigGetCurrent();
+        SLOG_STMI()<<"font config="<<(void*)config;
         if (!config)
         {
             SLOG_STMW() << "Failed to get current Fontconfig configuration";

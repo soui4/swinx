@@ -458,6 +458,37 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
 #endif
 }
 
+
+#ifdef __APPLE__
+// 获取当前进程的 RPATH 列表
+static int get_current_rpaths(std::list<std::string> &rpaths) {
+    // 1. 获取当前可执行文件的 Mach-O 头
+    const struct mach_header_64* header = (const struct mach_header_64*)_dyld_get_image_header(0);
+    if (header == nullptr) {
+        std::cerr << "Failed to get Mach-O header." << std::endl;
+        return 0;
+    }
+
+    // 2. 遍历加载命令
+    uintptr_t cmd_ptr = (uintptr_t)(header + 1); // 第一个加载命令的地址
+    for (uint32_t i = 0; i < header->ncmds; i++) {
+        const struct load_command* cmd = (const struct load_command*)cmd_ptr;
+        
+        // 检查是否为 RPATH 命令
+        if (cmd->cmd == LC_RPATH) {
+            const struct rpath_command* rpath_cmd = (const struct rpath_command*)cmd;
+            // 获取 RPATH 字符串（紧跟在命令结构体后）
+            const char* rpath = (const char*)(rpath_cmd + 1);
+            rpaths.push_back(rpath);
+        }
+
+        cmd_ptr += cmd->cmdsize; // 移动到下一个加载命令
+    }
+
+    return rpaths.size();
+}
+#endif//__APPLE__
+
 class DllLoader {
   public:
     DllLoader()
@@ -468,6 +499,21 @@ class DllLoader {
         char *p = strrchr(szPath, '/');
         assert(p);
         p[1] = 0;
+        #ifdef __APPLE__
+        const char rpaths[] = "@executable_path/";
+        std::list<std::string> lstRPaths;
+        get_current_rpaths(lstRPaths);
+        for (auto it : lstRPaths)
+        {
+            std::string path = it;
+            if (path.find(rpaths) == 0)
+            {
+                path.replace(0, sizeof(rpaths) - 1, szPath);
+            }
+            path+="/";
+            m_lstDirs.push_back(path);
+        }
+        #endif//__APPLE__
         m_lstDirs.push_back(szPath);
     }
 
@@ -519,6 +565,12 @@ class DllLoader {
             if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
                 return dlopen(path.c_str(), mode);
         }
+        for (auto it : m_lstDirs)
+        {
+            std::string path = it + lpFileName;
+            if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
+                return dlopen(path.c_str(), mode);
+        }
         {
             // search current dir
             char szPath[MAX_PATH] = { 0 };
@@ -530,12 +582,6 @@ class DllLoader {
             }
             std::string path = szPath;
             path += lpFileName;
-            if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
-                return dlopen(path.c_str(), mode);
-        }
-        for (auto it : m_lstDirs)
-        {
-            std::string path = it + lpFileName;
             if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
                 return dlopen(path.c_str(), mode);
         }

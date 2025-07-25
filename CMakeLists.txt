@@ -8,6 +8,7 @@ add_compile_options(-Wno-unknown-warning-option)
 add_compile_options(-Wno-extern-c-compat)
 add_compile_options(-Wno-format-truncation)
  
+add_subdirectory(thirdparty)
 if(CMAKE_SYSTEM_NAME MATCHES Darwin)
 include(macos.cmake)
 else()

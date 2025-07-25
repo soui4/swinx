@@ -6,7 +6,7 @@
 #include <list>
 #include <pthread.h>
 #include <xcb/xcb.h>
-#include <cairo/cairo-xcb.h>
+#include <cairo-xcb.h>
 #include <mutex>
 #include <thread>
 #include <atomic>

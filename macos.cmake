@@ -6,36 +6,40 @@ file(GLOB SRCS
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
     src/platform/cocoa/*.mm
+    # 添加字体库符号导出文件
+    src/font_symbols_export.cpp
     )
  
 source_group("Header Files" FILES ${HEADERS})
 source_group("Source Files" FILES ${SRCS})
 
-find_package(PkgConfig REQUIRED)
-pkg_search_module(CAIRO REQUIRED cairo)
-if (NOT CAIRO_FOUND)
-    message(FATAL_ERROR "Cairo not found")
+# Use internal compiled libraries instead of system packages
+# Ensure our thirdparty libraries are available
+if(NOT TARGET cairo)
+    message(FATAL_ERROR "cairo target not found. Make sure thirdparty is built first.")
 endif()
 
-include_directories(${CAIRO_INCLUDE_DIRS})
-link_directories(${CAIRO_LIBRARY_DIRS} )
-
-find_package(Freetype REQUIRED)
-find_package(PNG REQUIRED)
-find_package(Fontconfig REQUIRED)
+# Still need Iconv from system
 find_package(Iconv REQUIRED)
 
+# Manually add include directories for internal libraries
+# This ensures headers can be found during compilation
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cairo/src)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/thirdparty/cairo/src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/pixman/pixman)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/freetype/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/fontconfig)
 
 
 find_library(COCOA_LIBRARY Cocoa)
 find_library(QUARTZ_LIBRARY QuartzCore)
 find_library(IOKit_LIBRARY IOKit)
 find_library(Carbon_LIBRARY Carbon)
-set(LIBS ${CAIRO_LIBRARIES}  
-    Freetype::Freetype 
-    PNG::PNG
-    Fontconfig::Fontconfig  
-    Iconv::Iconv
+
+# Use internal compiled libraries
+set(LIBS
+    cairo              # Our internal cairo target
+    Iconv::Iconv       # System Iconv library
     ${COCOA_LIBRARY}
     ${QUARTZ_LIBRARY}
     ${IOKit_LIBRARY}
@@ -44,10 +48,17 @@ set(LIBS ${CAIRO_LIBRARIES}
 if (NOT ENABLE_SOUI_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
     target_link_libraries(swinx PRIVATE ${LIBS})
+
+    # 确保导出所有符号，包括fontconfig和freetype的符号
+    set_target_properties(swinx PROPERTIES
+        LINK_FLAGS "-Wl,-all_load"
+        MACOSX_RPATH TRUE
+    )
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS} ${LIBS})
 endif()
-
+# Add dependencies to ensure proper build order for all internal libraries
+add_dependencies(swinx cairo fontconfig freetype pixman-1)
 target_compile_options(swinx PRIVATE "-fobjc-arc")
 
 target_include_directories(swinx

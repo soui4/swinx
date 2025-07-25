@@ -841,10 +841,10 @@ HWND SConnection::GetCapture() const {
 
 HCURSOR SConnection::SetCursor(HWND hWnd,HCURSOR cursor) {
     if(!hWnd){
-        if(m_msgPeek){
-            hWnd = m_msgPeek->hwnd;
+        if(!m_msgStack.empty()){
+            hWnd = m_msgStack.back()->hwnd;
         }else{
-            hWnd = GetActiveWnd();
+            hWnd = m_hWndActive;
         }
     }
     if (!hWnd)
@@ -1562,8 +1562,10 @@ static bool init_fontconfig_with_custom_dirs(const char** custom_dirs, int dir_c
 }
 
 
-SConnMgr::SConnMgr()
-{
+
+class InitFontConfig{
+public:
+InitFontConfig(){
     const char* mac_font_dirs[] = {
         "/System/Library/Fonts",
         "~/Library/Fonts",
@@ -1574,6 +1576,12 @@ SConnMgr::SConnMgr()
     if (!ret) {
         SLOG_STMW() << "Failed to initialize FontConfig";
     }
+}
+};
+static InitFontConfig g_initFontConfig;
+
+SConnMgr::SConnMgr()
+{
     //setenv("CG_CONTEXT_SHOW_BACKTRACE", "1", 1);
     m_tid = GetCurrentThreadId();
     m_hHeap = HeapCreate(0, 0, 0);

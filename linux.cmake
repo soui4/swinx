@@ -1,12 +1,18 @@
 find_package(PkgConfig REQUIRED)
 
-pkg_search_module(CAIRO REQUIRED cairo)
-if (NOT CAIRO_FOUND)
-    message(FATAL_ERROR "Cairo not found")
+# Use internal compiled libraries instead of system packages
+# Ensure our thirdparty libraries are available
+if(NOT TARGET cairo)
+    message(FATAL_ERROR "cairo target not found. Make sure thirdparty is built first.")
 endif()
 
-include_directories(${CAIRO_INCLUDE_DIRS})
-link_directories(${CAIRO_LIBRARY_DIRS} )
+# Manually add include directories for internal libraries
+# This ensures headers can be found during compilation
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cairo/src)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/thirdparty/cairo/src)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/pixman/pixman)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/freetype/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/fontconfig)
 
 option(USING_GTK3_DLG "Using GTK3 to show common dialog" ON)
 
@@ -24,8 +30,6 @@ if(GTK3_FOUND)
 else()
     message(STATUS "GTK not found. Disabling GTK support.")
 endif(GTK3_FOUND)
-else()
-set(GTK3_FOUND OFF)
 endif(USING_GTK3_DLG)
 
 add_subdirectory(thirdparty/xkbcommon)
@@ -34,17 +38,19 @@ add_subdirectory(thirdparty/xcb-imdkit)
 
 file(GLOB_RECURSE HEADERS  include/*.hpp include/*.h)
 file(GLOB SRCS
-    thirdparty/xcb-util-image/*.c 
-    thirdparty/xcb-util-renderutil/*.c  
+    thirdparty/xcb-util-image/*.c
+    thirdparty/xcb-util-renderutil/*.c
     thirdparty/xcb-util-keysyms/*.c
-    thirdparty/xcb-util-wm/*.c 
-    thirdparty/xcb-util/*.c 
-    thirdparty/libxcb/*.c 
+    thirdparty/xcb-util-wm/*.c
+    thirdparty/xcb-util/*.c
+    thirdparty/libxcb/*.c
     src/*.cpp
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
     src/platform/linux/*.cpp
     src/platform/linux/gtk/*.cpp
+    # 添加字体库符号导出文件
+    src/font_symbols_export.cpp
     )
 
 source_group("Header Files" FILES ${HEADERS})
@@ -53,14 +59,26 @@ source_group("Source Files" FILES ${SRCS})
 if (NOT ENABLE_SOUI_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
     target_link_libraries(swinx
-        xcb  cairo  xkbcommon xcb-imdkit freetype fontconfig png uuid
+        xcb                # System XCB library
+        cairo              # Our internal cairo target
+        xkbcommon          # Our internal xkbcommon target
+        xcb-imdkit         # Our internal xcb-imdkit target
+        uuid               # System UUID library
     )
     if(GTK3_FOUND)
         target_link_libraries(swinx ${GTK3_LIBRARIES})
     endif()
+
+    # Add dependencies to ensure proper build order for all internal libraries
+    add_dependencies(swinx cairo fontconfig freetype pixman-1 xcb-imdkit xkbcommon)
+
+    # 确保导出所有符号，包括fontconfig和freetype的符号
+    set_target_properties(swinx PROPERTIES
+        LINK_FLAGS "-Wl,--export-dynamic"
+    )
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS})
-    add_dependencies(swinx xcb-imdkit)
+    add_dependencies(swinx cairo fontconfig freetype pixman-1 xcb-imdkit xkbcommon)
 endif()
 
 target_include_directories(swinx
