@@ -22,9 +22,24 @@ if(NOT TARGET fontconfig)
 endif()
 
 add_compile_options(-Wno-enum-conversion)
-# Still need PNG and ZLIB from system or other sources
-find_package(PNG REQUIRED)
-find_package(ZLIB REQUIRED)
+# Use internal PNG and ZLIB libraries instead of system packages
+# Ensure dependencies are built first
+if(NOT TARGET png_static)
+    message(FATAL_ERROR "png_static target not found. Make sure libpng is built before cairo.")
+endif()
+
+if(NOT TARGET swinx_zlibstatic)
+    message(FATAL_ERROR "swinx_zlibstatic target not found. Make sure zlib is built before cairo.")
+endif()
+
+# Set PNG variables for cairo configuration
+set(PNG_FOUND TRUE)
+set(PNG_LIBRARY png_static)
+set(PNG_LIBRARIES png_static)
+get_target_property(PNG_INCLUDE_DIR png_static INTERFACE_INCLUDE_DIRECTORIES)
+if(NOT PNG_INCLUDE_DIR)
+    set(PNG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../libpng")
+endif()
 find_package(Threads)
 
 
@@ -45,23 +60,18 @@ endif()
 get_target_property(PIXMAN_INCLUDE_DIRS pixman-1 INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(FREETYPE_INCLUDE_DIRS freetype INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(FONTCONFIG_INCLUDE_DIRS fontconfig INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(PNG_INCLUDE_DIRS png_static INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(ZLIB_INCLUDE_DIRS swinx_zlibstatic INTERFACE_INCLUDE_DIRECTORIES)
 
 # Include directories
 include_directories(${PIXMAN_INCLUDE_DIRS})
 include_directories(${FREETYPE_INCLUDE_DIRS})
 include_directories(${FONTCONFIG_INCLUDE_DIRS})
-include_directories(${PNG_INCLUDE_DIR})
-include_directories(${ZLIB_INCLUDE_DIR})
+include_directories(${PNG_INCLUDE_DIRS})
+include_directories(${ZLIB_INCLUDE_DIRS})
 
 # Link libraries - use target names for internal dependencies
-list(APPEND CAIRO_LIBS pixman-1 freetype fontconfig ${PNG_LIBRARY} ${ZLIB_LIBRARY})
-
-# Additional dependencies for freetype
-find_package(BZip2)
-if(BZIP2_FOUND)
-    include_directories(${BZIP2_INCLUDE_DIR})
-    list(APPEND CAIRO_LIBS ${BZIP2_LIBRARIES})
-endif()
+list(APPEND CAIRO_LIBS pixman-1 freetype fontconfig png_static swinx_zlibstatic)
 
 if (APPLE)
     find_library(CORE_FOUNDATION CoreFoundation)

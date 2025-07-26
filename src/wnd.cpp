@@ -315,7 +315,11 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     pWnd->showSbFlags |= (cs->style & WS_HSCROLL) ? SB_HORZ : 0;
     pWnd->showSbFlags |= (cs->style & WS_VSCROLL) ? SB_VERT : 0;
     pWnd->visualId = conn->GetVisualID(TRUE);
+    #ifdef __linux__
     int depth = XCB_COPY_FROM_PARENT;
+    #else
+    int depth = 24;
+    #endif
     if ((pWnd->dwExStyle & WS_EX_COMPOSITED) && !(pWnd->dwStyle & WS_CHILD) && conn->IsScreenComposited())
     {
         pWnd->dwStyle &= ~WS_CAPTION;
@@ -3223,37 +3227,6 @@ BOOL TrackMouseEvent(LPTRACKMOUSEEVENT lpEventTrack)
     wndObj->hoverInfo.dwFlags = lpEventTrack->dwFlags;
     wndObj->hoverInfo.dwHoverTime = lpEventTrack->dwHoverTime;
     return TRUE;
-}
-
-static HWND GetWndSibling(xcb_connection_t *conn, HWND hParent, HWND hWnd, BOOL bNext)
-{
-    xcb_query_tree_cookie_t cookie = xcb_query_tree(conn, hParent);
-    xcb_query_tree_reply_t *reply = xcb_query_tree_reply(conn, cookie, NULL);
-    if (!reply)
-    {
-        SetLastError(ERROR_INVALID_HANDLE);
-        return 0;
-    }
-    xcb_window_t *children = xcb_query_tree_children(reply);
-    int idx_self = -1;
-    for (int i = 0; i < reply->children_len; i++)
-    {
-        if (children[i] == hWnd)
-        {
-            idx_self = i;
-            break;
-        }
-    }
-    HWND hRet = 0;
-    if (idx_self != -1)
-    {
-        if (bNext && idx_self < reply->children_len - 1)
-            hRet = children[idx_self + 1];
-        if (!bNext && idx_self > 0)
-            hRet = children[idx_self - 1];
-    }
-    free(reply);
-    return hRet;
 }
 
 HWND GetWindow(HWND hWnd, UINT uCmd)

@@ -37,7 +37,7 @@ set(CACHEVERSION "9")
 
 # Build options
 option(ENABLE_DOCS "Build documentation" OFF)
-option(ENABLE_NLS "Enable native language support" ON)
+option(ENABLE_NLS "Enable native language support" OFF)
 option(ENABLE_TESTS "Enable unit tests" OFF)
 option(ENABLE_TOOLS "Build command-line tools" OFF)
 option(ENABLE_CACHE_BUILD "Run fc-cache on install" OFF)

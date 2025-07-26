@@ -90,7 +90,16 @@ foreach(test_name ${TESTS})
     
     # Link with PNG if available
     if(PNG_FOUND)
-        target_link_libraries(${test_name} PRIVATE PNG::PNG)
+        if(TARGET png_static)
+            target_link_libraries(${test_name} PRIVATE png_static)
+            # Manually add include directories for internal PNG
+            get_target_property(PNG_INCLUDE_DIRS png_static INTERFACE_INCLUDE_DIRECTORIES)
+            if(PNG_INCLUDE_DIRS)
+                target_include_directories(${test_name} PRIVATE ${PNG_INCLUDE_DIRS})
+            endif()
+        else()
+            target_link_libraries(${test_name} PRIVATE PNG::PNG)
+        endif()
     endif()
     
     # Set include directories

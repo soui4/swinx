@@ -184,7 +184,7 @@ cmake_dependent_option(FT_REQUIRE_ZLIB
   "NOT FT_DISABLE_ZLIB" OFF)
 
 option(FT_DISABLE_BZIP2
-  "Disable support of bzip2 compressed fonts." OFF)
+  "Disable support of bzip2 compressed fonts." ON)
 cmake_dependent_option(FT_REQUIRE_BZIP2
   "Require support of bzip2 compressed fonts." OFF
   "NOT FT_DISABLE_BZIP2" OFF)
@@ -196,7 +196,7 @@ cmake_dependent_option(FT_REQUIRE_PNG
   "NOT FT_DISABLE_PNG" OFF)
 
 option(FT_DISABLE_HARFBUZZ
-  "Disable HarfBuzz (used for improving auto-hinting of OpenType fonts)." OFF)
+  "Disable HarfBuzz (used for improving auto-hinting of OpenType fonts)." ON)
 cmake_dependent_option(FT_REQUIRE_HARFBUZZ
   "Require HarfBuzz for improving auto-hinting of OpenType fonts." OFF
   "NOT FT_DISABLE_HARFBUZZ" OFF)
@@ -250,21 +250,20 @@ if (NOT FT_DISABLE_HARFBUZZ)
 endif ()
 
 if (NOT FT_DISABLE_PNG)
-  if (FT_REQUIRE_PNG)
+  if(TARGET png_static)
+    set(PNG_FOUND ON)
+  else()
     find_package(PNG REQUIRED)
-  else ()
-    find_package(PNG)
-  endif ()
-  # FreePNG calls FindZLIB so unset ZLIB_FOUND to respect FT_DISABLE_ZLIB
-  unset(ZLIB_FOUND)
+  endif()
 endif ()
 
 if (NOT FT_DISABLE_ZLIB)
-  if (FT_REQUIRE_ZLIB)
+  if(TARGET zlib_static)
+    set(ZLIB_FOUND ON)
+    set(ZLIB::ZLIB zlib_static)
+  else()
     find_package(ZLIB REQUIRED)
-  else ()
-    find_package(ZLIB)
-  endif ()
+  endif()
 endif ()
 
 if (NOT FT_DISABLE_BZIP2)
@@ -527,7 +526,17 @@ if (BZIP2_FOUND)
   endif ()
 endif ()
 if (PNG_FOUND)
-  target_link_libraries(freetype PRIVATE PNG::PNG)
+  # Use PRIVATE linking to avoid export dependencies
+  if(TARGET png_static)
+    target_link_libraries(freetype PRIVATE png_static)
+    # Manually add include directories for internal PNG
+    get_target_property(PNG_INCLUDE_DIRS png_static INTERFACE_INCLUDE_DIRECTORIES)
+    if(PNG_INCLUDE_DIRS)
+      target_include_directories(freetype PRIVATE ${PNG_INCLUDE_DIRS})
+    endif()
+  else()
+    target_link_libraries(freetype PRIVATE PNG::PNG)
+  endif()
   list(APPEND PKGCONFIG_REQUIRES_PRIVATE "libpng")
 endif ()
 if (HarfBuzz_FOUND)
@@ -619,23 +628,25 @@ if (NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}
     COMPATIBILITY SameMajorVersion)
 
-  install(
-    TARGETS freetype freetype-interface
-      EXPORT freetype-targets
-      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-      FRAMEWORK DESTINATION Library/Frameworks
-      COMPONENT libraries)
-  install(
-    EXPORT freetype-targets
-      DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/freetype
-      FILE freetype-config.cmake
-      COMPONENT headers)
-  install(
-    FILES ${PROJECT_BINARY_DIR}/freetype-config-version.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/freetype
-    COMPONENT headers)
+  # Disable installation and export to avoid conflicts with internal dependencies
+  # install(
+  #   TARGETS freetype freetype-interface
+  #     EXPORT freetype-targets
+  #     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  #     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  #     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  #     FRAMEWORK DESTINATION Library/Frameworks
+  #     COMPONENT libraries)
+  # install(
+  #   EXPORT freetype-targets
+  #     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/freetype
+  #     FILE freetype-config.cmake
+  #     COMPONENT headers)
+  # Disable installation to avoid export conflicts
+  # install(
+  #   FILES ${PROJECT_BINARY_DIR}/freetype-config-version.cmake
+  #   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/freetype
+  #   COMPONENT headers)
 endif ()
 
 

@@ -119,9 +119,21 @@ endif()
 
 # PNG library
 if(PIXMAN_ENABLE_LIBPNG)
-    find_package(PNG)
-    if(PNG_FOUND)
+    # Use internal PNG library directly instead of system package
+    if(TARGET png_static)
+        set(PNG_FOUND TRUE)
+        set(PNG_LIBRARY png_static)
+        set(PNG_LIBRARIES png_static)
+        get_target_property(PNG_INCLUDE_DIRS png_static INTERFACE_INCLUDE_DIRECTORIES)
+        if(NOT PNG_INCLUDE_DIRS)
+            set(PNG_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/../libpng")
+        endif()
         set(HAVE_LIBPNG TRUE)
+    else()
+        find_package(PNG)
+        if(PNG_FOUND)
+            set(HAVE_LIBPNG TRUE)
+        endif()
     endif()
 endif()
 

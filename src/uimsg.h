@@ -3,7 +3,6 @@
 #include <mutex>
 #include <string>
 #include <uuid/uuid.h>
-#include <xcb/xproto.h>
 #include <hook.h>
 #include "handle.h"
 #include "sharedmem.h"
