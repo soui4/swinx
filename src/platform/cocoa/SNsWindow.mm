@@ -1745,7 +1745,7 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
             DWORD dwExStyle = GetWindowLongPtrA(hWnd,GWL_EXSTYLE);
             if(nswindow.window == nil){
                 NSWindowStyleMask styleMask = 0;
-                if(dwStyle & WS_CAPTION)
+                if(dwStyle & WS_DLGFRAME)
                 {
                     styleMask |= NSWindowStyleMaskTitled;
                     if(dwStyle & WS_THICKFRAME)//keep resize only for window with caption 

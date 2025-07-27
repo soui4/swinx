@@ -975,7 +975,14 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         POINT pt;
         wndObj->mConnection->GetCursorPos(&pt);
         int htCode = CallWindowObjProc(wndObj, proc,hWnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
-        //SLOG_STMI()<<"hjx WM_MOUSEMOVE, pt2.x="<<pt.x<<", pt2.y="<<pt.y<<" htCode="<<htCode;
+        #ifdef __APPLE__
+        DWORD dwStyle = GetWindowLong(hWnd, GWL_STYLE);
+        if((dwStyle & WS_DLGFRAME) && (dwStyle & WS_THICKFRAME)){
+            if(htCode == HTBORDER || htCode==HTLEFT || htCode==HTRIGHT || htCode==HTTOP || htCode==HTBOTTOM || htCode==HTTOPLEFT || htCode==HTTOPRIGHT || htCode==HTBOTTOMLEFT || htCode==HTBOTTOMRIGHT){
+                htCode = HTCLIENT;//disalbe soui defined resize logic.
+            }
+        }
+        #endif
         if (CallWindowObjProc(wndObj, proc,hWnd, WM_SETCURSOR, hWnd, htCode) == 0)
         {
             UpdateWindowCursor(wndObj, hWnd, htCode);
