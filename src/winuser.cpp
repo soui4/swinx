@@ -90,7 +90,7 @@ BOOL OffsetRect(LPRECT prc, int dx, int dy)
 
 BOOL IsRectEmpty(const RECT *prc)
 {
-    return prc->left == prc->right && prc->top == prc->bottom;
+    return prc->left == prc->right || prc->top == prc->bottom;
 }
 
 BOOL EqualRect(const RECT *lprc1, const RECT *lprc2)

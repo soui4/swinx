@@ -1394,7 +1394,8 @@ BOOL DrawBitmap9Patch(HDC hdc, LPCRECT pRcDest, HBITMAP hBmp, LPCRECT pRcSrc, LP
 
     //定义绘制模式
     UINT mode[3][3] = { { EXPEND_MODE_NONE, expendMode, EXPEND_MODE_NONE }, { expendMode, expendMode, expendMode }, { EXPEND_MODE_NONE, expendMode, EXPEND_MODE_NONE } };
-
+    Antialias oldAntialias = GetAntialiasMode(hdc);
+    SetAntialiasMode(hdc, ANTIALIAS_NONE);//关闭抗锯齿，否则图片拼接边缘可能出现缝隙。
     for (int y = 0; y < 3; y++)
     {
         if (ySrc[y] == ySrc[y + 1])
@@ -1411,6 +1412,7 @@ BOOL DrawBitmap9Patch(HDC hdc, LPCRECT pRcDest, HBITMAP hBmp, LPCRECT pRcSrc, LP
             DrawBitmapEx(hdc, &rcDest, hBmp, &rcSrc, mode[y][x], byAlpha);
         }
     }
+    SetAntialiasMode(hdc, oldAntialias);
 
     return TRUE;
 }

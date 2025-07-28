@@ -237,35 +237,17 @@ BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
     RECT rcClient;
     if (!lpRect)
     {
-        GetClientRect(hWnd, &rcClient);
+        GetWindowRect(hWnd, &rcClient);
+        OffsetRect(&rcClient, -rcClient.left, -rcClient.top);
         lpRect = &rcClient;
     }
     if (IsRectEmpty(lpRect))
         return FALSE;
-    #ifdef __linux__
     HRGN rgn = CreateRectRgnIndirect(lpRect);
     CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, rgn, RGN_OR);
     DeleteObject(rgn);
     wndObj->invalid.bErase = wndObj->invalid.bErase || bErase;
     wndObj->mConnection->SendExposeEvent(hWnd,lpRect);
-    #else
-    RECT rcInvalid={0};
-    GetRgnBox(wndObj->invalid.hRgn, &rcInvalid);
-    if (IsRectEmpty(&rcInvalid))
-    {
-        rcInvalid = *lpRect;
-    }
-    else
-    {
-        UnionRect(&rcInvalid,&rcInvalid,lpRect);
-    }
-
-    HRGN rgn = CreateRectRgnIndirect(&rcInvalid);
-    CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, rgn, RGN_OR);
-    DeleteObject(rgn);
-    wndObj->invalid.bErase = wndObj->invalid.bErase || bErase;
-    wndObj->mConnection->SendExposeEvent(hWnd,&rcInvalid);
-    #endif
     return TRUE;
 }
 
