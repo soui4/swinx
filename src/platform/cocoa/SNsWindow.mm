@@ -1,5 +1,3 @@
-#include "sysapi.h"
-#include "wnd.h"
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/QuartzCore.h>
 #include <objc/objc.h>

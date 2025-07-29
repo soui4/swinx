@@ -1,5 +1,3 @@
-
-
 #import <Cocoa/Cocoa.h>
 #import <Foundation/NSDebug.h>
 #include "os_state.h"

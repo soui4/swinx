@@ -1668,6 +1668,6 @@ void SConnection::AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESUL
     }
 }
 
-void SConnection::EnableWindow(HWND hWnd, BOOL bEnable){
+void SConnection::EnableWindow(HWND hWnd, int bEnable){
     enableNsWindow(hWnd, bEnable);
 }
