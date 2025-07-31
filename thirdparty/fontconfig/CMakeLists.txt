@@ -194,7 +194,7 @@ endif()
 set(INCBASE ${CMAKE_CURRENT_SOURCE_DIR})
 set(INCSRC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-message(STATUS "fontconfig binary dir: ${CMAKE_CURRENT_BINARY_DIR}")
+#message(STATUS "fontconfig binary dir: ${CMAKE_CURRENT_BINARY_DIR}")
 # Add build directory to include path for generated files
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/fc-lang)

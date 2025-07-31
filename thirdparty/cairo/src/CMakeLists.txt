@@ -656,5 +656,5 @@ install(TARGETS cairo RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DE
 install(TARGETS cairo-static RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
 
 install(FILES ${enabled_cairo_headers} DESTINATION include/cairo)
-install(FILES ../cairo-version.h DESTINATION include/cairo)
-install(FILES ${CMAKE_BINARY_DIR}/cairo-features.h DESTINATION include/cairo)
+install(FILES cairo-version.h DESTINATION include/cairo)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cairo-features.h DESTINATION include/cairo)
