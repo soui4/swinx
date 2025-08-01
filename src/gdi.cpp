@@ -3525,7 +3525,6 @@ int AddFontResourceEx(LPCSTR lpszFilename, // font file name
     {
         // 获取当前的 Fontconfig 配置
         FcConfig *config = FcConfigGetCurrent();
-        SLOG_STMI()<<"font config="<<(void*)config;
         if (!config)
         {
             SLOG_STMW() << "Failed to get current Fontconfig configuration";

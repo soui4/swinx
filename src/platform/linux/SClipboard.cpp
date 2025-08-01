@@ -100,7 +100,7 @@ void SMimeData::set(FormatedData *data)
         }
     }
     m_lstData.push_back(data);
-    SLOG_STMI() << "SMimeData::set,format=" << data->fmt << " format size=" << m_lstData.size();
+//    SLOG_STMI() << "SMimeData::set,format=" << data->fmt << " format size=" << m_lstData.size();
 }
 
 HRESULT SMimeData::QueryGetData(FORMATETC *pformatetc)
@@ -909,7 +909,6 @@ bool SClipboard::hasFormat(UINT fmt)
             xcb_atom_t atom = *(xcb_atom_t *)buf;
             if (atom == fmtAtom)
             {
-                SLOG_STMI()<<"---hasFormat fmt="<<fmt<<" ret true";
                 return true;
             }    
             buf += sizeof(xcb_atom_t);

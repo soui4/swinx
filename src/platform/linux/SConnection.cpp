@@ -289,8 +289,8 @@ SConnection::SConnection(int screenNum)
                 }
             }
         }
-        if (rgba_visual)
-            SLOG_STMI() << "32 bit visual id=" << rgba_visual->visual_id;
+        // if (rgba_visual)
+        //     SLOG_STMI() << "32 bit visual id=" << rgba_visual->visual_id;
     }
     readXResources();
     initializeXFixes();
@@ -303,7 +303,7 @@ SConnection::SConnection(int screenNum)
         xcb_get_selection_owner_reply_t *owner_reply = xcb_get_selection_owner_reply(connection, owner_cookie, NULL);
         m_bComposited = owner_reply->owner != 0;
         free(owner_reply);
-        SLOG_STMI() << "enable composite=" << m_bComposited;
+//        SLOG_STMI() << "enable composite=" << m_bComposited;
     }
     m_tid = GetCurrentThreadId();
 
@@ -464,7 +464,7 @@ void SConnection::readXResources()
 
     std::string line;
     static const char kDpiDesc[] = "Xft.dpi:\t";
-    SLOG_STMI()<<"settings:"<<resources.str().c_str();
+//    SLOG_STMI()<<"settings:"<<resources.str().c_str();
     while (std::getline(resources, line, '\n'))
     {
         if (line.length() > ARRAYSIZE(kDpiDesc) - 1 && strncmp(line.c_str(), kDpiDesc, ARRAYSIZE(kDpiDesc) - 1) == 0)
@@ -492,7 +492,7 @@ void SConnection::initializeXFixes()
         xfixes_first_event = 0;
     }
     free(xfixes_query);
-    SLOG_STMI() << "hasXFixes()=" << hasXFixes();
+//    SLOG_STMI() << "hasXFixes()=" << hasXFixes();
 }
 
 void SConnection::clearSystemCursor()
@@ -2021,7 +2021,7 @@ BOOL SConnection::SetActiveWindow(HWND hWnd)
         }
         m_hWndActive = 0;
     }
-        SLOG_STMI()<<"SetActiveWindow hwnd="<<hWnd;
+//    SLOG_STMI()<<"SetActiveWindow hwnd="<<hWnd;
     return TRUE;
 }
 
