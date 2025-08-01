@@ -1008,37 +1008,39 @@ std::shared_ptr<std::vector<char>> SClipboard::getDataInFormat(xcb_atom_t modeAt
 std::shared_ptr<std::vector<char>> SClipboard::getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property, int timeout, xcb_timestamp_t time)
 {
     std::shared_ptr<std::vector<char>> buf = std::make_shared<std::vector<char>>();
-    xcb_window_t owner = getClipboardOwner();
-    if(owner == m_owner)
-    {
-        if(fmtAtom == m_conn->atoms.TARGETS){
-            std::vector<xcb_atom_t> types;
-            IEnumFORMATETC *enumFmt;
-            if (m_doClip->EnumFormatEtc(DATADIR_GET, &enumFmt) == S_OK)
-            {
-                FORMATETC fmt;
-                while (enumFmt->Next(1, &fmt, NULL) == S_OK)
+    if(selection == m_conn->atoms.CLIPBOARD){
+        xcb_window_t owner = getClipboardOwner();
+        if(owner == m_owner)
+        {
+            if(fmtAtom == m_conn->atoms.TARGETS){
+                std::vector<xcb_atom_t> types;
+                IEnumFORMATETC *enumFmt;
+                if (m_doClip->EnumFormatEtc(DATADIR_GET, &enumFmt) == S_OK)
                 {
-                    if (fmt.tymed == TYMED_HGLOBAL)
+                    FORMATETC fmt;
+                    while (enumFmt->Next(1, &fmt, NULL) == S_OK)
                     {
-                        types.push_back(m_conn->clipFormat2Atom(fmt.cfFormat));
+                        if (fmt.tymed == TYMED_HGLOBAL)
+                        {
+                            types.push_back(m_conn->clipFormat2Atom(fmt.cfFormat));
+                        }
                     }
+                    enumFmt->Release();
                 }
-                enumFmt->Release();
+                buf->assign((char *)types.data(), (char *)types.data() + types.size() * sizeof(xcb_atom_t));
+            }else{
+                //read data from this process
+                FORMATETC fmt = { (CLIPFORMAT)m_conn->atom2ClipFormat(fmtAtom), nullptr, 0, 0, TYMED_HGLOBAL };
+                STGMEDIUM medium = { 0 };
+                if(S_OK==m_doClip->GetData(&fmt, &medium)){
+                    const char * src = (const char *)GlobalLock(medium.hGlobal);
+                    buf->assign(src, src + GlobalSize(medium.hGlobal));
+                    GlobalUnlock(medium.hGlobal);
+                    ReleaseStgMedium(&medium);
+                }
             }
-            buf->assign((char *)types.data(), (char *)types.data() + types.size() * sizeof(xcb_atom_t));
-        }else{
-            //read data from this process
-            FORMATETC fmt = { (CLIPFORMAT)m_conn->atom2ClipFormat(fmtAtom), nullptr, 0, 0, TYMED_HGLOBAL };
-            STGMEDIUM medium = { 0 };
-            if(S_OK==m_doClip->GetData(&fmt, &medium)){
-                const char * src = (const char *)GlobalLock(medium.hGlobal);
-                buf->assign(src, src + GlobalSize(medium.hGlobal));
-                GlobalUnlock(medium.hGlobal);
-                ReleaseStgMedium(&medium);
-            }
+            return buf;
         }
-        return buf;
     }
     xcb_delete_property(xcb_connection(), m_requestor, property);
     xcb_convert_selection(xcb_connection(), m_requestor, selection, fmtAtom, property, time);
