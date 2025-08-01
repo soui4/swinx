@@ -211,6 +211,7 @@ void SConnection::xim_create_ic_callback(xcb_xim_t *im, xcb_xic_t new_ic, void *
         xcb_xim_set_ic_focus(im, new_ic);
         //        SLOG_STMI()<<"xcb_xim_set_ic_focus set windows "<<hWnd<<" xic="<<new_ic;
     }
+    ImmReleaseContext(hWnd, hIMC);
 }
 
 void SConnection::xim_open_callback(xcb_xim_t *im, void *user_data)
@@ -238,6 +239,7 @@ void SConnection::xim_open_callback(xcb_xim_t *im, void *user_data)
         xcb_xim_create_ic(im, xim_create_ic_callback, user_data, XCB_XIM_XNInputStyle, &input_style, XCB_XIM_XNClientWindow, &wnd, XCB_XIM_XNFocusWindow, &wnd, XCB_XIM_XNPreeditAttributes, &nested, NULL);
     }
     free(nested.data);
+    ImmReleaseContext(hWnd, hIMC);
 }
 
 SConnection::SConnection(int screenNum)
@@ -522,12 +524,16 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
                 if (!xcb_xim_filter_event(m_xim, it))
                 {
                     bool bForward = false;
-                    if ((it->response_type & ~0x80) == XCB_KEY_PRESS || (it->response_type & ~0x80) == XCB_KEY_RELEASE)
+                    uint8_t event_code = it->response_type & 0x7f;
+                    if (event_code == XCB_KEY_PRESS || event_code == XCB_KEY_RELEASE)
                     {
                         HIMC hIMC = ImmGetContext(m_hFocus);
                         if (hIMC && hIMC->xic)
                         {
                             bForward = xcb_xim_forward_event(m_xim, hIMC->xic, (xcb_key_press_event_t *)it);
+                        }
+                        if (hIMC) {
+                            ImmReleaseContext(m_hFocus, hIMC);
                         }
                     }
                     if (!bForward)
@@ -1388,6 +1394,11 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
         { // show a popup window, auto release capture.
             ReleaseCapture();
         }
+        BOOL bActive =  nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA;
+        xcb_icccm_wm_hints_t hints = {0};
+        xcb_icccm_wm_hints_set_input(&hints, bActive);
+        xcb_icccm_set_wm_hints(connection, hWnd, &hints);
+
         xcb_map_window(connection, hWnd);
         wndObj->dwStyle |= WS_VISIBLE;
         InvalidateRect(hWnd, nullptr, TRUE);
@@ -2567,7 +2578,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                 {
                     newState = SIZE_RESTORED;
                 }
-                if (state & NetWMStateFocus && m_hWndActive != e2->window)
+                if ((state & NetWMStateFocus) && m_hWndActive != e2->window)
                 {
                     OnActiveChange(e2->window, TRUE);
                 }
@@ -3400,9 +3411,11 @@ void SConnection::OnActiveChange(HWND hWnd, BOOL bActivate)
     else
     {
         HWND oldActive = m_hWndActive;
-        m_hWndActive = 0;
+        if(hWnd == m_hWndActive)
+            m_hWndActive = 0;
         SendMessageA(oldActive, WM_ACTIVATE, WA_INACTIVE, 0);
     }
+//    SLOG_STMI()<<"OnActiveChange hWnd="<<hWnd<<" bActivate="<<bActivate<<" m_hWndActive="<<m_hWndActive;
 }
 
 static xcb_window_t _GetParent(xcb_connection_t *connection, xcb_window_t hwnd)
