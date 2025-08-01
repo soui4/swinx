@@ -162,11 +162,13 @@ protected:
 };
 
 class SClipboard {
-	enum {
-		kWaitTimeout = 5000,
-		kIncrTimeout = 50000,
-	};
 public:
+enum {
+	kReadFormatTimeout = 50,
+	kWaitTimeout = 5000,
+	kIncrTimeout = 50000,
+};
+
 	SClipboard(SConnection *conn);
 	~SClipboard();
 
@@ -190,8 +192,8 @@ public:
 	void handleSelectionClear(xcb_selection_clear_event_t *e);
     void incrTransactionPeeker(xcb_generic_event_t *ge, bool &accepted);
 
-	std::shared_ptr<std::vector<char>> getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom);
-	std::shared_ptr<std::vector<char>> getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property, xcb_timestamp_t time);
+	std::shared_ptr<std::vector<char>> getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom, int timeout);
+	std::shared_ptr<std::vector<char>> getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property,int timeout,  xcb_timestamp_t time);
 protected:
 	  
 	xcb_generic_event_t* waitForClipboardEvent(xcb_window_t win, int type, int timeout, xcb_atom_t selAtom,bool checkManager = false);

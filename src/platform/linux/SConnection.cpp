@@ -1160,7 +1160,7 @@ uint32_t SConnection::atom2ClipFormat(xcb_atom_t atom)
 
 std::shared_ptr<std::vector<char>> SConnection::readSelection(bool bXdnd, uint32_t fmt)
 {
-    return m_clipboard->getDataInFormat(bXdnd ? atoms.XdndSelection : atoms.CLIPBOARD, clipFormat2Atom(fmt));
+    return m_clipboard->getDataInFormat(bXdnd ? atoms.XdndSelection : atoms.CLIPBOARD, clipFormat2Atom(fmt), SClipboard::kWaitTimeout);
 }
 
 struct MotifWmHints

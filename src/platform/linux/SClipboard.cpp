@@ -121,10 +121,18 @@ HRESULT SMimeData::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
         {
             assert(it->data);
             memset(pmedium, 0, sizeof(STGMEDIUM));
-            pmedium->hGlobal = GlobalAlloc(0, GlobalSize(it->data));
             const void *src = GlobalLock(it->data);
+            int srcSize = GlobalSize(it->data);
+            if(pformatetcIn->cfFormat == CF_UNICODETEXT)
+            {
+                srcSize = wcslen((const wchar_t *)src) * sizeof(wchar_t) + sizeof(wchar_t);
+            }else if(pformatetcIn->cfFormat == CF_TEXT)
+            {
+                srcSize = strlen((const char *)src)+1;
+            }
+            pmedium->hGlobal = GlobalAlloc(0, srcSize);
             void *dst = GlobalLock(pmedium->hGlobal);
-            memcpy(dst, src, GlobalSize(it->data));
+            memcpy(dst, src, srcSize);
             GlobalUnlock(it->data);
             GlobalUnlock(pmedium->hGlobal);
             pmedium->tymed = TYMED_HGLOBAL;
@@ -202,7 +210,7 @@ SDataObjectProxy::~SDataObjectProxy()
 void SDataObjectProxy::fetchDataTypeList()
 {
     m_lstTypes.clear();
-    std::shared_ptr<std::vector<char>> data = m_conn->getClipboard()->getDataInFormat(m_conn->atoms.CLIPBOARD, m_conn->atoms.TARGETS);
+    std::shared_ptr<std::vector<char>> data = m_conn->getClipboard()->getDataInFormat(m_conn->atoms.CLIPBOARD, m_conn->atoms.TARGETS,SClipboard::kReadFormatTimeout);
     if (data)
     {
         const char *buf = data->data();
@@ -570,7 +578,7 @@ xcb_atom_t SClipboard::sendSelection(IDataObject *d, xcb_atom_t target, xcb_wind
     // X_ChangeProperty protocol request is 24 bytes
     const int increment = (xcb_get_maximum_request_length(xcb_connection()) * 4) - 24;
     size_t len = GlobalSize(hData);
-    if (false && len > increment && allow_incr)
+    if (len > increment && allow_incr)
     {
         uint32_t bytes = increment;
         std::shared_ptr<std::vector<char>> data = std::make_shared<std::vector<char>>(bytes);
@@ -891,7 +899,7 @@ bool SClipboard::hasFormat(UINT fmt)
 {
     xcb_atom_t fmtAtom = m_conn->clipFormat2Atom(fmt);
     // fatch formats
-    std::shared_ptr<std::vector<char>> data = getDataInFormat(m_conn->atoms.CLIPBOARD, m_conn->atoms.TARGETS);
+    std::shared_ptr<std::vector<char>> data = getDataInFormat(m_conn->atoms.CLIPBOARD, m_conn->atoms.TARGETS,kReadFormatTimeout);
     if (data)
     {
         const char *buf = data->data();
@@ -900,7 +908,10 @@ bool SClipboard::hasFormat(UINT fmt)
         {
             xcb_atom_t atom = *(xcb_atom_t *)buf;
             if (atom == fmtAtom)
+            {
+                SLOG_STMI()<<"---hasFormat fmt="<<fmt<<" ret true";
                 return true;
+            }    
             buf += sizeof(xcb_atom_t);
         }
     }
@@ -910,7 +921,7 @@ bool SClipboard::hasFormat(UINT fmt)
 HANDLE SClipboard::getClipboardData(UINT fmt)
 {
     xcb_atom_t fmtAtom = m_conn->clipFormat2Atom(fmt);
-    std::shared_ptr<std::vector<char>> buf = getDataInFormat(m_conn->atoms.CLIPBOARD, fmtAtom);
+    std::shared_ptr<std::vector<char>> buf = getDataInFormat(m_conn->atoms.CLIPBOARD, fmtAtom, kWaitTimeout);
     if (!buf)
     {
         return nullptr;
@@ -990,21 +1001,52 @@ BOOL SClipboard::closeClipboard()
     return TRUE;
 }
 
-std::shared_ptr<std::vector<char>> SClipboard::getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom)
+std::shared_ptr<std::vector<char>> SClipboard::getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom, int timeout)
 {
-    return getSelection(modeAtom, fmtAtom, m_conn->atoms.SO_SELECTION, 0);
+    return getSelection(modeAtom, fmtAtom, m_conn->atoms.SO_SELECTION,timeout, 0);
 }
 
-std::shared_ptr<std::vector<char>> SClipboard::getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property, xcb_timestamp_t time)
+std::shared_ptr<std::vector<char>> SClipboard::getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property, int timeout, xcb_timestamp_t time)
 {
     std::shared_ptr<std::vector<char>> buf = std::make_shared<std::vector<char>>();
-
+    xcb_window_t owner = getClipboardOwner();
+    if(owner == m_owner)
+    {
+        if(fmtAtom == m_conn->atoms.TARGETS){
+            std::vector<xcb_atom_t> types;
+            IEnumFORMATETC *enumFmt;
+            if (m_doClip->EnumFormatEtc(DATADIR_GET, &enumFmt) == S_OK)
+            {
+                FORMATETC fmt;
+                while (enumFmt->Next(1, &fmt, NULL) == S_OK)
+                {
+                    if (fmt.tymed == TYMED_HGLOBAL)
+                    {
+                        types.push_back(m_conn->clipFormat2Atom(fmt.cfFormat));
+                    }
+                }
+                enumFmt->Release();
+            }
+            buf->assign((char *)types.data(), (char *)types.data() + types.size() * sizeof(xcb_atom_t));
+        }else{
+            //read data from this process
+            FORMATETC fmt = { (CLIPFORMAT)m_conn->atom2ClipFormat(fmtAtom), nullptr, 0, 0, TYMED_HGLOBAL };
+            STGMEDIUM medium = { 0 };
+            if(S_OK==m_doClip->GetData(&fmt, &medium)){
+                const char * src = (const char *)GlobalLock(medium.hGlobal);
+                buf->assign(src, src + GlobalSize(medium.hGlobal));
+                GlobalUnlock(medium.hGlobal);
+                ReleaseStgMedium(&medium);
+            }
+        }
+        return buf;
+    }
     xcb_delete_property(xcb_connection(), m_requestor, property);
     xcb_convert_selection(xcb_connection(), m_requestor, selection, fmtAtom, property, time);
 
     m_conn->sync();
 
-    xcb_generic_event_t *ge = waitForClipboardEvent(m_requestor, XCB_SELECTION_NOTIFY, kWaitTimeout, selection);
+    xcb_generic_event_t *ge = waitForClipboardEvent(m_requestor, XCB_SELECTION_NOTIFY, timeout, selection);
     bool no_selection = !ge || ((xcb_selection_notify_event_t *)ge)->property == XCB_NONE;
     free(ge);
 
@@ -1102,7 +1144,7 @@ xcb_window_t SClipboard::getClipboardMgrOwner()
 xcb_generic_event_t *SClipboard::waitForClipboardEvent(xcb_window_t win, int type, int timeout, xcb_atom_t selAtom, bool checkManager)
 {
     uint64_t ts1 = GetTickCount64();
-    do
+    for(;;)
     {
         Notify notify(win, type);
         xcb_generic_event_t *e = m_conn->checkEvent(&notify);
@@ -1112,7 +1154,7 @@ xcb_generic_event_t *SClipboard::waitForClipboardEvent(xcb_window_t win, int typ
         if (checkManager)
         {
             if (getClipboardMgrOwner() == XCB_NONE)
-                return 0;
+                return nullptr;
         }
 
         // process other clipboard events, since someone is probably requesting data from us
@@ -1129,14 +1171,15 @@ xcb_generic_event_t *SClipboard::waitForClipboardEvent(xcb_window_t win, int typ
                 DispatchMessage(&msg);
             }
         }
-
         m_conn->flush();
+        uint64_t ts2 = GetTickCount64();
+        uint64_t cost = ts2 - ts1;
+        if (cost >= timeout)
+            break;
+        Sleep(std::min(50, timeout - (int)cost));
+    }
 
-        // sleep 50 ms, so we don't use up CPU cycles all the time.
-        Sleep(50);
-    } while (GetTickCount64() - ts1 < timeout);
-
-    return 0;
+    return nullptr;
 }
 
 void SClipboard::clipboardReadIncrementalProperty(xcb_window_t win, xcb_atom_t property, xcb_atom_t selection, int nbytes, bool nullterm, std::shared_ptr<std::vector<char>> bufOut)
