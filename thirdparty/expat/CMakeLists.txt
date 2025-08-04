@@ -100,14 +100,3 @@ target_include_directories(expat
         ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-macro(expat_install)
-    if(INSTALL)
-        install(${ARGN})
-    endif()
-endmacro()
-
-
-expat_install(TARGETS expat RUNTIME DESTINATION bin
-                      LIBRARY DESTINATION lib
-                      ARCHIVE DESTINATION lib)
-

@@ -820,6 +820,7 @@ if(NOT WIN32 OR CYGWIN OR MINGW)
   create_symlink(libpng-config FILE libpng${PNGLIB_ABI_VERSION}-config)
 endif()
 
+set(SKIP_INSTALL_ALL ON)
 # Install.
 if(NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
   install(TARGETS ${PNG_LIBRARY_TARGETS}

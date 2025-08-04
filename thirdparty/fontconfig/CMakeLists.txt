@@ -226,8 +226,8 @@ if(ENABLE_TESTS)
     add_subdirectory(test)
 endif()
 
-add_subdirectory(conf.d)
-add_subdirectory(its)
+#add_subdirectory(conf.d)
+#add_subdirectory(its)
 
 if(ENABLE_NLS)
     add_subdirectory(po)
@@ -248,19 +248,6 @@ if(NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/meson-config.h.in)
         ${CMAKE_CURRENT_SOURCE_DIR}/config-fixups.h
         ${CMAKE_CURRENT_BINARY_DIR}/meson-config.h.in
         COPYONLY
-    )
-endif()
-
-# Install configuration
-install(FILES fonts.dtd
-    DESTINATION ${FC_XMLDIR}
-    COMPONENT Runtime
-)
-
-# Create cache directory
-if(NOT WIN32)
-    install(DIRECTORY DESTINATION ${FC_CACHEDIR}
-        COMPONENT Runtime
     )
 endif()
 

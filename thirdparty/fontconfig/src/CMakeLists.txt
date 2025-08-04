@@ -217,32 +217,6 @@ if(WIN32)
     target_compile_definitions(fontconfig PRIVATE ${WIN_EXPORT_ARGS})
 endif()
 
-# Install the library
-# 当使用内部目标时，不导出目标以避免依赖问题
-if(TARGET expat AND TARGET freetype)
-    # 使用内部目标时，只安装库文件，不导出目标
-    install(TARGETS fontconfig
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            COMPONENT Runtime
-            NAMELINK_COMPONENT Development
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            COMPONENT Development
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            COMPONENT Runtime
-    )
-else()
-    # 使用系统库时，可以安全地导出目标
-    install(TARGETS fontconfig
-        EXPORT fontconfigTargets
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            COMPONENT Runtime
-            NAMELINK_COMPONENT Development
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            COMPONENT Development
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            COMPONENT Runtime
-    )
-endif()
 
 # Create static library for internal use
 add_library(fontconfig_internal STATIC ${LIB_FONTCONFIG_SOURCES})
@@ -296,34 +270,3 @@ endif()
 if(WIN32)
     target_compile_definitions(fontconfig_internal PRIVATE ${WIN_EXPORT_ARGS})
 endif()
-
-# Export targets for find_package (only when using system libraries)
-if(NOT (TARGET expat AND TARGET freetype))
-    install(EXPORT fontconfigTargets
-        FILE fontconfigTargets.cmake
-        NAMESPACE fontconfig::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/fontconfig
-        COMPONENT Development
-    )
-endif()
-
-# Create config file for find_package
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file(
-    fontconfigConfigVersion.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY SameMajorVersion
-)
-
-configure_package_config_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/fontconfigConfig.cmake.in
-    fontconfigConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/fontconfig
-)
-
-install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/fontconfigConfig.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/fontconfigConfigVersion.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/fontconfig
-    COMPONENT Development
-)

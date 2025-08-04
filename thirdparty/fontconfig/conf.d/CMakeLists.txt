@@ -68,10 +68,8 @@ set(CONF_LINKS
     65-fonts-persian.conf
     65-nonlatin.conf
     69-unifont.conf
-    80-delicious.conf
     90-synthetic.conf
 )
-
 # Add bitmap configuration based on option
 if(BITMAP_CONF STREQUAL "yes")
     list(APPEND CONF_LINKS 70-yes-bitmaps.conf)
@@ -86,32 +84,6 @@ install(FILES ${CONF_FILES}
     DESTINATION ${FC_TEMPLATEDIR}
     COMPONENT Runtime
 )
-
-# Create symbolic links in config directory
-install(CODE "
-    file(MAKE_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/${FC_CONFIGDIR}\")
-    foreach(conf_file ${CONF_LINKS})
-        set(source_file \"\${CMAKE_INSTALL_PREFIX}/${FC_TEMPLATEDIR}/\${conf_file}\")
-        set(target_file \"\${CMAKE_INSTALL_PREFIX}/${FC_CONFIGDIR}/\${conf_file}\")
-
-        # Remove existing link/file if it exists
-        if(EXISTS \"\${target_file}\" OR IS_SYMLINK \"\${target_file}\")
-            file(REMOVE \"\${target_file}\")
-        endif()
-
-        # Create symbolic link
-        execute_process(
-            COMMAND \${CMAKE_COMMAND} -E create_symlink
-                    \"../conf.avail/\${conf_file}\"
-                    \"\${target_file}\"
-            RESULT_VARIABLE link_result
-        )
-
-        if(NOT link_result EQUAL 0)
-            message(WARNING \"Failed to create symbolic link for \${conf_file}\")
-        endif()
-    endforeach()
-" COMPONENT Runtime)
 
 # Generate 35-lang-normalize.conf
 # First, get list of orthography files without underscores from fc-lang

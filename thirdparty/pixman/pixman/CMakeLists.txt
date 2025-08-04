@@ -32,11 +32,6 @@ configure_file(
     @ONLY
 )
 
-# Install pixman-version.h
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/pixman-version.h
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pixman-1
-)
-
 # Extra compile arguments for shared library
 set(PIXMAN_EXTRA_CARGS)
 if(BUILD_SHARED_LIBS AND CMAKE_C_COMPILER_ID STREQUAL "MSVC")
@@ -226,15 +221,6 @@ target_include_directories(pixman-1
     PRIVATE
         ${CMAKE_BINARY_DIR}
         ${CPU_FEATURES_INCLUDE_DIRS}
-)
-
-# Install the library
-install(TARGETS pixman-1
-    EXPORT pixman-targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/pixman-1
 )
 
 # Create an alias for internal use

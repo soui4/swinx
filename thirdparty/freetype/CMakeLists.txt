@@ -575,7 +575,7 @@ endif ()
 
 # Installation
 include(GNUInstallDirs)
-
+set(SKIP_INSTALL_ALL ON)
 if (NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
   install(
     # Note the trailing slash in the argument to `DIRECTORY'!
@@ -639,10 +639,6 @@ if (NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     file(WRITE "${FREETYPE2_PC_IN_NAME}" ${FREETYPE2_PC_IN})
   endif ()
 
-  install(
-    FILES ${PROJECT_BINARY_DIR}/freetype2.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
-    COMPONENT pkgconfig)
 
   include(CMakePackageConfigHelpers)
   write_basic_package_version_file(

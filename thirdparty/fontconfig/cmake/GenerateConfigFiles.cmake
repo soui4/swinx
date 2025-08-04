@@ -29,12 +29,6 @@ configure_file(
     @ONLY
 )
 
-# Install fonts.conf
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/fonts.conf
-    DESTINATION ${FC_BASECONFIGDIR}
-    COMPONENT Runtime
-)
-
 # Generate pkg-config file
 set(PKG_CONFIG_REQUIRES_PRIVATE "freetype2 >= 21.0.15")
 set(PKG_CONFIG_LIBS_PRIVATE "")
@@ -44,14 +38,3 @@ endif()
 if(Threads_FOUND)
     string(APPEND PKG_CONFIG_LIBS_PRIVATE " ${CMAKE_THREAD_LIBS_INIT}")
 endif()
-
-configure_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/fontconfig.pc.in
-    ${CMAKE_CURRENT_BINARY_DIR}/fontconfig.pc
-    @ONLY
-)
-
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/fontconfig.pc
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig
-    COMPONENT Development
-)

@@ -646,15 +646,16 @@ target_link_libraries(cairo ${CAIRO_LIBS})
 # Add dependencies to ensure proper build order
 add_dependencies(cairo pixman-1 freetype fontconfig)
 
-add_library(cairo-static ${SOURCES} ${STATIC_SOURCES})
-target_link_libraries(cairo-static ${CAIRO_LIBS})
+install(TARGETS cairo
+    CONFIGURATIONS Release
+    RUNTIME DESTINATION bin/Release
+    LIBRARY DESTINATION lib/Release
+    ARCHIVE DESTINATION lib/Release
+)
 
-# Add dependencies to ensure proper build order
-add_dependencies(cairo-static pixman-1 freetype fontconfig)
-
-install(TARGETS cairo RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
-install(TARGETS cairo-static RUNTIME DESTINATION bin ARCHIVE DESTINATION lib LIBRARY DESTINATION lib)
-
-install(FILES ${enabled_cairo_headers} DESTINATION include/cairo)
-install(FILES cairo-version.h DESTINATION include/cairo)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cairo-features.h DESTINATION include/cairo)
+install(TARGETS cairo
+    CONFIGURATIONS Debug
+    RUNTIME DESTINATION bin/Debug
+    LIBRARY DESTINATION lib/Debug
+    ARCHIVE DESTINATION lib/Debug
+)

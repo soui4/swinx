@@ -13,8 +13,3 @@ set(FC_HEADERS
     fcfreetype.h
     fcprivate.h
 )
-
-install(FILES ${FC_HEADERS}
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/fontconfig
-    COMPONENT Development
-)
