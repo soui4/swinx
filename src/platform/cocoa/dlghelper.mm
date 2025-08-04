@@ -5,90 +5,65 @@
 #include "sysapi.h"
 #include "winuser.h"
 #include "wnd.h"
-//todo: implement the following functions
-@interface ChooseColorDlg : NSObject<NSWindowDelegate>
--(BOOL)chooseColor:(HWND)parent initClr:(const COLORREF *)initClr out:(COLORREF *)out;
-@end
 
-@implementation ChooseColorDlg{
-    NSColorPanel *_panel;
-    COLORREF _out;
-}
+BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out) {
+    @autoreleasepool {
+        // 创建颜色面板
+        NSColorPanel *colorPanel = [NSColorPanel sharedColorPanel];
+        colorPanel.showsAlpha = YES;
 
--(instancetype)init{
-    self = [super init];
-    if(self){
-        _panel = nil;
-        _out = 0;
-    }
-    return self;
-}
+        // 设置初始颜色（如果有）
+        if (initClr && out) {
+            // COLORREF: 0x00bbggrr
+            uint32_t c = initClr[0];
+            CGFloat r = ((c >>  0) & 0xFF) / 255.0;
+            CGFloat g = ((c >>  8) & 0xFF) / 255.0;
+            CGFloat b = ((c >> 16) & 0xFF) / 255.0;
+            NSColor *initColor = [NSColor colorWithCalibratedRed:r green:g blue:b alpha:1.0];
+            [colorPanel setColor:initColor];
+        }
 
-- (BOOL)windowShouldClose:(id)sender{
-    PostThreadMessage(GetCurrentThreadId(), WM_CANCELMODE, 0, 0);
-    return YES;
-}
+        // 监听关闭和颜色变更事件
+        __block BOOL didStopModal = NO;
+        __block id closeObserver = nil;
+        __block id colorObserver = nil;
+        __block NSColor *pickedColor = nil;
 
-#define FloatColor2IntColor(c) ((int)(c * 255))
-- (void)colorChanged:(id)sender {
-    NSColor *color = [_panel color];
-    _out = RGBA(FloatColor2IntColor(color.redComponent),FloatColor2IntColor(color.greenComponent),FloatColor2IntColor(color.blueComponent),FloatColor2IntColor(color.alphaComponent));
-}
-
--(BOOL)chooseColor:(HWND)parent initClr:(const COLORREF *)initClr out:(COLORREF *)out{
-    _panel = [[NSColorPanel alloc] init];
-    [_panel setDelegate:self];
-    [_panel setTarget:self];
-    [_panel setAction:@selector(colorChanged:)];
-    [_panel setMode:NSColorPanelModeWheel];
-    [_panel setShowsAlpha:YES];
-
-    if(initClr){
-        [_panel setColor:[NSColor colorWithRed:(initClr[0])/255.0 green:(initClr[0])/255.0 blue:(initClr[0])/255.0 alpha:(initClr[0])/255.0]];
-    }
-    if(parent){
-        int parentId = getNsWindowId(parent);
-        if(parentId){
-            NSWindow *pParent = [NSApp windowWithWindowNumber:parentId];
-            if(pParent){
-                [_panel setParentWindow:pParent];
+        colorObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSColorPanelColorDidChangeNotification object:colorPanel queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification * _Nonnull note) {
+            pickedColor = [[colorPanel color] copy];
+        }];
+        closeObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSWindowWillCloseNotification object:colorPanel queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification * _Nonnull note) {
+            if (!didStopModal) {
+                didStopModal = YES;
+                if (pickedColor) {
+                    [NSApp stopModalWithCode:NSModalResponseOK];
+                } else {
+                    [NSApp stopModalWithCode:NSModalResponseCancel];
+                }
             }
+        }];
+
+        [colorPanel setIsVisible:YES];
+        NSInteger modalResult = [NSApp runModalForWindow:colorPanel];
+        [colorPanel orderOut:nil];
+
+        [[NSNotificationCenter defaultCenter] removeObserver:closeObserver];
+        [[NSNotificationCenter defaultCenter] removeObserver:colorObserver];
+
+        if (modalResult == NSModalResponseOK && pickedColor) {
+            NSColor *rgbColor = [pickedColor colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]];
+            if (!rgbColor) return FALSE;
+
+            // 转换为COLORREF格式
+            uint8_t r = (uint8_t)([rgbColor redComponent] * 255);
+            uint8_t g = (uint8_t)([rgbColor greenComponent] * 255);
+            uint8_t b = (uint8_t)([rgbColor blueComponent] * 255);
+            uint32_t a = (uint8_t)([rgbColor alphaComponent] * 255);
+            *out = RGBA(r, g, b, a);
+
+            return TRUE;
         }
-        EnableWindow(parent, FALSE);
-    }
-    [_panel setIsVisible:YES];
-    MSG msg;
-    while(GetMessage(&msg,NULL,0,0)){ 
-        if(msg.message == WM_CANCELMODE){
-            break;
-        }
-        if(msg.message == WM_QUIT){
-            PostQuitMessage(msg.wParam);
-            break;
-        }
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-    }
-    [_panel setIsVisible:NO];
-    [_panel setDelegate:nil];
-    if(parent){
-        EnableWindow(parent, TRUE);
-    }
-    if(!_out)
         return FALSE;
-    *out = _out;
-    return TRUE;
-}
-
-@end
-
-BOOL SChooseColor(HWND parent,const COLORREF initClr[16], COLORREF *out){
-    @autoreleasepool
-    {
-    ChooseColorDlg *dlg = [[ChooseColorDlg alloc] init];
-    BOOL ret = [dlg chooseColor:parent initClr:initClr out:out];
-    dlg = nil;
-    return ret;
     }
 }
 
