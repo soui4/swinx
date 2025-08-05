@@ -1533,7 +1533,7 @@ static void DIB_FixColorsToLoadflags(BITMAPINFO *bmi, UINT loadflags, BYTE pix)
     WORD bpp;
     DWORD compr;
 
-    if (((bitmap_type = DIB_GetBitmapInfo((BITMAPINFOHEADER *)bmi, &width, &height, &bpp, &compr)) == -1))
+    if ((bitmap_type = DIB_GetBitmapInfo((BITMAPINFOHEADER *)bmi, &width, &height, &bpp, &compr) == -1))
     {
         SLOG_FMTW("Invalid bitmap\n");
         return;

@@ -1146,7 +1146,8 @@ void CMenu::RunMenu(HWND hRoot)
                         SMenuItem *pItem = pHideMenu->GetMenuItem(pHideMenu->m_iSelItem);
                         if (pItem)
                         {
-                            if (pHideMenu = pItem->GetSubMenu())
+                            pHideMenu = pItem->GetSubMenu();
+                            if (pHideMenu)
                                 pHideMenu->HideMenu(TRUE);
                         }
                     }

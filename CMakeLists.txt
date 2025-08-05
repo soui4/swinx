@@ -4,8 +4,6 @@ project(swinx)
 set(CMAKE_CXX_STANDARD 11)
 
 add_compile_options(-Wno-deprecated-declarations)
-
-add_compile_options(-Wno-format-truncation)
  
 add_subdirectory(thirdparty)
 if(CMAKE_SYSTEM_NAME MATCHES Darwin)

@@ -113,6 +113,7 @@ typedef int BOOL;
 typedef signed char BOOL;
 #endif//OBJC_BOOL_DEFINED
 #endif
+
 #define FALSE 0
 #define TRUE  1
 typedef float FLOAT;

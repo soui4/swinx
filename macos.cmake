@@ -1,15 +1,14 @@
 
 add_compile_options(-Wno-extern-c-compat)
 add_compile_options(-Wno-unknown-warning-option)
-
+add_compile_options(-Wno-constant-conversion)
+add_compile_options(-Wno-comment)
 file(GLOB_RECURSE HEADERS  include/*.hpp include/*.h)
 file(GLOB SRCS
     src/*.cpp
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
     src/platform/cocoa/*.mm
-    # 添加字体库符号导出文件
-    src/font_symbols_export.cpp
     )
  
 source_group("Header Files" FILES ${HEADERS})
