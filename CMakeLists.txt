@@ -4,8 +4,7 @@ project(swinx)
 set(CMAKE_CXX_STANDARD 11)
 
 add_compile_options(-Wno-deprecated-declarations)
-add_compile_options(-Wno-unknown-warning-option)
-add_compile_options(-Wno-extern-c-compat)
+
 add_compile_options(-Wno-format-truncation)
  
 add_subdirectory(thirdparty)

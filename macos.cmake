@@ -1,4 +1,6 @@
 
+add_compile_options(-Wno-extern-c-compat)
+add_compile_options(-Wno-unknown-warning-option)
 
 file(GLOB_RECURSE HEADERS  include/*.hpp include/*.h)
 file(GLOB SRCS

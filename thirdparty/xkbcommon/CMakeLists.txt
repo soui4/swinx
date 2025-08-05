@@ -61,17 +61,3 @@ set_target_properties(xkbcommon PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties (xkbcommon PROPERTIES
     FOLDER swinx
 )
-
-install(TARGETS xkbcommon
-    CONFIGURATIONS Release
-    RUNTIME DESTINATION bin/Release
-    LIBRARY DESTINATION lib/Release
-    ARCHIVE DESTINATION lib/Release
-)
-
-install(TARGETS xkbcommon
-    CONFIGURATIONS Debug
-    RUNTIME DESTINATION bin/Debug
-    LIBRARY DESTINATION lib/Debug
-    ARCHIVE DESTINATION lib/Debug
-)

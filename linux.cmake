@@ -1,3 +1,4 @@
+add_compile_options(-Wno-attributes)
 find_package(PkgConfig REQUIRED)
 
 # Use internal compiled libraries instead of system packages
