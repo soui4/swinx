@@ -9,6 +9,7 @@
 #include <semaphore.h>
 #include <uuid/uuid.h>
 #include <sys/mman.h>
+#include <locale.h>
 #include "sharedmem.h"
 #include "handle.h"
 #include "synhandle.h"
@@ -95,6 +96,8 @@ class GLobalHandleTable {
         : m_header(nullptr)
         , m_table(nullptr)
     {
+        setlocale(LC_ALL, "zh_CN.UTF-8"); //init locale
+
         m_sharedMem = new SharedMemory();
         SharedMemory::InitStat ret = m_sharedMem->init(name, maxObjects * sizeof(HandleData) + sizeof(TableHeader));
         assert(ret);
