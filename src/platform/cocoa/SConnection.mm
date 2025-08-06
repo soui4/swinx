@@ -452,13 +452,19 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
         tmpHandles[i] = AddHandleRef(handles[i]);
         fds[i] = GetSynHandle(tmpHandles[i])->getReadFd();
     }
+    BOOL bWakeByMsg = FALSE;
     @autoreleasepool 
     {
         NSMutableArray *fdSources = [NSMutableArray array];
         setupFDMonitoring(fdSources, fds, nCount);
         NSDate *timeoutDate = nil;
-        if(timeout != INFINITE)
+        if(timeout == 0)
+            timeoutDate = [NSDate distantPast];
+        else if(timeout == INFINITE)
+            timeoutDate = [NSDate distantFuture];
+        else
             timeoutDate = [NSDate dateWithTimeIntervalSinceNow:timeout/1000.0];
+
         do
         {
             DWORD ts1=GetTickCount();
@@ -475,7 +481,12 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
               timeoutDate = [NSDate dateWithTimeIntervalSinceNow:timeout/1000.0];
             }
 
-            if(nsEvent.type == kFDReadyEventType && nsEvent.subtype == kFDReadyEventSubtype){
+            if(nsEvent.type == NSEventTypeAppKitDefined && nsEvent.subtype == NSEventSubtypeApplicationDeactivated){
+                //quit menu.
+                EndMenu();
+                postMsg(0,WM_CANCELMODE,0,0);
+            }
+            else if(nsEvent.type == kFDReadyEventType && nsEvent.subtype == kFDReadyEventSubtype){
                 int ifd = nsEvent.data1;
                 states[ifd]=true;
                 nSignals++;
@@ -484,7 +495,10 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
             }else{
                 [NSApp sendEvent:nsEvent];
                 [NSApp updateWindows];
-                break;
+                if(dwWaitMask != 0){
+                    bWakeByMsg = TRUE;
+                    break;
+                }
             }
         } while (true);
         //clear fdSources
@@ -494,7 +508,7 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
         }
     }
 
-    int ret = WAIT_TIMEOUT;
+    int ret = bWakeByMsg ? (WAIT_OBJECT_0 + nCount) : WAIT_TIMEOUT;
 
     for (int i = 0; nSignals && i < nCount; i++)
     {
@@ -578,14 +592,29 @@ void SConnection::updateMsgQueue(DWORD dwTimeout) {
         NSDate *timeoutDate = nil;
         if(dwTimeout == 0)
             timeoutDate = [NSDate distantPast];
-        else if(dwTimeout != INFINITE)
+        else if(dwTimeout == INFINITE)
+            timeoutDate = [NSDate distantFuture];
+        else
             timeoutDate = [NSDate dateWithTimeIntervalSinceNow:dwTimeout/1000.0];
         do
         {
+            DWORD ts1 = GetTickCount();
             NSEvent * nsEvent = nextEvent(timeoutDate, this);
             if(nsEvent == nil)
                 break;
             if(nsEvent.type == kFDReadyEventType && nsEvent.subtype == kFDReadyEventSubtype){
+                if(dwTimeout != INFINITE && dwTimeout != 0){
+                    DWORD ts2 = GetTickCount();
+                    if(dwTimeout > (ts2 - ts1))
+                    {
+                        dwTimeout -= (ts2 - ts1);
+                        timeoutDate = [NSDate dateWithTimeIntervalSinceNow:dwTimeout/1000.0];
+                    }    
+                    else{
+                        dwTimeout = 0;
+                        timeoutDate = [NSDate distantPast];
+                    }
+                }
                 continue;
             }
             if(nsEvent.type == NSEventTypeAppKitDefined && nsEvent.subtype == NSEventSubtypeApplicationDeactivated){
@@ -595,7 +624,7 @@ void SConnection::updateMsgQueue(DWORD dwTimeout) {
             }
             [NSApp sendEvent:nsEvent];
             [NSApp updateWindows];
-            timeoutDate = [NSDate distantPast];
+            break;
         } while (true);
     }
 }
