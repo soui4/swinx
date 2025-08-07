@@ -237,6 +237,16 @@ extern "C"
 /* Setting to scroll one page for SPI_GET/SETWHEELSCROLLLINES */
 #define WHEEL_PAGESCROLL (UINT_MAX)
 
+
+#define GET_KEYSTATE_WPARAM(wParam)     (LOWORD(wParam))
+#define GET_NCHITTEST_WPARAM(wParam)    ((short)LOWORD(wParam))
+#define GET_XBUTTON_WPARAM(wParam)      (HIWORD(wParam))
+
+/* XButton values are WORD flags */
+#define XBUTTON1      0x0001
+#define XBUTTON2      0x0002
+/* Were there to be an XBUTTON3, its value would be 0x0004 */
+
 #define WM_PARENTNOTIFY  0x0210
 #define WM_ENTERMENULOOP 0x0211
 #define WM_EXITMENULOOP  0x0212
