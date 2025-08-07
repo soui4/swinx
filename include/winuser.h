@@ -237,11 +237,6 @@ extern "C"
 /* Setting to scroll one page for SPI_GET/SETWHEELSCROLLLINES */
 #define WHEEL_PAGESCROLL (UINT_MAX)
 
-
-#define GET_KEYSTATE_WPARAM(wParam)     (LOWORD(wParam))
-#define GET_NCHITTEST_WPARAM(wParam)    ((short)LOWORD(wParam))
-#define GET_XBUTTON_WPARAM(wParam)      (HIWORD(wParam))
-
 /* XButton values are WORD flags */
 #define XBUTTON1      0x0001
 #define XBUTTON2      0x0002

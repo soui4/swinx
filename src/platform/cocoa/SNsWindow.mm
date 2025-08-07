@@ -576,7 +576,11 @@ defer:(BOOL)flag;
 }
 
 - (void) mouseDown: (NSEvent *) theEvent {
-    [self onMouseEvent:theEvent withMsgId:WM_LBUTTONDOWN];
+    if ([theEvent clickCount] == 2) {
+        [self onMouseEvent:theEvent withMsgId:WM_LBUTTONDBLCLK];
+    } else {
+        [self onMouseEvent:theEvent withMsgId:WM_LBUTTONDOWN];
+    }
 }
 
 - (void) mouseUp: (NSEvent *) theEvent {
@@ -584,21 +588,76 @@ defer:(BOOL)flag;
 }
 
 - (void)rightMouseDown:(NSEvent *)theEvent{
-    [self onMouseEvent:theEvent withMsgId:WM_RBUTTONDOWN];
+    if([theEvent clickCount] == 2)
+        [self onMouseEvent:theEvent withMsgId:WM_RBUTTONDBLCLK];
+    else
+        [self onMouseEvent:theEvent withMsgId:WM_RBUTTONDOWN];
 }
 
 - (void)rightMouseUp:(NSEvent *)theEvent{
     [self onMouseEvent:theEvent withMsgId:WM_RBUTTONUP];
 }
+
+-(void)onXbuttonEvent:(NSEvent *)theEvent withMsgId:(int)msgId{
+    int xbutton = 0;
+    if(theEvent.buttonNumber == 3)
+        xbutton = XBUTTON1;
+    else if(theEvent.buttonNumber == 4)
+        xbutton = XBUTTON2;
+    UINT uFlags = 0;
+    NSEventModifierFlags modifiers = [theEvent modifierFlags];
+    NSUInteger pressedButtons = [NSEvent pressedMouseButtons];
+    if (modifiers & NSEventModifierFlagShift) {
+        uFlags |= MK_SHIFT;
+    }
+    if (modifiers & NSEventModifierFlagControl) {
+        uFlags |= MK_CONTROL;
+    }
+    if(pressedButtons & (1<<0)){
+        uFlags |= MK_LBUTTON;
+    }
+    if(pressedButtons & (1<<1)){
+        uFlags |= MK_RBUTTON;
+    }
+    if(pressedButtons & (1<<2)){
+        uFlags |= MK_MBUTTON;
+    }
+    if(pressedButtons & (1<<3)){
+        uFlags |= MK_XBUTTON1;
+    }
+    if(pressedButtons & (1<<4)){
+        uFlags |= MK_XBUTTON2;
+    }
+
+    NSPoint locationInView = [self convertPoint:theEvent.locationInWindow fromView:nil];
+    float scale = [self.window backingScaleFactor];
+    locationInView.x *= scale;
+    locationInView.y *= scale;
+
+    LPARAM lParam = MAKELPARAM(float2int(locationInView.x),float2int(locationInView.y));
+    m_pListener->OnNsEvent(m_hWnd,msgId,MAKEWPARAM(xbutton, uFlags),lParam);    
+}
+
 - (void)otherMouseDown:(NSEvent *)theEvent{
+
     if(theEvent.buttonNumber == 2){
-        [self onMouseEvent:theEvent withMsgId:WM_MBUTTONDOWN];
+        if([theEvent clickCount] == 2)
+            [self onMouseEvent:theEvent withMsgId:WM_MBUTTONDBLCLK];
+        else
+            [self onMouseEvent:theEvent withMsgId:WM_MBUTTONDOWN];
+    }else if(theEvent.buttonNumber<=4){
+        if([theEvent clickCount] == 2)
+            [self onXbuttonEvent:theEvent withMsgId:WM_XBUTTONDBLCLK];
+        else
+            [self onXbuttonEvent:theEvent withMsgId:WM_XBUTTONDOWN];
     }
 }
 
 - (void)otherMouseUp:(NSEvent *)theEvent{
     if(theEvent.buttonNumber == 2){
         [self onMouseEvent:theEvent withMsgId:WM_MBUTTONUP];
+    }else if(theEvent.buttonNumber<=4){
+        [self onXbuttonEvent:theEvent withMsgId:WM_XBUTTONUP];
     }
 }
 
