@@ -44,13 +44,19 @@
 
 
 namespace swinx {
-struct OsState {
-  SConnBase *m_pOsListener;
-  OsState(SConnBase *pListener);
+class OsState {
+  protected:
+  SwinXApplication *m_nsApp;
+  public:
+  OsState();
   ~OsState();
+
+  void setListener(SConnBase *pListener) {
+    m_nsApp->m_pOsListener = pListener;
+  }
 };
 
-OsState::OsState(SConnBase *pListener) : m_pOsListener(pListener) {
+OsState::OsState() : m_nsApp(nullptr) {
   @autoreleasepool {
     SwinXApplication *nsApp = [SwinXApplication sharedApplication];
     [nsApp setActivationPolicy:NSApplicationActivationPolicyRegular];
@@ -58,25 +64,32 @@ OsState::OsState(SConnBase *pListener) : m_pOsListener(pListener) {
     AppDelegate *appDelegate = [[AppDelegate alloc] init];
     [nsApp setDelegate:appDelegate];
     [nsApp finishLaunching];
-    nsApp->m_pOsListener = pListener;
+    m_nsApp = nsApp;
   }
 }
 OsState::~OsState() {
 }
 
-static OsState *s_OsState = nil;
+static OsState *s_OsState = nullptr;
+
+__attribute__((constructor)) void OnSwinxInit(){
+  s_OsState = new OsState();
+}
+
+__attribute__((destructor)) void OnSwinxUninit(){
+  delete s_OsState;
+}
 
 bool init(SConnBase *pListener) {
-  if (s_OsState != nil)
+  if (s_OsState == nullptr)
     return false;
-  s_OsState = new OsState(pListener);
+  s_OsState->setListener(pListener);
   return true;
 }
 void shutdown() {
-  if (s_OsState == nil)
+  if (s_OsState == nullptr)
     return;
-  delete s_OsState;
-  s_OsState = nil;
+  s_OsState->setListener(nullptr);
 }
 
 } // namespace swinx
