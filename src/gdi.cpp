@@ -489,7 +489,47 @@ static BOOL ApplyFont(HDC hdc)
     if (hdc->hfont)
     {
         LOGFONT *lf = (LOGFONT *)GetGdiObjPtr(hdc->hfont);
-        cairo_select_font_face(hdc->cairo, lf->lfFaceName, lf->lfItalic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL, lf->lfWeight > 400 ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
+        const char *fontName = lf->lfFaceName;
+        // If the font name is not ASCII, try to resolve to English name using fontconfig
+        bool needResolve = false;
+        for (const char *p = lf->lfFaceName; *p; ++p) {
+            if ((*p) & 0x80) {
+                needResolve = true;
+                break;
+            }
+        }
+        if (needResolve) {
+            static std::mutex mutex;
+            static std::map<std::string, std::string> fontMap;
+            std::lock_guard<std::mutex> lock(mutex);
+            auto it = fontMap.find(lf->lfFaceName);
+            if (it != fontMap.end()) {
+                fontName = it->second.c_str();
+            } else {
+                FcPattern *pat = FcPatternCreate();
+                FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)lf->lfFaceName);
+                FcConfigSubstitute(NULL, pat, FcMatchPattern);
+                FcDefaultSubstitute(pat);
+                FcResult result;
+                FcPattern *font = FcFontMatch(NULL, pat, &result);
+                if (font) {
+                    FcChar8 *family = NULL;
+                    if (FcPatternGetString(font, FC_FAMILY, 0, &family) == FcResultMatch && family) {
+                        char szFaceName[LF_FACESIZE];
+                        strncpy(szFaceName, (const char *)family, LF_FACESIZE - 1);
+                        szFaceName[LF_FACESIZE - 1] = '\0';
+                        fontName = szFaceName;
+                        auto res = fontMap.insert(std::make_pair(lf->lfFaceName, szFaceName));
+                        if(res.second){
+                            fontName = res.first->second.c_str();
+                        }
+                    }
+                    FcPatternDestroy(font);
+                }
+                FcPatternDestroy(pat);
+            }
+        }
+        cairo_select_font_face(hdc->cairo, fontName, lf->lfItalic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL, lf->lfWeight > 400 ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
 
         cairo_set_font_size(hdc->cairo, abs(lf->lfHeight));
         return TRUE;
