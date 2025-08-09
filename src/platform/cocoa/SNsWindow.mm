@@ -368,7 +368,6 @@ defer:(BOOL)flag;
     NSRange   _selectedRange;
     NSRect    _inputRect;
     BOOL      _bEnabled;
-    cairo_surface_t * _offscreenSur;
     IDataObject *_doDragging;
     DWORD _dwDragEffect;
 }
@@ -392,7 +391,6 @@ defer:(BOOL)flag;
     m_bMsgTransparent = FALSE;
     m_modifierFlags = 0;
     _markedText = nil;
-    _offscreenSur = nil;
     _bEnabled = TRUE;
     _doDragging = nil;
     _dwDragEffect = DROPEFFECT_NONE;
@@ -416,10 +414,6 @@ defer:(BOOL)flag;
     m_pListener->OnNsEvent(m_hWnd, WM_DESTROY, 0, 0);
     SLOG_STMI()<<"hjx destroy: hWnd="<<m_hWnd;
     CFBridgingRelease((void*)m_hWnd);
-    if(_offscreenSur){
-        cairo_surface_destroy(_offscreenSur);
-        _offscreenSur = nil;       
-    }
 }
 
 - (void)dealloc
@@ -476,49 +470,27 @@ defer:(BOOL)flag;
     }
 }
 
-- (void)layout {
-    [super layout];
-    NSRect rect = self.frame;
-    float scale = [self.window backingScaleFactor];
-    int wid = (int)(rect.size.width * scale);
-    int hei = (int)(rect.size.height * scale);
-    if(_offscreenSur!=nil){
-        int oldWid = cairo_image_surface_get_width(_offscreenSur);
-        int oldHei = cairo_image_surface_get_height(_offscreenSur);
-        if(oldWid == wid && oldHei == hei)
-            return;
-        cairo_surface_destroy(_offscreenSur);
-        _offscreenSur = nil;
-    }
-    _offscreenSur = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, wid, hei);
-}
-
 - (void)drawRect:(NSRect)dirtyRect {
     CGContextRef cgContext = [[NSGraphicsContext currentContext] CGContext];
+    float scale = [self.window backingScaleFactor];
     cairo_surface_t *windowSurface = cairo_quartz_surface_create_for_cg_context(
         cgContext,
         self.bounds.size.width,
         self.bounds.size.height
     );
+    cairo_surface_set_device_scale(windowSurface, 1.0f/scale, 1.0f/scale);
+    dirtyRect.origin.x *= scale;
+    dirtyRect.origin.y *= scale;
+    dirtyRect.size.width *= scale;
+    dirtyRect.size.height *= scale;
+
     cairo_t *windowCr = cairo_create(windowSurface);
     cairo_rectangle(windowCr, dirtyRect.origin.x, dirtyRect.origin.y, dirtyRect.size.width, dirtyRect.size.height);
     cairo_clip(windowCr);
-    float scale = [self.window backingScaleFactor];
-    cairo_scale(windowCr, 1.0f/scale, 1.0f/scale);
     {
-        dirtyRect.origin.x *= scale;
-        dirtyRect.origin.y *= scale;
-        dirtyRect.size.width *= scale;
-        dirtyRect.size.height *= scale;
-
-        cairo_t * offscreenCr = cairo_create(_offscreenSur);
         RECT rc = {(LONG)dirtyRect.origin.x, (LONG)dirtyRect.origin.y, (LONG)(dirtyRect.origin.x+dirtyRect.size.width), (LONG)(dirtyRect.origin.y+dirtyRect.size.height)};
-        m_pListener->OnDrawRect(m_hWnd, rc, offscreenCr);
-        cairo_destroy(offscreenCr);
-        cairo_set_source_surface(windowCr, _offscreenSur,0,0);
-        cairo_paint(windowCr);
+        m_pListener->OnDrawRect(m_hWnd, rc, windowCr);
     }
-    
     cairo_destroy(windowCr);
     cairo_surface_destroy(windowSurface);
 }
