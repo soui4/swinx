@@ -847,21 +847,67 @@ static int is_executable(const char *filename)
     return 0; // 文件不可执行
 }
 
+// 更准确判断字符串是否为网址（支持常见域名后缀和IP）
+static bool is_probably_url(const char* str) {
+    if (!str) return false;
+    // 1. 以http/https/ftp/mailto等协议开头
+    if (strncmp(str, "http://", 7) == 0 || strncmp(str, "https://", 8) == 0 || strncmp(str, "ftp://", 6) == 0 || strncmp(str, "mailto:", 7) == 0)
+        return true;
+    // 2. 以www.开头
+    if (strncasecmp(str, "www.", 4) == 0)
+        return true;
+    // 3. 检查是否为常见域名后缀
+    const char* dot = strrchr(str, '.');
+    if (dot && dot != str) {
+        static const char* tlds[] = {".com",".net",".org",".cn",".gov",".edu",".io",".co",".dev",".xyz",".info",".me",".cc",".tv",".ai",".app",".shop",".site",".top",".club",".online",".store",".tech",".pro",".link",".live",".news",".fun",".work",".cloud",".wiki",".mobi",".name",".today",".space",".website",".page",".life",".run",".group",".vip",".ltd",".red",".blue",".green",".pink",".black",".gold",".plus",".team",".center",".company",".email",".market",".press",".solutions",".world",".zone",".asia",".biz",".cat",".jobs",".law",".moda",".museum",".tel",".travel",".us",".uk",".de",".fr",".jp",".kr",".hk",".tw",".sg",".my",".au",".ca",".es",".it",".ru",".ch",".se",".no",".fi",".pl",".tr",".be",".at",".cz",".sk",".hu",".ro",".bg",".lt",".lv",".ee",".gr",".pt",".ie",".il",".za",".mx",".ar",".br",".cl",".co",".pe",".ve",".uy",".ec",".bo",".py",".do",".cr",".pa",".gt",".hn",".ni",".sv",".cu",".pr",".jm",".tt",".bs",".ag",".bb",".dm",".gd",".kn",".lc",".vc",".sr",".gy",".bz",".ai",".bm",".ky",".ms",".tc",".vg",".vi",".fk",".gs",".aq",".bv",".hm",".tf",".wf",".yt",".pm",".re",".tf",".mq",".gp",".bl",".mf",".sx",".cw",".bq",".aw",".an",".nl",".dk",".is",".fo",".gl",".sj",".ax",".by",".ua",".md",".ge",".am",".az",".kg",".kz",".tj",".tm",".uz",".af",".pk",".bd",".lk",".np",".mv",".bt",".ir",".iq",".sy",".jo",".lb",".ps",".kw",".qa",".bh",".om",".ye",".sa",".ae",".dz",".eg",".ly",".ma",".sd",".tn",".eh",".ss",".cm",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw"};
+        for (size_t i = 0; i < sizeof(tlds)/sizeof(tlds[0]); ++i) {
+            size_t tldlen = strlen(tlds[i]);
+            if (strlen(dot) >= tldlen && strncasecmp(dot, tlds[i], tldlen) == 0)
+                return true;
+        }
+    }
+    // 4. 检查是否为IPv4地址
+    int d1, d2, d3, d4;
+    if (sscanf(str, "%d.%d.%d.%d", &d1, &d2, &d3, &d4) == 4) {
+        if (d1 >= 0 && d1 <= 255 && d2 >= 0 && d2 <= 255 && d3 >= 0 && d3 <= 255 && d4 >= 0 && d4 <= 255)
+            return true;
+    }
+    return false;
+}
 BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd)
 {
     if (!lpOperation || stricmp(lpOperation, "open") != 0)
         return FALSE;
     int exe = is_executable(lpFile);
-    if (exe == -1)
-        return FALSE;
-    if (exe == 0)
+    if (exe <= 0)
     {
-        int len = strlen(lpFile);
-        char *cmd = new char[len + 10];
-        sprintf(cmd, "xdg-open %s", lpFile);
+        // 检查是否为网址（含.且无本地文件）
+        const char *url = lpFile;
+        std::string urlBuf;
+        if (is_probably_url(lpFile)) {
+            if (strncmp(lpFile, "http://", 7) != 0 && strncmp(lpFile, "https://", 8) != 0) {
+                urlBuf = "https://";
+                urlBuf += lpFile;
+                url = urlBuf.c_str();
+            }
+        }
+        #ifdef __linux__
+        int len = strlen(url);
+        char *cmd = new char[len + 12];
+        sprintf(cmd, "xdg-open '%s'", url);
         int ret = system(cmd);
         delete[] cmd;
-        return TRUE;
+        return ret == 0;
+        #elif defined(__APPLE__)
+        int len = strlen(url);
+        char *cmd = new char[len + 10];
+        sprintf(cmd, "open '%s'", url);
+        int ret = system(cmd);
+        delete[] cmd;
+        return (ret == 0);
+        #else
+        return FALSE;
+        #endif
     }
     else
     {
