@@ -2714,6 +2714,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             {
                 if ((*it)->message == UM_XDND_DRAG_OVER && (*it)->hwnd == e2->window)
                 {
+                    delete *it;
                     m_msgQueue.erase(it);
                     break;
                 }
@@ -2894,17 +2895,26 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_MOTION_NOTIFY:
     {
         xcb_motion_notify_event_t *e2 = (xcb_motion_notify_event_t *)event;
+        POINT pt = { e2->event_x, e2->event_y };
+        if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
+        {
+            // SLOG_STMI()<<"remap mousemove to capture: capture="<<m_hWndCapture<<" event window="<<e2->event;
+            MapWindowPoints(e2->event, m_hWndCapture, &pt, 1);
+            pMsg->hwnd = m_hWndCapture;
+        }
         // remove old mouse move
-        static const int16_t kMinPosDiff = 3;
+        static const int16_t kMinPosDiff = 5;
         WPARAM wp = ButtonState2Mask(e2->state);
         std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
         for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++)
         {
             if ((*it)->message == WM_MOUSEMOVE && (*it)->hwnd == e2->event && (*it)->wParam == wp)
             {
-                int16_t diff = abs((*it)->pt.x - e2->event_x) + abs((*it)->pt.y - e2->event_y);
+                POINT ptPrev={GET_X_LPARAM((*it)->lParam), GET_Y_LPARAM((*it)->lParam)};
+                int16_t diff = abs(ptPrev.x - pt.x) + abs(ptPrev.y - pt.x);
                 if (diff <= kMinPosDiff)
                 {
+                    delete *it;
                     m_msgQueue.erase(it);
                     break;
                 }
@@ -2913,13 +2923,6 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg = new Msg;
         pMsg->hwnd = e2->event;
         pMsg->message = WM_MOUSEMOVE;
-        POINT pt = { e2->event_x, e2->event_y };
-        if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
-        {
-            // SLOG_STMI()<<"remap mousemove to capture: capture="<<m_hWndCapture<<" event window="<<e2->event;
-            MapWindowPoints(e2->event, m_hWndCapture, &pt, 1);
-            pMsg->hwnd = m_hWndCapture;
-        }
         pMsg->lParam = MAKELPARAM(pt.x, pt.y);
         pMsg->wParam = wp;
         pMsg->time = e2->time;
