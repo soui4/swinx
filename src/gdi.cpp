@@ -525,6 +525,8 @@ static BOOL ApplyFont(HDC hdc)
                         }
                     }
                     FcPatternDestroy(font);
+                }else{
+                    fontMap.insert(std::make_pair(lf->lfFaceName, lf->lfFaceName));
                 }
                 FcPatternDestroy(pat);
             }
