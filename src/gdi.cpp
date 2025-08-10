@@ -518,15 +518,14 @@ static BOOL ApplyFont(HDC hdc)
                         char szFaceName[LF_FACESIZE];
                         strncpy(szFaceName, (const char *)family, LF_FACESIZE - 1);
                         szFaceName[LF_FACESIZE - 1] = '\0';
-                        fontName = szFaceName;
                         auto res = fontMap.insert(std::make_pair(lf->lfFaceName, szFaceName));
-                        if(res.second){
-                            fontName = res.first->second.c_str();
-                        }
+                        assert(res.second);
+                        fontName = res.first->second.c_str();
                     }
                     FcPatternDestroy(font);
-                }else{
-                    fontMap.insert(std::make_pair(lf->lfFaceName, lf->lfFaceName));
+                }
+                if(fontName == lf->lfFaceName){
+                    fontMap.insert(std::make_pair(lf->lfFaceName, fontName));
                 }
                 FcPatternDestroy(pat);
             }
