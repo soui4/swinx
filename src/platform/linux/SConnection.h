@@ -62,7 +62,7 @@ class SConnection {
         TM_CARET = -100, //timer for caret blink
         TS_CARET = 500,//default caret blink elapse, 500ms
         TM_FLASH = -101, //timer for flash window
-
+        TM_DELAY = -102, //timer for delay WM_PAINT message
         TM_HOVERDELAY = -50,
     };
 
@@ -288,6 +288,7 @@ public:
     bool event2Msg(bool bTimeout, int elapse, uint64_t ts);
     void OnFocusChanged(HWND hFocus);
     void OnActiveChange(HWND hWnd,BOOL bActive);
+    bool existTimer(HWND hWnd, UINT_PTR id) const;
     xcb_cursor_t createXcbCursor(HCURSOR cursor);
     uint32_t netWmStates(HWND hWnd);
     void updateWmclass(HWND hWnd, _Window *wndObj);

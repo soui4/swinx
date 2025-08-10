@@ -903,6 +903,13 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             proc(msg->hwnd, WM_TIMER, msg->wParam, msg->time);
             delete msg;
             return PeekMessage(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+        }else if(msg->message == WM_TIMER && msg->wParam == TM_DELAY){
+            // delay timer for paint
+            m_msgQueue.erase(it);
+            KillTimer(msg->hwnd, msg->wParam);
+            SendExposeEvent(msg->hwnd,nullptr);
+            delete msg;
+            return PeekMessage(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
         }
         m_msgPeek = msg;
         if (wRemoveMsg == PM_NOREMOVE)
@@ -911,20 +918,11 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         }
         else
         {
-            m_msgQueue.erase(it);
-            if (m_msgPeek->message == WM_PAINT)
+            if (msg->message == WM_PAINT)
             {
-                static const uint64_t kFrameInterval = 15; // 15 interval for 66 frame per second
-                if (m_msgQueue.empty() || m_tsLastPaint == -1 || (GetTickCount64() - m_msgPeek->time) >= kFrameInterval)
-                    m_tsLastPaint = m_msgPeek->time;
-                else
-                {
-                    m_msgPeek = nullptr;
-                    BOOL bRet = peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
-                    postMsg(msg); // insert paint message back.
-                    return bRet;
-                }
+                m_tsLastPaint = GetTickCount64();
             }
+            m_msgQueue.erase(it);
             m_bMsgNeedFree = true;
         }
         memcpy(pMsg, (MSG *)m_msgPeek, sizeof(MSG));
@@ -1467,6 +1465,20 @@ void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
 
 void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc)
 {
+    if (!IsWindowVisible(hWnd))
+        return;
+    uint64_t now = GetTickCount64();
+    uint64_t elapsed = now - m_tsLastPaint;
+    const static int kMinInterval = 16; // 60 fps
+    if(m_tsLastPaint != -1 && elapsed < kMinInterval){
+        // avoid send too many expose event in a short time.
+        if(!existTimer(hWnd, TM_DELAY))
+        {
+            SetTimer(hWnd, TM_DELAY, kMinInterval-elapsed, NULL);
+        }
+        //SLOG_STMI()<<"too many expose event, delay "<<elapsed<<"ms";
+        return;
+    }
     xcb_expose_event_t expose_event;
     expose_event.response_type = XCB_EXPOSE;
     expose_event.window = hWnd;
@@ -1675,6 +1687,18 @@ class PropertyNotifyEvent : public IEventChecker {
 xcb_timestamp_t SConnection::getSectionTs()
 {
     return m_tsSelection;
+}
+
+bool SConnection::existTimer(HWND hWnd, UINT_PTR id) const{
+    std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+    for (const auto &it : m_lstTimer)
+    {
+        if (it.hWnd == hWnd && it.id == id)
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC proc)
