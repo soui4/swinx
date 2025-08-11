@@ -293,8 +293,65 @@ DWORD SConnection::GetMsgPos() const {
 }
 
 DWORD SConnection::GetQueueStatus(UINT flags) {
-    // Empty implementation
-    return 0;
+    std::unique_lock<std::recursive_mutex> lock(m_mutex);
+    DWORD ret = 0;
+    for (auto it : m_msgQueue)
+    {
+        switch (it->message)
+        {
+        case WM_PAINT:
+            if (flags & QS_PAINT)
+            {
+                ret = MAKELONG(0, it->message);
+            }
+            break;
+        case WM_KEYDOWN:
+        case WM_KEYUP:
+        case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP:
+            if (flags & QS_KEY)
+            {
+                ret = MAKELONG(0, it->message);
+            }
+            break;
+        case WM_MOUSEMOVE:
+            if (flags & QS_MOUSEMOVE)
+            {
+                ret = MAKELONG(0, it->message);
+            }
+            break;
+        case WM_TIMER:
+            if (flags & QS_TIMER)
+            {
+                ret = MAKELONG(0, it->message);
+            }
+            break;
+        default:
+            if (it->message >= WM_LBUTTONDOWN && it->message <= WM_XBUTTONDBLCLK && (flags & QS_MOUSEBUTTON))
+            {
+                ret = MAKELONG(0, it->message);
+            }
+            if (it->msgReply)
+            {
+                if (it->msgReply->GetType() == MT_POST && flags & QS_POSTMESSAGE)
+                {
+                    ret = MAKELONG(0, it->message);
+                }
+                else if (it->msgReply->GetType() == MT_SEND && flags & QS_SENDMESSAGE)
+                {
+                    ret = MAKELONG(0, it->message);
+                }
+            }
+            if (flags & QS_ALLPOSTMESSAGE)
+            {
+                ret = MAKELONG(0, it->message);
+            }
+            break;
+        }
+        if (ret != 0)
+            break;
+    }
+    return ret;
 }
 
 
@@ -442,7 +499,7 @@ static NSEvent *nextEvent(NSDate *timeoutDate, SConnection *connection) {
     return nsEvent;
 }
 
-int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, bool fWaitAll, DWORD dwWaitMask) {
+int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD to, bool fWaitAll, DWORD dwWaitMask) {
     HANDLE tmpHandles[MAXIMUM_WAIT_OBJECTS] = { 0 };
     int fds[MAXIMUM_WAIT_OBJECTS] = { 0 };
     bool states[MAXIMUM_WAIT_OBJECTS] = { false };
@@ -451,6 +508,13 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
     {
         tmpHandles[i] = AddHandleRef(handles[i]);
         fds[i] = GetSynHandle(tmpHandles[i])->getReadFd();
+    }
+    DWORD timeout = to;
+    if (!m_bBlockTimer) {
+      std::unique_lock<std::recursive_mutex> lock(m_mutex);
+      for (auto &it : m_lstTimer) {
+        timeout = std::min(timeout, it.fireRemain);
+      }
     }
     BOOL bWakeByMsg = FALSE;
     @autoreleasepool 
@@ -475,10 +539,14 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
             DWORD elapse = ts2 - ts1;
             if(timeout!=INFINITE){
               if(timeout>elapse)
+              {
                 timeout -= elapse;
-              else
+                timeoutDate = [NSDate dateWithTimeIntervalSinceNow:timeout/1000.0];
+              }  
+              else{
                 timeout = 0;
-              timeoutDate = [NSDate dateWithTimeIntervalSinceNow:timeout/1000.0];
+                timeoutDate = [NSDate distantPast];
+              }
             }
 
             if(nsEvent.type == NSEventTypeAppKitDefined && nsEvent.subtype == NSEventSubtypeApplicationDeactivated){
@@ -521,6 +589,15 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
     }
     for(int i = 0; i < nCount; i++){
         CloseHandle(tmpHandles[i]);
+    }
+    if (m_bQuit)
+        return WAIT_FAILED;
+    if (ret == WAIT_TIMEOUT || ret == WAIT_OBJECT_0 + nCount) {
+      updateMsgQueue(0);
+      if (dwWaitMask != 0) {
+        if (GetQueueStatus(dwWaitMask))
+          ret = WAIT_OBJECT_0 + nCount;
+      }
     }
     return ret;
 }
