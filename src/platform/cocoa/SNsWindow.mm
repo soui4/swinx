@@ -485,8 +485,6 @@ defer:(BOOL)flag;
     dirtyRect.size.height *= scale;
 
     cairo_t *windowCr = cairo_create(windowSurface);
-    cairo_rectangle(windowCr, dirtyRect.origin.x, dirtyRect.origin.y, dirtyRect.size.width, dirtyRect.size.height);
-    cairo_clip(windowCr);
     {
         RECT rc = {(LONG)dirtyRect.origin.x, (LONG)dirtyRect.origin.y, (LONG)(dirtyRect.origin.x+dirtyRect.size.width), (LONG)(dirtyRect.origin.y+dirtyRect.size.height)};
         m_pListener->OnDrawRect(m_hWnd, rc, windowCr);

@@ -43,6 +43,8 @@ if(NOT PNG_INCLUDE_DIR)
 endif()
 find_package(Threads)
 
+# option for disable Quartz font backend, default OFF
+option(DISABLE_QUARTZ_FONT "Disable Quartz font backend" OFF)
 
 include(Configure_config.cmake)
 include(Configure_features.cmake)

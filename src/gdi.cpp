@@ -16,10 +16,10 @@
 #include "log.h"
 #define kLogTag "gdi"
 
-static bool DumpBmp(HBITMAP bmp, const char *path)
+EXTERN_C BOOL Swinx_DumpBmp(HBITMAP bmp, const char *path)
 {
     if (!bmp)
-        return false;
+        return FALSE;
     return CAIRO_STATUS_SUCCESS == cairo_surface_write_to_png((cairo_surface_t *)GetGdiObjPtr(bmp), path);
 }
 
