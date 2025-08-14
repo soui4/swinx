@@ -76,10 +76,8 @@ ATOM ClassMgr::get_class_info(HINSTANCE instance, const char *class_name, WNDCLA
 {
     std::unique_lock<std::recursive_mutex> lock(cls_mutex);
     CLASS *_class;
-    ATOM atom;
     if (!(_class = find_class(instance, class_name)))
         return 0;
-
     if (wc)
     {
         wc->style = _class->style;
@@ -93,8 +91,7 @@ ATOM ClassMgr::get_class_info(HINSTANCE instance, const char *class_name, WNDCLA
         wc->hbrBackground = _class->hbrBackground;
         wc->lpszClassName = _class->basename;
     }
-    atom = _class->atomName;
-    return atom;
+    return _class->atomName;
 }
 
 UINT ClassMgr::get_atom_name(ATOM atomName, LPSTR name, int cchLen)

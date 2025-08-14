@@ -121,14 +121,12 @@ BOOL WINAPI UnregisterClassW(LPCWSTR className, HINSTANCE instance)
  */
 BOOL WINAPI GetClassInfoExA(HINSTANCE hInstance, LPCSTR name, WNDCLASSEXA *wc)
 {
-    ATOM atom;
-
     if (!wc)
     {
         SetLastError(ERROR_NOACCESS);
         return FALSE;
     }
-    return ClassMgr::instance()->get_class_info(hInstance, name, wc);
+    return ClassMgr::instance()->get_class_info(hInstance, name, wc)!=0;
 }
 
 BOOL WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW *wc)

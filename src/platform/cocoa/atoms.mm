@@ -29,7 +29,11 @@ int SAtoms::getAtomName(int atom, char *buf, int bufSize)
         {
             return -1;
         }
-    }else{
+    }else if(atom > 10000){
+        //user defined atom
+        return snprintf(buf,bufSize,"#%d",atom);
+    }
+    else{
         return -1;
     }
 }
