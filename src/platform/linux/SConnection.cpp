@@ -2940,13 +2940,17 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         // different from other mouse message, dispatch mousemove dispite whether the target window is disable or not. we need it to generate WM_SETCURSOR
         break;
     }
-    case XCB_FOCUS_IN:
     case XCB_FOCUS_OUT:
+        //SLOG_STMI()<<"!!!focus out, old focus:"<<m_hFocus;
+        OnFocusChanged(0);
+        break;
+    case XCB_FOCUS_IN:
     {
         xcb_get_input_focus_cookie_t cookie = xcb_get_input_focus(connection);
         xcb_get_input_focus_reply_t *reply = xcb_get_input_focus_reply(connection, cookie, nullptr);
         if (reply)
         {
+            //SLOG_STMI()<<"focus in, hFocus="<<reply->focus;
             OnFocusChanged(reply->focus);
             free(reply);
         }
