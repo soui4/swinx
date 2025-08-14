@@ -2,108 +2,13 @@
 #include "SClipboard.h"
 #include <windows.h>
 #include <vector>
-#include <sharedmem.h>
 #include <log.h>
+#include "atoms.h"
 #include "ctypes.h"
 #include "sysapi.h"
 #define kLogTag "SClipboard"
 #include "tostring.hpp"
 using namespace swinx;
-
-static const char *kGlobalShareAtomName = "/share_atom_A95AB24431E7";
-class CFAtom{
-    enum{
-         kMaxNameLength = 255,
-         kMaxAtomSize = 10240,
-    };
-
-public:
-
-    static int registerAtom( const char *name ){
-        
-        return instance()._registerAtom(name); 
-    }
-    static int getAtom( const char *name ){
-        return instance()._getAtom(name); 
-    }
-
-    static const char *  getName( int atom ){
-        return instance()._getName(atom); 
-    }
-private:
-    static CFAtom & instance(){
-        static CFAtom  inst(kGlobalShareAtomName);
-        return inst;
-    }
-
-    const char *  _getName( int atom ){
-        if( atom < 0 || atom >= kMaxAtomSize ){
-            return NULL;
-        }
-        const char *ret = NULL;
-        m_shm.getRwLock()->lockShared();
-        BYTE * buf = m_shm.buffer();
-        uint32_t &nRef = *(uint32_t *)buf;
-        if( atom < nRef){
-            ret = (char *)(buf + sizeof(uint32_t) + atom * kMaxNameLength);
-        }
-        m_shm.getRwLock()->unlockShared();
-        return ret;
-    }
-
-    int _getAtom( const char *name ){
-        if( name == NULL  ||  strlen(name) >= kMaxNameLength){
-            return -1;
-        }
-        m_shm.getRwLock()->lockShared();
-        BYTE * buf = m_shm.buffer();
-        uint32_t &nRef = *(uint32_t *)buf;
-        char *pName = (char *)(buf + sizeof(uint32_t));
-        for( int i=0;i< nRef && nRef < kMaxAtomSize;i++){
-            if( strncmp(pName, name, kMaxNameLength) == 0){
-                m_shm.getRwLock()->unlockShared();
-                return i;
-            }
-            pName += kMaxNameLength;
-        }
-        m_shm.getRwLock()->unlockShared();
-        return -1;
-    }
-
-    int _registerAtom( const char *name ){
-        int find = _getAtom(name);
-        if( find != -1){
-            return find;
-        }
-        m_shm.getRwLock()->lockExclusive();
-        BYTE * buf = m_shm.buffer();
-        uint32_t &nRef = *(uint32_t *)buf;
-        char *pName = (char *)(buf + sizeof(uint32_t) + nRef * kMaxNameLength);
-        strncpy(pName, name, kMaxNameLength);
-        int ret = nRef++;
-        m_shm.getRwLock()->unlockExclusive();
-        return ret;
-    }
-
-    CFAtom(const char *name)
-    {
-        SharedMemory::InitStat ret = m_shm.init(name, kMaxNameLength* kMaxAtomSize+ sizeof(uint32_t));
-        assert(ret);
-        {
-            m_shm.getRwLock()->lockExclusive();
-            if (ret == SharedMemory::Created)
-            {
-                *(uint32_t *)m_shm.buffer() = 0;
-            }
-            m_shm.getRwLock()->unlockExclusive();
-        }
-    }
-    ~CFAtom()
-    {
-    }
-
-    swinx::SharedMemory m_shm;
-};
 
 
 static NSPasteboardType clipboardFormat2PasteboardType(UINT uFormat) {
@@ -114,10 +19,11 @@ static NSPasteboardType clipboardFormat2PasteboardType(UINT uFormat) {
             return NSPasteboardTypePNG;
         default:
         if(uFormat>CF_MAX){
-            const char * cfName = CFAtom::getName(uFormat-CF_MAX);
-            if (!cfName) 
+            char szName[1024];
+            int len = SAtoms::getAtomName(uFormat-CF_MAX,szName,1024);
+            if(len<0)
                 return nil;
-            return [NSString stringWithUTF8String:cfName];
+            return [NSString stringWithUTF8String:szName];
         }else {
             return nil;
         }
@@ -539,5 +445,5 @@ BOOL SClipboard::closeClipboard()
 }
 
 UINT SClipboard::RegisterClipboardFormatA(LPCSTR pszName) {
-    return CFAtom::registerAtom(pszName)+CF_MAX;
+    return SAtoms::registerAtom(pszName)+CF_MAX;
 }

@@ -3,6 +3,7 @@
 #include "nativewnd.h"
 #include "cmnctl32/cmnctl32.h"
 #include "cmnctl32/builtin_classname.h"
+#include "atoms.h"
 #include "log.h"
 #define kLogTag "classmgr"
 
@@ -43,26 +44,7 @@ ClassMgr *ClassMgr::instance()
     return &_thisObj;
 }
 
-CLASS *ClassMgr::find_class(HINSTANCE module, LPCSTR clsName)
-{
-    std::unique_lock<std::recursive_mutex> lock(cls_mutex);
-    builtin_register();
-    if (IS_INTRESOURCE(clsName))
-    {
-        ATOM atom = (ATOM) reinterpret_cast<LONG_PTR>(clsName);
-        bool bValid = false;
-        for (auto &it : atom_map)
-        {
-            if (it.second == atom)
-            {
-                clsName = it.first.c_str();
-                bValid = true;
-                break;
-            }
-        }
-        if (!bValid)
-            return nullptr;
-    }
+CLASS *ClassMgr::_find_class(HINSTANCE module, LPCSTR clsName){
     for (auto &it : class_list)
     {
         if (stricmp(it->name, clsName) == 0)
@@ -71,14 +53,30 @@ CLASS *ClassMgr::find_class(HINSTANCE module, LPCSTR clsName)
     return NULL;
 }
 
+CLASS *ClassMgr::find_class(HINSTANCE module, LPCSTR clsName)
+{
+    std::unique_lock<std::recursive_mutex> lock(cls_mutex);
+    builtin_register();
+    if (IS_INTRESOURCE(clsName))
+    {
+        ATOM atom = (ATOM) reinterpret_cast<LONG_PTR>(clsName);
+        int len = SAtoms::getAtomName(atom, NULL, 0);
+        char *buf = new char[len+1];
+        SAtoms::getAtomName(atom, buf, len+1);
+        CLASS *ret = _find_class(module,buf);
+        delete[] buf;
+        return ret;
+    }else{
+        return _find_class(module,clsName);
+    }
+}
+
 ATOM ClassMgr::get_class_info(HINSTANCE instance, const char *class_name, WNDCLASSEXA *wc)
 {
     std::unique_lock<std::recursive_mutex> lock(cls_mutex);
     CLASS *_class;
-    ATOM atom;
     if (!(_class = find_class(instance, class_name)))
         return 0;
-
     if (wc)
     {
         wc->style = _class->style;
@@ -92,28 +90,12 @@ ATOM ClassMgr::get_class_info(HINSTANCE instance, const char *class_name, WNDCLA
         wc->hbrBackground = _class->hbrBackground;
         wc->lpszClassName = _class->basename;
     }
-    atom = _class->atomName;
-    return atom;
+    return _class->atomName;
 }
 
 UINT ClassMgr::get_atom_name(ATOM atomName, LPSTR name, int cchLen)
 {
-    std::unique_lock<std::recursive_mutex> lock(cls_mutex);
-    for (auto &it : atom_map)
-    {
-        if (it.second == atomName)
-        {
-            if (cchLen == 0)
-                return it.first.length();
-            if (cchLen > it.first.length())
-            {
-                strcpy(name, it.first.c_str());
-                return it.first.length() + 1;
-            }
-            return 0;
-        }
-    }
-    return 0;
+    return SAtoms::getAtomName(atomName, name, cchLen);
 }
 
 /***********************************************************************
@@ -205,23 +187,7 @@ ATOM ClassMgr::register_class(const WNDCLASSEXA *wc)
     }
     if (!_class->atomName)
     {
-        // todo:hjx
-        std::unique_lock<std::recursive_mutex> lock(cls_mutex);
-        auto it = atom_map.find(_class->name);
-        if (it != atom_map.end())
-        {
-            _class->atomName = it->second;
-        }
-        else
-        {
-            _class->atomName = ++atom_start;
-            atom_map.insert(std::make_pair(_class->name, _class->atomName));
-        }
-    }
-    else
-    {
-        std::unique_lock<std::recursive_mutex> lock(cls_mutex);
-        atom_map.insert(std::make_pair(_class->name, _class->atomName));
+        _class->atomName = SAtoms::registerAtom(_class->name);
     }
     atom = _class->atomName;
     {
@@ -248,7 +214,6 @@ BOOL ClassMgr::unregister_class(LPCSTR className, HINSTANCE instance)
             bMatch = strcmp(_class->name, className) == 0;
         if (bMatch)
         {
-            atom_map.erase(std::string(_class->name));
             DeleteObject(_class->hbrBackground);
             DestroyCursor(_class->hCursor);
             DestroyIcon(_class->hIcon);

@@ -122,13 +122,12 @@ SConnection *SConnMgr::getConnection(tid_t tid_, int screenNum)
     }
 }
 
-static uint32_t GetDoubleClickSpan(xcb_connection_t *connection, xcb_screen_t *screen)
+uint32_t SConnection::GetDoubleClickSpan()
 {
     uint32_t ret = 400;
     xcb_window_t root_window = screen->root;
 
-    xcb_atom_t atom = SAtoms::internAtom(connection, 0, "_NET_DOUBLE_CLICK_TIME");
-    xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, root_window, atom, XCB_ATOM_CARDINAL, 0, 1024);
+    xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, root_window, atoms._NET_DOUBLE_CLICK_TIME, XCB_ATOM_CARDINAL, 0, 1024);
     xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
     if (reply == NULL)
     {
@@ -296,11 +295,12 @@ SConnection::SConnection(int screenNum)
     }
     readXResources();
     initializeXFixes();
+    atoms.Init(connection, screenNum);
     if (rgba_visual)
     { // get composited for screen
         char szAtom[50];
         sprintf(szAtom, "_NET_WM_CM_S%d", screenNum);
-        xcb_atom_t atom = SAtoms::internAtom(connection, FALSE, szAtom);
+        xcb_atom_t atom = SAtoms::registerAtom(szAtom,connection);
         xcb_get_selection_owner_cookie_t owner_cookie = xcb_get_selection_owner(connection, atom);
         xcb_get_selection_owner_reply_t *owner_reply = xcb_get_selection_owner_reply(connection, owner_cookie, NULL);
         m_bComposited = owner_reply->owner != 0;
@@ -309,7 +309,6 @@ SConnection::SConnection(int screenNum)
     }
     m_tid = GetCurrentThreadId();
 
-    atoms.Init(connection, screenNum);
     do{//init settings owner
         xcb_get_selection_owner_cookie_t selection_cookie = xcb_get_selection_owner(connection, atoms._XSETTINGS_S0);
         xcb_generic_error_t *error = nullptr;
@@ -328,7 +327,7 @@ SConnection::SConnection(int screenNum)
         xcb_change_window_attributes(connection,m_setting_owner,event,event_mask);
     }while(0);
 
-    m_tsDoubleSpan = GetDoubleClickSpan(connection, screen);
+    m_tsDoubleSpan = GetDoubleClickSpan();
 
     m_bQuit = false;
     m_msgPeek = nullptr;
@@ -548,7 +547,7 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
     if (!m_bBlockTimer)
     {
         static const int kMaxDalayMsg = 5; // max delay ms for a timer.
-        std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+        std::unique_lock<CountMutex> lock(m_mutex4Msg);
         int msgQueueSize = (int)m_msgQueue.size();
         int elapse2 = elapse + std::min(msgQueueSize, kMaxDalayMsg);
         POINT pt;
@@ -583,7 +582,7 @@ bool SConnection::waitMsg()
     UINT timeOut = -1;
     if (!m_bBlockTimer)
     {
-        std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+        std::unique_lock<CountMutex> lock(m_mutex4Msg);
         for (auto &it : m_lstTimer)
         {
             timeOut = std::min(timeOut, it.fireRemain);
@@ -617,7 +616,7 @@ LONG SConnection::GetMsgTime() const
 
 DWORD SConnection::GetQueueStatus(UINT flags)
 {
-    std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+    std::unique_lock<CountMutex> lock(m_mutex4Msg);
     DWORD ret = 0;
     for (auto it : m_msgQueue)
     {
@@ -719,7 +718,7 @@ int SConnection::_waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD
         UINT timeOut = to;
         if (!m_bBlockTimer)
         {
-            std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+            std::unique_lock<CountMutex> lock(m_mutex4Msg);
             for (auto &it : m_lstTimer)
             {
                 timeOut = std::min(timeOut, it.fireRemain);
@@ -826,7 +825,7 @@ BOOL SConnection::TranslateMessage(const MSG *pMsg)
         char c = m_keyboard->scanCodeToAscii(HIWORD(pMsg->lParam));
         if (c != 0 && !GetKeyState(VK_CONTROL) && !GetKeyState(VK_MENU))
         {
-            std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+            std::unique_lock<CountMutex> lock(m_mutex4Msg);
             Msg *msg = new Msg;
             msg->message = pMsg->message == WM_KEYDOWN ? WM_CHAR : WM_SYSCHAR;
             msg->hwnd = pMsg->hwnd;
@@ -848,7 +847,7 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
     m_tsLastMsg = ts;
     event2Msg(bTimeout, elapse, ts);
 
-    std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+    std::unique_lock<CountMutex> lock(m_mutex4Msg);
     { // test for callback task
         auto it = m_lstCallbackTask.begin();
         while (it != m_lstCallbackTask.end())
@@ -900,7 +899,10 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             // SetTimer with callback, call it now.
             TIMERPROC proc = (TIMERPROC)msg->lParam;
             m_msgQueue.erase(it);
+            //free lock before call timer proc.
+            LONG preLock = m_mutex4Msg.FreeLock();
             proc(msg->hwnd, WM_TIMER, msg->wParam, msg->time);
+            m_mutex4Msg.RestoreLock(preLock);
             delete msg;
             return PeekMessage(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
         }else if(msg->message == WM_TIMER && msg->wParam == TM_DELAY){
@@ -962,7 +964,7 @@ void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp)
 
 void SConnection::postMsg(Msg *pMsg)
 {
-    std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+    std::unique_lock<CountMutex> lock(m_mutex4Msg);
     m_msgQueue.push_back(pMsg);
     SetEvent(m_evtSync);
 }
@@ -993,7 +995,7 @@ void SConnection::postMsg2(BOOL bWideChar, HWND hWnd, UINT message, WPARAM wp, L
 
 void SConnection::postCallbackTask(CbTask *pTask)
 {
-    std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+    std::unique_lock<CountMutex> lock(m_mutex4Msg);
     m_lstCallbackTask.push_back(pTask);
     pTask->AddRef();
 }
@@ -1329,7 +1331,7 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
 
     updateWmclass(hWnd,pWnd);
-
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_CLASS_ATOM, XCB_ATOM_CARDINAL, 32, 1, &pWnd->clsAtom);
     setMotifWindowFlags(this, hWnd, pWnd->dwStyle, pWnd->dwExStyle);
     {
         /* Add XEMBED info; this operation doesn't initiate the embedding. */
@@ -1690,7 +1692,7 @@ xcb_timestamp_t SConnection::getSectionTs()
 }
 
 bool SConnection::existTimer(HWND hWnd, UINT_PTR id) const{
-    std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+    std::unique_lock<CountMutex> lock(m_mutex4Msg);
     for (const auto &it : m_lstTimer)
     {
         if (it.hWnd == hWnd && it.id == id)
@@ -1703,7 +1705,7 @@ bool SConnection::existTimer(HWND hWnd, UINT_PTR id) const{
 
 UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC proc)
 {
-    std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+    std::unique_lock<CountMutex> lock(m_mutex4Msg);
     if (hWnd)
     {
         // find exist timer.
@@ -1725,6 +1727,7 @@ UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC p
         timer.proc = proc;
         timer.elapse = uElapse;
         m_lstTimer.push_back(timer);
+        SetEvent(m_evtSync);//wake up event loop to check timer.
         return id;
     }
     else
@@ -1743,6 +1746,7 @@ UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC p
         timer.proc = proc;
         timer.elapse = uElapse;
         m_lstTimer.push_back(timer);
+        SetEvent(m_evtSync);//wake up event loop to check timer.
         return timer.id;
     }
 }
@@ -1750,7 +1754,7 @@ UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC p
 BOOL SConnection::KillTimer(HWND hWnd, UINT_PTR id)
 {
     BOOL bRet = FALSE;
-    std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+    std::unique_lock<CountMutex> lock(m_mutex4Msg);
     for (auto it = m_lstTimer.begin(); it != m_lstTimer.end(); it++)
     {
         if (it->hWnd == hWnd && it->id == id)
@@ -2176,7 +2180,7 @@ int SConnection::GetDpi(BOOL bx) const
 
 void SConnection::KillWindowTimer(HWND hWnd)
 {
-    std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+    std::unique_lock<CountMutex> lock(m_mutex4Msg);
     auto it = m_lstTimer.begin();
     while (it != m_lstTimer.end())
     {
@@ -2330,23 +2334,6 @@ BOOL SConnection::SetFocus(HWND hWnd)
     }
 }
 
-#ifdef ENABLE_PRINTATOMNAME
-static void printAtomName(xcb_connection_t *connection, xcb_atom_t atom)
-{
-    xcb_get_atom_name_cookie_t cookie = xcb_get_atom_name(connection, atom);
-    xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(connection, cookie, nullptr);
-    if (reply)
-    {
-        char *atom_name = xcb_get_atom_name_name(reply);
-        if (atom_name)
-        {
-            printf("Atom %d name: %s\n", atom, atom_name);
-        }
-        free(reply);
-    }
-}
-#endif // ENABLE_PRINTATOMNAME
-
 uint32_t SConnection::netWmStates(HWND hWnd)
 {
     uint32_t result(0);
@@ -2401,6 +2388,10 @@ void SConnection::updateWmclass(HWND hWnd, _Window *pWnd)
     strcpy(pszCls + nNameLen + 1, pWnd->title.c_str());
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_CLASS, XCB_ATOM_STRING, 8, nLen, pszCls);
     delete[] pszCls;
+
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms._NET_WM_NAME, atoms.UTF8_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, XCB_ATOM_WM_NAME, atoms.UTF8_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
+
 }
 
 DWORD SConnection::XdndAction2Effect(xcb_atom_t action)
@@ -2525,7 +2516,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         xcb_expose_event_t *expose = (xcb_expose_event_t *)event;
         RECT rc = { expose->x, expose->y, expose->x + expose->width, expose->y + expose->height };
         HRGN hrgn = CreateRectRgnIndirect(&rc);
-        std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+        std::unique_lock<CountMutex> lock(m_mutex4Msg);
         //combine pending paint messages.
         for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++)
         {
@@ -2624,7 +2615,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_CONFIGURE_NOTIFY:
     {
         xcb_configure_notify_event_t *e2 = (xcb_configure_notify_event_t *)event;
-        std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+        std::unique_lock<CountMutex> lock(m_mutex4Msg);
         for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++)
         {
             if ((*it)->message == WM_MOVE && (*it)->hwnd == e2->window)
@@ -2733,7 +2724,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         else if (e2->type == atoms.XdndPosition)
         {
             // remove old position
-            std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+            std::unique_lock<CountMutex> lock(m_mutex4Msg);
             for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++)
             {
                 if ((*it)->message == UM_XDND_DRAG_OVER && (*it)->hwnd == e2->window)
@@ -2920,16 +2911,17 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     {
         xcb_motion_notify_event_t *e2 = (xcb_motion_notify_event_t *)event;
         POINT pt = { e2->event_x, e2->event_y };
-        if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
+        HWND hWnd = e2->event;
+        if (m_hWndCapture != 0 && hWnd != m_hWndCapture)
         {
             // SLOG_STMI()<<"remap mousemove to capture: capture="<<m_hWndCapture<<" event window="<<e2->event;
-            MapWindowPoints(e2->event, m_hWndCapture, &pt, 1);
-            pMsg->hwnd = m_hWndCapture;
+            MapWindowPoints(hWnd, m_hWndCapture, &pt, 1);
+            hWnd = m_hWndCapture;
         }
         // remove old mouse move
         static const int16_t kMinPosDiff = 5;
         WPARAM wp = ButtonState2Mask(e2->state);
-        std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+        std::unique_lock<CountMutex> lock(m_mutex4Msg);
         for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); it++)
         {
             if ((*it)->message == WM_MOUSEMOVE && (*it)->hwnd == e2->event && (*it)->wParam == wp)
@@ -2945,7 +2937,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             }
         }
         pMsg = new Msg;
-        pMsg->hwnd = e2->event;
+        pMsg->hwnd = hWnd;
         pMsg->message = WM_MOUSEMOVE;
         pMsg->lParam = MAKELPARAM(pt.x, pt.y);
         pMsg->wParam = wp;
@@ -2953,13 +2945,17 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         // different from other mouse message, dispatch mousemove dispite whether the target window is disable or not. we need it to generate WM_SETCURSOR
         break;
     }
-    case XCB_FOCUS_IN:
     case XCB_FOCUS_OUT:
+        //SLOG_STMI()<<"!!!focus out, old focus:"<<m_hFocus;
+        OnFocusChanged(0);
+        break;
+    case XCB_FOCUS_IN:
     {
         xcb_get_input_focus_cookie_t cookie = xcb_get_input_focus(connection);
         xcb_get_input_focus_reply_t *reply = xcb_get_input_focus_reply(connection, cookie, nullptr);
         if (reply)
         {
+            //SLOG_STMI()<<"focus in, hFocus="<<reply->focus;
             OnFocusChanged(reply->focus);
             free(reply);
         }
@@ -2995,7 +2991,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     }
     if (pMsg)
     {
-        std::unique_lock<std::recursive_mutex> lock(m_mutex4Msg);
+        std::unique_lock<CountMutex> lock(m_mutex4Msg);
         GetCursorPos(&pMsg->pt);
         m_msgQueue.push_back(pMsg);
     }
@@ -3062,7 +3058,7 @@ void SConnection::updateWorkArea()
         m_rcWorkArea.bottom = m_rcWorkArea.top + geom[3];
     }
     free(workArea);
-    SLOG_STMI() << "updateWorkArea, rc=" << m_rcWorkArea.left << "," << m_rcWorkArea.top << "," << m_rcWorkArea.right << "," << m_rcWorkArea.bottom;
+    //SLOG_STMI() << "updateWorkArea, rc=" << m_rcWorkArea.left << "," << m_rcWorkArea.top << "," << m_rcWorkArea.right << "," << m_rcWorkArea.bottom;
 }
 
 void SConnection::GetWorkArea(HMONITOR hMonitor, RECT *prc)
@@ -3185,42 +3181,16 @@ void SConnection::changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom
 
 int SConnection::OnGetClassName(HWND hWnd, LPSTR lpClassName, int nMaxCount)
 {
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (wndObj)
+    uint32_t clsAtom = 0;
+    xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, hWnd, atoms.WM_CLASS_ATOM, XCB_ATOM_CARDINAL, 0, 1);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+    if (reply != NULL)
     {
-        return GetAtomNameA(wndObj->clsAtom, lpClassName, nMaxCount);
+        clsAtom = *(uint32_t *)xcb_get_property_value(reply);
+        free(reply);
+        SAtoms::getAtomName(clsAtom, lpClassName, nMaxCount);
     }
-    else
-    {
-        int ret = 0;
-        xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_class(connection, hWnd);
-        xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
-        if (reply)
-        {
-            xcb_icccm_get_wm_class_reply_t clsReply = { 0 };
-            xcb_icccm_get_wm_class_from_reply(&clsReply, reply);
-            if (clsReply.class_name)
-            {
-                int len = strlen(clsReply.class_name);
-                if (len <= nMaxCount)
-                {
-                    ret = len;
-                    memcpy(lpClassName, clsReply.class_name, len);
-                    if (len < nMaxCount)
-                    {
-                        lpClassName[len] = 0;
-                        ret++;
-                    }
-                }
-                else
-                {
-                    SetLastError(ERROR_INSUFFICIENT_BUFFER);
-                }
-            }
-            free(reply);
-        }
-        return ret;
-    }
+    return (int)clsAtom;
 }
 
 BOOL SConnection::OnSetWindowText(HWND hWnd, _Window *wndObj, LPCSTR lpszString)
@@ -3779,12 +3749,12 @@ HWND SConnection::GetWindow(HWND hWnd, _Window *wndObj, UINT uCmd)
 
 UINT SConnection::RegisterMessage(LPCSTR lpString)
 {
-    return WM_REG_FIRST + SAtoms::internAtom(connection, 0, lpString);;
+    return WM_REG_FIRST + SAtoms::registerAtom(lpString);;
 }
 
 UINT SConnection::RegisterClipboardFormatA(LPCSTR lpString)
 {
-    return CF_MAX+SAtoms::internAtom(connection, 0, lpString);
+    return CF_MAX+SAtoms::registerAtom(lpString);
 }
 
 BOOL SConnection::NotifyIcon(DWORD dwMessage, PNOTIFYICONDATAA lpData){

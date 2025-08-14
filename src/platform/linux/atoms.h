@@ -90,7 +90,8 @@ class SAtoms {
     WM_WIN4XCB_IPC,
     WM_DISCONN,
 
-    SO_SELECTION;
+    SO_SELECTION,
+    WM_CLASS_ATOM;
 
 
     const char **AtomNames(int &atoms)
@@ -178,12 +179,16 @@ class SAtoms {
             "WM_WIN4XCB_IPC",
             "WM_DISCONN",
             "SO_SELECTION",
+            "WM_CLASS_ATOM"
         };
         atoms = sizeof(kAtomNames) / sizeof(kAtomNames[0]);
         return kAtomNames;
     }
 
     void Init(xcb_connection_t *conn,int nScrNo);
+    static int getAtomName(xcb_atom_t atom,char *buf,int bufSize);
+    static xcb_atom_t registerAtom(const char *name,xcb_connection_t *xcb_conn=nullptr);
+private:
     static xcb_atom_t internAtom(xcb_connection_t *connection, uint8_t onlyIfExist, const char *atomName);
 };
 

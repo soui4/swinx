@@ -13,11 +13,11 @@
 #include <sdc.h>
 #include <SRwLock.hpp>
 #include <uimsg.h>
-#include <fontconfig/fontconfig.h>
 #include "os_state.h"
 #include "SConnBase.h"
 #include "SNsWindow.h"
 #include "SClipboard.h"
+#include "countmutex.h"
 
 struct TimerInfo
 {
@@ -202,7 +202,6 @@ public:
 
     UINT RegisterClipboardFormatA(LPCSTR pszName);
   public:
-      bool hasXFixes() const ;
       STrayIconMgr* GetTrayIconMgr() ;
 
       void EnableDragDrop(HWND hWnd, bool enable);
@@ -235,7 +234,7 @@ public:
       HWND _GetRoot(HWND hWnd);
       HWND _GetParent(HWND hWnd);
   private:
-      std::recursive_mutex m_mutex;
+      CountMutex m_mutex;
       std::list<Msg*> m_msgQueue;
       Msg * m_msgPeek=nullptr;
       bool m_bMsgNeedFree = false;

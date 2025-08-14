@@ -8,7 +8,7 @@
 
 class ClassMgr {
 private:
-    ClassMgr() :atom_start(10){
+    ClassMgr(){
         
     }
 
@@ -23,6 +23,7 @@ private:
         class_list.clear();
     }
 
+    CLASS *_find_class(HINSTANCE module, LPCSTR clsName);
 public:
     static ClassMgr * instance();
 public:
@@ -35,8 +36,6 @@ public:
 public:
     std::recursive_mutex cls_mutex;
     std::list<CLASS*> class_list;
-    std::map<std::string, ATOM> atom_map;
-    std::atomic<uint32_t> atom_start;
     bool     builtin_registed=false;
 };
 

@@ -14,6 +14,7 @@
 #include <memory>
 #include <vector>
 #include <imm.h>
+#include <countmutex.h>
 #include "SImContext.h"
 #include "sdc.h"
 #include "SRwLock.hpp"
@@ -304,6 +305,7 @@ public:
     void updateWorkArea();
     xcb_cursor_t getXcbCursor(HCURSOR cursor);
     void postMsg(Msg *pMsg);
+    uint32_t GetDoubleClickSpan();
   private:
     static void xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, char *str,
       uint32_t length, uint32_t *keysym, size_t nKeySym,
@@ -317,7 +319,7 @@ public:
     std::mutex m_mutex4Evt;
     std::list<xcb_generic_event_t *> m_evtQueue;
 
-    mutable std::recursive_mutex m_mutex4Msg;
+    mutable CountMutex m_mutex4Msg;
     std::list<Msg *> m_msgQueue;
     xcb_timestamp_t m_tsSelection;
     xcb_timestamp_t m_tsPrevPress[3]={-1u,-1u,-1u};    

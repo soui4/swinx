@@ -8,6 +8,7 @@
 #include <memory>
 #include <map>
 #include <cairo-quartz.h>
+#include <fontconfig/fontconfig.h>
 #include "SNsWindow.h"
 #include "SConnection.h"
 #include <synhandle.h>
@@ -18,6 +19,7 @@
 #include "tostring.hpp"
 #include "STrayIconMgr.h"
 #include "keyboard.h"
+#include "atoms.h"
 
 using namespace swinx;
 
@@ -171,7 +173,7 @@ SConnection::SConnection(int screenNum)
 }
 
 SConnection::~SConnection() {
-  std::unique_lock<std::recursive_mutex> lock(m_mutex);
+  std::unique_lock<CountMutex> lock(m_mutex);
   delete m_clipboard;
   delete m_trayIconMgr;
   for (auto it = m_msgStack.rbegin(); it != m_msgStack.rend(); it++) {
@@ -260,7 +262,7 @@ UINT SConnection::MapVirtualKey(UINT uCode, UINT type) const {
     case MAPVK_VK_TO_CHAR:
     {
         UINT scanCode = convertVKToKeyCode(uCode);
-        ret = scanCodeToASCII(scanCode,0);
+        ret = scanCodeToChar(scanCode,0);
         break;
     }
     default:
@@ -293,7 +295,7 @@ DWORD SConnection::GetMsgPos() const {
 }
 
 DWORD SConnection::GetQueueStatus(UINT flags) {
-    std::unique_lock<std::recursive_mutex> lock(m_mutex);
+    std::unique_lock<CountMutex> lock(m_mutex);
     DWORD ret = 0;
     for (auto it : m_msgQueue)
     {
@@ -359,14 +361,14 @@ bool SConnection::waitMsg() {
     UINT timeOut = INFINITE;
     if (!m_bBlockTimer)
     {
-        std::unique_lock<std::recursive_mutex> lock(m_mutex);
+        std::unique_lock<CountMutex> lock(m_mutex);
         for (auto &it : m_lstTimer)
         {
             timeOut = std::min(timeOut, it.fireRemain);
         }
     }
     updateMsgQueue(timeOut);
-    std::unique_lock<std::recursive_mutex> lock(m_mutex);
+    std::unique_lock<CountMutex> lock(m_mutex);
     return !m_msgQueue.empty();
 }
 
@@ -420,7 +422,7 @@ static bool wndpos2nsclient(NSWindow *nswindow, NSPoint &pt) {
 }
 
 void SConnection::postMsg(Msg *pMsg){
-  std::unique_lock<std::recursive_mutex> lock(m_mutex);
+  std::unique_lock<CountMutex> lock(m_mutex);
   m_msgQueue.push_back(pMsg);
   //SLOG_STMI() << "postMsg, msg=" << pMsg->message;
   stopEventWaiting();
@@ -511,7 +513,7 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
     }
     DWORD timeout = to;
     if (!m_bBlockTimer) {
-      std::unique_lock<std::recursive_mutex> lock(m_mutex);
+      std::unique_lock<CountMutex> lock(m_mutex);
       for (auto &it : m_lstTimer) {
         timeout = std::min(timeout, it.fireRemain);
       }
@@ -612,12 +614,15 @@ bool SConnection::TranslateMessage(const MSG *pMsg) {
             modifiers |= controlKey;
         if(GetKeyState(VK_MENU) & 0x8000)
             modifiers |= optionKey;
-        uint8_t c = scanCodeToASCII(HIWORD(pMsg->lParam),modifiers);
+        wchar_t c = scanCodeToChar(HIWORD(pMsg->lParam),modifiers);
         if (c != 0 && !GetKeyState(VK_CONTROL) && !GetKeyState(VK_MENU) && !GetKeyState(VK_LWIN))
         {
-            std::unique_lock<std::recursive_mutex> lock(m_mutex);
+            std::unique_lock<CountMutex> lock(m_mutex);
             Msg *msg = new Msg;
-            msg->message = pMsg->message == WM_KEYDOWN ? WM_CHAR : WM_SYSCHAR;
+            if(c<127)
+                msg->message = pMsg->message == WM_KEYDOWN ? WM_CHAR : WM_SYSCHAR;
+            else
+                msg->message = WM_IME_CHAR;
             msg->hwnd = pMsg->hwnd;
             msg->wParam = c;
             msg->lParam = pMsg->lParam;
@@ -637,7 +642,7 @@ void SConnection::updateMsgQueue(DWORD dwTimeout) {
     m_tsLastMsg = ts;
     if (!m_bBlockTimer)
     {
-        std::unique_lock<std::recursive_mutex> lock(m_mutex);
+        std::unique_lock<CountMutex> lock(m_mutex);
         static const size_t kMaxDalayMsg = 5; // max delay ms for a timer.
         int elapse2 = elapse + std::min(m_msgQueue.size(), kMaxDalayMsg);
         POINT pt;
@@ -760,7 +765,10 @@ bool SConnection::peekMsg(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFi
             // SetTimer with callback, call it now.
             TIMERPROC proc = (TIMERPROC)msg->lParam;
             m_msgQueue.erase(it);
+            //free lock to avoid deadlock.
+            LONG lockCount = m_mutex.FreeLock();
             proc(msg->hwnd, WM_TIMER, msg->wParam, msg->time);
+            m_mutex.RestoreLock(lockCount);
             delete msg;
             return PeekMessage(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
         }
@@ -887,7 +895,7 @@ UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC p
 
 bool SConnection::KillTimer(HWND hWnd, UINT_PTR id) {
     bool bRet = FALSE;
-    std::unique_lock<std::recursive_mutex> lock(m_mutex);
+    std::unique_lock<CountMutex> lock(m_mutex);
     for (auto it = m_lstTimer.begin(); it != m_lstTimer.end(); it++)
     {
         if (it->hWnd == hWnd && it->id == id)
@@ -1032,7 +1040,7 @@ int SConnection::GetDpi(bool bx) const {
 }
 
 void SConnection::KillWindowTimer(HWND hWnd) {
-   std::unique_lock<std::recursive_mutex> lock(m_mutex);
+   std::unique_lock<CountMutex> lock(m_mutex);
     auto it = m_lstTimer.begin();
     while (it != m_lstTimer.end())
     {
@@ -1322,7 +1330,7 @@ uint32_t SConnection::GetIpcAtom() const {
 }
 
 void SConnection::postCallbackTask(CbTask *pTask) {
-    std::unique_lock<std::recursive_mutex> lock(m_mutex);
+    std::unique_lock<CountMutex> lock(m_mutex);
     m_lstCallbackTask.push_back(pTask);
     pTask->AddRef();
 }
@@ -1387,8 +1395,7 @@ HWND SConnection::GetWindow(HWND hWnd, _Window *wndObj, UINT uCmd) {
 }
 
 UINT SConnection::RegisterMessage(LPCSTR lpString) {
-    static UINT message = WM_USER+100000;
-    return message++;
+    return SAtoms::registerAtom(lpString)+WM_USER+100000;
 }
 
 bool SConnection::NotifyIcon(DWORD dwMessage, PNOTIFYICONDATAA lpData) {
@@ -1530,11 +1537,6 @@ HANDLE SConnection::SetClipboardData(UINT uFormat, HANDLE hMem) {
 
 UINT SConnection::RegisterClipboardFormatA(LPCSTR pszName) {
     return SClipboard::RegisterClipboardFormatA(pszName);
-}
-
-bool SConnection::hasXFixes() const {
-    // Empty implementation
-    return false;
 }
 
 STrayIconMgr* SConnection::GetTrayIconMgr() {
