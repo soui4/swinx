@@ -18,6 +18,7 @@
 #include "tostring.hpp"
 #include "STrayIconMgr.h"
 #include "keyboard.h"
+#include "atoms.h"
 
 using namespace swinx;
 
@@ -1387,8 +1388,7 @@ HWND SConnection::GetWindow(HWND hWnd, _Window *wndObj, UINT uCmd) {
 }
 
 UINT SConnection::RegisterMessage(LPCSTR lpString) {
-    static UINT message = WM_USER+100000;
-    return message++;
+    return SAtoms::registerAtom(lpString)+WM_USER+100000;
 }
 
 bool SConnection::NotifyIcon(DWORD dwMessage, PNOTIFYICONDATAA lpData) {
@@ -1530,11 +1530,6 @@ HANDLE SConnection::SetClipboardData(UINT uFormat, HANDLE hMem) {
 
 UINT SConnection::RegisterClipboardFormatA(LPCSTR pszName) {
     return SClipboard::RegisterClipboardFormatA(pszName);
-}
-
-bool SConnection::hasXFixes() const {
-    // Empty implementation
-    return false;
 }
 
 STrayIconMgr* SConnection::GetTrayIconMgr() {

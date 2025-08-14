@@ -202,7 +202,6 @@ public:
 
     UINT RegisterClipboardFormatA(LPCSTR pszName);
   public:
-      bool hasXFixes() const ;
       STrayIconMgr* GetTrayIconMgr() ;
 
       void EnableDragDrop(HWND hWnd, bool enable);

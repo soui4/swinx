@@ -58,14 +58,12 @@ CLASS *ClassMgr::find_class(HINSTANCE module, LPCSTR clsName)
 {
     std::unique_lock<std::recursive_mutex> lock(cls_mutex);
     builtin_register();
-    SConnection *conn = SConnMgr::instance()->getConnection();
-
     if (IS_INTRESOURCE(clsName))
     {
         ATOM atom = (ATOM) reinterpret_cast<LONG_PTR>(clsName);
-        int len = SAtoms::getAtomName(conn->connection, atom, NULL, 0);
+        int len = SAtoms::getAtomName(atom, NULL, 0);
         char *buf = new char[len+1];
-        SAtoms::getAtomName(conn->connection, atom, buf, len+1);
+        SAtoms::getAtomName(atom, buf, len+1);
         CLASS *ret = _find_class(module,buf);
         delete[] buf;
         return ret;
@@ -101,8 +99,7 @@ ATOM ClassMgr::get_class_info(HINSTANCE instance, const char *class_name, WNDCLA
 
 UINT ClassMgr::get_atom_name(ATOM atomName, LPSTR name, int cchLen)
 {
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    return SAtoms::getAtomName(conn->connection, atomName, name, cchLen);
+    return SAtoms::getAtomName(atomName, name, cchLen);
 }
 
 /***********************************************************************
@@ -194,8 +191,7 @@ ATOM ClassMgr::register_class(const WNDCLASSEXA *wc)
     }
     if (!_class->atomName)
     {
-        SConnection *conn = SConnMgr::instance()->getConnection();
-        _class->atomName = SAtoms::internAtom(conn->connection, FALSE, _class->name);
+        _class->atomName = SAtoms::registerAtom(_class->name);
     }
     atom = _class->atomName;
     {
