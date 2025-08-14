@@ -46,3 +46,32 @@ void SAtoms::Init(xcb_connection_t *conn, int nScrNo)
         atom++;
     }
 }
+
+int SAtoms::getAtomName(xcb_connection_t *connection,xcb_atom_t atom,char *buf,int bufSize){
+    xcb_get_atom_name_cookie_t cookie = xcb_get_atom_name(connection, atom);
+    xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(connection, cookie, nullptr);
+    if (reply)
+    {
+        char *atom_name = xcb_get_atom_name_name(reply);
+        if (atom_name)
+        {
+            int len = xcb_get_atom_name_name_length(reply);
+            if(buf){
+                if(bufSize > len){
+                    strncpy(buf, atom_name,len);
+                    buf[len] = 0;
+                    return len+1;
+                }else{
+                    return -1;
+                }
+            }else{
+                return len;
+            }
+        }
+        free(reply);
+    }else if(atom > 10000){
+        //user defined atom
+        return snprintf(buf,bufSize,"#%d",atom);
+    }
+    return 0;
+}

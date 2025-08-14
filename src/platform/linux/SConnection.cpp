@@ -1329,7 +1329,7 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
 
     updateWmclass(hWnd,pWnd);
-
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_CLASS_ATOM, XCB_ATOM_CARDINAL, 32, 1, &pWnd->clsAtom);
     setMotifWindowFlags(this, hWnd, pWnd->dwStyle, pWnd->dwExStyle);
     {
         /* Add XEMBED info; this operation doesn't initiate the embedding. */
@@ -2330,23 +2330,6 @@ BOOL SConnection::SetFocus(HWND hWnd)
     }
 }
 
-#ifdef ENABLE_PRINTATOMNAME
-static void printAtomName(xcb_connection_t *connection, xcb_atom_t atom)
-{
-    xcb_get_atom_name_cookie_t cookie = xcb_get_atom_name(connection, atom);
-    xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(connection, cookie, nullptr);
-    if (reply)
-    {
-        char *atom_name = xcb_get_atom_name_name(reply);
-        if (atom_name)
-        {
-            printf("Atom %d name: %s\n", atom, atom_name);
-        }
-        free(reply);
-    }
-}
-#endif // ENABLE_PRINTATOMNAME
-
 uint32_t SConnection::netWmStates(HWND hWnd)
 {
     uint32_t result(0);
@@ -2401,6 +2384,10 @@ void SConnection::updateWmclass(HWND hWnd, _Window *pWnd)
     strcpy(pszCls + nNameLen + 1, pWnd->title.c_str());
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_CLASS, XCB_ATOM_STRING, 8, nLen, pszCls);
     delete[] pszCls;
+
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms._NET_WM_NAME, atoms.UTF8_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, XCB_ATOM_WM_NAME, atoms.UTF8_STRING, 8, pWnd->title.length(), pWnd->title.c_str());
+
 }
 
 DWORD SConnection::XdndAction2Effect(xcb_atom_t action)
@@ -3062,7 +3049,7 @@ void SConnection::updateWorkArea()
         m_rcWorkArea.bottom = m_rcWorkArea.top + geom[3];
     }
     free(workArea);
-    SLOG_STMI() << "updateWorkArea, rc=" << m_rcWorkArea.left << "," << m_rcWorkArea.top << "," << m_rcWorkArea.right << "," << m_rcWorkArea.bottom;
+    //SLOG_STMI() << "updateWorkArea, rc=" << m_rcWorkArea.left << "," << m_rcWorkArea.top << "," << m_rcWorkArea.right << "," << m_rcWorkArea.bottom;
 }
 
 void SConnection::GetWorkArea(HMONITOR hMonitor, RECT *prc)
@@ -3185,42 +3172,16 @@ void SConnection::changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom
 
 int SConnection::OnGetClassName(HWND hWnd, LPSTR lpClassName, int nMaxCount)
 {
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (wndObj)
+    uint32_t clsAtom = 0;
+    xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, hWnd, atoms.WM_CLASS_ATOM, XCB_ATOM_CARDINAL, 0, 1);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+    if (reply != NULL)
     {
-        return GetAtomNameA(wndObj->clsAtom, lpClassName, nMaxCount);
+        clsAtom = *(uint32_t *)xcb_get_property_value(reply);
+        free(reply);
+        SAtoms::getAtomName(connection, clsAtom, lpClassName, nMaxCount);
     }
-    else
-    {
-        int ret = 0;
-        xcb_get_property_cookie_t cookie = xcb_icccm_get_wm_class(connection, hWnd);
-        xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
-        if (reply)
-        {
-            xcb_icccm_get_wm_class_reply_t clsReply = { 0 };
-            xcb_icccm_get_wm_class_from_reply(&clsReply, reply);
-            if (clsReply.class_name)
-            {
-                int len = strlen(clsReply.class_name);
-                if (len <= nMaxCount)
-                {
-                    ret = len;
-                    memcpy(lpClassName, clsReply.class_name, len);
-                    if (len < nMaxCount)
-                    {
-                        lpClassName[len] = 0;
-                        ret++;
-                    }
-                }
-                else
-                {
-                    SetLastError(ERROR_INSUFFICIENT_BUFFER);
-                }
-            }
-            free(reply);
-        }
-        return ret;
-    }
+    return (int)clsAtom;
 }
 
 BOOL SConnection::OnSetWindowText(HWND hWnd, _Window *wndObj, LPCSTR lpszString)
