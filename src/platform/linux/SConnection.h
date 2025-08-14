@@ -304,6 +304,7 @@ public:
     void updateWorkArea();
     xcb_cursor_t getXcbCursor(HCURSOR cursor);
     void postMsg(Msg *pMsg);
+    uint32_t GetDoubleClickSpan();
   private:
     static void xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, char *str,
       uint32_t length, uint32_t *keysym, size_t nKeySym,

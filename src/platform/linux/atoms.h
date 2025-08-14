@@ -186,8 +186,10 @@ class SAtoms {
     }
 
     void Init(xcb_connection_t *conn,int nScrNo);
+    static int getAtomName(xcb_atom_t atom,char *buf,int bufSize);
+    static xcb_atom_t registerAtom(const char *name,xcb_connection_t *xcb_conn=nullptr);
+private:
     static xcb_atom_t internAtom(xcb_connection_t *connection, uint8_t onlyIfExist, const char *atomName);
-    static int getAtomName(xcb_connection_t *connection,xcb_atom_t atom,char *buf,int bufSize);
 };
 
 #endif //_SATOMH_

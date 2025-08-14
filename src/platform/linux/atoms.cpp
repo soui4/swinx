@@ -47,9 +47,10 @@ void SAtoms::Init(xcb_connection_t *conn, int nScrNo)
     }
 }
 
-int SAtoms::getAtomName(xcb_connection_t *connection,xcb_atom_t atom,char *buf,int bufSize){
-    xcb_get_atom_name_cookie_t cookie = xcb_get_atom_name(connection, atom);
-    xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(connection, cookie, nullptr);
+int SAtoms::getAtomName(xcb_atom_t atom,char *buf,int bufSize){
+    SConnection * conn = SConnMgr::instance()->getConnection();
+    xcb_get_atom_name_cookie_t cookie = xcb_get_atom_name(conn->connection, atom);
+    xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(conn->connection, cookie, nullptr);
     if (reply)
     {
         char *atom_name = xcb_get_atom_name_name(reply);
@@ -74,4 +75,14 @@ int SAtoms::getAtomName(xcb_connection_t *connection,xcb_atom_t atom,char *buf,i
         return snprintf(buf,bufSize,"#%d",atom);
     }
     return 0;
+}
+
+xcb_atom_t SAtoms::registerAtom(const char *name,xcb_connection_t *xcb_conn)
+{
+    if(xcb_conn){
+        return internAtom(xcb_conn, 0, name);
+    }else{
+        SConnection *conn = SConnMgr::instance()->getConnection();
+        return internAtom(conn->connection, 0, name);
+    }
 }

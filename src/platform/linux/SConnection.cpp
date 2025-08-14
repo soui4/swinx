@@ -122,13 +122,12 @@ SConnection *SConnMgr::getConnection(tid_t tid_, int screenNum)
     }
 }
 
-static uint32_t GetDoubleClickSpan(xcb_connection_t *connection, xcb_screen_t *screen)
+uint32_t SConnection::GetDoubleClickSpan()
 {
     uint32_t ret = 400;
     xcb_window_t root_window = screen->root;
 
-    xcb_atom_t atom = SAtoms::internAtom(connection, 0, "_NET_DOUBLE_CLICK_TIME");
-    xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, root_window, atom, XCB_ATOM_CARDINAL, 0, 1024);
+    xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, root_window, atoms._NET_DOUBLE_CLICK_TIME, XCB_ATOM_CARDINAL, 0, 1024);
     xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
     if (reply == NULL)
     {
@@ -296,11 +295,12 @@ SConnection::SConnection(int screenNum)
     }
     readXResources();
     initializeXFixes();
+    atoms.Init(connection, screenNum);
     if (rgba_visual)
     { // get composited for screen
         char szAtom[50];
         sprintf(szAtom, "_NET_WM_CM_S%d", screenNum);
-        xcb_atom_t atom = SAtoms::internAtom(connection, FALSE, szAtom);
+        xcb_atom_t atom = SAtoms::registerAtom(szAtom,connection);
         xcb_get_selection_owner_cookie_t owner_cookie = xcb_get_selection_owner(connection, atom);
         xcb_get_selection_owner_reply_t *owner_reply = xcb_get_selection_owner_reply(connection, owner_cookie, NULL);
         m_bComposited = owner_reply->owner != 0;
@@ -309,7 +309,6 @@ SConnection::SConnection(int screenNum)
     }
     m_tid = GetCurrentThreadId();
 
-    atoms.Init(connection, screenNum);
     do{//init settings owner
         xcb_get_selection_owner_cookie_t selection_cookie = xcb_get_selection_owner(connection, atoms._XSETTINGS_S0);
         xcb_generic_error_t *error = nullptr;
@@ -328,7 +327,7 @@ SConnection::SConnection(int screenNum)
         xcb_change_window_attributes(connection,m_setting_owner,event,event_mask);
     }while(0);
 
-    m_tsDoubleSpan = GetDoubleClickSpan(connection, screen);
+    m_tsDoubleSpan = GetDoubleClickSpan();
 
     m_bQuit = false;
     m_msgPeek = nullptr;
@@ -2907,11 +2906,12 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     {
         xcb_motion_notify_event_t *e2 = (xcb_motion_notify_event_t *)event;
         POINT pt = { e2->event_x, e2->event_y };
-        if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
+        HWND hWnd = e2->event;
+        if (m_hWndCapture != 0 && hWnd != m_hWndCapture)
         {
             // SLOG_STMI()<<"remap mousemove to capture: capture="<<m_hWndCapture<<" event window="<<e2->event;
-            MapWindowPoints(e2->event, m_hWndCapture, &pt, 1);
-            pMsg->hwnd = m_hWndCapture;
+            MapWindowPoints(hWnd, m_hWndCapture, &pt, 1);
+            hWnd = m_hWndCapture;
         }
         // remove old mouse move
         static const int16_t kMinPosDiff = 5;
@@ -2932,7 +2932,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             }
         }
         pMsg = new Msg;
-        pMsg->hwnd = e2->event;
+        pMsg->hwnd = hWnd;
         pMsg->message = WM_MOUSEMOVE;
         pMsg->lParam = MAKELPARAM(pt.x, pt.y);
         pMsg->wParam = wp;
@@ -3183,7 +3183,7 @@ int SConnection::OnGetClassName(HWND hWnd, LPSTR lpClassName, int nMaxCount)
     {
         clsAtom = *(uint32_t *)xcb_get_property_value(reply);
         free(reply);
-        SAtoms::getAtomName(connection, clsAtom, lpClassName, nMaxCount);
+        SAtoms::getAtomName(clsAtom, lpClassName, nMaxCount);
     }
     return (int)clsAtom;
 }
@@ -3744,12 +3744,12 @@ HWND SConnection::GetWindow(HWND hWnd, _Window *wndObj, UINT uCmd)
 
 UINT SConnection::RegisterMessage(LPCSTR lpString)
 {
-    return WM_REG_FIRST + SAtoms::internAtom(connection, 0, lpString);;
+    return WM_REG_FIRST + SAtoms::registerAtom(lpString);;
 }
 
 UINT SConnection::RegisterClipboardFormatA(LPCSTR lpString)
 {
-    return CF_MAX+SAtoms::internAtom(connection, 0, lpString);
+    return CF_MAX+SAtoms::registerAtom(lpString);
 }
 
 BOOL SConnection::NotifyIcon(DWORD dwMessage, PNOTIFYICONDATAA lpData){
