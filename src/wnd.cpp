@@ -8,7 +8,6 @@
 #include <sys/stat.h>
 #include <uuid/uuid.h>
 #include "class.h"
-#include "clsmgr.h"
 #include "SConnection.h"
 #include "sdc.h"
 #include "uimsg.h"
@@ -260,7 +259,7 @@ BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
 static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE module)
 {
     WNDCLASSEXA clsInfo = { 0 };
-    ATOM clsAtom = ClassMgr::instance()->get_class_info(module, className, &clsInfo);
+    ATOM clsAtom = GetClassInfoExA(module, className, &clsInfo);
     if (!clsAtom)
     {
         return FALSE;

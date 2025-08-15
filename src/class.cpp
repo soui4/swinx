@@ -119,17 +119,17 @@ BOOL WINAPI UnregisterClassW(LPCWSTR className, HINSTANCE instance)
 /***********************************************************************
  *		GetClassInfoExW (USER32.@)
  */
-BOOL WINAPI GetClassInfoExA(HINSTANCE hInstance, LPCSTR name, WNDCLASSEXA *wc)
+ATOM WINAPI GetClassInfoExA(HINSTANCE hInstance, LPCSTR name, WNDCLASSEXA *wc)
 {
     if (!wc)
     {
         SetLastError(ERROR_NOACCESS);
-        return FALSE;
+        return 0;
     }
-    return ClassMgr::instance()->get_class_info(hInstance, name, wc)!=0;
+    return ClassMgr::instance()->get_class_info(hInstance, name, wc);
 }
 
-BOOL WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW *wc)
+ATOM WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW *wc)
 {
     ATOM atom;
 
@@ -151,7 +151,7 @@ BOOL WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW *wc)
     }
     if (!atom)
     {
-        return FALSE;
+        return 0;
     }
     wc->style = wca.style;
     wc->lpfnWndProc = wca.lpfnWndProc;
@@ -163,7 +163,7 @@ BOOL WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW *wc)
     wc->hCursor = wca.hCursor;
     wc->hbrBackground = wca.hbrBackground;
     wc->lpszClassName = name;
-    return TRUE;
+    return atom;
 }
 
 ULONG_PTR GetClassLongSize(ATOM atom, int nIndex, int sz)
