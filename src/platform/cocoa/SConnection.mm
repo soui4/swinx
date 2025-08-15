@@ -261,7 +261,7 @@ UINT SConnection::MapVirtualKey(UINT uCode, UINT type) const {
     case MAPVK_VK_TO_CHAR:
     {
         UINT scanCode = convertVKToKeyCode(uCode);
-        ret = scanCodeToASCII(scanCode,0);
+        ret = scanCodeToChar(scanCode,0);
         break;
     }
     default:
@@ -613,12 +613,15 @@ bool SConnection::TranslateMessage(const MSG *pMsg) {
             modifiers |= controlKey;
         if(GetKeyState(VK_MENU) & 0x8000)
             modifiers |= optionKey;
-        uint8_t c = scanCodeToASCII(HIWORD(pMsg->lParam),modifiers);
+        wchar_t c = scanCodeToChar(HIWORD(pMsg->lParam),modifiers);
         if (c != 0 && !GetKeyState(VK_CONTROL) && !GetKeyState(VK_MENU) && !GetKeyState(VK_LWIN))
         {
             std::unique_lock<std::recursive_mutex> lock(m_mutex);
             Msg *msg = new Msg;
-            msg->message = pMsg->message == WM_KEYDOWN ? WM_CHAR : WM_SYSCHAR;
+            if(c<127)
+                msg->message = pMsg->message == WM_KEYDOWN ? WM_CHAR : WM_SYSCHAR;
+            else
+                msg->message = WM_IME_CHAR;
             msg->hwnd = pMsg->hwnd;
             msg->wParam = c;
             msg->lParam = pMsg->lParam;
