@@ -1,0 +1,67 @@
+## Copyright (c) 2009  Openismus GmbH  <http://www.openismus.com/>
+##
+## This file is part of libsigc++.
+##
+## libsigc++ is free software: you can redistribute it and/or modify it
+## under the terms of the GNU Lesser General Public License as published
+## by the Free Software Foundation, either version 2.1 of the License,
+## or (at your option) any later version.
+##
+## libsigc++ is distributed in the hope that it will be useful, but
+## WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+## See the GNU Lesser General Public License for more details.
+##
+## You should have received a copy of the GNU Lesser General Public License
+## along with this library.  If not, see <http://www.gnu.org/licenses/>.
+
+
+sigc_public_h =				\
+	bind.h				\
+	bind_return.h			\
+	connection.h			\
+	limit_reference.h \
+	member_method_trait.h \
+	reference_wrapper.h		\
+	retype_return.h			\
+	scoped_connection.h \
+	signal.h \
+	signal_base.h			\
+	signal_connect.h		\
+	slot.h			\
+	trackable.h			\
+	tuple-utils/tuple_cdr.h \
+	tuple-utils/tuple_end.h \
+	tuple-utils/tuple_for_each.h \
+	tuple-utils/tuple_start.h \
+	tuple-utils/tuple_transform_each.h \
+	type_traits.h			\
+	visit_each.h			\
+	weak_raw_ptr.h			\
+	adaptors/adapts.h		\
+	adaptors/adaptor_base.h \
+	adaptors/adaptors.h		\
+	adaptors/adaptor_trait.h		\
+	adaptors/bind.h \
+	adaptors/bind_return.h \
+	adaptors/bound_argument.h	\
+	adaptors/compose.h \
+	adaptors/exception_catch.h \
+	adaptors/hide.h \
+	adaptors/retype.h \
+	adaptors/track_obj.h \
+	adaptors/retype_return.h \
+	adaptors/tuple_visitor_visit_each.h \
+	functors/functor_trait.h		\
+	functors/functors.h		\
+	functors/mem_fun.h		\
+	functors/ptr_fun.h		\
+	functors/slot.h \
+	functors/slot_base.h
+
+sigc_sources_cc =			\
+	scoped_connection.cc \
+	signal_base.cc			\
+	trackable.cc			\
+	connection.cc			\
+	functors/slot_base.cc

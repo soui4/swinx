@@ -1,0 +1,19 @@
+name: "CMake: MSVC"
+
+# Triggered manually
+on: [workflow_dispatch]
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - uses: microsoft/setup-msbuild@v1
+    - name: Build
+      run: |
+        cmake .
+        msbuild ALL_BUILD.vcxproj
+    - name: Test
+      run: msbuild RUN_TESTS.vcxproj

@@ -1,0 +1,135 @@
+dbus-cxx (2.6.0) UNRELEASED; urgency=medium
+
+  * Various fixes
+
+ -- Robert <robert.middleton@rm5248.com>  Fri, 06 Sep 2024 10:07:40 -0400
+
+dbus-cxx (2.5.2) jessie; urgency=medium
+
+  * Various fixes
+
+ -- Robert Middleton <robert.middleton@rm5248.com>  Sat, 27 Jul 2024 20:34:39 -0400
+
+dbus-cxx (2.5.0) jessie; urgency=medium
+
+  * Various fixes
+
+ -- Robert Middleton <robert.middleton@rm5248.com>  Wed, 20 Dec 2023 20:37:43 -0500
+
+dbus-cxx (2.4.0) jessie; urgency=medium
+
+  * Various fixes
+
+ -- Robert Middleton <robert.middleton@rm5248.com>  Sun, 07 May 2023 15:34:02 -0400
+
+dbus-cxx (2.3.0) jessie; urgency=medium
+
+  * Various fixes
+  * Add in multiple return support
+
+ -- Robert Middleton <robert.middleton@rm5248.com>  Fri, 02 Sep 2022 17:27:07 -0400
+
+dbus-cxx (2.2.0) jessie; urgency=medium
+
+  * Minor fix for version installation
+  * Change license from GPL to LGPL or BSD
+
+ -- Robert Middleton <robert.middleton@rm5248.com>  Sat, 26 Mar 2022 21:30:50 -0400
+
+dbus-cxx (2.1.0) jessie; urgency=medium
+
+  * Maintenance release.  Fixed a few bugs with signals and arrays of array of bytes
+
+ -- Robert Middleton <robert.middleton@rm5248.com>  Fri, 26 Nov 2021 11:01:03 -0500
+
+dbus-cxx (2.0.0) jessie; urgency=medium
+
+  * Bumped version of dbus-cxx
+
+ -- robert <robert@debian9>  Tue, 26 Jan 2021 21:02:42 -0500
+
+dbus-cxx (0.11.0) jessie; urgency=medium
+
+  * Bumped file for release
+
+ -- robert <robert@debian>  Thu, 06 Jun 2019 20:38:27 -0400
+
+dbus-cxx (0.10.0) jessie; urgency=medium
+
+  [ Robert Middleton ]
+  * Added file descriptor passing
+
+ -- robert <robert@debian>  Sat, 24 Feb 2018 15:57:44 -0500
+
+dbus-cxx (0.8.0) jessie; urgency=medium
+
+  [ Robert Middleton ]
+  * Re-packaged for debian distributions
+
+ -- robert <robert@debian>  Sat, 11 Mar 2017 16:43:33 -0500
+
+dbus-cxx (0.4.3-1) jaunty; urgency=low
+
+  * jaunty New release
+
+ -- Rick L. Vinyard, Jr. <rvinyard@cs.nmsu.edu>  Tue, 01 Sep 2009 01:36:06 -0600
+
+dbus-cxx (0.4.2-9) jaunty; urgency=low
+
+  * jaunty Add xsltproc to build requirements
+
+ -- Rick L. Vinyard, Jr. <rvinyard@cs.nmsu.edu>  Fri, 28 Aug 2009 01:36:06 -0600
+
+dbus-cxx (0.4.2-8) jaunty; urgency=low
+
+  * jaunty Add doxygen to build requirements
+
+ -- Rick L. Vinyard, Jr. <rvinyard@cs.nmsu.edu>  Fri, 28 Aug 2009 01:27:04 -0600
+
+dbus-cxx (0.4.2-7) jaunty; urgency=low
+
+  * jaunty Add libexpat1-dev to build requirements
+
+ -- Rick L. Vinyard, Jr. <rvinyard@cs.nmsu.edu>  Fri, 28 Aug 2009 01:10:51 -0600
+
+dbus-cxx (0.4.2-6) jaunty; urgency=low
+
+  * jaunty Add libpopt-dev to build requirements
+
+ -- Rick L. Vinyard, Jr. <rvinyard@cs.nmsu.edu>  Fri, 28 Aug 2009 00:55:59 -0600
+
+dbus-cxx (0.4.2-5) jaunty; urgency=low
+
+  * jaunty Add libglibmm-2.4-dev to build requirements
+
+ -- Rick L. Vinyard, Jr. <rvinyard@cs.nmsu.edu>  Fri, 28 Aug 2009 00:40:18 -0600
+
+dbus-cxx (0.4.2-4) jaunty; urgency=low
+
+  * jaunty Add libsigc++-2.0-dev to build requirements
+
+ -- Rick L. Vinyard, Jr. <rvinyard@cs.nmsu.edu>  Fri, 28 Aug 2009 00:32:02 -0600
+
+dbus-cxx (0.4.2-3) jaunty; urgency=low
+
+  * jaunty Add cdbs to build requirements
+
+ -- Rick L. Vinyard, Jr. <rvinyard@cs.nmsu.edu>  Fri, 28 Aug 2009 00:21:53 -0600
+
+dbus-cxx (0.4.2-2) jaunty; urgency=low
+
+  * Fixed distro tag
+
+ -- Rick L. Vinyard, Jr. <rvinyard@cs.nmsu.edu>  Mon, 24 Aug 2009 13:10:13 -0600
+
+dbus-cxx (0.4.2-1) jaunty; urgency=low
+
+  * New release
+
+ -- Rick L. Vinyard, Jr. <rvinyard@cs.nmsu.edu>  Mon, 24 Aug 2009 13:10:13 -0600
+
+dbus-cxx (0.4.1-1) jaunty; urgency=low
+
+  * Initial release
+
+ -- Rick L. Vinyard, Jr. <rvinyard@cs.nmsu.edu>  Fri, 21 Aug 2009 13:10:13 -0600

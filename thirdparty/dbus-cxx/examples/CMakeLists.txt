@@ -1,0 +1,6 @@
+add_subdirectory( quick-start )
+add_subdirectory( basics/filedescriptors )
+add_subdirectory( basics/methods )
+add_subdirectory( basics/signals )
+add_subdirectory( basics/types )
+add_subdirectory( basics/struct )

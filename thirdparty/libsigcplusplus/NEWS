@@ -1,0 +1,1030 @@
+3.6.0 (stable)
+
+* sigc++config.h.*: Update and clean up a bit for Visual Studio
+  (Chun-wei Fan) Pull request #95
+* scoped_connection: New wrapper to auto-disconnect a slot
+  Issue #87, pull request #97 (Daniel Boles)
+* signal: Add connect_first()
+  (Kjell Ahlstedt) Issue #81 (LordVolumeForm)
+
+Documentation:
+* connection: Improve the class documentation
+  (Kjell Ahlstedt) Issue #88 (Daniel Boles)
+* Improve Visual Studio build documentation
+  (Chun-wei Fan) Pull request #93
+* Remove AUTHORS and add general information to README.md
+  (Kjell Ahlstedt) Issue gtkmm#140
+* manual: Add paragraph about new scoped_connection
+  Pull request #99 (Daniel Boles)
+
+Tests:
+* Add test_scoped_connection
+  Pull request #97 (Daniel Boles)
+
+Build:
+* Meson: Don't copy files with configure_file()
+  (Kjell Ahlstedt)
+* Meson: Fix the evaluation of is_git_build on Windows
+  (Kjell Ahlstedt) Issue gtkmm#131 (William Roy)
+* CMake: Prevent multiple target declaration for uninstall
+  (Francesco Emanuele D'Agostino) Pull request #85
+* Visual Studio: Support static builds
+  Issue #90 (Swat-SomeBug)
+  (Chun-wei Fan) Pull request #91
+* Meson: Don't require the 'dot' command to build the documentation
+  (Kjell Ahlstedt) Issue #98
+
+
+3.4.0 (stable)
+
+* Add track_object(), deprecate track_obj()
+  (Kjell Ahlstedt) Issue #78 (LordVolumeForm)
+* Add trackable_signal_with_accumulator and trackable_signal
+  (Kjell Ahlstedt) Issue #80 (H2NCH2COOH)
+
+Examples, tests:
+* examples/member_method: Make on_print() non-virtual
+* test_accumulated.cc: clang++ requires another 'template'
+  (Kjell Ahlstedt)
+* test_limit_reference.cc: Don't use auto where a slot is required
+  (Kjell Ahlstedt) Issue #44 (Murray Cumming)
+
+Documentation:
+* signal::make_slot(): Note that signal does not derive from trackable
+  (Kjell Ahlstedt) Issue #80 (H2NCH2COOH)
+
+Build:
+* Meson: Avoid configuration warnings
+  (Kjell Ahlstedt)
+* Meson, MSVC: Compensate for the lack of msvc_recommended_pragmas.h
+  (Chun-wei Fan)
+* Fix build with -Dbuild-deprecated-api=false
+  (Kjell Ahlstedt) Issue #82 (bbhtt)
+* Meson: Detect if we build from a git subtree
+  (William Roy) Merge request gtkmm!72
+* Meson: Simplify lookup of python command
+  (wael444) Pull request #83
+* Meson: Add build_tests option
+  (Fabrice Fontaine) Pull request #84
+
+
+3.2.0 (stable)
+
+* Allow slots with rvalue reference parameters
+  (Slava Andrejev) Pull requests #74, #77
+
+Build:
+* Meson build: Perl is not required by new versions of mm-common
+  (Kjell Ahlstedt)
+* NMake Makefiles: Support building with VS2022
+  (Chun-wei Fan)
+
+Documentation:
+* Upgrade the manual from DocBook 4.1 to DocBook 5.0
+  (Kjell Ahlstedt)
+* ptr_fun(), mem_fun() docs: Remove left-overs from sigc++-2.0
+  (Kjell Ahlstedt)
+* Fix links to sigc::slot and sigc::signal
+  (Kjell Ahlstedt)
+
+
+3.0.7 (stable)
+
+Meson build:
+* Make it possible to use sigc++ as a subproject
+  (Kjell Ahlstedt)
+* No implicit_include_directories
+  (Kjell Ahlstedt)
+* Fix build as subproject without building documentation
+  (Kjell Ahlstedt) Issue #71 (Xavier Claessens)
+
+
+3.0.6 (stable)
+
+Build:
+* Meson build: Fix versioning on macOS
+  (Tom Schoonjans) Pull request #65
+
+Documentation:
+* sigc++/sigc++.h: Describe how to use libsigc++ with Meson
+  (Kjell Ahlstedt)
+* Update links to the web page, now at
+  libsigcplusplus.github.io/libsigcplusplus
+  (Kjell Ahlstedt)
+
+
+3.0.4 (stable)
+
+Build:
+* Meson build: Set default value of the 'warnings' option to 'min'
+  (Kjell Ahlstedt)
+* NMake Makefiles: Several improvements
+  (Chun-Wei Fan) Pull request #57
+* docs/reference/: Update for Doxygen >= 1.8.16
+  (Kjell Ahlstedt)
+
+Documentation:
+* docs/manual/libsigc_manual.xml: Update signal and slot syntax
+  (Kjell Ahlstedt) Issue #59 (Denis Washington)
+
+The tarball for 3.0.4 has been created with 'meson dist'.
+If you build with Autotools from the tarball, please read the relevant
+part of README.md.
+
+
+3.0.3 (stable)
+
+Build:
+* docs/docs/reference/meson.build: Check if perl is found
+  (Kjell Ahlstedt) Issue #53 (Rasmus Thomsen)
+* README.md: Describe building with Meson
+  (Kjell Ahlstedt)
+
+Examples:
+* Add example of using libsigc++ with Qt
+  (Robert Middleton) Pull request #35
+
+Tests:
+* Replace C-style casts with static_cast<>
+  (Lennard Berger)
+
+
+3.0.2 (stable)
+
+* Build: Meson build improvements.
+  (Kjell Ahlstedt, Chun-Wei Fan)
+
+3.0.1 (stable)
+
+* Build:
+  - Add meson build, alongside the existing autotools and CMake builds.
+  (Kjell Ahlstedt, Chun-Wei Fan)
+  - CMake: Fix the MSVC build, enable warnings, and disable unnecessary
+  warnings, with MVSC.
+  (Stuart Dootson)
+* connection: Allow copying of empty connections.
+  (Aigrind)
+* sigc++/adaptors/bind.h: Make bind_functor::bound_ public.
+  (Used by sigc::visitor::do_visit_each().
+  (Kjell Ahlstedt) Bug #26
+* test_limit_reference: Avoid virtual-move-assign warning
+  (seen with g++ 9.2)
+  (Murray Cumming)
+* signal: slot_iterator_buf: Remove unused T_result default type
+  (Murray Cumming)
+* tests: Slight cleanups
+  (Murray Cumming)
+* Remove unused #ifdefed code.
+  (Murray Cumming)
+
+
+3.0.0 (stable)
+
+This is the first stable release of sigc++-3.0, installable in
+parallel with sigc++-2.0.
+Changes compared to the latest unstable release:
+
+* Fix tuple_transform_each() for libc++
+  (Kjell Ahlstedt) Issue #25 (Jeff Trull)
+
+Documentation:
+* Remove some obsolete documentation
+  (Kjell Ahlstedt)
+
+Tests:
+* Make test_track_obj.cc compile with clang++
+  (Kjell Ahlstedt)
+* Don't call static method via instance
+  (Murray Cumming)
+
+
+2.99.13: (unstable)
+
+* Replace the deprecated std::result_of with std::invoke_result
+  (Kjell Ahlstedt) Issue #19
+
+Build:
+* CMake: Supply SIGC_BUILD and use CMAKE_CXX_STANDARD
+  (Jeff Trull) Issue #23, pull request #24
+
+Documentation:
+* Remove some obsolete documentation
+  (Murray Cumming) Issue #12 (Jeremy Bicha)
+* Rename README to README.md and update it
+  (Murray Cumming) Issue #18 (Traumschule)
+  (Jürg Billeter) Pull request #20
+* Reference docs generated by Doxygen 1.8.11.
+  Hopefully it will show up at
+  https://developer.gnome.org/libsigc++/unstable/
+
+Tests:
+* Add some necessary #include directives
+  (Lennard Berger) Pull Request #15
+
+
+2.99.12: (unstable)
+
+* Avoid compiler warnings from function pointer conversions
+  (Kjell Ahlstedt) Issue #1 (sharkcz)
+  (Kjell Ahlstedt) Issue #8 (db0451)
+
+Build:
+* Replace the Visual Studio project files with MSVC NMake project files
+  Add MSVC_NMake/README.txt for Visual Studio builds
+  (Chun-wei Fan) Pull request #7
+* cmake: Require C++17 support
+  (Kjell Ahlstedt) Issue #9 (telkamp)
+
+Documentation:
+* Update links in README, configure.ac, libsigcplusplus.doap
+  (Seirra) Pull request #4
+  (Kjell Ahlstedt)
+* README: Update compiler requirement
+  (Kjell Ahlstedt) Issue #6 (Petr Ohlidal)
+
+2.99.11: (unstable)
+
+libsigc++-3.0 now requires C++17. Use of C++17:
+* Use std::apply to simplify implementation.
+* Use std::invoke to make implementation more generic.
+* Use constexpr if to simplify implementation.
+
+Build:
+* Require mm-common 0.9.12
+
+2.99.10: (unstable)
+
+* slot_base::set_parent(): Create a dummy slot_rep if necessary
+  (Kjell Ahlstedt) Bug #167714 (Gerald Britton)
+* visit_each.h: Add an #include.
+  (Kjell Ahlstedt)
+
+2.99.9: (unstable)
+
+* signal_impl::clear(): Don't clear the slot list during signal emission,
+  to prevent a segfault. And add a test for this.
+  (Kjell Ahlstedt) Bug #784550 (Andrejs Hanins)
+* Remove signal_base::erase() and signal_impl::erase().
+  (Kjell Ahlstedt) Bug #784550
+* Various minor code cleanups.
+  (Murray Cumming)
+* Windows: Update the MS Visual Studio build.
+  (Chu-wei Fan)
+
+2.99.8: (unstable)
+
+* signal_impl:
+  - Use std::weak_ptr<signal_impl> in connected slots,
+  to avoid a memory leak.
+  (Kjell Ahlstedt) Bug #775871
+  - clear(): Really avoid erasing the slots prematurely.
+  (Kjell Ahlstedt)
+* slot_rep: Make destructor, destroy, and clone() virtual,
+  instead of using function pointers that do the same thing.
+  (Kjell Ahlstedt) Bug #777618
+
+Build:
+* Visual Studio builds: Require Visual Studio 2017.
+  (Chun-wei Fan)
+* Add tests/memleakcheck.sh, to run the tests under valgrind.
+  (Kjell Ahlstedt) Bug #775871
+* Make --disable-benchmark work.
+  (Christophe Lermytte) Bug #774732
+* Make silent builds really silent.
+  (Kjell Ahlstedt) Bug #768797
+
+2.99.7: (unstable)
+
+* connection, slot_base: Use an internal::weak_raw_ptr<> to simplify
+  the code.
+  (Murray Cumming)
+* signal_base: Do not derive from trackable.
+  (Murray Cumming
+*  slot_rep: Pass a slot_rep*, not notifiable*, to destroy().
+  (Murray Cumming)
+* signal_impl: Do not derive from notifiable.
+  (Murray Cumming)
+
+2.99.6 (unstable):
+
+* signal: Remove slots() and the container that it returns,
+  and the iterator for that container.
+  See https://mail.gnome.org/archives/libsigc-list/2016-April/msg00009.html
+* signal: connect(): Return a connection, instead of an iterator that
+  can be implicitly converted to a connection.
+* Use std::shared_ptr<> for signal_impl reference-counting.
+  Instead of manual reference-counting.
+  (Murray Cumming) Bug #764935
+* slot: Use unique_ptr<> to avoid direct call of destructor.
+  (Marcin Kolny) Bug #764935
+* Add optional benchmark code, using boost::timer.
+  (Murray Cumming)
+* Make some single-item constructors explicit.
+  (Murray Cumming)
+* Make some member variables and methods private.
+  (Murray Cumming)
+* Remove _ and __ prefixes on variables and parameters.
+  (Murray Cumming)
+* Header guards: Remove leading underscores (and trailing underscores).
+  (Murray Cumming)
+* limit_derived_target<T_Target>: Rename to limit_trackable_target<>
+  and visit_each_type<T_Type>() to visit_each_trackable() to make their purpose
+  more obvious.
+  (Murray Cumming)
+
+2.99.5 (unstable):
+
+* Functors (mem_functor, ptr_functor) no longer need to derive from a common
+  functor_base base class, and functors no longer need to have a result_type
+  typedef or alias.
+* emitters and accumulators no longer need t ohave a result_type typedef or
+  alias.
+* Remove now-unnecessary adaptor_type type aliases.
+* Remove some more unused and unnecessary public type aliases.
+
+2.99.4 (unstable):
+
+* Minor documentation improvements.
+  (Murray Cumming)
+* Make some constructors explicit.
+  (Murray Cumming)
+* Some more minor uses of C++11 syntax.
+  (Murray Cumming)
+* Remove unused SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE.
+  (Murray Cumming)
+* Reformat code with clang-format.
+  (Murray Cumming)
+
+2.99.3 (unstable):
+
+* Correct the license of some header files from GPL to LGPL.
+  (Murray Cumming) Bug #763616 (Dominique Leuenberger)
+
+2.99.2 (unstable):
+
+* slots and signal: These should now be declared with the
+  sigc::slot<R(Args...)>
+  and
+  sigc::signal<R(Args...)>
+  syntax, like std::function<>.
+  Version 2.9/2.10 of libsigc++-2.0 supports both the old and new syntax.
+  (Murray Cumming)
+* sigc::men_fun(): Take the instance by reference only.
+
+2.99.1 (unstable):
+
+This is the first release of the libsigc++-3.0 API, which installs in parallel
+with libsigc++-2.0. The API is not significantly different, but the
+implementation is far simpler, using variadic templates instead of generating
+C++ code from .m4 files.
+
+libsigc++-3.0 requires a compiler with C++14 support.
+
+
+2.7.1 (unstable):
+
+* signal: Add a moving connect() method, taking an rvalue reference
+  to a slot.
+  (Kjell Ahlstedt) Bug #756484
+* can_deduce_result_type_with_decltype: Rename the check() methods to
+  checksize(). check() is a preprocessor macro in Mac OS X.
+  (Kjell Ahlstedt) Bug #759315 (David Otto)
+* Temporarily undefine the nil macro, if it's defined.
+  nil is a preprocessor macro in Objective-C++ and Mac OS X.
+  (Kjell Ahlstedt) Bug #695235
+* Correct the mem_functor<> declarations.
+  Murray Cumming
+
+2.6.2 (stable):
+
+* slot: Handle auto-disconnection when a slot contains a slot
+  (Kjell Ahlstedt) Bug #755003 (Ryan Beasley)
+* slot and signal: Correct move constructors and move assignments.
+  (Kjell Ahlstedt) Bug #756484.
+* trackable, slot_base, signal_base, connection: Add some noexcept specs
+  (Kjell Ahlstedt) Bug #756484.
+* trackable, slot, signal: Remove noexcept from move operations.
+  (Kjell Ahlstedt) Bug #756484.
+* slot and signal: Add missing move constructors and move assignments
+  (Kjell Ahlstedt) Bug #756484.
+* signal_impl: =delete copy and move operations.
+  (Murray Cumming, Kjell Ahlstedt) Bug #756484
+* typed_slot_rep: =delete unimplemented copy and move operations.
+  (Murray Cumming, Kjell Ahlstedt) Bug #756484
+* slot_rep: =delete copy and move operations.
+ (Murray Cumming, Kjell Ahlstedt) Bug #756484
+
+
+2.6.1 (stable):
+
+* Add back deprecated adaptors/lambda API to avoid an unintented ABI break.
+  (Kjell Ahlstedt) Bug #755550 (Michael Biebl)
+* sigc::trackable: Move operations: Don't move the callback list
+  (Kjell Ahlstedt) Bug #755393 (Tom Schoonjans)
+
+
+2.6.0 (stable):
+
+* C++11: deduce_result_type: Simplify with C++11 variadic template.
+  (Murray Cumming, Marcin Kolny) Bug #753612
+* Fix the build with MSVC.
+  (Chun-wei Fan) Bug #754082
+* Update the website.
+  (Kjell Ahlstedt)
+
+
+2.5.4 (unstable):
+
+* slot_base::operator=(const &): Copy the blocked too,
+  so the destionation is blocked if the source is blocked,
+  regardless of whether the destionation was previously
+  blocked, because this seems to be what we should expect.
+  (Murray Cumming)
+* C++11: slot_base, slot*, signal_base, signal*, trackable:
+  Add move operations.
+  (Murray Cumming)
+* Update MSVC Projects, requiring at least MSVC++ .Net 2013
+  for C++11 support.
+  (Chun-wei Fan)
+
+
+2.5.3 (unstable):
+
+* Use C++11 "using" aliases to simplify code that uses type traits.
+  (Murray Cumming) Bug #753580
+
+
+2.5.2 (unstable):
+
+* Remove useless headers:
+    sigc++/class_slot.h
+    sigc++/hide.h
+    sigc++/method_slot.h
+    sigc++/object.h
+    sigc++/object_slot.h
+    sigc++/retype.h
+  Some of these still have equivalents in sigc++/adaptors/
+  (Kjell Ahlstedt, Murray Cumming) Bug #752560
+* C++11: Replace deprecated std::auto_ptr by std::unique_ptr.
+  (Kjell Ahlstedt)
+* C++11: Use std::is_base_of<> instead of our sigc::is_base_and_derived<>,
+  removing sigc::is_base_and_derived<>.
+  (Kjell Ahlstedt, Murray Cumming) Bug #752560
+* C++11: Use of range-based for loops.
+  (Murray Cumming)
+* C++11: Use of the auto keyword.
+  (Murray Cumming)
+* C++11: Use of nullptr instead of 0.
+  (Murray Cumming)
+* sigc++/slot.h: Use a regular .h file instead of generating it
+  from an .m4 file. Bug #752560
+  (Kjell Ahlstedt)
+* Visual Studio Builds: Move 2010 Projects to 2012 to support C++11.
+  (Chun-wei Fan)
+* Use -Wformat-security and -Wshadow with --enable-warnings=fatal.
+  (Murray Cumming)
+
+
+2.5.1 (unstable):
+
+* Use (and require) C++11
+  (Kjell Ahlstedt) 
+* Using C++11 lambda functions to create sigc::slots:
+  Avoid the need for SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE.
+  (Kjell Ahlstedt)
+* Remove the already-deprecated sigc::lambda (and sigc::group) API.
+  This is an API change but should not be an ABI change, so it should
+  only affect you when rebuilding applications, if you use this API.
+  (Murray Cumming, Kjell Ahlstedt)
+
+
+2.4.1 (stable):
+
+* A slot's functor is destroyed when an empty slot is assigned to the slot.
+  (Kjell Ahlstedt) Bug #738602 (James Lin)
+* test_disconnect_during_emit tests that the slot is really disconnected
+  during signal emission.
+  (Kjell Ahlstedt)
+
+2.4.0 (stable):
+
+Note: API/ABI is the same as in release 2.3.2. Compared to stable
+releases 2.2.x, the API has been broken regarding visit_each() functions.
+See the NEWS entry for libsigc++ 2.3.2.
+
+* Fix the test_lambda test case for MS Visual C++ 2013 and other
+  C++11-compliant compilers.
+  (Kjell Ahlstedt) Bug #734368 (Ryan Beasley)
+* Add a missing #include in limit_reference.h.
+  (Kjell Ahlstedt)
+* Documentation:
+  - Use doxygen-extra.css from the mm-common package.
+    Requires mm-common 0.9.7 when configured to use maintainer-mode.
+    (Kjell Ahlstedt)
+
+2.3.2 (unstable):
+
+Note: The implementation of bug #724496 breaks API for some users,
+but it does not break ABI.
+Only users who have added their own visit_each() overloads are affected by
+the API break. Their programs will still compile, but there will be run-time
+errors, if they rely on auto-disconnection of slots.
+Updated instructions for users who implement their own adaptors are found
+in the description of sigc::adapts<>. 
+
+* Replace visit_each() overloads by struct visitor<>.
+  Add the test_visit_each test case.
+  (Ryan Beasley, Kjell Ahlstedt) Bug #724496
+* signal_impl::notify(): Don't delete signal_impl during erase().
+  (Kjell Ahlstedt) Bug #564005 (Alexander Shaduri)
+* Fix 'make check' with clang++ 3.4 and --enable-warnings=fatal
+  (Kjell Ahlstedt) Bug #724496 (Ryan Beasley)
+* Fix test_cpp11_lambda for gcc 4.8
+  (Kjell Ahlstedt)
+* Speed up disconnection of slots.
+  (Kjell Ahlstedt) Bug #167714 (Neal E. Coombes)
+* Auto-generate the ChangeLog from the git log for 'make dist'.
+  (José Alburquerque)
+* Don't use __file__ in the FIREWALL m4 macro.
+  (Kjell Ahlstedt) Bug #699168 (John Ralls)
+* Add the track_obj() adaptor and test_track_obj test case.
+  Deprecate libsigc++ lambdas, sigc::group() and sigc::var().
+  Use C++11 lambda expressions instead.
+  (Kjell Ahlstedt) Bug #672555
+* Documentation:
+  - Emphasize that signals are reference counted.
+    (Kjell Ahlstedt) Bug #611941 (Jonathon Jongsma)
+  - Mention std::function<> and std::bind() where appropriate.
+    (Kjell Ahlstedt, Chris Vine)
+  - Use DOXYGEN_SHOULD_SKIP_THIS consistently to exclude internal
+    functions from the reference documentation.
+    (Kjell Ahlstedt)
+* Windows:
+  - Enable C++11 lambda expressions with MS Visual Studio 2012 and later
+    (Ryan Beasley) Bug #733752
+  - Update MSVC_Net2010
+    (Kjell Ahlstedt) Bug #724496 (Ryan Beasley)
+
+2.3.1 (unstable):
+
+* signal_base: Add blocked(), block(), unblock().
+  (Kjell Ahlstedt) Bug #153780
+
+2.2.11 (stable):
+
+* Fix comma operator in libsigc++ lambda expressions.
+  Andris Pavenis) Bug #342911
+* Added SIGC_FUNCTORS_DEDUCE_RESULT_TYPE_WITH_DECLTYPE.
+  This allows most uses of libsigc++'s lambda expressions to be 
+  replaced by standard C++11 lambda expressions.
+  (Kjell Ahlstedt) Bug #672555.
+  Thanks to Chow Loong Jin, who posted similar code on libsigc-list.
+* Use std::size_t and std::ptrdiff_t instead
+  (Kjell Ahlstedt)
+* Fix 'make check' with gcc 4.7.
+  (Kjell Ahlstedt)
+* Enable test_lambda in 'make check'.
+  (Kjell Ahlstedt) Bug #669128.
+
+
+2.2.10:
+
+* slot_rep: Avoid access to deleted object in notify(),
+	and test case.
+	(Kjell Ahlstedt ) Bug #564005 (Alexander Shaduri)
+* Mention visit_each() in the documentation of sigc::adapts.
+  (Thomas Rydzynski)
+	
+2.2.9:
+
+* trackable: Avoid calling the same callback function twice, fixing some
+	memory corruption.
+	(Kjell Ahlstedt) Bug #589202
+* Minor documentation corrections.
+  (David King)
+* Fix the build with GCC 4.6
+	(Kalev Lember)
+* Windows build fixes for MSVC++ .Net 2005 and 2010
+  (Armin Burgmeier)
+
+2.2.8:
+
+Nothing interesting. Just a small change for library.gnome.org.
+
+2.2.7:
+
+* Documentation:
+  - Added main page text with doxygen.
+  (David King, Murray Cumming)
+  - Fix the functors Doxygen group.
+  (David King)
+  - Tutorial: Removed outdated marshallers section that had no working example.
+  (Murray Cumming) Bug #417924 (Michael Ekstrand)
+
+2.2.6:
+
+* Slight documentation changes.
+  (Murray Cumming) Bug #614741 (Armin Burgmeier)
+
+2.2.5:
+
+* Accumulators: Allow return types that are different to the signal's.
+  (Krzysztof Kosiński)
+* Documentation:
+  - Disable collaboration graphs in documentation
+  - Use non-blurry font for graph labels.
+  (Daniel Elstner)
+  - sigc::hide() correction: It always only hides one signal argument.
+  (Michael Hasselmann)
+* Fix the MSVC++ build.
+  (Armin Burgmeier)
+
+2.2.4.2 (stable):
+
+* Namespace sigc is now documented, in order to make large chunks of the
+  reference reappear.  (Daniel Elstner)
+* The shipped reference documentation has been regenerated using Doxygen
+  1.6.1, so that the document type is now XHTML 1.0.  (Daniel Elstner)
+* The shipped Devhelp file has been generated with a newer version of the
+  XSLT script in mm-common, so that documentation groups no longer appear
+  as namespace prefixes in the keyword list.  (Daniel Elstner)
+
+2.2.4.1 (stable):
+
+* Reenable the per-class hierarchy graphs in the reference documentation.
+  (Daniel Elstner)
+* Drop the custom HTML header and footer, and use the shared doxygen.css
+  file from mm-common. (Daniel Elstner)
+
+2.2.4 (stable):
+
+* New build system based on mm-common. The mm-common module is now
+  required for building from the git repository, but not for builds
+  of release archives. (Daniel Elstner)
+* The public reference documentation is now hosted on library.gnome.org.
+  (Frédéric Péters, Daniel Elstner)
+
+2.2.3 (stable):
+
+* Windows:
+  - Added project files (and property sheets) for
+  MSVC++ 2005 and 2008.
+  (Armin Burgmeier)
+  - Removed unnecessary dependency on afxrefs.h, so it builds
+  with MSVC++ Express editions.
+  (Cedric Gustin)
+
+2.2.2 (stable):
+
+* Added an include of functors/slot.h that was mistakenly removed
+  during the 2.1 series.
+  (Deng Xiyue) Bug #521418.
+
+2.2.1 (stable):
+
+* Really fix the build with Sun CC.
+  (Elaine Xiong. Bug #302098)
+
+2.2.0 (stable):
+
+* Build fixes when using gcc 4.3 pre-releases.
+  (Ryan Hill, Vladimir Marek)
+
+2.1.1 (unstable):
+
+WARNING: This is an unstable release and should not yet be
+packaged by distributions unless libsigc++ 2.0.x does not
+build for some reason (Please report such bugs).
+
+* Removed the SigC:: namespace and other compatibility API,
+  to fix the build with some versions of some compilers,
+  such as the SUN Forte C++ CC compiler.
+  See bug #302098, for instance
+  (Murray Cumming)
+* sigc::signal<>:
+  - Added Added typedefs for
+  value_type, reference, and pointer, so that these
+  iterators are more like standard C++ iterators, so they can
+  be used with standard C++ algorithms.
+  (Michael Elkstrand) (Bug #417926).
+  - Added emit_reverse().
+  (John Profic)
+
+2.0.17:
+
+* slot::disconnect(): Make this work.
+  sigc::connection::disconnect() already worked.
+  (James Lin, Murray Cumming)
+* visit_each compilation problem fixed.
+  (Philipp Berndt)
+
+2.0.16:
+
+* Fixed build for SUN Forte C++ 5.5
+* Fixed build for MSVC++ 7.1
+* Fixed crash when using --no-inline with g++.
+
+2.0.15:
+
+* g++ 3.2 (and Mac OS X g++ 3.3) build fix.
+  (Paul Pogonyshev)
+* Compose: Fix slot lifetime regression introduced in
+  2.0.9. (Philip Langdale)
+* tests: Small ISO C++ correctness fix (Marek Rouchal)
+* Don't specify unused function parameter names.
+  (Andris Pavenis)
+
+2.0.14:
+
+* SUN Forte 5.7 build fix for ambiguity when using
+  inner template class. However, you still need the
+  patch in bug #302098 to finish the build.
+
+2.0.13:
+
+* signal_emit::emit(): Ensure the correct order of
+  destruction of the member variables, to avoid a leak.
+  (Andreas Ames, bug #306249)
+* Allow recursive signal emission again.
+  (Neal E. Coombes, bug #303896)
+* SUN Forte CC 5.5 build fixes:
+  - test_compatibility minor fix.
+  - visit_each() template specializations:
+  Mention the bool I_derives_trackable template type,
+  (Friedemann Kleint, bug #305647)
+ - Check for the non-standard SUN reverse_iterator,
+  and use alternative code if necessary.
+  (Murray Cumming)
+
+2.0.12:
+
+* Fixes crashes when using virtual inheritance, particularly
+  with bound by-reference parameters, caused by casting
+  from derived to base when the derived destructor has run.
+  (Régis Duchesne)
+  This might affect non-g++ compilers, so do tell us about
+  any problems.
+
+2.0.11:
+
+* Build fixes for SUN Forte, Tru64
+  (Murray Cumming), and MSVC++ (Cedric Gustin).
+
+2.0.10:
+
+* tests: Include <new> to avoid unresolved symbols on Tru64.
+  (Tim Mooney)
+* When signal handlers are connected made during an emit
+  of the same signal, prevent them from being called in the
+  same emit, to prevent infinite loops.
+  (Neal E. Coombes)
+* Performance improvement in a corner case.
+  (Neal E. Coombes).
+
+2.0.9:
+
+* sigc::bind() now works with the AIX and Tru64 compilers.
+  See the comments in sigc++/visit_each.h: visit_each_type()
+  if you have compilation problems.
+  (Murray Cumming)
+* sigc::var() is now documented. (Roger Ferrer Ibáñez)
+
+2.0.8:
+
+* Maybe avoid (incorrect) warning with g++ 3.3.5.
+  (Murray Cumming)
+* Fix namespace ambiguity when using multiple
+  major versions of libsigc++. (Liza Klerck)
+
+2.0.7:
+
+* Now builds with the following compilers, in addition to
+the existing GNU g++, SUN Forte CC 5.5, MSVC++ .Net 2003,
+and Intel compilers:
+- IBM AIX xlC v7
+- Tru64 C++ V6.5-042
+- IRIX MIPSpro 7.4.2m
+  (Older versions of all these compilers might also work.)
+  (Murray Cumming, www.thewrittenword.com)
+* MSVC++ .Net 2003 build improvements.
+  (Cedric Gustin, Timothy M. Shead)
+* Replace C-style casts with reinterpret_cast<> and
+  static_cast<>. (e97_far at e.kth.se).
+* Documentation: Added manual, based on the manual in
+  libsigc++ 1.2, but updated for the new API.
+  (Murray Cumming)
+
+
+2.0.6:
+
+* Fixed a memory leak in sigc::slot.
+* Fixed compilation for gcc-3.4.
+* Fixed compilation for Intel C++ compiler (upgraded libtool).
+* Fixed project files for MSVC .Net (Timothy M. Shead).
+* Fixed segfaults when compiled with MSVC .Net 2003 (moved
+  all calls to new and delete into non-inline library code).
+* In the compatibility module use correct bound_mem_functor
+  variants for const (volatile) methods when creating a slot.
+* Minor documentation fix.
+* Resolved bugs: #152327 #148744 #152323 #151404 #153143
+
+2.0.5:
+
+* Distribute pregenerated configuration header for MSVC .Net.
+
+2.0.4:
+
+* Fixed warnings and compiler errors in the test cases.
+* Added a new test case (Murray Cumming).
+* Fixed 'hello_world' example.
+* Don't test optional features that fail with the Sun FORTE.
+* Fixes for the Sun FORTE to compile out-of-the-box
+  (Damien Carbery, Murray Cumming, Martin Schulze).
+* Fixes for MSVC to build a DLL out-of-the-box (James Lin).
+* Improved compiler specific configuration during 'configure'.
+* Added rmp description file libsigc++-2.0.spec (Eric Bourque).
+* Minor documentation improvements (Murray Cumming).
+* Resolved bugs: #147311 #147313 #147391 #144846 #145541
+
+2.0.3:
+
+* Fix segfault on emission of unconnected signal.
+* Test emission of unconnected signals in the test case.
+* Suppress compiler warning at dynamic_cast<>-test for good.
+  (Help from Christof Petig and Timothy M. Shead.)
+
+2.0.2:
+
+* Suppress compiler warning in compatibility module at
+  dynamic_cast<>-test (fix suggested by Timothy M. Shead).
+* If a custom accumulator is specified invoke it on signal
+  emission even if the signal's slot list is empty. (This used
+  to be the case in libsigc++-1.2 as pointed out by Timothy.)
+
+2.0.1:
+
+* Fixed serious bug in reference counting in sigc::signal_base::impl().
+* Fixed SigC::Object-derivation check in SigC::slot() compatibility module.
+* Fixed compilation on Apple gcc 3.3 (assisted by Spundun Bhatt).
+* Fixed configure check for gcc 3.4 (Murray Cumming).
+
+2.0.0:
+
+* Implemented sigc::connection::blocked() (Murray Cumming).
+* Added the scripts directory to the make dist target (Murray Cumming).
+* Added more documentation (Martin Schulze).
+
+1.9.16:
+
+* Fixed compiler warning in sigc::connection (Alexander Nedotsukov, Murray Cumming).
+* Fixed examples and made them part of the regular build (Murray Cumming).
+* Added header sigc++config.h for configure time checks (Murray Cumming).
+* Added configure time checks to determine the correct syntax
+  for explicit template method specializations (Murray Cumming).
+* Removed code using partial specializations of overloaded template methods
+  from test cases. SUN Forte doesn't support this feature (Martin Schulze).
+* Fixed compilation for gcc 3.4 (Murray Cumming).
+
+1.9.15:
+
+API additions:
+* Add numbered slot# templates.
+* Allow for methods of the object's base types to be passed into sigc::mem_fun().
+
+Other fixes and cleanups:
+* Make is_base_and_derived template compatible with the SUN Forte.
+* Non-template code moved from .m4 macro source to .h/.cc files (Murray Cumming).
+* Implementation moved to .cc files (Murray Cumming).
+* More fixes for the SUN Forte. Make some more ctors explicit.
+
+1.9.14:
+
+* Added sigc::slot_base::operator bool() (Murray Cumming).
+* Build docs directory by default (Murray Cumming).
+* Fixed minor doxygen issues (Murray Cumming).
+* Fixed compiler warning in signal.h (Murray Cumming).
+
+1.9.13:
+
+* Fixed passing references through sigc::slot (Reported by Jeff Franks).
+* Enabled binding of objects to method slots through sigc::bind().
+* Reworked sigc::bind() API: Made the template argument for the
+  parameter position zero-based and optional. Added overloads for
+  binding of up to 7 arguments at a time when no position is specified.
+* Reworked sigc::hide() API: Made the template argument for the
+  parameter position zero-based and optional.
+* Fixed compilation problems with MSVC .Net 2003 (Roel Vanhout).
+* Distribute MSVC .Net 2003 project files in the tarballs.
+* Improved and extended documentation.
+* Minor cleanups.
+
+1.9.12:
+
+* Added adaptor retype(). With this final API addition all adaptors
+  are in place that are available in libsigc++-1.2.
+* Added negation lambda operator. Use STL names for lambda actions.
+* Remove formerly disabled support for gcc extension typeof().
+* Added project files for MS Visual Studio .Net 2003. (Roel Vanhout)
+* Make libsigc++2 compile with .Net 2003. (Roel Vanhout, Martin Schulze)
+* Build shared version of libsigc++2 by default. (Cedric Gustin)
+* Add support for win32 platform. (Cedric Gustin)
+* Install .m4 files. (requested by Ron Steinke)
+* Cleaned up functors.
+* Restructured and completed documentation of the core library parts.
+
+1.9.11:
+
+API Additions and important bug fixes:
+* Compatibility module completed. libsigc++-1.2 filenames are preserved.
+* Fixed critical bug in auto-disconnection: don't defer detaching
+  of a slot from all referred trackables during signal emission.
+* Reduced size of slots significantly.
+* Fixed support for sigc::ref() in adaptors.
+* Fixed sigc::visit_each(): only hit targets that are passed by
+  reference; pass bound members in bound_member_functor by reference.
+* Add lambda actions sigc::{reinterpret,static,dynamic}_cast_
+  to support explicit parameter conversion.
+* Add adaptors sigc::retype_return<>() and sigc::hide_return().
+
+Minor fixes:
+* Fixed return type deduction for bind<0>.
+  libsigc++-1.9.11 should compile with gcc-3.3.
+* Fixed copy constructor and operator=() of slot template.
+* Fixed a compiler warning in signal_emit#<>::emit().
+* Improved test case.
+
+1.9.10:
+
+* Fix compiler issues with gcc-3.3.2 (patch from Jeff Franks).
+* Remove compiler check for the gcc extension typeof().
+* Simplify bind_functor templates.
+* Move definition of struct nil into functor_trait.h.
+
+1.9.9:
+
+* Add a constructor to sigc::connection that takes a slot_base&
+  to support user defined slot lists like they are used in gtkmm.
+* Fix compiler issues with gcc-3.3.2 (reported by Jeff Franks).
+
+1.9.8:
+
+* Add compatibility module that defines namespace SigC.
+  namespace SigC should be API compatible to libsigc++-1.2.
+  Currently only the core parts of the library are supported.
+  Adaptors are still to follow.
+* Fix connection::operator=(). Include connection.h in sigc++.h.
+* Get rid of namespace functor.
+* Rename dependency to destroy_notify_callback.
+* Rename trackable::clear() to trackable::notify_callbacks().
+* Move slot_base, signal_base, slot_iterator[_buf], slot_list
+  out of namespace internal. They are public API.
+* Add reference counter to signal_impl enabling signals
+  to share the underlying information.
+* Add convenience function signal#::make_slot().
+* Get rid of one-letter-parameter-names.
+* Get rid of "using namespace ..." in the test cases.
+* Add lambda operators subscript ([]) and assign (=).
+* Fix is_base_and_derived<> for const types.
+* New and updated documentation.
+* Add previous announces to file NEWS.
+
+1.9.7:
+
+* Added sigc++/sigc++.h. (Murray Cumming)
+* Added member_method example. (Murray Cumming)
+* Renamed closure to slot.
+* Fixed issues with gcc-3.3. (Adreas Rottmann)
+* Removed unnecessary void specializations.
+* Made adaptors' operator()() (overload with no arguments) return a value.
+* Made visit_each() support adaptors.
+* Overhauled return type deduction to make it work without typeof().
+* Added convinience macros SIGC_FUNCTORS_HAVE_RESULT_TYPE and
+SIGC_FUNCTOR_TRAIT(T_functor, T_result) to make return type deduction system
+support 3rd-party funtors.
+* Changed syntax of group adaptor from "[functor] % grp([lambdas])" to "group
+([functor], [lambdas])".
+* Made many fixes to lambda functionality.
+* Added var() and constant() lambda creators.
+* Added many lambda operators.
+* Added ref() which creates a reference wrapper to enable storage of
+references in bind and group adaptors.
+* Expanded test suite.
+* Added documentation. (Corrections by Murray Cumming)
+
+1.9.6:
+
+* First public release of the unstable 2.0 generation.
+  libsigc++ 2.0 uses modern C++ mechanisms to achieve a highly
+  flexible, yet typesafe callback system. It supports all features of
+  libsigc++ 1.2 and improves upon it by:
+  - No need to specify the number of arguments in signal definitions.
+  - Connection of any compatible (=implicitly convertable) functor
+   to a signal.
+  - Implicit type conversions of parameters during signal emission.
+  - Lambda adaptor for complete restructuring of functor parameter
+   lists in one line (subject to changes).
+  - Signal has a fully featured stl style list interface.
+  - A convinient accumulator API (replacing the old marshaller API).
+  - Removal of unnecessary memory management functionality.
+  - Lightweight class "trackable" for use as base class of your
+   class hierarchy replaces class "Object".

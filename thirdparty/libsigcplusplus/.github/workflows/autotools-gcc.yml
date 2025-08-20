@@ -1,0 +1,27 @@
+name: "Autotools: gcc"
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Build
+      run: |
+        # Prevent blocking apt install on a question during configuring of tzdata.
+        export ENV DEBIAN_FRONTEND=noninteractive
+        sudo apt update
+        sudo apt install mm-common g++ make docbook-xsl --yes
+        export CXX=g++
+        ./autogen.sh --enable-warnings=fatal
+        make
+    - name: Test
+      run: make check
+    - name: Distcheck
+      run: |
+        # distcheck runs configure again so we need to specify CXX again.
+        export CXX=g++
+        make distcheck

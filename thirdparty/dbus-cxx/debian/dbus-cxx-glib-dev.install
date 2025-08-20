@@ -1,0 +1,5 @@
+usr/include/dbus-cxx-glib*/*
+#usr/lib/*/libdbus-cxx-glibmm.a
+#usr/lib/*/libdbus-cxx-glibmm.la
+usr/lib/*/libdbus-cxx-glib.so
+usr/lib/*/pkgconfig/dbus-cxx-glib*.pc

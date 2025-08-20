@@ -8,35 +8,19 @@ if(NOT TARGET cairo)
     message(FATAL_ERROR "cairo target not found. Make sure thirdparty is built first.")
 endif()
 
-# Manually add include directories for internal libraries
-# This ensures headers can be found during compilation
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/cairo/src)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/thirdparty/cairo/src)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/pixman/pixman)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/freetype/include)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/fontconfig)
-
-option(USING_GTK3_DLG "Using GTK3 to show common dialog" ON)
-
-#set(USING_GTK3_DLG OFF)
-if(USING_GTK3_DLG)
-
-pkg_check_modules(GTK3 QUIET gtk+-3.0)  # 检查 GTK 3.0 版本
-# 如果找到 GTK，则设置相关变量
-if(GTK3_FOUND)
-    message(STATUS "GTK version ${GTK3_VERSION} found. Enabling GTK support.  ")
-    add_definitions(-DENABLE_GTK) 
-    # 设置包含目录和链接目录
-    include_directories(${GTK3_INCLUDE_DIRS})
-    link_directories(${GTK3_LIBRARY_DIRS})
-else()
-    message(STATUS "GTK not found. Disabling GTK support.")
-endif(GTK3_FOUND)
-endif(USING_GTK3_DLG)
 
 add_subdirectory(thirdparty/xkbcommon)
 add_subdirectory(thirdparty/libxcb)
 add_subdirectory(thirdparty/xcb-imdkit)
+add_subdirectory(thirdparty/libsigcplusplus)
+add_subdirectory(thirdparty/dbus-cxx)
+ 
+
+get_target_property(CAIRO_INCLUDE_DIRS cairo INTERFACE_INCLUDE_DIRECTORIES)
+include_directories(${CAIRO_INCLUDE_DIRS})
+get_target_property(DBUS_CXX_INCLUDE_DIRS dbus-cxx INTERFACE_INCLUDE_DIRECTORIES)
+include_directories(${DBUS_CXX_INCLUDE_DIRS})
+
 
 file(GLOB_RECURSE HEADERS  include/*.hpp include/*.h)
 file(GLOB SRCS
@@ -50,9 +34,6 @@ file(GLOB SRCS
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
     src/platform/linux/*.cpp
-    src/platform/linux/gtk/*.cpp
-    # 添加字体库符号导出文件
-    src/font_symbols_export.cpp
     )
 
 source_group("Header Files" FILES ${HEADERS})
@@ -65,6 +46,7 @@ if (NOT ENABLE_SOUI_CORE_LIB)
         cairo              # Our internal cairo target
         xkbcommon          # Our internal xkbcommon target
         xcb-imdkit         # Our internal xcb-imdkit target
+        dbus-cxx
         uuid               # System UUID library
     )
     if(GTK3_FOUND)
@@ -80,8 +62,10 @@ if (NOT ENABLE_SOUI_CORE_LIB)
     )
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS})
-    add_dependencies(swinx cairo fontconfig freetype pixman-1 xcb-imdkit xkbcommon)
+    add_dependencies(swinx cairo fontconfig freetype pixman-1 xcb-imdkit xkbcommon dbus-cxx)
 endif()
+
+set_property( TARGET swinx PROPERTY CXX_STANDARD 17 )
 
 target_include_directories(swinx
 	PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
