@@ -5,7 +5,7 @@
 
 UINT convertKeyCodeToVK(uint16_t keyCode);
 uint16_t convertVKToKeyCode(UINT vk);
-uint8_t scanCodeToASCII(uint16_t scanCode,uint32_t modifierFlags);
+wchar_t scanCodeToChar(uint16_t scanCode,uint32_t modifierFlags);
 
 class Keyboard { 
 public:

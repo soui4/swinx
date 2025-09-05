@@ -646,6 +646,17 @@ target_link_libraries(cairo ${CAIRO_LIBS})
 # Add dependencies to ensure proper build order
 add_dependencies(cairo pixman-1 freetype fontconfig)
 
+target_include_directories(
+  cairo
+    PUBLIC
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+      $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+      $<BUILD_INTERFACE:${PIXMAN_INCLUDE_DIRS}>
+      $<BUILD_INTERFACE:${FREETYPE_INCLUDE_DIRS}>
+      $<BUILD_INTERFACE:${FONTCONFIG_INCLUDE_DIRS}>
+)
+
 install(TARGETS cairo
     CONFIGURATIONS Release
     RUNTIME DESTINATION bin/Release

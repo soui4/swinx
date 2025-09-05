@@ -137,16 +137,6 @@ if(PIXMAN_ENABLE_LIBPNG)
     endif()
 endif()
 
-# GTK for demos
-if(PIXMAN_ENABLE_GTK AND PIXMAN_BUILD_DEMOS)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(GTK3 gtk+-3.0)
-        pkg_check_modules(GLIB2 glib-2.0)
-        if(GTK3_FOUND AND GLIB2_FOUND)
-            set(HAVE_GTK TRUE)
-        endif()
-    endif()
-endif()
 
 # System feature detection
 check_include_file(sys/mman.h HAVE_SYS_MMAN_H)

@@ -381,6 +381,8 @@ extern "C"
 #define FindWindowEx FindWindowExA
 #endif // UNICODE
 
+    HMENU WINAPI GetSystemMenu(HWND hWnd, BOOL bRevert);
+    
 #ifdef __cplusplus
 }
 #endif //__cplusplus

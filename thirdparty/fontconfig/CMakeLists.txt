@@ -55,11 +55,11 @@ set(BITMAP_CONF "no-except-emoji" CACHE STRING "Default bitmap font configuratio
 set_property(CACHE BITMAP_CONF PROPERTY STRINGS yes no no-except-emoji)
 
 # Path configuration
-set(FC_CACHEDIR "${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/cache/fontconfig" CACHE PATH "Cache directory")
-set(FC_TEMPLATEDIR "${CMAKE_INSTALL_FULL_DATADIR}/fontconfig/conf.avail" CACHE PATH "Template directory")
-set(FC_BASECONFIGDIR "${CMAKE_INSTALL_FULL_SYSCONFDIR}/fonts" CACHE PATH "Base config directory")
+set(FC_CACHEDIR "/var/cache/fontconfig" CACHE PATH "Cache directory")
+set(FC_TEMPLATEDIR "/usr/share/fontconfig/conf.avail" CACHE PATH "Template directory")
+set(FC_BASECONFIGDIR "/etc/fonts" CACHE PATH "Base config directory")
 set(FC_CONFIGDIR "${FC_BASECONFIGDIR}/conf.d" CACHE PATH "Config directory")
-set(FC_XMLDIR "${CMAKE_INSTALL_FULL_DATADIR}/xml/fontconfig" CACHE PATH "XML directory")
+set(FC_XMLDIR "/usr/share/xml/fontconfig" CACHE PATH "XML directory")
 
 # Font directories
 set(DEFAULT_FONTS_DIRS "" CACHE STRING "Default font directories (semicolon separated)")

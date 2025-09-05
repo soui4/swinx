@@ -21,7 +21,7 @@
 #include "SDragdrop.h"
 #endif//__linux__
 #include "synhandle.h"
-
+#include "cmnctl32/builtin_classname.h"
 #define kLogTag "wnd"
 
 using namespace swinx;
@@ -320,7 +320,9 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
         return 0;
     }
     WndMgr::insertWindow(hWnd, pWnd);
-
+    if(strcmp(cs->lpszClass,WC_MENU ) != 0 && (cs->style & WS_SYSMENU)){
+        pWnd->hSysMenu = CreatePopupMenu();
+    }
     SetWindowLongPtrA(hWnd, GWLP_ID, cs->hMenu);
     if (!(cs->style & WS_CHILD))
         SetParent(hWnd, cs->hwndParent);
@@ -3624,7 +3626,8 @@ BOOL WINAPI FlashWindowEx(PFLASHWINFO pfwi)
 BOOL WINAPI FlashWindow(HWND hWnd, BOOL bInvert)
 {
     FLASHWINFO info = { sizeof(info), 0 };
-    info.dwFlags = FLASHW_TRAY;
+    info.hwnd = hWnd;
+    info.dwFlags = FLASHW_ALL|FLASHW_TIMER;
     info.dwTimeout = 200;
     info.uCount = 5;
     return FlashWindowEx(&info);
@@ -3674,4 +3677,23 @@ HWND WINAPI FindWindowExW(HWND hParent, HWND hChildAfter, LPCWSTR lpClassName, L
         tostring(lpClassName, -1, strCls);
         return FindWindowExA(hParent, hChildAfter, strCls.c_str(), lpWindowName ? strWnd.c_str() : nullptr);
     }
+}
+
+HMENU WINAPI GetSystemMenu(HWND hWnd, BOOL bRevert){
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (wndObj)
+    {
+        HMENU hRet = wndObj->hSysMenu;
+        if (bRevert)
+        {
+            int nItems = GetMenuItemCount(hRet);
+            for (int i = nItems - 1; i >= 0; i--)
+            {
+                DeleteMenu(hRet, i, MF_BYPOSITION);
+            }
+            return 0;
+        }
+        return hRet;
+    }    
+    return 0;
 }

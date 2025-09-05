@@ -1,6 +1,8 @@
+#include "wnd.h"
 #import <Cocoa/Cocoa.h>
-#import <Foundation/NSDebug.h>
 #include "os_state.h"
+#include <windows.h>
+#undef interface
 #include <log.h>
 #define kLogTag "os_state"
 
@@ -27,6 +29,12 @@
 @implementation AppDelegate
 
 - (void)applicationWillFinishLaunching:(NSNotification *)notification {
+
+}
+
+- (void)applicationDidFinishLaunching:(NSNotification *)notification {
+    // 应用程序启动完成后的处理
+    NSLog(@"Application finished launching");
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
@@ -40,6 +48,66 @@
 -(void) applicationDidBecomeActive:(NSNotification *)notification {
    SLOG_STMI()<<"hjx applicationDidBecomeActive";
 }
+
+- (NSMenu *)applicationDockMenu:(NSApplication *)sender {
+  return [self createDockMenu];
+}
+
+- (void)initDockMenu:(NSMenu *)dockMenu hmenu:(HMENU)hMenu {
+  for (int i = 0; i < GetMenuItemCount(hMenu); i++) {
+    MENUITEMINFO menuItemInfo = {0};
+    char szText[256] = {0};
+    menuItemInfo.dwTypeData = szText;
+    menuItemInfo.cch = sizeof(szText);
+    menuItemInfo.cbSize = sizeof(MENUITEMINFO);
+    menuItemInfo.fMask = MIIM_TYPE | MIIM_STATE | MIIM_ID | MIIM_STRING| MIIM_SUBMENU;
+    BOOL result = GetMenuItemInfo(hMenu, i, TRUE, &menuItemInfo);
+    if (result) {
+      if (menuItemInfo.fType == MFT_SEPARATOR) {
+        [dockMenu addItem:[NSMenuItem separatorItem]];
+      } else {
+        NSMenuItem *item = [[NSMenuItem alloc]
+            initWithTitle:[NSString
+                              stringWithUTF8String:menuItemInfo.dwTypeData]
+                   action:@selector(handleDockMenuItemClick:) 
+            keyEquivalent:@""];
+        [item setTarget:self];
+        [item setEnabled:menuItemInfo.fState & MF_ENABLED];
+        if (menuItemInfo.hSubMenu) {
+          NSMenu *subMenu = [[NSMenu alloc] initWithTitle:@"Dock Sub Menu"];
+          [self initDockMenu:subMenu hmenu:menuItemInfo.hSubMenu];
+          [item setSubmenu:subMenu];
+        } else {
+          [item setTag:menuItemInfo.wID];
+        }
+        [dockMenu addItem:item];
+      }
+    }
+  }
+}
+
+- (NSMenu *)createDockMenu {
+    HWND hWnd = GetActiveWindow();
+    if (!hWnd) {
+        return nil;
+    }
+    HMENU hMenu = GetSystemMenu(hWnd, FALSE);
+    if (!hMenu) {
+        return nil;
+    }
+    NSMenu *dockMenu = [[NSMenu alloc] initWithTitle:@"Dock Menu"];
+    [self initDockMenu:dockMenu hmenu:hMenu];
+    return dockMenu;
+}
+
+- (void)handleDockMenuItemClick:(NSMenuItem *)sender {
+  HWND hWnd = GetActiveWindow();
+  if (!hWnd) {
+    return;
+  }
+  PostMessageA(hWnd, WM_SYSCOMMAND, sender.tag, 0);
+}
+
 @end
 
 
@@ -47,6 +115,7 @@ namespace swinx {
 class OsState {
   protected:
   SwinXApplication *m_nsApp;
+  AppDelegate *m_appDelegate;
   public:
   OsState();
   ~OsState();
@@ -54,9 +123,10 @@ class OsState {
   void setListener(SConnBase *pListener) {
     m_nsApp->m_pOsListener = pListener;
   }
+  
 };
 
-OsState::OsState() : m_nsApp(nullptr) {
+OsState::OsState() : m_nsApp(nullptr), m_appDelegate(nullptr) {
   @autoreleasepool {
     SwinXApplication *nsApp = [SwinXApplication sharedApplication];
     [nsApp setActivationPolicy:NSApplicationActivationPolicyRegular];
@@ -65,6 +135,7 @@ OsState::OsState() : m_nsApp(nullptr) {
     [nsApp setDelegate:appDelegate];
     [nsApp finishLaunching];
     m_nsApp = nsApp;
+    m_appDelegate = appDelegate;
   }
 }
 OsState::~OsState() {

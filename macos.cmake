@@ -36,7 +36,7 @@ find_library(COCOA_LIBRARY Cocoa)
 find_library(QUARTZ_LIBRARY QuartzCore)
 find_library(IOKit_LIBRARY IOKit)
 find_library(Carbon_LIBRARY Carbon)
-
+find_library(Audio_LIBRARY AudioToolbox)
 # Use internal compiled libraries
 set(LIBS
     cairo              # Our internal cairo target
@@ -45,6 +45,7 @@ set(LIBS
     ${QUARTZ_LIBRARY}
     ${IOKit_LIBRARY}
     ${Carbon_LIBRARY}
+    ${Audio_LIBRARY}
 )
 if (NOT ENABLE_SOUI_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})

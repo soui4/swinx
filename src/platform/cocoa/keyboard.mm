@@ -119,7 +119,7 @@ uint16_t convertVKToKeyCode(UINT vk){
 }
 
 
-uint8_t scanCodeToASCII(uint16_t scanCode,uint32_t modifierFlags) {
+wchar_t scanCodeToChar(uint16_t scanCode,uint32_t modifierFlags) {
     @autoreleasepool {
 
     TISInputSourceRef keyboardLayout = TISCopyCurrentKeyboardLayoutInputSource();
@@ -153,8 +153,19 @@ uint8_t scanCodeToASCII(uint16_t scanCode,uint32_t modifierFlags) {
         return 0;
     }
 
-    // Only return ASCII (0-127)
-    return (unicodeString[0] <= 0x7F) ? (UInt8)unicodeString[0] : 0;
+    if (actualStringLength == 1) {
+        return (wchar_t)unicodeString[0];
+    } else if (actualStringLength >= 2) {
+        if ((unicodeString[0] & 0xFC00) == 0xD800 && (unicodeString[1] & 0xFC00) == 0xDC00) {
+            UInt32 high = unicodeString[0];
+            UInt32 low = unicodeString[1];
+            UInt32 codePoint = 0x10000 + ((high & 0x3FF) << 10) + (low & 0x3FF);
+            return (wchar_t)codePoint;
+        } else {
+            return (wchar_t)unicodeString[0];
+        }
+    }
+    return 0;
     }
 }
 

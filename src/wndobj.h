@@ -2,6 +2,7 @@
 #define _WINDOBJ_H_
 
 #include "SConnection.h"
+#include "countmutex.h"
 #include "builtin_image.h"
 
 enum WndState
@@ -44,51 +45,6 @@ struct ScrollBar : SCROLLINFO {
 
 #define DEF_HOVER_DELAY 5          // hover delay 5ms
 #define CR_INVALID      0x00ffffff // RGBA(255,255,255,0)
-
-class CountMutex : public std::recursive_mutex {
-    LONG cLock;
-  public:
-    CountMutex()
-        : cLock(0)
-    {
-    }
-    virtual void Lock()
-    {
-        std::recursive_mutex::lock();
-        cLock++;
-    }
-    virtual void Unlock()
-    {
-        cLock--;
-        std::recursive_mutex::unlock();
-    }
-
-    LONG getLockCount() const
-    {
-        return cLock;
-    }
-
-    LONG FreeLock()
-    {
-        LONG ret = cLock;
-        while (cLock > 0)
-        {
-            std::recursive_mutex::unlock();
-            cLock--;
-        }
-        return ret;
-    }
-
-    void RestoreLock(LONG preLock)
-    {
-        while (cLock < preLock)
-        {
-            std::recursive_mutex::lock();
-            cLock++;
-        }
-    }
-};
-
 
 class _Window : public CountMutex {
 private:
@@ -137,6 +93,7 @@ public:
     IDataObject* dragData;
     DWORD_PTR userdata;  /* User private data */
     HIMC      hIMC;
+    HMENU hSysMenu;     /* system menu */
     int cbWndExtra;      /* class cbWndExtra at window creation */
     char* extra;
 
@@ -157,12 +114,12 @@ public:
 
     virtual void Lock()
     {
-        CountMutex::Lock();
+        CountMutex::lock();
         AddRef();
     }
     virtual void Unlock()
     {
-        CountMutex::Unlock();
+        CountMutex::unlock();
         Release();
     }
 };

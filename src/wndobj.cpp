@@ -26,6 +26,7 @@ _Window::_Window(size_t extraLen)
     , userdata(0)
     , cmap(0)
     , hIMC(NULL)
+    , hSysMenu(NULL)
 {
     invalid.hRgn = CreateRectRgn(0, 0, 0, 0);
     invalid.bErase = TRUE;
@@ -68,6 +69,11 @@ _Window::~_Window()
     {
         DeleteObject(invalid.hRgn);
         invalid.hRgn = NULL;
+    }
+    if (hSysMenu)
+    {
+        DestroyMenu(hSysMenu);
+        hSysMenu = NULL;
     }
     if (extra)
         free(extra);

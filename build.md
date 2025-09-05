@@ -3,7 +3,7 @@
 ## all platforms
 install cmake git gperf python3
 ## ubuntu, debian
-sudo apt install build-essential libxcb1-dev libgl1-mesa-dev freeglut3-dev
+sudo apt install build-essential libxcb1-dev libxcb-render0-dev libgl1-mesa-dev freeglut3-dev uuid-dev 
 ## centos, fedora
 sudo yum install build-essential libxcb-devel mesa-libGL-devel libuuid-devel
 ## macos

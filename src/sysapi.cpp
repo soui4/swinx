@@ -563,13 +563,13 @@ class DllLoader {
         {
             std::string path = m_userDllDir + lpFileName;
             if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
-                return dlopen(path.c_str(), mode);
+                return mydlopen(path.c_str(), mode);
         }
         for (auto it : m_lstDirs)
         {
             std::string path = it + lpFileName;
             if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
-                return dlopen(path.c_str(), mode);
+                return mydlopen(path.c_str(), mode);
         }
         {
             // search current dir
@@ -583,11 +583,19 @@ class DllLoader {
             std::string path = szPath;
             path += lpFileName;
             if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
-                return dlopen(path.c_str(), mode);
+                return mydlopen(path.c_str(), mode);
         }
         return NULL;
     }
 
+    static HMODULE mydlopen(LPCSTR lpFileName, int mode)
+    {
+        HMODULE ret = dlopen(lpFileName, mode);
+        if (ret)
+            return ret;
+        SLOG_FMTE("LoadLibraryA: dlopen failed for %s, error: %s", lpFileName, dlerror());
+        return NULL;
+    }
   private:
     std::mutex m_mutex;
     std::list<std::string> m_lstDirs;
@@ -607,8 +615,11 @@ HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
         ret = dlopen(lpFileName, RTLD_NOW);
         if (ret)
             break;
-        if (strchr(lpFileName, '/') != NULL)
+        if (GetFileAttributesA(lpFileName) != INVALID_FILE_ATTRIBUTES)
+        {
+            SLOG_FMTE("LoadLibraryA: dlopen failed for %s, error: %s", lpFileName, dlerror());
             break;
+        }    
         ret = s_dllLoader.LoadDll(lpFileName, RTLD_NOW);
         if (ret)
             break;

@@ -6,7 +6,7 @@
 #                      \___/_/\_\ .__/ \__,_|\__|
 #                               |_| XML parser
 #
-# Copyright (c) 2017 Expat development team
+# Copyright (c) 2017-2021 Sebastian Pipping <sebastian@pipping.org>
 # Licensed under the MIT license:
 #
 # Permission is  hereby granted,  free of charge,  to any  person obtaining
@@ -28,8 +28,6 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 # USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-AM_CPPFLAGS = -I$(srcdir)/../lib
-
 bin_PROGRAMS = xmlwf
 
 xmlwf_LDADD = ../lib/libexpat.la
@@ -38,6 +36,16 @@ xmlwf_SOURCES = \
     xmlfile.c \
     codepage.c \
     @FILEMAP@.c
+
+xmlwf_CPPFLAGS = @AM_CPPFLAGS@ -I$(srcdir)/../lib
+xmlwf_LDFLAGS = @AM_LDFLAGS@ @LIBM@
+
+if MINGW
+if UNICODE
+xmlwf_CPPFLAGS += -mwindows
+xmlwf_LDFLAGS += -municode
+endif
+endif
 
 EXTRA_DIST = \
     codepage.h \
@@ -49,6 +57,4 @@ EXTRA_DIST = \
     xmlfile.h \
     xmlmime.c \
     xmlmime.h \
-    xmltchar.h \
-    xmlurl.h \
-    xmlwin32url.cxx
+    xmltchar.h

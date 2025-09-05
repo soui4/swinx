@@ -13,6 +13,7 @@
 #define _T(x)                x
 #define _tcsftime            strftime
 #define _tfopen              fopen
+#define _tprintf             printf
 #else
 #define TCHAR                wchar_t
 #define LPCTSTR              LPCWSTR
@@ -23,6 +24,7 @@
 #define _T(x)                L##x
 #define _tcsftime            wcsftime
 #define _tfopen              _wfopen
+#define _tprintf             wprintf
 #endif
 
 #ifdef _UNICODE

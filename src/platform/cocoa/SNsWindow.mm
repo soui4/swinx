@@ -1916,13 +1916,15 @@ BOOL setNsWindowSize(HWND hWnd, int cx, int cy){
 
 void closeNsWindow(HWND hWnd)
 {
-    @autoreleasepool 
+    @autoreleasepool
     {
 	SNsWindow* pWin = getNsWindow(hWnd);
 	if(pWin)
 	{
         BOOL bRoot = IsRootView(pWin);
         if(bRoot && pWin.window){
+
+
             if(pWin.window){
                 [pWin.window close];
                 SLOG_STMW()<<"hjx closeNsWindow: hWnd="<<hWnd;
@@ -2343,23 +2345,36 @@ BOOL setNsParent(HWND hWnd, HWND hParent){
     }
 }
 
-BOOL flashNsWindow(HWND hwnd, DWORD dwFlags, UINT uCount, DWORD dwTimeout) {
-  @autoreleasepool {
-    SNsWindow *nsWindow = getNsWindow(hwnd);
-    if (!nsWindow)
-      return FALSE;
-    if (nsWindow.window == nil)
-      return FALSE;
-    if (dwFlags == FLASHW_STOP) {
-      [nsWindow.window setHasShadow:YES];
-      return TRUE;
+BOOL flashNsWindow(HWND hWnd, DWORD dwFlags, UINT uCount, DWORD dwTimeout) {
+    @autoreleasepool {
+        SNsWindow * nsWindow = getNsWindow(hWnd);
+        if (!nsWindow || !nsWindow.window) {
+            return FALSE;
+        }
+        NSWindow * host = nsWindow.window;
+
+        // 如果是停止闪烁
+        if (dwFlags == FLASHW_STOP) {
+            [NSApp cancelUserAttentionRequest:NSCriticalRequest];
+            [NSApp cancelUserAttentionRequest:NSInformationalRequest];
+            return TRUE;
+        }
+        // 如果窗口已经是活动窗口且不是强制闪烁，则不执行闪烁
+        if ([host isKeyWindow] && !(dwFlags & FLASHW_TIMER)) {
+            return TRUE;
+        }
+
+        // 处理不同的闪烁标志
+        BOOL shouldContinue =(dwFlags & FLASHW_TIMER) || (dwFlags & FLASHW_TIMERNOFG);
+        // Dock图标闪烁
+        if (shouldContinue) {
+          [NSApp requestUserAttention:NSCriticalRequest]; // 持续闪烁直到用户点击
+        } else {
+          [NSApp requestUserAttention:NSInformationalRequest]; // 闪烁一次
+        }
+
+        return TRUE;
     }
-    if (dwFlags == FLASHW_ALL) {
-      [nsWindow.window setHasShadow:NO];
-      return TRUE;
-    }
-    return FALSE;
-  }
 }
 
 BOOL isNsDropTarget(HWND hWnd){

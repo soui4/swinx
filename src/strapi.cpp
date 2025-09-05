@@ -2,6 +2,23 @@
 #include "uniconv.h"
 using namespace swinx;
 
+// 定义路径分割函数所需的常量
+#ifndef _MAX_DRIVE
+#define _MAX_DRIVE 3
+#endif
+
+#ifndef _MAX_DIR
+#define _MAX_DIR   256
+#endif
+
+#ifndef _MAX_FNAME
+#define _MAX_FNAME 256
+#endif
+
+#ifndef _MAX_EXT
+#define _MAX_EXT   256
+#endif
+
 const uint8_t *_mbsinc(const uint8_t *srcU8)
 {
     return srcU8 + UTF8CharLength(*srcU8);
@@ -501,4 +518,156 @@ DWORD WINAPI CharUpperBuffA(LPSTR lpsz, DWORD cchLength)
         lpsz += charLen;
     }
     return i;
+}
+
+void _splitpath(const char *path, char *drive, char *dir, char *fname, char *ext)
+{
+    if (!path)
+        return;
+
+    const char *lastSlash = nullptr;
+    const char *lastDot = nullptr;
+    const char *p = path;
+
+    // 查找最后一个斜杠和最后一个点
+    while (*p) {
+        if (*p == '/' || *p == '\\') {
+            lastSlash = p;
+        }
+        p++;
+    }
+
+    // 查找文件名中的最后一个点（扩展名）
+    if (lastSlash) {
+        p = lastSlash + 1;
+    } else {
+        p = path;
+    }
+
+    while (*p) {
+        if (*p == '.') {
+            lastDot = p;
+        }
+        p++;
+    }
+
+    // 提取目录部分
+    if (dir) {
+        if (lastSlash) {
+            size_t dirLen = lastSlash - path;
+            if (dirLen >= _MAX_DIR) {
+                dirLen = _MAX_DIR - 1;
+            }
+            strncpy(dir, path, dirLen);
+            dir[dirLen] = '\0';
+        } else {
+            dir[0] = '\0';
+        }
+    }
+
+    // 提取文件名部分
+    if (fname) {
+        const char *nameStart = lastSlash ? lastSlash + 1 : path;
+        size_t nameLen;
+        if (lastDot) {
+            nameLen = lastDot - nameStart;
+        } else {
+            nameLen = strlen(nameStart);
+        }
+        if (nameLen >= _MAX_FNAME) {
+            nameLen = _MAX_FNAME - 1;
+        }
+        strncpy(fname, nameStart, nameLen);
+        fname[nameLen] = '\0';
+    }
+
+    // 提取扩展名部分
+    if (ext) {
+        if (lastDot) {
+            size_t extLen = strlen(lastDot);
+            if (extLen >= _MAX_EXT) {
+                extLen = _MAX_EXT - 1;
+            }
+            strncpy(ext, lastDot, extLen);
+            ext[extLen] = '\0';
+        } else {
+            ext[0] = '\0';
+        }
+    }
+}
+
+void _wsplitpath(const wchar_t *path, wchar_t *drive, wchar_t *dir, wchar_t *fname, wchar_t *ext)
+{
+    if (!path)
+        return;
+
+    const wchar_t *lastSlash = nullptr;
+    const wchar_t *lastDot = nullptr;
+    const wchar_t *p = path;
+
+    // 查找最后一个斜杠和最后一个点
+    while (*p) {
+        if (*p == L'/' || *p == L'\\') {
+            lastSlash = p;
+        }
+        p++;
+    }
+
+    // 查找文件名中的最后一个点（扩展名）
+    if (lastSlash) {
+        p = lastSlash + 1;
+    } else {
+        p = path;
+    }
+
+    while (*p) {
+        if (*p == L'.') {
+            lastDot = p;
+        }
+        p++;
+    }
+
+    // 提取目录部分
+    if (dir) {
+        if (lastSlash) {
+            size_t dirLen = lastSlash - path;
+            if (dirLen >= _MAX_DIR) {
+                dirLen = _MAX_DIR - 1;
+            }
+            wcsncpy(dir, path, dirLen);
+            dir[dirLen] = L'\0';
+        } else {
+            dir[0] = L'\0';
+        }
+    }
+
+    // 提取文件名部分
+    if (fname) {
+        const wchar_t *nameStart = lastSlash ? lastSlash + 1 : path;
+        size_t nameLen;
+        if (lastDot) {
+            nameLen = lastDot - nameStart;
+        } else {
+            nameLen = wcslen(nameStart);
+        }
+        if (nameLen >= _MAX_FNAME) {
+            nameLen = _MAX_FNAME - 1;
+        }
+        wcsncpy(fname, nameStart, nameLen);
+        fname[nameLen] = L'\0';
+    }
+
+    // 提取扩展名部分
+    if (ext) {
+        if (lastDot) {
+            size_t extLen = wcslen(lastDot);
+            if (extLen >= _MAX_EXT) {
+                extLen = _MAX_EXT - 1;
+            }
+            wcsncpy(ext, lastDot, extLen);
+            ext[extLen] = L'\0';
+        } else {
+            ext[0] = L'\0';
+        }
+    }
 }
