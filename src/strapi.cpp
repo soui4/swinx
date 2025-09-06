@@ -1,5 +1,7 @@
 #include <windows.h>
 #include "uniconv.h"
+#include "tostring.hpp"
+
 using namespace swinx;
 
 // 定义路径分割函数所需的常量
@@ -670,4 +672,11 @@ void _wsplitpath(const wchar_t *path, wchar_t *drive, wchar_t *dir, wchar_t *fna
             ext[0] = L'\0';
         }
     }
+}
+
+int _wrename(const wchar_t *oldpath, const wchar_t *newpath){
+    std::string strOld,strNew;
+    tostring(oldpath,-1,strOld);
+    tostring(newpath,-1,strNew);
+    return rename(strOld.c_str(),strNew.c_str());
 }

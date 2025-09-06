@@ -62,13 +62,17 @@ extern "C"
 
     const wchar_t *WINAPI CharNextW(const wchar_t *src);
 
+    int _wrename(const wchar_t *oldpath, const wchar_t *newpath);
+
     void _splitpath(const char *path, char *drive, char *dir, char *fname, char *ext);
     void _wsplitpath(const wchar_t *path, wchar_t *drive, wchar_t *dir, wchar_t *fname, wchar_t *ext);
-
+    
     #ifdef UNICODE
     #define _tsplitpath _wsplitpath
+    #define _trename _wrename
     #else
     #define _tsplitpath _splitpath
+    #define _trename rename
     #endif//UNICODE
 
 #define _wcsicmp(s1, s2)       wcscasecmp(s1, s2)

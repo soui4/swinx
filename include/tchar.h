@@ -90,7 +90,7 @@ inline wchar_t *_wcsstok(wchar_t *strToken, const wchar_t *strDelimit)
 #define _istalnum  isalnum
 #define _istprint  isprint
 #define _istalpha  isalpha
-
+#define _trename   rename
 #endif
 
 #endif //__TCHAR_H_

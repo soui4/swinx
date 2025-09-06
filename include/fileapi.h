@@ -106,6 +106,8 @@ extern "C"
 
     DWORD WINAPI GetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh);
 
+    BOOL WINAPI SetFileTime(HANDLE hFile, const LPFILETIME lpCreationTime,const LPFILETIME lpLastAccessTime,const LPFILETIME lpLastWriteTime);
+
     BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLastAccessTime, LPFILETIME lpLastWriteTime);
 
     typedef struct _OVERLAPPED
@@ -146,10 +148,14 @@ extern "C"
     DWORD WINAPI GetFileAttributesA(LPCSTR lpFileName);
     DWORD WINAPI GetFileAttributesW(LPCWSTR lpFileName);
 
+    BOOL WINAPI SetFileAttributesA(LPCSTR lpFileName, DWORD dwFileAttributes);
+    BOOL WINAPI SetFileAttributesW(LPCWSTR lpFileName, DWORD dwFileAttributes);
 #ifdef UNICODE
 #define GetFileAttributes GetFileAttributesW
+#define SetFileAttributes SetFileAttributesW
 #else
 #define GetFileAttributes GetFileAttributesA
+#define SetFileAttributes SetFileAttributesA
 #endif // UNICODE
 
     UINT WINAPI GetProfileIntA(LPCSTR section, LPCSTR entry, INT def_val);

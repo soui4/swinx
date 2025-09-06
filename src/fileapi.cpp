@@ -122,12 +122,38 @@ DWORD WINAPI GetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh)
     return 0;
 }
 
+static void FileTime2TimeSpec(const LPFILETIME fts, struct timespec &ts)
+{
+    if (!fts)
+        return;
+    uint64_t nsec;
+    memcpy(&nsec, fts, sizeof(uint64_t));
+    ts.tv_sec = nsec / 1000000000;
+    ts.tv_nsec = nsec % 1000000000;
+}
+
 static void TimeSpec2FileTime(const struct timespec &ts, LPFILETIME fts)
 {
     if (!fts)
         return;
     uint64_t nsec = ts.tv_nsec;
     memcpy(fts, &nsec, sizeof(uint64_t));
+}
+
+BOOL WINAPI SetFileTime(HANDLE hFile, const LPFILETIME lpCreationTime,const LPFILETIME lpLastAccessTime,const LPFILETIME lpLastWriteTime)
+{
+    _FileData *fd = GetFD(hFile);
+    if (!fd)
+        return FALSE;
+    struct timespec ts[2]; 
+    if(lpLastAccessTime){
+        FileTime2TimeSpec(lpLastAccessTime, ts[0]);
+    }
+    if(lpLastWriteTime){
+        FileTime2TimeSpec(lpLastWriteTime, ts[1]);
+    }
+    
+    return 0== utimensat(fd->fd, nullptr, ts, 0);
 }
 
 BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLastAccessTime, LPFILETIME lpLastWriteTime)
@@ -543,6 +569,56 @@ DWORD GetFileAttributesW(LPCWSTR lpFileName)
     std::string str;
     tostring(lpFileName, -1, str);
     return GetFileAttributesA(str.c_str());
+}
+
+BOOL WINAPI SetFileAttributesA(LPCSTR lpFileName, DWORD dwFileAttributes){
+    if (!lpFileName) 
+        return FALSE;
+    
+    // 获取当前文件状态
+    struct stat st;
+    if (lstat(lpFileName, &st) != 0) {
+        return FALSE;
+    }
+    
+    // 处理只读属性 (在Windows中FILE_ATTRIBUTE_READONLY对应Linux的写权限)
+    if (dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
+        // 清除写权限
+        mode_t new_mode = st.st_mode & ~(S_IWUSR | S_IWGRP | S_IWOTH);
+        if (chmod(lpFileName, new_mode) != 0) {
+            return FALSE;
+        }
+    } else {
+        // 设置写权限 (如果对象是文件且之前是只读的)
+        if (!(st.st_mode & S_IWUSR)) {
+            mode_t new_mode = st.st_mode | S_IWUSR;
+            if (chmod(lpFileName, new_mode) != 0) {
+                return FALSE;
+            }
+        }
+    }
+    
+    // 处理隐藏属性 (在Linux中以.开头的文件是隐藏文件)
+    if (dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) {
+        // 注意：在Linux中，重命名文件以添加前导点比较复杂，
+        // 因为需要确保目标文件不存在且需要处理路径。
+        // 这里简化处理，只在获取属性时检查文件名是否以.开头。
+        // 实际应用中可能需要更复杂的处理。
+    }
+    
+    // 处理目录属性
+    if (dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+        // 这个属性通常是只读的，由文件系统决定
+        // 不需要特殊处理
+    }
+    
+    return TRUE;
+}
+
+BOOL WINAPI SetFileAttributesW(LPCWSTR lpFileName, DWORD dwFileAttributes){
+    std::string str;
+    tostring(lpFileName, -1, str);
+    return SetFileAttributesA(str.c_str(), dwFileAttributes);
 }
 
 BOOL WINAPI SetCurrentDirectoryA(LPCSTR lpPathName)
