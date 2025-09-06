@@ -646,15 +646,7 @@ else()
     configure_file(cmake/DBus1Config.pkgconfig.in "${CMAKE_BINARY_DIR}/DBus1Config.cmake" @ONLY)
 endif()
 configure_file(cmake/DBus1ConfigVersion.cmake.in "${CMAKE_BINARY_DIR}/DBus1ConfigVersion.cmake" @ONLY)
-install(FILES
-    "${CMAKE_BINARY_DIR}/DBus1Config.cmake"
-    "${CMAKE_BINARY_DIR}/DBus1ConfigVersion.cmake"
-    DESTINATION "${INSTALL_CMAKE_DIR}"
-)
 
-if(WIN32)
-    install(EXPORT DBus1Targets DESTINATION "${INSTALL_CMAKE_DIR}")
-endif()
 
 ########### subdirs ###############
 
@@ -666,41 +658,3 @@ get_filename_component(C_COMPILER ${CMAKE_C_COMPILER} NAME)
 get_filename_component(CXX_COMPILER ${CMAKE_CXX_COMPILER} NAME)
 
 message( STATUS "Using D-BUS ${DBUS_VERSION}")
-
-
-# Disable CPack to avoid missing file errors in subproject builds
-# include(CPackInstallConfig)
-
-add_custom_target(help-options
-    cmake -LH
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-)
-
-#
-# create pkgconfig file
-#
-if(DBUS_ENABLE_PKGCONFIG)
-    set(PLATFORM_LIBS pthread ${LIBRT})
-    if(PKG_CONFIG_FOUND)
-        # convert lists of link libraries into -lstdc++ -lm etc..
-        foreach(LIB ${CMAKE_C_IMPLICIT_LINK_LIBRARIES} ${PLATFORM_LIBS})
-            set(LIBDBUS_LIBS "${LIBDBUS_LIBS} -l${LIB}")
-        endforeach()
-        set(original_prefix "${CMAKE_INSTALL_PREFIX}")
-        if(DBUS_RELOCATABLE)
-            set(pkgconfig_prefix "\${pcfiledir}/../..")
-        else()
-            set(pkgconfig_prefix "\${original_prefix}")
-        endif()
-        set(exec_prefix "\${prefix}")
-        set(bindir "\${prefix}/${CMAKE_INSTALL_BINDIR}")
-        set(libdir "\${prefix}/${CMAKE_INSTALL_LIBDIR}")
-        set(includedir "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
-        set(sysconfdir "\${prefix}/${CMAKE_INSTALL_SYSCONFDIR}")
-        set(datadir "\${prefix}/${CMAKE_INSTALL_DATADIR}")
-        set(datarootdir "\${prefix}/${CMAKE_INSTALL_DATADIR}")
-        set(dbus_daemondir "\${prefix}/${CMAKE_INSTALL_BINDIR}")
-        configure_file(dbus-1.pc.in ${CMAKE_BINARY_DIR}/dbus-1.pc @ONLY)
-        install(FILES ${CMAKE_BINARY_DIR}/dbus-1.pc DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
-    endif()
-endif()
