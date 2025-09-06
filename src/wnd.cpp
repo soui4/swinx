@@ -380,9 +380,14 @@ HWND WINAPI CreateWindowW(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwSty
 HWND WINAPI CreateWindowExW(DWORD exStyle, LPCWSTR className, LPCWSTR windowName, DWORD style, INT x, INT y, INT width, INT height, HWND parent, HMENU menu, HINSTANCE instance, LPVOID data)
 {
     std::string strClsName, strWndName;
-    tostring(className, -1, strClsName);
     tostring(windowName, -1, strWndName);
-    return CreateWindowExA(exStyle, strClsName.c_str(), strWndName.c_str(), style, x, y, width, height, parent, menu, instance, data);
+    if (IS_INTRESOURCE(className))
+    {
+        return CreateWindowExA(exStyle, (LPCSTR)className, strWndName.c_str(), style, x, y, width, height, parent, menu, instance, data);
+    }else{
+        tostring(className, -1, strClsName);
+        return CreateWindowExA(exStyle, strClsName.c_str(), strWndName.c_str(), style, x, y, width, height, parent, menu, instance, data);
+    }
 }
 
 HWND WINAPI CreateWindowExA(DWORD exStyle, LPCSTR className, LPCSTR windowName, DWORD style, INT x, INT y, INT width, INT height, HWND parent, HMENU menu, HINSTANCE instance, LPVOID data)

@@ -2,6 +2,7 @@
 #define __TCHAR_H_
 
 #include <ctypes.h>
+#include <wchar.h>
 
 #ifndef _UNICODE
 #define TCHAR                char
@@ -37,7 +38,12 @@
 #define _tcsicmp   _wcsicmp
 #define _tcsnicmp  _wcsnicmp
 #define _tcscpy    wcscpy
-#define _tcstok(s1, s2)    wcstok(s1, s2, NULL)
+inline wchar_t *_wcsstok(wchar_t *strToken, const wchar_t *strDelimit)
+{
+    wchar_t *saveptr=NULL;
+    return wcstok(strToken, strDelimit, &saveptr);
+}
+#define _tcstok    _wcsstok
 #define _tcsncpy   wcsncpy
 #define _tcsrchr   wcsrchr
 #define _tcsstr    wcsstr
