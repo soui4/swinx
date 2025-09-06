@@ -32,12 +32,12 @@
 #define lstrcpy    lstrcpyW
 #define _tcsncmp   wcsncmp
 #define _tcslen    wcslen
-#define _ttoi      wcstol
+#define _ttoi      _wtoi
 #define _tcsdup    wcsdup
 #define _tcsicmp   _wcsicmp
 #define _tcsnicmp  _wcsnicmp
 #define _tcscpy    wcscpy
-#define _tcstok    wcstok
+#define _tcstok(s1, s2)    wcstok(s1, s2, NULL)
 #define _tcsncpy   wcsncpy
 #define _tcsrchr   wcsrchr
 #define _tcsstr    wcsstr
@@ -45,8 +45,8 @@
 #define _stprintf  wprintf
 #define lstrcpyn   lstrcpynW
 #define _tcstol    wcstol
-#define _stscanf   wcscanf
-#define _sntprintf wsnprintf
+#define _stscanf   swscanf
+#define _sntprintf swprintf
 #define _tcschr    wcschr
 #define _tcscat    wcscat
 #define _tstoi     _wtoi

@@ -1207,11 +1207,25 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     BOOL WINAPI DrawEdge(HDC hdc, LPRECT rc, UINT edge, UINT flags);
 
-    int WINAPI AddFontResource(LPCSTR lpszFilename);
-    int WINAPI AddFontResourceEx(LPCSTR lpszFilename, // font file name
+    int WINAPI AddFontResourceA(LPCSTR lpszFilename);
+    int WINAPI AddFontResourceExA(LPCSTR lpszFilename, // font file name
                                  DWORD fl,            // font characteristics
                                  PVOID pdv            // reserved
     );
+
+    int WINAPI AddFontResourceW(LPCWSTR lpszFilename);
+    int WINAPI AddFontResourceExW(LPCWSTR lpszFilename, // font file name
+                                 DWORD fl,            // font characteristics
+                                 PVOID pdv            // reserved
+    );
+
+    #ifdef UNICODE
+    #define AddFontResource     AddFontResourceW
+    #define AddFontResourceEx   AddFontResourceExW
+    #else
+    #define AddFontResource     AddFontResourceA
+    #define AddFontResourceEx   AddFontResourceExA
+    #endif // !UNICODE
 
 #ifdef __cplusplus
 }

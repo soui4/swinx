@@ -147,7 +147,7 @@ extern "C"
     DWORD WINAPI GetFileAttributesW(LPCWSTR lpFileName);
 
 #ifdef UNICODE
-#define GetFileAttribute GetFileAttributesW
+#define GetFileAttributes GetFileAttributesW
 #else
 #define GetFileAttributes GetFileAttributesA
 #endif // UNICODE

@@ -3548,15 +3548,10 @@ HDC WINAPI CreateICW(LPCWSTR lpszDriver,   // driver name
     return CreateICA(strDriver.c_str(), strDevice.c_str(), strOutput.c_str(), lpdvmInit);
 }
 
-int AddFontResource(LPCSTR lpszFilename)
-{
-    return AddFontResourceEx(lpszFilename, 0, 0);
-}
-
 #if defined(CAIRO_HAS_QUARTZ_FONT) && CAIRO_HAS_QUARTZ_FONT
     extern int macos_register_font(const char *path);
 #endif
-int AddFontResourceEx(LPCSTR lpszFilename, // font file name
+int AddFontResourceExA(LPCSTR lpszFilename, // font file name
                       DWORD fl,            // font characteristics
                       PVOID pdv            // reserved
 )
@@ -3591,4 +3586,26 @@ int AddFontResourceEx(LPCSTR lpszFilename, // font file name
     #else
         return ret;
     #endif//CAIRO_HAS_QUARTZ_FONT
+}
+
+
+int AddFontResourceA(LPCSTR lpszFilename)
+{
+    return AddFontResourceExA(lpszFilename, 0, 0);
+}
+
+int AddFontResourceW(LPCWSTR lpszFilename){
+    std::string str;
+    tostring(lpszFilename, -1, str);
+    return AddFontResourceExA(str.c_str(), 0, 0);
+}
+
+int AddFontResourceExW(LPCWSTR lpszFilename, // font file name
+                      DWORD fl,            // font characteristics
+                      PVOID pdv            // reserved
+)
+{
+    std::string str;
+    tostring(lpszFilename, -1, str);
+    return AddFontResourceExA(str.c_str(), fl, pdv);
 }
