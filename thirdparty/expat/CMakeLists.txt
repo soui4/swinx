@@ -300,14 +300,7 @@ if(NOT EXPAT_CONTEXT_BYTES GREATER 0)  # in particular with -DEXPAT_CONTEXT_BYTE
 endif()
 set(XML_CONTEXT_BYTES ${EXPAT_CONTEXT_BYTES})
 
-macro(expat_install)
-    if(EXPAT_ENABLE_INSTALL)
-        install(${ARGN})
-    endif()
-endmacro()
-
 configure_file(expat_config.h.cmake "${CMAKE_CURRENT_BINARY_DIR}/expat_config.h")
-expat_install(FILES "${CMAKE_CURRENT_BINARY_DIR}/expat_config.h" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
 set(EXTRA_COMPILE_FLAGS)
