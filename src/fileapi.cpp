@@ -153,7 +153,7 @@ BOOL WINAPI SetFileTime(HANDLE hFile, const LPFILETIME lpCreationTime,const LPFI
         FileTime2TimeSpec(lpLastWriteTime, ts[1]);
     }
     
-    return 0== utimensat(fd->fd, nullptr, ts, 0);
+    return 0== utimensat(fd->fd, "", ts, 0);
 }
 
 BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLastAccessTime, LPFILETIME lpLastWriteTime)
