@@ -1,4 +1,3 @@
-#include "wnd.h"
 #import <Cocoa/Cocoa.h>
 #include "os_state.h"
 #include <windows.h>
