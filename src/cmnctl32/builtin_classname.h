@@ -10,6 +10,12 @@
 // ScrollBar 滚动条的窗口类名称。
 // Static 静态控件的窗口类名称。
 
-#define WC_MENU "#32768"    //same as defined in windows
+#define WC_MENUA "#32768"    //same as defined in windows
+#define WC_MENUW L"#32768"
+#ifdef _UNICODE
+#define WC_MENU WC_MENUW
+#else
+#define WC_MENU WC_MENUA
+#endif
 
 #endif

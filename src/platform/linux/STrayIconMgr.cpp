@@ -66,7 +66,7 @@ BOOL STrayIconMgr::AddIcon(PNOTIFYICONDATAA lpData)
     // create a tray window to contain image.
     icon->hTray = new TrayWnd(icon);
     BOOL argbTray = this->visualHasAlphaChannel();
-    icon->hTray->CreateWindowA(argbTray ? WS_EX_COMPOSITED : 0, CLS_WINDOW, "trayicon", WS_CHILD, 0, 0, 24, 24, m_pConn->screen->root, 0, 0);
+    icon->hTray->CreateWindowA(argbTray ? WS_EX_COMPOSITED : 0, CLS_WINDOWA, "trayicon", WS_CHILD, 0, 0, 24, 24, m_pConn->screen->root, 0, 0);
     xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, icon->hTray->m_hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(icon->szTip), icon->szTip);
 
     xcb_client_message_event_t trayRequest;

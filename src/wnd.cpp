@@ -320,7 +320,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
         return 0;
     }
     WndMgr::insertWindow(hWnd, pWnd);
-    if(strcmp(cs->lpszClass,WC_MENU ) != 0 && (cs->style & WS_SYSMENU)){
+    if(strcmp(cs->lpszClass,WC_MENUA ) != 0 && (cs->style & WS_SYSMENU)){
         pWnd->hSysMenu = CreatePopupMenu();
     }
     SetWindowLongPtrA(hWnd, GWLP_ID, cs->hMenu);
@@ -328,7 +328,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
         SetParent(hWnd, cs->hwndParent);
     InitWndDC(hWnd, cs->cx, cs->cy);
 
-    if (0 == SendMessage(hWnd, WM_NCCREATE, 0, (LPARAM)cs) || 0 != SendMessage(hWnd, WM_CREATE, 0, (LPARAM)cs))
+    if (0 == SendMessageA(hWnd, WM_NCCREATE, 0, (LPARAM)cs) || 0 != SendMessageA(hWnd, WM_CREATE, 0, (LPARAM)cs))
     {
         conn->OnWindowDestroy(hWnd, pWnd);
         WndMgr::freeWindow(hWnd);
@@ -341,11 +341,11 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     }
     if (clsInfo.hIconSm)
     {
-        SendMessage(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)clsInfo.hIconSm);
+        SendMessageA(hWnd, WM_SETICON, ICON_SMALL, (LPARAM)clsInfo.hIconSm);
     }
     if (clsInfo.hIcon)
     {
-        SendMessage(hWnd, WM_SETICON, ICON_BIG, (LPARAM)clsInfo.hIconSm);
+        SendMessageA(hWnd, WM_SETICON, ICON_BIG, (LPARAM)clsInfo.hIconSm);
     }
     if (cs->dwExStyle & WS_EX_TOPMOST)
     {
@@ -395,7 +395,7 @@ HWND WINAPI CreateWindowExA(DWORD exStyle, LPCSTR className, LPCSTR windowName, 
     char szClassName[100];
     if (IS_INTRESOURCE(className))
     {
-        if (!GetAtomName((ATOM)LOWORD(className), szClassName, 100))
+        if (!GetAtomNameA((ATOM)LOWORD(className), szClassName, 100))
             return 0;
         className = szClassName;
     }
@@ -701,7 +701,7 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
     if (htCode == HTCLIENT)
     {
         WNDCLASSEXA wc;
-        GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCE(wndObj->clsAtom), &wc);
+        GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCEA(wndObj->clsAtom), &wc);
         if (wc.hCursor)
         {
             wndObj->mConnection->SetCursor(hWnd,wc.hCursor);
@@ -709,7 +709,7 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
     }
     else if (htCode > HTCAPTION && htCode < HTBORDER)
     {
-        LPCSTR cursorId = nullptr;
+        LPCTSTR cursorId = nullptr;
         switch (htCode)
         {
         case HTLEFT:
@@ -1439,9 +1439,7 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
             msgWrap.wParam = wp;
             msgWrap.lParam = lp;
             *lpdwResult = CallWindowProcPriv(wndProc, hWnd, WM_MSG_W2A, 0, (LPARAM)&msgWrap);
-        }
-        else
-        {
+        }else{
             *lpdwResult = CallWindowProcPriv(wndProc, hWnd, msg, wp, lp);
         }
         return 1;
@@ -2031,7 +2029,7 @@ BOOL EnableWindow(HWND hWnd, BOOL bEnable)
     {
         // restore cursor to default cursor.
         WNDCLASSEXA clsInfo = { 0 };
-        GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCE(wndObj->clsAtom), &clsInfo);
+        GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCEA(wndObj->clsAtom), &clsInfo);
         if (clsInfo.hCursor)
         {
             wndObj->mConnection->SetCursor(hWnd, clsInfo.hCursor);
@@ -2649,7 +2647,7 @@ LRESULT OnMsgW2A(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
     MSG *msg = (MSG *)lp;
     LRESULT ret = 0;
     if (IsWindowUnicode(hWnd))
-        return wndObj->winproc(hWnd, msg->message, msg->wParam, msg->lParam);
+        return CallWindowProcPriv(wndObj->winproc,hWnd, msg->message, msg->wParam, msg->lParam);
 
     switch (msg->message)
     {
@@ -2675,11 +2673,11 @@ LRESULT OnMsgW2A(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
     {
         std::string str;
         tostring((LPCWSTR)lp, -1, str);
-        ret = wndObj->winproc(hWnd, msg->message, 0, (LPARAM)str.c_str());
+        ret = CallWindowProcPriv(wndObj->winproc,hWnd,  msg->message, 0, (LPARAM)str.c_str());
     }
     break;
     default:
-        ret = wndObj->winproc(hWnd, msg->message, msg->wParam, msg->lParam);
+        ret = CallWindowProcPriv(wndObj->winproc, hWnd, msg->message, msg->wParam, msg->lParam);
         break;
     }
     return ret;
@@ -2867,7 +2865,7 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     {
         WNDCLASSEXA info = { 0 };
         // GetClassInfoEx return the atom value instead an bool
-        ATOM clsAtom = GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCE(wndObj->clsAtom), &info);
+        ATOM clsAtom = GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCEA(wndObj->clsAtom), &info);
         if (clsAtom && info.hbrBackground)
         {
             RECT rc;

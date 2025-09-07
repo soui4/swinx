@@ -2379,7 +2379,7 @@ uint32_t SConnection::netWmStates(HWND hWnd)
 void SConnection::updateWmclass(HWND hWnd, _Window *pWnd)
 {
     char szPath[MAX_PATH];
-    GetModuleFileName(nullptr, szPath, MAX_PATH);
+    GetModuleFileNameA(nullptr, szPath, MAX_PATH);
     char *szName = strrchr(szPath, '/') + 1;
     int nNameLen = strlen(szName);
     int nLen = nNameLen + 1 + pWnd->title.length() + 1;

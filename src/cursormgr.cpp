@@ -140,7 +140,7 @@ HCURSOR CursorMgr::_LoadCursor(LPCSTR lpCursorName)
     }
     else
     {
-        ret = (HCURSOR)LoadImage(0, lpCursorName, IMAGE_CURSOR, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE | LR_DEFAULTCOLOR);
+        ret = (HCURSOR)LoadImageA(0, lpCursorName, IMAGE_CURSOR, 0, 0, LR_LOADFROMFILE | LR_DEFAULTSIZE | LR_DEFAULTCOLOR);
     }
     return ret;
 }

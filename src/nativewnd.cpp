@@ -11,7 +11,7 @@ ATOM CNativeWnd::RegisterCls(LPCSTR clsName)
     wcex.hInstance = 0;
     wcex.hCursor = ::LoadCursor(nullptr, IDC_ARROW);
     wcex.lpszClassName = clsName;
-    return ::RegisterClassEx(&wcex);
+    return ::RegisterClassExA(&wcex);
 }
 
 BOOL CNativeWnd::Invalidate()

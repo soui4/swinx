@@ -522,7 +522,7 @@ class DllLoader {
         std::unique_lock<std::mutex> lock(m_mutex);
         if (lpPathName)
         {
-            if ((GetFileAttributes(lpPathName) & FILE_ATTRIBUTE_DIRECTORY) == 0)
+            if ((GetFileAttributesA(lpPathName) & FILE_ATTRIBUTE_DIRECTORY) == 0)
                 return FALSE;
             m_userDllDir = lpPathName;
             if (*m_userDllDir.rbegin() != '/')
@@ -1692,7 +1692,7 @@ BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR 
             const char *hosts[] = { "/usr/bin/pkexec", "/usr/bin/kdesu", "/usr/bin/gksu" };
             for (int j = 0; j < ARRAYSIZE(hosts); j++)
             {
-                if (GetFileAttributes(hosts[j]) != INVALID_FILE_ATTRIBUTES)
+                if (GetFileAttributesA(hosts[j]) != INVALID_FILE_ATTRIBUTES)
                 {
                     command = hosts[j];
                     break;
@@ -2337,7 +2337,7 @@ UINT WINAPI GetTempFileNameA(LPCSTR lpPathName, LPCSTR lpPrefixString, UINT uniq
         do
         {
             sprintf_s(p, MAX_PATH - (p - buffer), "%x.tmp", unique);
-            handle = CreateFile(buffer, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
+            handle = CreateFileA(buffer, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
             if (handle != INVALID_HANDLE_VALUE)
             { /* We created it */
                 CloseHandle(handle);

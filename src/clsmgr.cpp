@@ -19,21 +19,21 @@ void ClassMgr::builtin_register()
         WNDCLASSEXA clsInfo = { 0 };
         clsInfo.cbSize = sizeof(clsInfo);
         clsInfo.lpfnWndProc = DefWindowProc;
-        clsInfo.lpszClassName = CLS_WINDOW;
+        clsInfo.lpszClassName = CLS_WINDOWA;
         clsInfo.hbrBackground = CreateSolidBrush(GetSysColor(COLOR_WINDOW));
-        RegisterClassEx(&clsInfo);
+        RegisterClassExA(&clsInfo);
     }
     {
         WNDCLASSEXA clsInfo = { 0 };
         clsInfo.cbSize = sizeof(clsInfo);
         clsInfo.lpfnWndProc = DefWindowProc;
-        clsInfo.lpszClassName = TOOLTIPS_CLASS;
+        clsInfo.lpszClassName = TOOLTIPS_CLASSA;
         clsInfo.hbrBackground = CreateSolidBrush(GetSysColor(COLOR_INFOBK));
-        RegisterClassEx(&clsInfo);
+        RegisterClassExA(&clsInfo);
     }
-    CNativeWnd::RegisterCls(WC_MENU);
-    TRegisterClass<CStatic>(WC_STATIC);
-    TRegisterClass<CButton>(WC_BUTTON);
+    CNativeWnd::RegisterCls(WC_MENUA);
+    TRegisterClass<CStatic>(WC_STATICA);
+    TRegisterClass<CButton>(WC_BUTTONA);
 
     LISTBOX_Register();
 }
@@ -158,7 +158,7 @@ ATOM ClassMgr::register_class(const WNDCLASSEXA *wc)
     }
     else
     {
-        GetAtomName(_class->atomName, _class->name, sizeof(_class->name));
+        GetAtomNameA(_class->atomName, _class->name, sizeof(_class->name));
     }
 
     _class->style = wc->style;

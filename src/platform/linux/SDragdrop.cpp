@@ -246,7 +246,7 @@ void SDragDrop::drag_end()
 HRESULT SDragDrop::give_feedback()
 {
     HRESULT hr;
-    LPCSTR res = NULL;
+    LPCTSTR res = NULL;
     HCURSOR cur;
     if (!curTargetHWND)
         *this->pdwEffect = DROPEFFECT_NONE;
@@ -292,7 +292,7 @@ HRESULT SDragDrop::DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource
     trackerInfo.dragEnded = FALSE;
     trackerInfo.curTargetHWND = 0;
     trackerInfo.conn = conn;
-    if (!trackerInfo.CreateWindowA(0, CLS_WINDOW, "TrackerWindow", WS_POPUP, -1, -1, 0, 0, 0, 0, 0))
+    if (!trackerInfo.CreateWindowA(0, CLS_WINDOWA, "TrackerWindow", WS_POPUP, -1, -1, 0, 0, 0, 0, 0))
         return E_OUTOFMEMORY;
 
     {

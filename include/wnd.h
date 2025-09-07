@@ -16,7 +16,14 @@ extern "C"
 #define GET_Y_LPARAM(lParam) ((int)(short)HIWORD(lParam))
 #endif
 
-#define CLS_WINDOW "window"
+#define CLS_WINDOWA "window"
+#define CLS_WINDOWW L"window"
+
+#ifdef _UNICODE
+#define CLS_WINDOW CLS_WINDOWW
+#else
+#define CLS_WINDOW CLS_WINDOWA
+#endif
 
     /***********************************************************************
      *		CreateWindowExW (USER32.@)

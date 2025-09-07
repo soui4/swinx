@@ -8,7 +8,7 @@
 
 class CMessageBox : public CNativeWnd {
 
-    RECT CalcTextRect(LPCSTR text, int maxWid)
+    RECT CalcTextRectA(LPCSTR text, int maxWid)
     {
         if (text == nullptr)
             return RECT();
@@ -18,7 +18,7 @@ class CMessageBox : public CNativeWnd {
         //此处SOUI实现和windows API DrawText实现不一致
         RECT rc = { 0, 0, 0, 65535 };
         rc.right = maxWid;
-        DrawText(hDc, text, -1, &rc, DT_CALCRECT);
+        DrawTextA(hDc, text, -1, &rc, DT_CALCRECT);
 
         SelectObject(hDc, hOldFont);
         ReleaseDC(m_hWnd, hDc);
@@ -26,7 +26,7 @@ class CMessageBox : public CNativeWnd {
     }
 
   public:
-    void InitMsgBox(LPCSTR lpText, UINT uType)
+    void InitMsgBoxA(LPCSTR lpText, UINT uType)
     {
         m_retCode = IDCANCEL;
 
@@ -100,7 +100,7 @@ class CMessageBox : public CNativeWnd {
 
         int nScreenWid = info.rcWork.right - info.rcWork.left;
         int nScreenHei = info.rcWork.bottom - info.rcWork.top;
-        RECT rcText = CalcTextRect(lpText, nScreenWid);
+        RECT rcText = CalcTextRectA(lpText, nScreenWid);
         int nContentWid = rcText.right - rcText.left;         // 文字宽度
         nContentWid += ((m_iconIdx != -1) ? 49 : 0) + 6 + 20; // 图标宽度
 
@@ -141,13 +141,13 @@ class CMessageBox : public CNativeWnd {
         // SetWindowPos(m_hWnd, hParentWnd,rcWnd.left, rcWnd.top, rcWnd.right - rcWnd.left, rcWnd.bottom - rcWnd.top,0);
         MoveWindow(m_hWnd, rcWnd.left, rcWnd.top, rcWnd.right - rcWnd.left, rcWnd.bottom - rcWnd.top, FALSE);
 
-        CreateWindowEx(0, WC_STATIC, lpText, WS_CHILD | WS_VISIBLE, 10 + 6 + ((m_iconIdx != -1) ? 49 : 0), 20, rcText.right - rcText.left, rcText.bottom - rcText.top, m_hWnd, 0, 0, 0);
+        CreateWindowExA(0, WC_STATICA, lpText, WS_CHILD | WS_VISIBLE, 10 + 6 + ((m_iconIdx != -1) ? 49 : 0), 20, rcText.right - rcText.left, rcText.bottom - rcText.top, m_hWnd, 0, 0, 0);
 
         POINT startPos = { (wndWid - buttonWid) / 2, rcWnd.bottom - rcWnd.top - 10 - 36 };
 
         for (const auto &item : _ButtonInfo)
         {
-            CreateWindowEx(0, WC_BUTTON, item.text.c_str(), WS_CHILD | WS_VISIBLE, startPos.x, startPos.y, 120, 36, m_hWnd, item.id, 0, 0);
+            CreateWindowExA(0, WC_BUTTONA, item.text.c_str(), WS_CHILD | WS_VISIBLE, startPos.x, startPos.y, 120, 36, m_hWnd, item.id, 0, 0);
             startPos.x += 6 + 120;
         }
     }
@@ -202,10 +202,10 @@ int MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType)
     dwStyle &= ~WS_MINIMIZEBOX; // 设置窗体取消最小化按钮
     dwStyle &= ~WS_MAXIMIZEBOX; // 设置窗体取消最大化按钮
 
-    msgBoxWnd.CreateWindowA(WS_EX_TOPMOST, CLS_WINDOW, lpCaption, dwStyle, 0, 0, 10, 10, 0, 0, 0);
+    msgBoxWnd.CreateWindowA(WS_EX_TOPMOST, CLS_WINDOWA, lpCaption, dwStyle, 0, 0, 10, 10, 0, 0, 0);
     // ShowWindow(msgBoxWnd.m_hWnd,SW_HIDE);
     SetParent(msgBoxWnd.m_hWnd, hWnd);
-    msgBoxWnd.InitMsgBox(lpText, uType);
+    msgBoxWnd.InitMsgBoxA(lpText, uType);
 
     EnableWindow(hWnd, FALSE);
     ShowWindow(msgBoxWnd.m_hWnd, SW_SHOWNORMAL);

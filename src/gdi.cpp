@@ -242,7 +242,7 @@ static void gdi_brush_free(void *ptr)
 
 static void gdi_font_free(void *ptr)
 {
-    delete (LOGFONT *)ptr;
+    delete (LOGFONTA *)ptr;
 }
 
 HGDIOBJ InitGdiObj(int type, void *ptr)
@@ -488,7 +488,7 @@ static BOOL ApplyFont(HDC hdc)
 {
     if (hdc->hfont)
     {
-        LOGFONT *lf = (LOGFONT *)GetGdiObjPtr(hdc->hfont);
+        LOGFONTA *lf = (LOGFONTA *)GetGdiObjPtr(hdc->hfont);
         const char *fontName = lf->lfFaceName;
         // If the font name is not ASCII, try to resolve to English name using fontconfig
         bool needResolve = false;
@@ -690,7 +690,7 @@ HFONT CreateFontIndirectW(CONST LOGFONTW *lplf)
 
 HFONT CreateFontA(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, DWORD bItalic, DWORD bUnderline, DWORD bStrikeOut, DWORD iCharSet, DWORD iOutPrecision, DWORD iClipPrecision, DWORD iQuality, DWORD iPitchAndFamily, LPCSTR pszFaceName)
 {
-    LOGFONT lf;
+    LOGFONTA lf;
     lf.lfCharSet = iCharSet;
     lf.lfHeight = cHeight;
     lf.lfWidth = cWidth;
@@ -705,7 +705,7 @@ HFONT CreateFontA(int cHeight, int cWidth, int cEscapement, int cOrientation, in
     lf.lfQuality = iQuality;
     lf.lfPitchAndFamily = iPitchAndFamily;
     strcpy_s(lf.lfFaceName, ARRAYSIZE(lf.lfFaceName), pszFaceName);
-    return CreateFontIndirect(&lf);
+    return CreateFontIndirectA(&lf);
 }
 
 HFONT CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, DWORD bItalic, DWORD bUnderline, DWORD bStrikeOut, DWORD iCharSet, DWORD iOutPrecision, DWORD iClipPrecision, DWORD iQuality, DWORD iPitchAndFamily, LPCWSTR pszFaceName)
@@ -1639,33 +1639,33 @@ BOOL PatBlt(_In_ HDC hdc, _In_ int x, _In_ int y, _In_ int w, _In_ int h, _In_ D
     return ret;
 }
 
-static bool IsAlpha(TCHAR c)
+static bool IsAlpha(char c)
 {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
-static bool IsNumber(TCHAR c)
+static bool IsNumber(char c)
 {
     return c >= '0' && c <= '9';
 }
 
-static bool IsHex(TCHAR c)
+static bool IsHex(char c)
 {
     return IsNumber(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
 }
 
-static bool IsDigit(TCHAR c)
+static bool IsDigit(char c)
 {
     return IsNumber(c) || c == '.' || c == ',';
 }
 
-static LPCTSTR SkipWord(LPCTSTR p)
+static LPCSTR SkipWord(LPCSTR p)
 {
     if (IsAlpha(*p))
     {
         while (*p)
         {
-            p = CharNext(p);
+            p = CharNextA(p);
             if (!IsAlpha(*p))
                 break;
         }
@@ -1673,9 +1673,9 @@ static LPCTSTR SkipWord(LPCTSTR p)
     return p;
 }
 
-static LPCTSTR SkipNumber(LPCTSTR p)
+static LPCSTR SkipNumber(LPCSTR p)
 {
-    if (*p && *(p + 1) && (_tcsncmp(p, _T("0x"), 2) == 0 || _tcsncmp(p, _T("0X"), 2) == 0))
+    if (*p && *(p + 1) && (strncmp(p, "0x", 2) == 0 || strncmp(p, "0X", 2) == 0))
     { // test for hex number
         p = p + 2;
         while (*p)
@@ -1698,16 +1698,16 @@ static LPCTSTR SkipNumber(LPCTSTR p)
     }
 }
 
-static LPCTSTR WordNext(LPCTSTR pszBuf, bool bWordbreak)
+static LPCSTR WordNext(LPCSTR pszBuf, bool bWordbreak)
 {
     assert(pszBuf);
-    LPCTSTR p = CharNext(pszBuf);
+    LPCSTR p = CharNextA(pszBuf);
     if (!bWordbreak)
         return p;
-    LPCTSTR pWord = SkipWord(pszBuf);
+    LPCSTR pWord = SkipWord(pszBuf);
     if (pWord > pszBuf)
         return pWord;
-    LPCTSTR pNum = SkipNumber(pszBuf);
+    LPCSTR pNum = SkipNumber(pszBuf);
     if (pNum > pszBuf)
         return pNum;
     return p;
@@ -1770,7 +1770,7 @@ static void DrawTextDecLines(HDC hdc, cairo_font_extents_t &font_ext, LPCSTR str
     }
 }
 
-static void DrawSingleLine(HDC hdc, LPCTSTR pszBuf, int iBegin, int cchText, LPRECT pRect, UINT uFormat)
+static void DrawSingleLine(HDC hdc, LPCSTR pszBuf, int iBegin, int cchText, LPRECT pRect, UINT uFormat)
 {
     cairo_font_extents_t font_ext;
     cairo_font_extents(hdc->cairo, &font_ext);
@@ -1805,25 +1805,25 @@ static void DrawSingleLine(HDC hdc, LPCTSTR pszBuf, int iBegin, int cchText, LPR
 
 #define kDrawText_LineInterval 0
 
-void DrawMultiLine(HDC hdc, LPCTSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
+void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
 {
     int i = 0, nLine = 1;
     if (cchText == -1)
-        cchText = (int)_tcslen(pszBuf);
-    LPCTSTR p1 = pszBuf;
+        cchText = (int)strlen(pszBuf);
+    LPCSTR p1 = pszBuf;
     POINT pt = { pRect->left, pRect->top };
-    SIZE szWord = OnMeasureText(hdc, _T("A"), 1);
+    SIZE szWord = OnMeasureText(hdc, "A", 1);
     int nLineHei = szWord.cy;
     int nRight = pRect->right;
     int nLineWid = pRect->right - pRect->left;
     pRect->right = pRect->left;
 
-    LPCTSTR pLineHead = p1, pLineTail = p1;
+    LPCSTR pLineHead = p1, pLineTail = p1;
 
-    LPCTSTR pPrev = NULL;
+    LPCSTR pPrev = NULL;
     while (i < cchText)
     {
-        LPCTSTR p2 = WordNext(p1, uFormat & DT_WORDBREAK);
+        LPCSTR p2 = WordNext(p1, uFormat & DT_WORDBREAK);
         assert(p2 > p1);
         if ((*p1 == _T('\n') && p2))
         {
@@ -1876,12 +1876,12 @@ void DrawMultiLine(HDC hdc, LPCTSTR pszBuf, int cchText, LPRECT pRect, UINT uFor
             }
             else
             { // word is too long to draw in a single line
-                LPCTSTR p3 = p1;
+                LPCSTR p3 = p1;
                 SIZE szChar;
                 szWord.cx = 0;
                 while (p3 < p2)
                 {
-                    LPCTSTR p4 = CharNext(p3);
+                    LPCSTR p4 = CharNextA(p3);
                     szChar = OnMeasureText(hdc, p3, (int)(p4 - p3));
                     if (szWord.cx + szChar.cx > nLineWid)
                     {
@@ -2515,7 +2515,7 @@ HGDIOBJ GetStockObject(int i)
     case SYSTEM_FONT:
     case DEFAULT_GUI_FONT:
     {
-        static LOGFONT lf = { 0 };
+        static LOGFONTA lf = { 0 };
         #ifdef _WIN32
         strcpy(lf.lfFaceName, "宋体");
         #else

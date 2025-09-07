@@ -1413,30 +1413,3 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
         return FALSE; // Error occurred
     }
 }
-
-void test_pick_file()
-{
-    TCHAR szBuf[MAX_PATH];
-
-    OPENFILENAME ofn = { 0 };
-    ofn.lStructSize = sizeof(ofn);
-    ofn.hwndOwner = 0;
-    ofn.lpstrFile = szBuf;
-    ofn.nMaxFile = MAX_PATH;
-    ofn.lpstrDefExt = _T("*.*");
-    ofn.lpstrFilter = _T("All Files\0*.*\0");
-    ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY | OFN_EXPLORER;
-    SGetOpenFileNameA(&ofn, OPEN);
-}
-
-void test_pick_folder()
-{
-    TCHAR szBuf[MAX_PATH];
-
-    BROWSEINFO info = { 0 };
-    info.lpszPath = szBuf;
-    info.nMaxPath = MAX_PATH;
-    if (PickFolder(&info))
-    {
-    }
-}

@@ -86,7 +86,7 @@ HHOOK HookMgr::set_windows_hook(INT id, HOOKPROC proc, HINSTANCE inst, tid_t tid
         SetLastError(ERROR_INVALID_FILTER_PROC);
         return 0;
     }
-    if (inst && (!(len = GetModuleFileName(inst, module, MAX_PATH)) || len >= MAX_PATH))
+    if (inst && (!(len = GetModuleFileNameA(inst, module, MAX_PATH)) || len >= MAX_PATH))
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return 0;

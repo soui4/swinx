@@ -8,9 +8,9 @@ class CControl : public CNativeWnd {
     CControl(BOOL bAutoFree)
         : CNativeWnd(bAutoFree){};
     virtual ~CControl(){};
-    void DrawText(HDC dc, LPCSTR lpText, RECT *rc, UINT format = DT_CENTER | DT_VCENTER)
+    void DrawTextA(HDC dc, LPCSTR lpText, RECT *rc, UINT format = DT_CENTER | DT_VCENTER)
     {
-        ::DrawText(dc, lpText, -1, rc, format);
+        ::DrawTextA(dc, lpText, -1, rc, format);
     }
     void DrawBitmap(HDC dc, HBITMAP hBitmap, RECT *rc)
     {
@@ -44,7 +44,7 @@ ATOM TRegisterClass(LPCSTR clsName)
     wcex.hCursor = ::LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground = ::CreateSolidBrush(RGB(255, 255, 255));
     wcex.lpszClassName = clsName;
-    return ::RegisterClassEx(&wcex);
+    return ::RegisterClassExA(&wcex);
 }
 
 class CStatic : public CControl {

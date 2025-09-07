@@ -371,7 +371,7 @@ SIZE SMenuItem::GetItemSize(HDC hdc)
     else
     {
         SIZE szSize;
-        ::GetTextExtentPoint32(hdc, m_strTitle.c_str(), m_strTitle.size(), &szSize);
+        ::GetTextExtentPoint32A(hdc, m_strTitle.c_str(), m_strTitle.size(), &szSize);
         m_size.cx = szSize.cx + 46;
     }
     return m_size;
@@ -590,7 +590,7 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
                 }
             }
             RECT rcText = { rc.left + 26, rc.top, rc.right - 10, rc.bottom };
-            DrawText(memdc, txt, -1, &rcText, DT_SINGLELINE | DT_VCENTER);
+            DrawTextA(memdc, txt, -1, &rcText, DT_SINGLELINE | DT_VCENTER);
 
             if (oldBrush)
             {
@@ -841,7 +841,7 @@ SMenuItem *CMenu::GetMenuItem(int iItem)
 
 BOOL CMenu::CreateMenu()
 {
-    return __baseCls::CreateWindow(WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE, WC_MENU, "", WS_POPUP, 0, 0, 0, 0, 0, 0, nullptr);
+    return __baseCls::CreateWindowA(WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE, WC_MENUA, "", WS_POPUP, 0, 0, 0, 0, 0, 0, nullptr);
 }
 
 UINT CMenu::GetMenuItemID(int nPos)
@@ -1785,7 +1785,7 @@ BOOL WINAPI IsMenu(HMENU hMenu)
         return FALSE;
     char szCls[MAX_ATOM_LEN + 1] = { 0 };
     GetClassNameA(hMenu, szCls, MAX_ATOM_LEN + 1);
-    return strcmp(szCls, WC_MENU) == 0;
+    return strcmp(szCls, WC_MENUA) == 0;
 }
 
 BOOL WINAPI CheckMenuRadioItem(HMENU hMenu, UINT first, UINT last, UINT check, UINT flags)

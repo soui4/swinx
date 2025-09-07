@@ -26,7 +26,7 @@ void CStatic::OnPaint(HDC dc)
         SetTextColor(dc, RGB(0, 0, 0));
 
         WndObj wndObj = WndMgr::fromHwnd(m_hWnd);
-        CControl::DrawText(dc, wndObj->title.c_str(), &rc);
+        CControl::DrawTextA(dc, wndObj->title.c_str(), &rc);
         SelectObject(dc, hOldFont);
     }
     EndPaint(m_hWnd, &ps);
@@ -75,7 +75,7 @@ void CButton::OnPaint(HDC hdc)
     HFONT hOldFont = (HFONT)SelectObject(hdc, hFont);
     SetBkMode(hdc, TRANSPARENT);
     SetTextColor(hdc, m_nButtonState == 0 ? RGB(0, 0, 0) : RGB(255, 255, 255));
-    DrawText(hdc, pWnd->title.c_str(), &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    DrawTextA(hdc, pWnd->title.c_str(), &rc, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
     SelectObject(hdc, hOldFont);
     EndPaint(m_hWnd, &ps);
 }
