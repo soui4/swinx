@@ -40,6 +40,7 @@ source_group("Source Files" FILES ${SRCS})
 if (NOT ENABLE_SOUI_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
     target_link_libraries(swinx
+        dl
         xcb                # System XCB library
         cairo              # Our internal cairo target
         xkbcommon          # Our internal xkbcommon target
