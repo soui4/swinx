@@ -67,7 +67,7 @@ BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out) {
     }
 }
 
-static BOOL GetOpenFileNameMac(OPENFILENAME *lpofn) {
+static BOOL GetOpenFileNameMac(OPENFILENAMEA *lpofn) {
     @autoreleasepool {
         NSOpenPanel *panel = [NSOpenPanel openPanel];
         // 设置父窗口
@@ -206,7 +206,7 @@ static BOOL GetOpenFileNameMac(OPENFILENAME *lpofn) {
     }
 }
 
-static BOOL GetSaveFileNameMac(OPENFILENAME *lpofn) {
+static BOOL GetSaveFileNameMac(OPENFILENAMEA *lpofn) {
     @autoreleasepool {
         NSSavePanel *panel = [NSSavePanel savePanel];
         

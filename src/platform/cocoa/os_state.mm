@@ -54,17 +54,18 @@
 
 - (void)initDockMenu:(NSMenu *)dockMenu hmenu:(HMENU)hMenu {
   for (int i = 0; i < GetMenuItemCount(hMenu); i++) {
-    MENUITEMINFO menuItemInfo = {0};
+    MENUITEMINFOA menuItemInfo = {0};
     char szText[256] = {0};
     menuItemInfo.dwTypeData = szText;
     menuItemInfo.cch = sizeof(szText);
     menuItemInfo.cbSize = sizeof(MENUITEMINFO);
     menuItemInfo.fMask = MIIM_TYPE | MIIM_STATE | MIIM_ID | MIIM_STRING| MIIM_SUBMENU;
-    BOOL result = GetMenuItemInfo(hMenu, i, TRUE, &menuItemInfo);
+    BOOL result = GetMenuItemInfoA(hMenu, i, TRUE, &menuItemInfo);
     if (result) {
       if (menuItemInfo.fType == MFT_SEPARATOR) {
         [dockMenu addItem:[NSMenuItem separatorItem]];
       } else {
+        [NSString stringWithUTF8String:menuItemInfo.dwTypeData];
         NSMenuItem *item = [[NSMenuItem alloc]
             initWithTitle:[NSString
                               stringWithUTF8String:menuItemInfo.dwTypeData]

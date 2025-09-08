@@ -2475,7 +2475,7 @@ BOOL EnumDataOjbectCb(WORD fmt, HGLOBAL hMem, NSPasteboardItem *item){
     if (self.dropSource) {
         HRESULT hr = self.dropSource->GiveFeedback(dwEffect);
         if(hr == DRAGDROP_S_USEDEFAULTCURSORS){
-            LPCSTR res = IDC_NODROP;
+            LPCTSTR res = IDC_NODROP;
             if (dwEffect & DROPEFFECT_MOVE)
                 res = IDC_MOVE;
             else if (dwEffect & DROPEFFECT_LINK)
