@@ -36,13 +36,11 @@ math(EXPR OSXVERSION "${CURVERSION} + 1")
 set(CACHEVERSION "9")
 
 # Build options
-option(ENABLE_DOCS "Build documentation" OFF)
 option(ENABLE_NLS "Enable native language support" OFF)
-option(ENABLE_TESTS "Enable unit tests" OFF)
-option(ENABLE_TOOLS "Build command-line tools" OFF)
 option(ENABLE_CACHE_BUILD "Run fc-cache on install" OFF)
 option(ENABLE_ICONV "Enable iconv support" OFF)
 option(ENABLE_FONTATIONS "Use Fontations for indexing" OFF)
+option(ENABLE_PREBUILT_GPERF "Use prebuilt gperf files instead of generating them" ON)
 
 # Default configuration options
 set(DEFAULT_HINTING "slight" CACHE STRING "Default hinting configuration")
@@ -129,20 +127,6 @@ if(NOT WIN32)
     endif()
 endif()
 
-# Find gperf
-find_program(GPERF_EXECUTABLE gperf REQUIRED)
-
-# Find Python3 for build scripts
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
-
-# Platform-specific settings
-if(WIN32)
-    set(EXEEXT ".exe")
-    set(WIN_EXPORT_ARGS "-DFcPublic=__declspec(dllexport)" "-DDLL_EXPORT")
-else()
-    set(EXEEXT "")
-    set(WIN_EXPORT_ARGS "")
-endif()
 
 # Set up default font directories
 if(NOT DEFAULT_FONTS_DIRS)
@@ -209,34 +193,11 @@ if(ENABLE_FONTATIONS)
     message(WARNING "Fontations support requires Rust and is not yet implemented in this CMake build")
 endif()
 
-if(ENABLE_TOOLS)
-    add_subdirectory(fc-cache)
-    add_subdirectory(fc-cat)
-    add_subdirectory(fc-conflist)
-    add_subdirectory(fc-list)
-    add_subdirectory(fc-match)
-    add_subdirectory(fc-pattern)
-    add_subdirectory(fc-query)
-    add_subdirectory(fc-scan)
-    add_subdirectory(fc-validate)
-endif()
-
-if(ENABLE_TESTS)
-    enable_testing()
-    add_subdirectory(test)
-endif()
-
-#add_subdirectory(conf.d)
-#add_subdirectory(its)
-
 if(ENABLE_NLS)
     add_subdirectory(po)
     add_subdirectory(po-conf)
 endif()
 
-if(ENABLE_DOCS)
-    add_subdirectory(doc)
-endif()
 
 # Generate configuration files
 include(cmake/ConfigureChecks.cmake)

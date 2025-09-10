@@ -182,18 +182,24 @@ int main() {
     unset(CMAKE_REQUIRED_INCLUDES)
 endif()
 
+if(ENABLE_PREBUILT_GPERF)
+    message(STATUS "Using prebuilt gperf files, set FC_GPERF_SIZE_T to size_t")
+    set(FC_GPERF_SIZE_T "size_t")
+else(ENABLE_PREBUILT_GPERF)
 # Check gperf length type
+find_program(GPERF_EXECUTABLE gperf REQUIRED)
 execute_process(
     COMMAND ${GPERF_EXECUTABLE} -L ANSI-C ${CMAKE_CURRENT_SOURCE_DIR}/meson-cc-tests/gperf.txt
     OUTPUT_VARIABLE GPERF_OUTPUT
     ERROR_QUIET
-)
-
+    )
+    
 if(GPERF_OUTPUT MATCHES "size_t")
     set(FC_GPERF_SIZE_T "size_t")
 else()
     set(FC_GPERF_SIZE_T "unsigned")
 endif()
+endif(ENABLE_PREBUILT_GPERF)
 
 # Set additional defines
 set(_GNU_SOURCE 1)

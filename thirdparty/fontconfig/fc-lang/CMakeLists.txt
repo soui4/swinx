@@ -43,19 +43,34 @@ foreach(orth_file ${ORTH_FILES})
     list(APPEND ORTH_FILE_PATHS ${CMAKE_CURRENT_SOURCE_DIR}/${orth_file})
 endforeach()
 
-# Generate fclang.h
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fclang.h
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/fc-lang.py
-            ${ORTH_FILE_PATHS}
-            --template ${CMAKE_CURRENT_SOURCE_DIR}/fclang.tmpl.h
-            --output ${CMAKE_CURRENT_BINARY_DIR}/fclang.h
-            --directory ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS ${ORTH_FILE_PATHS}
-            ${CMAKE_CURRENT_SOURCE_DIR}/fclang.tmpl.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/fc-lang.py
-    COMMENT "Generating fclang.h"
-)
+option(ENABLE_PREBUILD_FCLANG "Use prebuilt fclang.h instead of generate fclang.h" ON)
+
+if(ENABLE_PREBUILD_FCLANG)
+    message(STATUS "Pre-building fclang.h")
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/fclang.h
+        ${CMAKE_CURRENT_BINARY_DIR}/fclang.h
+        COPYONLY
+    )
+else()
+    # Find Python3 for build scripts
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+    # Generate fclang.h
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fclang.h
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/fc-lang.py
+                ${ORTH_FILE_PATHS}
+                --template ${CMAKE_CURRENT_SOURCE_DIR}/fclang.tmpl.h
+                --output ${CMAKE_CURRENT_BINARY_DIR}/fclang.h
+                --directory ${CMAKE_CURRENT_SOURCE_DIR}
+        DEPENDS ${ORTH_FILE_PATHS}
+                ${CMAKE_CURRENT_SOURCE_DIR}/fclang.tmpl.h
+                ${CMAKE_CURRENT_SOURCE_DIR}/fc-lang.py
+        COMMENT "Generating fclang.h"
+    )
+endif()
+
 
 # Create a custom target to ensure the header is generated
 add_custom_target(fclang_h DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fclang.h)

@@ -75,58 +75,95 @@ set(FC_SOURCES
     ftglue.c
 )
 
-# Generate fcobjshash.h using gperf (Meson-compatible format)
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.gperf
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate-gperf-meson-format.py
-            ${CMAKE_CURRENT_SOURCE_DIR}/fcobjshash.gperf.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/fcobjs.h
-            ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.gperf
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fcobjshash.gperf.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/fcobjs.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/generate-gperf-meson-format.py
-    COMMENT "Generating fcobjshash.gperf (Meson-compatible format)"
-)
+# Add option to use prebuilt gperf files
+if(ENABLE_PREBUILT_GPERF)
+    # Copy prebuilt fcobjshash.h file
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/fcobjshash.h
+        ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.h
+        COPYONLY
+    )
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/fcalias.h
+        ${CMAKE_CURRENT_BINARY_DIR}/fcalias.h
+        COPYONLY
+    )
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/fcaliastail.h
+        ${CMAKE_CURRENT_BINARY_DIR}/fcaliastail.h
+        COPYONLY
+    )
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/fcftalias.h
+        ${CMAKE_CURRENT_BINARY_DIR}/fcftalias.h
+        COPYONLY
+    )
+    configure_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/prebuilt/fcftaliastail.h
+        ${CMAKE_CURRENT_BINARY_DIR}/fcftaliastail.h
+        COPYONLY
+    )
+else()
+    # Find Python3 for build scripts
+    find_package(Python3 REQUIRED COMPONENTS Interpreter)
+    # Find gperf
+    find_program(GPERF_EXECUTABLE gperf REQUIRED)
 
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.h
-    COMMAND ${GPERF_EXECUTABLE} --pic -m 100
-            ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.gperf
-            --output-file ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.h
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.gperf
-    COMMENT "Generating fcobjshash.h with gperf"
-)
+    # Generate fcobjshash.h using gperf (Meson-compatible format)
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.gperf
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/generate-gperf-meson-format.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/fcobjshash.gperf.h
+                ${CMAKE_CURRENT_SOURCE_DIR}/fcobjs.h
+                ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.gperf
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/fcobjshash.gperf.h
+                ${CMAKE_CURRENT_SOURCE_DIR}/fcobjs.h
+                ${CMAKE_CURRENT_SOURCE_DIR}/generate-gperf-meson-format.py
+        COMMENT "Generating fcobjshash.gperf (Meson-compatible format)"
+    )
 
-# Generate alias headers
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fcalias.h
-           ${CMAKE_CURRENT_BINARY_DIR}/fcaliastail.h
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/makealias.py
-            ${CMAKE_CURRENT_SOURCE_DIR}
-            ${CMAKE_CURRENT_BINARY_DIR}/fcalias.h
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.h
+        COMMAND ${GPERF_EXECUTABLE} --pic -m 100
+                ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.gperf
+                --output-file ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.h
+        DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/fcobjshash.gperf
+        COMMENT "Generating fcobjshash.h with gperf"
+    )
+
+
+    # Generate alias headers
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fcalias.h
             ${CMAKE_CURRENT_BINARY_DIR}/fcaliastail.h
-            ${CMAKE_CURRENT_BINARY_DIR}/../fontconfig/fontconfig.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/fcdeprecate.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/../fontconfig/fcprivate.h
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/makealias.py
-            ${CMAKE_CURRENT_BINARY_DIR}/../fontconfig/fontconfig.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/fcdeprecate.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/../fontconfig/fcprivate.h
-    COMMENT "Generating alias headers"
-)
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/makealias.py
+                ${CMAKE_CURRENT_SOURCE_DIR}
+                ${CMAKE_CURRENT_BINARY_DIR}/fcalias.h
+                ${CMAKE_CURRENT_BINARY_DIR}/fcaliastail.h
+                ${CMAKE_CURRENT_BINARY_DIR}/../fontconfig/fontconfig.h
+                ${CMAKE_CURRENT_SOURCE_DIR}/fcdeprecate.h
+                ${CMAKE_CURRENT_SOURCE_DIR}/../fontconfig/fcprivate.h
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/makealias.py
+                ${CMAKE_CURRENT_BINARY_DIR}/../fontconfig/fontconfig.h
+                ${CMAKE_CURRENT_SOURCE_DIR}/fcdeprecate.h
+                ${CMAKE_CURRENT_SOURCE_DIR}/../fontconfig/fcprivate.h
+        COMMENT "Generating alias headers"
+    )
 
-add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fcftalias.h
-           ${CMAKE_CURRENT_BINARY_DIR}/fcftaliastail.h
-    COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/makealias.py
-            ${CMAKE_CURRENT_SOURCE_DIR}
-            ${CMAKE_CURRENT_BINARY_DIR}/fcftalias.h
+    add_custom_command(
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/fcftalias.h
             ${CMAKE_CURRENT_BINARY_DIR}/fcftaliastail.h
-            ${CMAKE_CURRENT_SOURCE_DIR}/../fontconfig/fcfreetype.h
-    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/makealias.py
-            ${CMAKE_CURRENT_SOURCE_DIR}/../fontconfig/fcfreetype.h
-    COMMENT "Generating FreeType alias headers"
-)
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/makealias.py
+                ${CMAKE_CURRENT_SOURCE_DIR}
+                ${CMAKE_CURRENT_BINARY_DIR}/fcftalias.h
+                ${CMAKE_CURRENT_BINARY_DIR}/fcftaliastail.h
+                ${CMAKE_CURRENT_SOURCE_DIR}/../fontconfig/fcfreetype.h
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/makealias.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/../fontconfig/fcfreetype.h
+        COMMENT "Generating FreeType alias headers"
+    )
+endif()
+
 
 # Create custom targets for generated headers first
 add_custom_target(generated_headers
