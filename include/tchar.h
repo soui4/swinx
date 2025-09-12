@@ -56,12 +56,12 @@ inline wchar_t *_wcsstok(wchar_t *strToken, const wchar_t *strDelimit)
 #define _tcschr    wcschr
 #define _tcscat    wcscat
 #define _tstoi     _wtoi
+#define _tstof     _wtof
 #define _istdigit  iswdigit
 #define _istspace  iswspace
 #define _istalnum  iswalnum
 #define _istprint  iswprint
 #define _istalpha  iswalpha
-
 #else
 #define lstrlen    lstrlenA
 #define lstrcpy    lstrcpyA
@@ -85,6 +85,7 @@ inline wchar_t *_wcsstok(wchar_t *strToken, const wchar_t *strDelimit)
 #define _tcschr    strchr
 #define _tcscat    strcat
 #define _tstoi     atoi
+#define _tstof     atof
 #define _istdigit  isdigit
 #define _istspace  isspace
 #define _istalnum  isalnum
