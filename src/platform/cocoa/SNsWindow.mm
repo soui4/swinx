@@ -870,7 +870,7 @@ defer:(BOOL)flag;
 #pragma mark - NSTextInputClient Protocol
 -(void)onFunctionKey{
     NSEvent *currentEvent = [NSApp currentEvent];
-    SLOG_STMI()<<"hjx onFunctionKey: hWnd="<<m_hWnd;
+    //SLOG_STMI()<<"hjx onFunctionKey: hWnd="<<m_hWnd;
     if(currentEvent.type==NSEventTypeKeyDown){
         [self onKeyDown:currentEvent];
     }else{
