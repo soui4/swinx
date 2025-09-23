@@ -1399,10 +1399,12 @@ int GetSystemMetrics(int nIndex)
         break;
     case SM_CXDRAG:
     case SM_CYDRAG:
-        return 4;
+        ret= 4;
+        break;
     case SM_CXMINTRACK:
     case SM_CYMINTRACK:
-        return 6;
+        ret= 6;
+        break;
     default:
         printf("unknown index for GetSystemMetrics, index=%d\n", nIndex);
         break;

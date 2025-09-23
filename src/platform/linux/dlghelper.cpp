@@ -123,8 +123,8 @@ auto process_filter_patterns(FilePatternList const &patterns) -> FilePatternList
 
 
 
-// D-Bus helper class for file dialogs
-class DBusFileDialog {
+// Unified D-Bus helper class for all dialogs (file, color, font)
+class DBusDialog {
 private:
     DBusConnection* connection = nullptr;
     DBusError error;
@@ -133,7 +133,7 @@ private:
     HWND m_parent_window = 0;
 
 public:
-    DBusFileDialog() {
+    DBusDialog() {
         dbus_error_init(&error);
         connection = dbus_bus_get(DBUS_BUS_SESSION, &error);
         if (dbus_error_is_set(&error)) {
@@ -141,7 +141,7 @@ public:
         }
     }
 
-    ~DBusFileDialog() {
+    ~DBusDialog() {
         if (connection) {
             dbus_connection_unref(connection);
         }
@@ -231,6 +231,73 @@ public:
 
         // Fallback to zenity for other environments
         return fallback_to_zenity_color(initial_color);
+    }
+
+    // Font dialog methods
+    std::string try_kde_font_dialog(const std::string& initial_font) {
+        // First check if kdialog service is available
+        if (!is_kde_dialog_available()) {
+            return "";
+        }
+
+        // KDE font dialog via D-Bus
+        DBusMessage* msg = dbus_message_new_method_call(
+            "org.kde.kdialog", "/kdialog", "org.kde.kdialog", "getFont");
+
+        if (!msg) return "";
+
+        // Pass initial font if provided
+        const char* font_cstr = initial_font.empty() ? "" : initial_font.c_str();
+        dbus_message_append_args(msg,
+            DBUS_TYPE_STRING, &font_cstr,
+            DBUS_TYPE_INVALID);
+
+        // Check if connection is still valid before sending
+        if (!connection) {
+            dbus_message_unref(msg);
+            return "";
+        }
+
+        // Clear any previous errors
+        dbus_error_free(&error);
+        dbus_error_init(&error);
+
+        // Use longer timeout for font dialogs
+        DBusMessage* reply = dbus_connection_send_with_reply_and_block(connection, msg, 30000, &error);
+        dbus_message_unref(msg);
+
+        if (!reply) {
+            if (dbus_error_is_set(&error)) {
+                dbus_error_free(&error);
+            }
+            return "";
+        }
+
+        if (dbus_error_is_set(&error)) {
+            dbus_message_unref(reply);
+            dbus_error_free(&error);
+            return "";
+        }
+
+        char* result_font = nullptr;
+        std::string result;
+
+        if (dbus_message_get_args(reply, &error, DBUS_TYPE_STRING, &result_font, DBUS_TYPE_INVALID)) {
+            if (result_font && strlen(result_font) > 0) {
+                std::string font_result(result_font);
+                // Check if user cancelled (kdialog might return empty string on cancel)
+                if (!font_result.empty() && font_result != " ") {
+                    result = font_result;
+                }
+            }
+        }
+
+        dbus_message_unref(reply);
+        if (dbus_error_is_set(&error)) {
+            dbus_error_free(&error);
+        }
+
+        return result;
     }
 
 private:
@@ -1120,6 +1187,8 @@ private:
         // If not a file:// URI, return as-is (might be a local path already)
         return uri;
     }
+
+
 };
 
 } // namespace swinx::Dialogs
@@ -1128,7 +1197,7 @@ BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out)
 {
     try
     {
-        swinx::Dialogs::DBusFileDialog dialog;
+        swinx::Dialogs::DBusDialog dialog;
 
         // Set the parent window if specified
         if (parent) {
@@ -1192,7 +1261,7 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
 
     try
     {
-        swinx::Dialogs::DBusFileDialog dialog;
+        swinx::Dialogs::DBusDialog dialog;
 
         // Set the parent window if specified
         if (p->hwndOwner)
@@ -1412,4 +1481,240 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
     {
         return FALSE; // Error occurred
     }
+}
+
+
+
+
+
+// Helper function to convert font string to LOGFONT
+bool parse_font_string_to_logfont(const std::string& font_str, LOGFONTA* logfont) {
+    if (font_str.empty() || !logfont) return false;
+
+    // Initialize LOGFONT with defaults
+    memset(logfont, 0, sizeof(LOGFONTA));
+    logfont->lfHeight = -12; // Default size
+    logfont->lfWeight = FW_NORMAL;
+    logfont->lfCharSet = DEFAULT_CHARSET;
+    logfont->lfOutPrecision = OUT_DEFAULT_PRECIS;
+    logfont->lfClipPrecision = CLIP_DEFAULT_PRECIS;
+    logfont->lfQuality = DEFAULT_QUALITY;
+    logfont->lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
+
+    // Parse font string format: "Family Name, Size, Style"
+    // Example: "Arial, 12, Bold Italic" or "Arial 12 Bold Italic"
+
+    std::string work_str = font_str;
+    std::vector<std::string> parts;
+
+    // Split by comma first, then by space if no comma
+    size_t pos = 0;
+    std::string delimiter = ",";
+    bool has_comma = work_str.find(',') != std::string::npos;
+
+    if (!has_comma) {
+        delimiter = " ";
+    }
+
+    while ((pos = work_str.find(delimiter)) != std::string::npos) {
+        std::string part = work_str.substr(0, pos);
+        // Trim whitespace
+        part.erase(0, part.find_first_not_of(" \t"));
+        part.erase(part.find_last_not_of(" \t") + 1);
+        if (!part.empty()) {
+            parts.push_back(part);
+        }
+        work_str.erase(0, pos + delimiter.length());
+    }
+
+    // Add the last part
+    work_str.erase(0, work_str.find_first_not_of(" \t"));
+    work_str.erase(work_str.find_last_not_of(" \t") + 1);
+    if (!work_str.empty()) {
+        parts.push_back(work_str);
+    }
+
+    if (parts.empty()) return false;
+
+    // First part is always the font family name
+    strncpy(logfont->lfFaceName, parts[0].c_str(), LF_FACESIZE - 1);
+    logfont->lfFaceName[LF_FACESIZE - 1] = '\0';
+
+    // Parse remaining parts for size and style
+    for (size_t i = 1; i < parts.size(); ++i) {
+        const std::string& part = parts[i];
+
+        // Check if it's a number (font size)
+        if (std::isdigit(part[0])) {
+            int size = std::atoi(part.c_str());
+            if (size > 0) {
+                // Convert point size to logical units (negative for character height)
+                logfont->lfHeight = -size;
+            }
+        }
+        // Check for style keywords
+        else if (part == "Bold" || part == "bold") {
+            logfont->lfWeight = FW_BOLD;
+        }
+        else if (part == "Italic" || part == "italic") {
+            logfont->lfItalic = TRUE;
+        }
+        else if (part == "Underline" || part == "underline") {
+            logfont->lfUnderline = TRUE;
+        }
+        else if (part == "Strikeout" || part == "strikeout") {
+            logfont->lfStrikeOut = TRUE;
+        }
+    }
+
+    return true;
+}
+
+// Helper function to convert LOGFONT to font string
+std::string logfont_to_font_string(const LOGFONTA* logfont) {
+    if (!logfont) return "";
+
+    std::string result = logfont->lfFaceName;
+
+    // Add size (convert from logical units to points)
+    int size = abs(logfont->lfHeight);
+    if (size > 0) {
+        result += ", " + std::to_string(size);
+    }
+
+    // Add style attributes
+    std::vector<std::string> styles;
+    if (logfont->lfWeight >= FW_BOLD) {
+        styles.push_back("Bold");
+    }
+    if (logfont->lfItalic) {
+        styles.push_back("Italic");
+    }
+    if (logfont->lfUnderline) {
+        styles.push_back("Underline");
+    }
+    if (logfont->lfStrikeOut) {
+        styles.push_back("Strikeout");
+    }
+
+    for (const auto& style : styles) {
+        result += ", " + style;
+    }
+
+    return result;
+}
+
+BOOL WINAPI ChooseFontA(LPCHOOSEFONTA p) {
+    if (!p || !p->lpLogFont) {
+        return FALSE;
+    }
+
+    try {
+        swinx::Dialogs::DBusDialog font_dialog;
+        std::string result_font;
+
+        // Convert current LOGFONT to font string for initial value
+        std::string initial_font = logfont_to_font_string(p->lpLogFont);
+
+        // Try KDE dialog first
+        if (font_dialog.is_available()) {
+            result_font = font_dialog.try_kde_font_dialog(initial_font);
+        }
+
+        // If we got a result, parse it back to LOGFONT
+        if (!result_font.empty()) {
+            LOGFONTA new_logfont;
+            if (parse_font_string_to_logfont(result_font, &new_logfont)) {
+                *p->lpLogFont = new_logfont;
+
+                // Set point size if requested
+                if (p->Flags & CF_INITTOLOGFONTSTRUCT) {
+                    // Convert logical units to points (approximate)
+                    p->iPointSize = abs(new_logfont.lfHeight) * 10;
+                }
+
+                return TRUE;
+            }
+        }
+
+        return FALSE; // User cancelled or error occurred
+    }
+    catch (...) {
+        return FALSE;
+    }
+}
+
+BOOL WINAPI ChooseFontW(LPCHOOSEFONTW p) {
+    if (!p || !p->lpLogFont) {
+        return FALSE;
+    }
+
+    // Convert CHOOSEFONTW to CHOOSEFONTA
+    CHOOSEFONTA chooseA;
+    LOGFONTA logfontA;
+
+    // Copy structure fields
+    chooseA.lStructSize = sizeof(CHOOSEFONTA);
+    chooseA.hwndOwner = p->hwndOwner;
+    chooseA.hDC = p->hDC;
+    chooseA.lpLogFont = &logfontA;
+    chooseA.iPointSize = p->iPointSize;
+    chooseA.Flags = p->Flags;
+    chooseA.rgbColors = p->rgbColors;
+    chooseA.lCustData = p->lCustData;
+    chooseA.lpfnHook = p->lpfnHook;
+    chooseA.lpTemplateName = nullptr; // Convert if needed
+    chooseA.hInstance = p->hInstance;
+    chooseA.lpszStyle = nullptr; // Convert if needed
+    chooseA.nFontType = p->nFontType;
+    chooseA.nSizeMin = p->nSizeMin;
+    chooseA.nSizeMax = p->nSizeMax;
+
+    // Convert LOGFONTW to LOGFONTA
+    logfontA.lfHeight = p->lpLogFont->lfHeight;
+    logfontA.lfWidth = p->lpLogFont->lfWidth;
+    logfontA.lfEscapement = p->lpLogFont->lfEscapement;
+    logfontA.lfOrientation = p->lpLogFont->lfOrientation;
+    logfontA.lfWeight = p->lpLogFont->lfWeight;
+    logfontA.lfItalic = p->lpLogFont->lfItalic;
+    logfontA.lfUnderline = p->lpLogFont->lfUnderline;
+    logfontA.lfStrikeOut = p->lpLogFont->lfStrikeOut;
+    logfontA.lfCharSet = p->lpLogFont->lfCharSet;
+    logfontA.lfOutPrecision = p->lpLogFont->lfOutPrecision;
+    logfontA.lfClipPrecision = p->lpLogFont->lfClipPrecision;
+    logfontA.lfQuality = p->lpLogFont->lfQuality;
+    logfontA.lfPitchAndFamily = p->lpLogFont->lfPitchAndFamily;
+
+    // Convert wide char face name to multibyte
+    WideCharToMultiByte(CP_UTF8, 0, p->lpLogFont->lfFaceName, -1,
+                       logfontA.lfFaceName, LF_FACESIZE, nullptr, nullptr);
+
+    // Call the ANSI version
+    BOOL result = ChooseFontA(&chooseA);
+
+    if (result) {
+        // Convert results back to wide char
+        p->lpLogFont->lfHeight = logfontA.lfHeight;
+        p->lpLogFont->lfWidth = logfontA.lfWidth;
+        p->lpLogFont->lfEscapement = logfontA.lfEscapement;
+        p->lpLogFont->lfOrientation = logfontA.lfOrientation;
+        p->lpLogFont->lfWeight = logfontA.lfWeight;
+        p->lpLogFont->lfItalic = logfontA.lfItalic;
+        p->lpLogFont->lfUnderline = logfontA.lfUnderline;
+        p->lpLogFont->lfStrikeOut = logfontA.lfStrikeOut;
+        p->lpLogFont->lfCharSet = logfontA.lfCharSet;
+        p->lpLogFont->lfOutPrecision = logfontA.lfOutPrecision;
+        p->lpLogFont->lfClipPrecision = logfontA.lfClipPrecision;
+        p->lpLogFont->lfQuality = logfontA.lfQuality;
+        p->lpLogFont->lfPitchAndFamily = logfontA.lfPitchAndFamily;
+
+        // Convert multibyte face name back to wide char
+        MultiByteToWideChar(CP_UTF8, 0, logfontA.lfFaceName, -1,
+                           p->lpLogFont->lfFaceName, LF_FACESIZE);
+
+        p->iPointSize = chooseA.iPointSize;
+        p->rgbColors = chooseA.rgbColors;
+    }
+
+    return result;
 }

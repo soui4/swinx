@@ -1,6 +1,7 @@
 #ifndef __COMMDLG_H__
 #define __COMMDLG_H__
 #include <ctypes.h>
+#include <gdi.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -238,6 +239,16 @@ typedef LPOPENFILENAMEA LPOPENFILENAME;
 #else
 #define PickFolder PickFolderA
 #endif
+
+
+BOOL WINAPI ChooseFontA(LPCHOOSEFONTA p);
+BOOL WINAPI ChooseFontW(LPCHOOSEFONTW p);
+
+#ifdef UNICODE
+#define ChooseFont ChooseFontW
+#else
+#define ChooseFont ChooseFontA
+#endif // !UNICODE
 
 #ifdef __cplusplus
 }

@@ -348,3 +348,263 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode){
     }
     return FALSE;
 }
+
+// 辅助函数：将LOGFONT转换为NSFont
+static NSFont* LogFontToNSFont(const LOGFONTA* logFont) {
+    if (!logFont) return nil;
+
+    // 获取字体名称
+    NSString *fontName = nil;
+    if (strlen(logFont->lfFaceName) > 0) {
+        fontName = [NSString stringWithUTF8String:logFont->lfFaceName];
+    } else {
+        fontName = @"Helvetica"; // 默认字体
+    }
+
+    // 计算字体大小（从逻辑单位转换为点）
+    CGFloat fontSize = abs(logFont->lfHeight);
+    if (fontSize == 0) fontSize = 12; // 默认大小
+
+    // 处理字体样式
+    NSFontTraitMask traits = 0;
+    if (logFont->lfWeight >= FW_BOLD) {
+        traits |= NSBoldFontMask;
+    }
+    if (logFont->lfItalic) {
+        traits |= NSItalicFontMask;
+    }
+
+    // 尝试创建字体
+    NSFont *font = nil;
+    if (traits != 0) {
+        NSFontManager *fontManager = [NSFontManager sharedFontManager];
+        NSFont *baseFont = [NSFont fontWithName:fontName size:fontSize];
+        if (baseFont) {
+            font = [fontManager convertFont:baseFont toHaveTrait:traits];
+        }
+    }
+
+    if (!font) {
+        font = [NSFont fontWithName:fontName size:fontSize];
+    }
+
+    if (!font) {
+        font = [NSFont systemFontOfSize:fontSize];
+    }
+
+    return font;
+}
+
+// 辅助函数：将NSFont转换为LOGFONT
+static void NSFontToLogFont(NSFont* font, LOGFONTA* logFont) {
+    if (!font || !logFont) return;
+
+    memset(logFont, 0, sizeof(LOGFONTA));
+
+    // 设置字体高度（转换为逻辑单位）
+    logFont->lfHeight = -(LONG)[font pointSize];
+    logFont->lfWidth = 0;
+    logFont->lfEscapement = 0;
+    logFont->lfOrientation = 0;
+
+    // 设置字体权重和样式
+    NSFontManager *fontManager = [NSFontManager sharedFontManager];
+    NSFontTraitMask traits = [fontManager traitsOfFont:font];
+
+    if (traits & NSBoldFontMask) {
+        logFont->lfWeight = FW_BOLD;
+    } else {
+        logFont->lfWeight = FW_NORMAL;
+    }
+
+    logFont->lfItalic = (traits & NSItalicFontMask) ? 1 : 0;
+    logFont->lfUnderline = 0; // NSFont不直接支持下划线属性
+    logFont->lfStrikeOut = 0; // NSFont不直接支持删除线属性
+
+    // 设置字符集和其他属性
+    logFont->lfCharSet = DEFAULT_CHARSET;
+    logFont->lfOutPrecision = OUT_DEFAULT_PRECIS;
+    logFont->lfClipPrecision = CLIP_DEFAULT_PRECIS;
+    logFont->lfQuality = DEFAULT_QUALITY;
+    logFont->lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
+
+    // 设置字体名称
+    NSString *fontName = [font fontName];
+    if (fontName) {
+        strncpy(logFont->lfFaceName, [fontName UTF8String], LF_FACESIZE - 1);
+        logFont->lfFaceName[LF_FACESIZE - 1] = '\0';
+    }
+}
+
+// 简化的字体选择委托类
+@interface FontPanelDelegate : NSObject
+@property (nonatomic, strong) NSFont *selectedFont;
+@property (nonatomic, assign) BOOL fontChanged;
+@end
+
+@implementation FontPanelDelegate
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _selectedFont = nil;
+        _fontChanged = NO;
+    }
+    return self;
+}
+
+- (void)changeFont:(id)sender {
+    NSFontManager *fontManager = [NSFontManager sharedFontManager];
+    if (self.selectedFont) {
+        self.selectedFont = [fontManager convertFont:self.selectedFont];
+        self.fontChanged = YES;
+    }
+}
+
+@end
+
+static BOOL ChooseFontMac(LPCHOOSEFONTA p) {
+    @autoreleasepool {
+        if (!p || !p->lpLogFont) {
+            return FALSE;
+        }
+
+        // 获取字体面板
+        NSFontPanel *fontPanel = [NSFontPanel sharedFontPanel];
+        FontPanelDelegate *delegate = [[FontPanelDelegate alloc] init];
+        [fontPanel setEnabled:YES];
+        // 设置初始字体
+        NSFont *initialFont = LogFontToNSFont(p->lpLogFont);
+        if (initialFont) {
+            [[NSFontManager sharedFontManager] setSelectedFont:initialFont isMultiple:NO];
+        }            
+        // 创建委托对象
+        delegate.selectedFont = initialFont;
+
+        // 设置字体管理器的目标
+        NSFontManager *fontManager = [NSFontManager sharedFontManager];
+        [fontManager setTarget:delegate];
+        [fontManager setAction:@selector(changeFont:)];
+
+        // 设置父窗口（如果有）
+        NSWindow *parentWindow = nil;
+        if (p->hwndOwner) {
+            int parentId = getNsWindowId(p->hwndOwner);
+            parentWindow = [NSApp windowWithWindowNumber:parentId];
+        }
+
+        // 显示字体面板并等待用户操作
+        [fontPanel makeKeyAndOrderFront:nil];
+
+        // 使用简单的事件循环等待用户操作
+        BOOL result = FALSE;
+        while ([fontPanel isVisible]) {
+            // 处理事件
+            NSEvent *event = [NSApp nextEventMatchingMask:NSEventMaskAny
+                                                untilDate:[NSDate dateWithTimeIntervalSinceNow:0.1]
+                                                   inMode:NSDefaultRunLoopMode
+                                                  dequeue:YES];
+            if (event) {
+                [NSApp sendEvent:event];
+            }
+        }
+        if (delegate.selectedFont) {
+            NSFontToLogFont(delegate.selectedFont, p->lpLogFont);
+            // 设置点大小
+            if (p->Flags & CF_INITTOLOGFONTSTRUCT) {
+                p->iPointSize = (INT)([delegate.selectedFont pointSize] * 10);
+            }
+            result = TRUE;
+        }
+
+        // 清理
+        [fontPanel orderOut:nil];
+        // 恢复字体管理器的目标
+        [fontManager setTarget:nil];
+
+        return result;
+    }
+}
+
+BOOL WINAPI ChooseFontA(LPCHOOSEFONTA p) {
+    return ChooseFontMac(p);
+}
+
+BOOL WINAPI ChooseFontW(LPCHOOSEFONTW p) {
+    if (!p || !p->lpLogFont) {
+        return FALSE;
+    }
+
+    // 转换CHOOSEFONTW到CHOOSEFONTA
+    CHOOSEFONTA chooseA;
+    LOGFONTA logfontA;
+
+    // 复制结构体字段
+    chooseA.lStructSize = sizeof(CHOOSEFONTA);
+    chooseA.hwndOwner = p->hwndOwner;
+    chooseA.hDC = p->hDC;
+    chooseA.lpLogFont = &logfontA;
+    chooseA.iPointSize = p->iPointSize;
+    chooseA.Flags = p->Flags;
+    chooseA.rgbColors = p->rgbColors;
+    chooseA.lCustData = p->lCustData;
+    chooseA.lpfnHook = p->lpfnHook;
+    chooseA.lpTemplateName = nullptr;
+    chooseA.hInstance = p->hInstance;
+    chooseA.lpszStyle = nullptr;
+    chooseA.nFontType = p->nFontType;
+    chooseA.nSizeMin = p->nSizeMin;
+    chooseA.nSizeMax = p->nSizeMax;
+
+        // 转换LOGFONTW到LOGFONTA
+        logfontA.lfHeight = p->lpLogFont->lfHeight;
+        logfontA.lfWidth = p->lpLogFont->lfWidth;
+        logfontA.lfEscapement = p->lpLogFont->lfEscapement;
+        logfontA.lfOrientation = p->lpLogFont->lfOrientation;
+        logfontA.lfWeight = p->lpLogFont->lfWeight;
+        logfontA.lfItalic = p->lpLogFont->lfItalic;
+        logfontA.lfUnderline = p->lpLogFont->lfUnderline;
+        logfontA.lfStrikeOut = p->lpLogFont->lfStrikeOut;
+        logfontA.lfCharSet = p->lpLogFont->lfCharSet;
+        logfontA.lfOutPrecision = p->lpLogFont->lfOutPrecision;
+        logfontA.lfClipPrecision = p->lpLogFont->lfClipPrecision;
+        logfontA.lfQuality = p->lpLogFont->lfQuality;
+        logfontA.lfPitchAndFamily = p->lpLogFont->lfPitchAndFamily;
+
+        // 转换字体名称从宽字符到多字节
+        WideCharToMultiByte(CP_UTF8, 0, p->lpLogFont->lfFaceName, -1,
+                        logfontA.lfFaceName, LF_FACESIZE, NULL, NULL);
+        chooseA.lpLogFont = &logfontA;
+
+
+    // 调用ANSI版本
+    BOOL result = ChooseFontA(&chooseA);
+
+    if (result) {
+        // 转换结果回LOGFONTW
+        p->lpLogFont->lfHeight = logfontA.lfHeight;
+        p->lpLogFont->lfWidth = logfontA.lfWidth;
+        p->lpLogFont->lfEscapement = logfontA.lfEscapement;
+        p->lpLogFont->lfOrientation = logfontA.lfOrientation;
+        p->lpLogFont->lfWeight = logfontA.lfWeight;
+        p->lpLogFont->lfItalic = logfontA.lfItalic;
+        p->lpLogFont->lfUnderline = logfontA.lfUnderline;
+        p->lpLogFont->lfStrikeOut = logfontA.lfStrikeOut;
+        p->lpLogFont->lfCharSet = logfontA.lfCharSet;
+        p->lpLogFont->lfOutPrecision = logfontA.lfOutPrecision;
+        p->lpLogFont->lfClipPrecision = logfontA.lfClipPrecision;
+        p->lpLogFont->lfQuality = logfontA.lfQuality;
+        p->lpLogFont->lfPitchAndFamily = logfontA.lfPitchAndFamily;
+
+        // 转换字体名称从多字节到宽字符
+        MultiByteToWideChar(CP_UTF8, 0, logfontA.lfFaceName, -1,
+                           p->lpLogFont->lfFaceName, LF_FACESIZE);
+
+        // 复制其他输出字段
+        p->iPointSize = chooseA.iPointSize;
+        p->rgbColors = chooseA.rgbColors;
+        p->nFontType = chooseA.nFontType;
+    }
+
+    return result;
+}

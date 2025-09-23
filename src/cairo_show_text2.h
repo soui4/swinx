@@ -9,4 +9,6 @@ int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_ex
 size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxWidth);
 
 void cairo_draw_line(cairo_t *cr, float x0, float y0, float x1, float y1);
+
+void cairo_text_path2(cairo_t *cr, const char *utf8, int length);
 #endif //_CAIRO_SHOW_TEXT2_H_

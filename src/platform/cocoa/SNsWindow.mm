@@ -470,6 +470,38 @@ defer:(BOOL)flag;
     }
 }
 
+#ifdef MOCOS_PATTERN_TEST
+- (void)drawRect:(NSRect)dirtyRect {
+    CGContextRef cgContext = [[NSGraphicsContext currentContext] CGContext];
+    float scale = [self.window backingScaleFactor];
+    cairo_surface_t *windowSurface = cairo_quartz_surface_create_for_cg_context(
+        cgContext,
+        self.bounds.size.width,
+        self.bounds.size.height
+    );
+    double width = self.bounds.size.width*scale;
+    double height = self.bounds.size.height*scale;
+    cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width/2, height/2);
+    cairo_surface_set_device_scale(surface, 0.5,0.5);
+    cairo_t *cr = cairo_create(surface);
+
+    dirtyRect.origin.x *= scale;
+    dirtyRect.origin.y *= scale;
+    dirtyRect.size.width *= scale;
+    dirtyRect.size.height *= scale;
+
+    {
+        RECT rc = {(LONG)dirtyRect.origin.x, (LONG)dirtyRect.origin.y, (LONG)(dirtyRect.origin.x+dirtyRect.size.width), (LONG)(dirtyRect.origin.y+dirtyRect.size.height)};
+        m_pListener->OnDrawRect(m_hWnd, rc, cr);
+    }
+    cairo_t *windowCr = cairo_create(windowSurface);
+    cairo_surface_set_device_scale(windowSurface, 1.0f/scale, 1.0f/scale);
+    cairo_set_source_surface(windowCr, surface, 0, 0);
+    cairo_paint(windowCr);
+    cairo_destroy(windowCr);
+    cairo_surface_destroy(windowSurface);
+}
+#else
 - (void)drawRect:(NSRect)dirtyRect {
     CGContextRef cgContext = [[NSGraphicsContext currentContext] CGContext];
     float scale = [self.window backingScaleFactor];
@@ -493,6 +525,7 @@ defer:(BOOL)flag;
     cairo_surface_destroy(windowSurface);
 }
 
+#endif//MOCOS_PATTERN_TEST
 - (BOOL)isFlipped {
     return YES;
 }
@@ -784,7 +817,7 @@ defer:(BOOL)flag;
 }
 
 - (void)onStateChange:(int) nState{
-    SLOG_STMI()<<"hjx onStateChange:"<<nState<<" hWnd="<<m_hWnd;
+    //SLOG_STMI()<<"hjx onStateChange:"<<nState<<" hWnd="<<m_hWnd;
 
     m_pListener->OnNsEvent(m_hWnd,  UM_STATE, nState,0);
 }
@@ -1886,7 +1919,7 @@ BOOL setNsWindowSize(HWND hWnd, int cx, int cy){
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return FALSE;
-    SLOG_STMI()<<"setNsWindowSize, hWnd="<<hWnd<<" cx="<<cx<<" cy="<<cy;
+    //SLOG_STMI()<<"setNsWindowSize, hWnd="<<hWnd<<" cx="<<cx<<" cy="<<cy;
     NSRect rect = nswindow->m_rcPos;
     rect.size.width = cx;
     rect.size.height = cy;

@@ -130,6 +130,8 @@ int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_ex
     int num_glyphs;
     if (len < 0)
         len = strlen(utf8);
+    if(len == 0)
+        return 0;
     glyphs = stack_glyphs;
     num_glyphs = ARRAY_LENGTH(stack_glyphs);
     extents->x_advance = extents->y_advance = 0;
@@ -148,4 +150,51 @@ int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_ex
     if (glyphs && glyphs != stack_glyphs)
         cairo_glyph_free(glyphs);
     return num_glyphs;
+}
+
+void cairo_text_path2 (cairo_t *cr, const char *utf8, int length){
+    cairo_scaled_font_t *scaled_font = cairo_get_scaled_font(cr);
+    cairo_glyph_t *glyphs, *last_glyph;
+    cairo_glyph_t stack_glyphs[CAIRO_STACK_ARRAY_LENGTH(cairo_glyph_t)];
+    cairo_text_extents_t extents;
+    double x, y;
+    int num_glyphs;
+
+    if(length < 0)
+        length = strlen(utf8);
+
+    // Return early if no text
+    if (length == 0)
+        return;
+
+    // Get current point for glyph positioning
+    cairo_get_current_point(cr, &x, &y);
+
+    // Initialize glyphs array
+    glyphs = stack_glyphs;
+    num_glyphs = ARRAY_LENGTH(stack_glyphs);
+
+    // Convert text to glyphs
+    cairo_status_t status = cairo_scaled_font_text_to_glyphs(scaled_font, x, y, utf8, length,
+                                                           &glyphs, &num_glyphs,
+                                                           NULL, NULL, NULL);
+
+    if (num_glyphs > 0) {
+        // Add glyphs to the current path
+        cairo_glyph_path(cr, glyphs, num_glyphs);
+
+        // Move current point to the end of the text, just like cairo_text_path does
+        // This allows for chaining multiple calls to cairo_text_path2
+        last_glyph = &glyphs[num_glyphs - 1];
+        cairo_glyph_extents(cr, last_glyph, 1, &extents);
+
+        x = last_glyph->x + extents.x_advance;
+        y = last_glyph->y + extents.y_advance;
+        cairo_move_to(cr, x, y);
+    }
+
+    // Clean up allocated memory if needed
+    if (glyphs && glyphs != stack_glyphs) {
+        cairo_glyph_free(glyphs);
+    }
 }

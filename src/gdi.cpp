@@ -476,6 +476,17 @@ static bool ApplyBrush(cairo_t *ctx, HBRUSH hbr, double wid, double hei)
         PatternInfo *info = (PatternInfo *)br->lbHatch;
         cairo_pattern_t *pattern = info->create(wid, hei);
         cairo_set_source(ctx, pattern);
+#ifdef MOCOS_PATTERN_TEST
+            //todo: quartz surface on macos has device scale, I'not sure how to set it.
+            // if I setup a software surface, and set device scale as quartz surface, the following code is work well, but it's not work for quartz surface itself.
+            // do not remove this code.
+            cairo_surface_t * surface = cairo_get_target(ctx);
+            double dscale_x, dscale_y;
+            cairo_surface_get_device_scale(surface, &dscale_x, &dscale_y);
+            cairo_matrix_t matrix;
+            cairo_matrix_init_scale(&matrix, dscale_x, dscale_y);
+            cairo_pattern_set_matrix(pattern, &matrix);
+#endif
         break;
     }
     default:
@@ -2002,6 +2013,11 @@ BOOL TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c)
 {
     if (c < 0)
         c = strlen(lpString);
+
+    // Return early if no text to draw
+    if (c == 0)
+        return TRUE;
+
     cairo_save(hdc->cairo);
     ApplyFont(hdc);
     CairoColor cr(hdc->crText);
@@ -2045,11 +2061,23 @@ BOOL TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c)
     }
     double old_x, old_y;
     cairo_get_current_point(hdc->cairo, &old_x, &old_y);
-    cairo_move_to(hdc->cairo, x, y);
-    cairo_show_text2(hdc->cairo, lpString, c);
-    DrawTextDecLines(hdc, font_ext, lpString, c, x, y, text_ext);
-    if (hdc->textAlign & TA_NOUPDATECP)
-        cairo_move_to(hdc->cairo, old_x, old_y);
+
+        cairo_move_to(hdc->cairo, x, y);
+
+        // If recording path, add text outline to path
+        if (hdc->pathRecording)
+        {
+            cairo_text_path2(hdc->cairo, lpString, c);
+        }
+        else
+        {
+            // Otherwise, show text normally
+            cairo_show_text2(hdc->cairo, lpString, c);
+            DrawTextDecLines(hdc, font_ext, lpString, c, x, y, text_ext);
+        }
+
+        if (hdc->textAlign & TA_NOUPDATECP)
+            cairo_move_to(hdc->cairo, old_x, old_y);
     cairo_restore(hdc->cairo);
     return TRUE;
 }
@@ -2533,6 +2561,17 @@ HGDIOBJ GetStockObject(int i)
 BOOL Rectangle(HDC hdc, int left, int top, int right, int bottom)
 {
     cairo_t *ctx = hdc->cairo;
+    if (!ctx)
+        return FALSE;
+
+    // If recording path, just add rectangle to path
+    if (hdc->pathRecording)
+    {
+        cairo_rectangle(ctx, left, top, right - left, bottom - top);
+        return TRUE;
+    }
+
+    // Otherwise, draw rectangle immediately
     cairo_save(ctx);
     cairo_translate(ctx, left, top);
     double wid = right - left, hei = bottom - top;
@@ -2552,7 +2591,7 @@ BOOL Rectangle(HDC hdc, int left, int top, int right, int bottom)
     return TRUE;
 }
 
-void drawRoundRect(cairo_t *cr, double x, double y, double width, double height, double rx, double ry)
+static void drawRoundRect(cairo_t *cr, double x, double y, double width, double height, double rx, double ry)
 {
     if (rx <= 0.0 || ry <= 0.0)
     {
@@ -2588,9 +2627,24 @@ void drawRoundRect(cairo_t *cr, double x, double y, double width, double height,
 BOOL RoundRect(HDC hdc, int left, int top, int right, int bottom, int width, int height)
 {
     cairo_t *ctx = hdc->cairo;
+    if (!ctx)
+        return FALSE;
+
+    double wid = right - left, hei = bottom - top;
+
+    // If recording path, just add rounded rectangle to path
+    if (hdc->pathRecording)
+    {
+        cairo_save(ctx);
+        cairo_translate(ctx, left, top);
+        drawRoundRect(ctx, 0, 0, wid, hei, width / 2, height / 2);
+        cairo_restore(ctx);
+        return TRUE;
+    }
+
+    // Otherwise, draw rounded rectangle immediately
     cairo_save(ctx);
     cairo_translate(ctx, left, top);
-    double wid = right - left, hei = bottom - top;
     if (ApplyBrush(ctx, hdc->brush, wid, hei))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
@@ -2610,19 +2664,26 @@ BOOL RoundRect(HDC hdc, int left, int top, int right, int bottom, int width, int
 BOOL Polyline(HDC hdc, const POINT *apt, int cpt)
 {
     cairo_t *ctx = hdc->cairo;
-    if (cpt < 2)
+    if (!ctx || cpt < 2)
         return FALSE;
-    cairo_save(ctx);
-    ApplyPen(ctx, hdc->pen);
-    ApplyRop2(hdc->cairo, hdc->rop2);
 
+    // Always add polyline to path
     cairo_move_to(ctx, apt[0].x, apt[0].y);
     for (int i = 1; i < cpt; i++)
     {
         cairo_line_to(ctx, apt[i].x, apt[i].y);
     }
-    cairo_stroke(ctx);
-    cairo_restore(ctx);
+
+    // If not recording path, stroke immediately
+    if (!hdc->pathRecording)
+    {
+        cairo_save(ctx);
+        ApplyPen(ctx, hdc->pen);
+        ApplyRop2(hdc->cairo, hdc->rop2);
+        cairo_stroke(ctx);
+        cairo_restore(ctx);
+    }
+
     return TRUE;
 }
 
@@ -2683,6 +2744,9 @@ BOOL InvertRect(HDC hdc, const RECT *lprc)
 BOOL MoveToEx(HDC hdc, int x, int y, LPPOINT lpPoint)
 {
     cairo_t *ctx = hdc->cairo;
+    if (!ctx)
+        return FALSE;
+
     if (lpPoint)
     {
         double cur_x, cur_y;
@@ -2690,29 +2754,70 @@ BOOL MoveToEx(HDC hdc, int x, int y, LPPOINT lpPoint)
         lpPoint->x = cur_x;
         lpPoint->y = cur_y;
     }
+
     cairo_move_to(ctx, x, y);
+    return TRUE;
+}
+
+BOOL GetCurrentPositionEx(HDC hdc, LPPOINT lpPoint)
+{
+    cairo_t *ctx = hdc->cairo;
+    if (!ctx || !lpPoint)
+        return FALSE;
+
+    double cur_x, cur_y;
+    cairo_get_current_point(ctx, &cur_x, &cur_y);
+    lpPoint->x = (int)cur_x;
+    lpPoint->y = (int)cur_y;
     return TRUE;
 }
 
 BOOL LineTo(HDC hdc, int nXEnd, int nYEnd)
 {
     cairo_t *ctx = hdc->cairo;
-    if (!ApplyPen(ctx, hdc->pen))
+    if (!ctx)
         return FALSE;
-    ApplyRop2(hdc->cairo, hdc->rop2);
+
+    // Always add line to path
     cairo_line_to(ctx, nXEnd, nYEnd);
-    cairo_stroke(ctx);
+
+    // If not recording path, stroke immediately
+    if (!hdc->pathRecording)
+    {
+        if (!ApplyPen(ctx, hdc->pen))
+            return FALSE;
+        ApplyRop2(hdc->cairo, hdc->rop2);
+        cairo_stroke(ctx);
+    }
+
     return TRUE;
 }
 
 BOOL Ellipse(HDC hdc, int left, int top, int right, int bottom)
 {
     cairo_t *ctx = hdc->cairo;
-    double x = (left + right) / 2;
-    double y = (top + bottom) / 2;
-    double scale_x = (right - left) / 2;
-    double scale_y = (bottom - top) / 2;
+    if (!ctx)
+        return FALSE;
+
+    double x = (left + right) / 2.0;
+    double y = (top + bottom) / 2.0;
+    double scale_x = (right - left) / 2.0;
+    double scale_y = (bottom - top) / 2.0;
     double wid = right - left, hei = bottom - top;
+
+    // If recording path, just add ellipse to path
+    if (hdc->pathRecording)
+    {
+        cairo_save(ctx);
+        cairo_translate(ctx, x, y);
+        cairo_scale(ctx, scale_x, scale_y);
+        cairo_move_to(ctx, 1, 0);
+        cairo_arc(ctx, 0, 0, 1, 0, 2 * M_PI);
+        cairo_restore(ctx);
+        return TRUE;
+    }
+
+    // Otherwise, draw ellipse immediately
     if (ApplyBrush(ctx, hdc->brush, wid, hei))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
@@ -2746,10 +2851,15 @@ BOOL Ellipse(HDC hdc, int left, int top, int right, int bottom)
 
 BOOL Pie(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4)
 {
+    if(!hdc)
+        return FALSE;
     double wid = x2 - x1;
     double hei = y2 - y1;
     if (wid == 0 || hei == 0)
         return FALSE;
+
+    cairo_t *ctx = hdc->cairo;
+    assert(ctx);
     double cx = (x1 + x2) / 2;
     double cy = (y1 + y2) / 2;
     double dx3 = double(x3 - cx) / wid;
@@ -2759,34 +2869,34 @@ BOOL Pie(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4
     double arc1 = atan2(dy3, dx3);
     double arc2 = atan2(dy4, dx4);
 
-    cairo_t *ctx = hdc->cairo;
+    // Create pie path
+    cairo_save(ctx);
+    cairo_translate(ctx, cx, cy);
+    cairo_scale(ctx, wid, hei);
+    cairo_move_to(ctx, 0, 0);
+    cairo_line_to(ctx, dx4, dy4);
+    cairo_arc(ctx, 0, 0, 0.5, arc2, arc1);
+    cairo_close_path(ctx);
+    cairo_restore(ctx);
+
+    // If recording path, we're done
+    if (hdc->pathRecording)
+    {
+        return TRUE;
+    }
+
+    // Otherwise, draw pie immediately
     if (!IsNullBrush(hdc->brush))
     {
-        cairo_save(ctx);
-        cairo_translate(ctx, cx, cy);
-        cairo_scale(ctx, wid, hei);
-        cairo_move_to(ctx, 0, 0);
-        cairo_line_to(ctx, dx4, dy4);
-        cairo_arc(ctx, 0, 0, 0.5, arc2, arc1);
-        cairo_close_path(ctx);
-        cairo_restore(ctx);
         cairo_save(ctx);
         cairo_translate(ctx, x1, y1);
         ApplyBrush(ctx, hdc->brush, wid, hei);
         ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_fill(ctx);
+        cairo_fill_preserve(ctx);  // Preserve path for stroke
         cairo_restore(ctx);
     }
     if (!IsNullPen(hdc->pen))
     {
-        cairo_save(ctx);
-        cairo_translate(ctx, cx, cy);
-        cairo_scale(ctx, wid, hei);
-        cairo_move_to(ctx, 0, 0);
-        cairo_line_to(ctx, dx4, dy4);
-        cairo_arc(ctx, 0, 0, 0.5, arc2, arc1);
-        cairo_close_path(ctx);
-        cairo_restore(ctx);
         cairo_save(ctx);
         ApplyPen(ctx, hdc->pen);
         ApplyRop2(hdc->cairo, hdc->rop2);
@@ -2803,30 +2913,98 @@ BOOL Arc(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4
     if (wid == 0 || hei == 0)
         return FALSE;
 
-    cairo_save(hdc->cairo);
+    cairo_t *ctx = hdc->cairo;
+    if (!ctx)
+        return FALSE;
+
     double cx = (x1 + x2) / 2;
     double cy = (y1 + y2) / 2;
-    cairo_translate(hdc->cairo, cx, cy);
-    cairo_scale(hdc->cairo, wid, hei);
-
     double dx3 = double(x3 - cx) / wid;
     double dx4 = double(x4 - cx) / wid;
-
     double dy3 = double(y3 - cy) / hei;
     double dy4 = double(y4 - cy) / hei;
-
     double arc1 = atan2(dy3, dx3);
     double arc2 = atan2(dy4, dx4);
-    cairo_move_to(hdc->cairo, dx4, dy4);
-    cairo_arc(hdc->cairo, 0, 0, 0.5, arc2, arc1);
-    cairo_restore(hdc->cairo);
-    cairo_save(hdc->cairo);
-    if (ApplyPen(hdc->cairo, hdc->pen))
+
+    // Create arc path
+    cairo_save(ctx);
+    cairo_translate(ctx, cx, cy);
+    cairo_scale(ctx, wid, hei);
+    cairo_move_to(ctx, dx4, dy4);
+    cairo_arc(ctx, 0, 0, 0.5, arc2, arc1);
+    cairo_restore(ctx);
+
+    // If recording path, we're done
+    if (hdc->pathRecording)
+    {
+        return TRUE;
+    }
+
+    // Otherwise, stroke arc immediately
+    cairo_save(ctx);
+    if (ApplyPen(ctx, hdc->pen))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_stroke(hdc->cairo);
+        cairo_stroke(ctx);
     }
-    cairo_restore(hdc->cairo);
+    cairo_restore(ctx);
+    return TRUE;
+}
+
+BOOL Chord(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4)
+{
+    double wid = x2 - x1;
+    double hei = y2 - y1;
+    if (wid == 0 || hei == 0)
+        return FALSE;
+
+    cairo_t *ctx = hdc->cairo;
+    if (!ctx)
+        return FALSE;
+
+    double cx = (x1 + x2) / 2;
+    double cy = (y1 + y2) / 2;
+    double dx3 = double(x3 - cx) / wid;
+    double dx4 = double(x4 - cx) / wid;
+    double dy3 = double(y3 - cy) / hei;
+    double dy4 = double(y4 - cy) / hei;
+    double arc1 = atan2(dy3, dx3);
+    double arc2 = atan2(dy4, dx4);
+
+    // Create chord path (arc with straight line connecting endpoints)
+    cairo_save(ctx);
+    cairo_translate(ctx, cx, cy);
+    cairo_scale(ctx, wid, hei);
+    cairo_move_to(ctx, dx4, dy4);
+    cairo_arc(ctx, 0, 0, 0.5, arc2, arc1);
+    cairo_line_to(ctx, dx4, dy4);  // Close with straight line
+    cairo_close_path(ctx);
+    cairo_restore(ctx);
+
+    // If recording path, we're done
+    if (hdc->pathRecording)
+    {
+        return TRUE;
+    }
+
+    // Otherwise, draw chord immediately
+    if (!IsNullBrush(hdc->brush))
+    {
+        cairo_save(ctx);
+        cairo_translate(ctx, x1, y1);
+        ApplyBrush(ctx, hdc->brush, wid, hei);
+        ApplyRop2(hdc->cairo, hdc->rop2);
+        cairo_fill_preserve(ctx);  // Preserve path for stroke
+        cairo_restore(ctx);
+    }
+    if (!IsNullPen(hdc->pen))
+    {
+        cairo_save(ctx);
+        ApplyPen(ctx, hdc->pen);
+        ApplyRop2(hdc->cairo, hdc->rop2);
+        cairo_stroke(ctx);
+        cairo_restore(ctx);
+    }
     return TRUE;
 }
 
@@ -3258,35 +3436,39 @@ int GetTextFaceW(HDC hdc, int nCount, LPWSTR lpFaceName)
 
 BOOL Polygon_Priv(HDC hdc, const POINT *apt, int cpt)
 {
-    if (cpt < 2)
+    if (!hdc || !hdc->cairo || cpt < 2)
         return FALSE;
+
     cairo_t *ctx = hdc->cairo;
-    cairo_save(ctx);
 
-    cairo_new_sub_path(ctx);
-
-    for (int i = 0; i < cpt - 1; i++)
+    // Always add polygon to path
+    cairo_move_to(ctx, apt[0].x, apt[0].y);
+    for (int i = 1; i < cpt; i++)
     {
-        cairo_move_to(ctx, apt[i].x, apt[i].y);
-        cairo_line_to(ctx, apt[i + 1].x, apt[i + 1].y);
+        cairo_line_to(ctx, apt[i].x, apt[i].y);
     }
-    cairo_line_to(ctx, apt[0].x, apt[0].y);
-
     cairo_close_path(ctx);
 
-    if (ApplyBrush(ctx, hdc->brush, 0, 0))
+    // If not recording path, draw immediately
+    if (!hdc->pathRecording)
     {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_fill(ctx);
+        cairo_save(ctx);
+
+        if (ApplyBrush(ctx, hdc->brush, 0, 0))
+        {
+            ApplyRop2(hdc->cairo, hdc->rop2);
+            cairo_fill_preserve(ctx);  // Preserve path for stroke
+        }
+
+        if (ApplyPen(ctx, hdc->pen))
+        {
+            ApplyRop2(hdc->cairo, hdc->rop2);
+            cairo_stroke(ctx);
+        }
+
+        cairo_restore(ctx);
     }
 
-    if (ApplyPen(ctx, hdc->pen))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_stroke(ctx);
-    }
-
-    cairo_restore(ctx);
     return TRUE;
 }
 
@@ -3386,7 +3568,17 @@ BOOL WINAPI ExtTextOutA(HDC hdc,          // handle to DC
         {
             int charLen = swinx::UTF8CharLength(*p);
             cairo_move_to(hdc->cairo, x, y);
-            cairo_show_text2(hdc->cairo, p, charLen);
+
+            // If recording path, add text outline to path
+            if (hdc->pathRecording)
+            {
+                cairo_text_path2(hdc->cairo, p, charLen);
+            }
+            else
+            {
+                cairo_show_text2(hdc->cairo, p, charLen);
+            }
+
             x += lpDx[i];
             p += charLen;
         }
@@ -3608,4 +3800,371 @@ int AddFontResourceExW(LPCWSTR lpszFilename, // font file name
     std::string str;
     tostring(lpszFilename, -1, str);
     return AddFontResourceExA(str.c_str(), fl, pdv);
+}
+
+// ========================================================================
+// Path API Implementation
+// ========================================================================
+
+BOOL BeginPath(HDC hdc)
+{
+    if (!hdc || !hdc->cairo)
+        return FALSE;
+
+    // If already recording, abort current path
+    if (hdc->pathRecording && hdc->currentPath)
+    {
+        cairo_path_destroy(hdc->currentPath);
+        hdc->currentPath = nullptr;
+    }
+
+    // Save current point before clearing path
+    double current_x, current_y;
+    bool has_current_point = cairo_has_current_point(hdc->cairo);
+    if (has_current_point)
+        cairo_get_current_point(hdc->cairo, &current_x, &current_y);
+
+    // Start new path recording
+    cairo_new_path(hdc->cairo);
+
+    // Restore current point if it existed
+    if (has_current_point)
+        cairo_move_to(hdc->cairo, current_x, current_y);
+
+    hdc->pathRecording = TRUE;
+
+    return TRUE;
+}
+
+BOOL EndPath(HDC hdc)
+{
+    if (!hdc || !hdc->cairo || !hdc->pathRecording)
+        return FALSE;
+
+    // Copy current path from cairo context
+    if (hdc->currentPath)
+        cairo_path_destroy(hdc->currentPath);
+
+    hdc->currentPath = cairo_copy_path(hdc->cairo);
+    hdc->pathRecording = FALSE;
+
+    return hdc->currentPath && hdc->currentPath->status == CAIRO_STATUS_SUCCESS;
+}
+
+BOOL AbortPath(HDC hdc)
+{
+    if (!hdc)
+        return FALSE;
+
+    // Clean up current path
+    if (hdc->currentPath)
+    {
+        cairo_path_destroy(hdc->currentPath);
+        hdc->currentPath = nullptr;
+    }
+
+    hdc->pathRecording = FALSE;
+
+    // Clear cairo path
+    if (hdc->cairo)
+        cairo_new_path(hdc->cairo);
+
+    return TRUE;
+}
+
+BOOL CloseFigure(HDC hdc)
+{
+    if (!hdc || !hdc->cairo)
+        return FALSE;
+
+    // Close current figure in cairo path
+    cairo_close_path(hdc->cairo);
+
+    return TRUE;
+}
+
+BOOL StrokePath(HDC hdc)
+{
+    if (!hdc || !hdc->cairo || !hdc->currentPath)
+        return FALSE;
+
+    cairo_save(hdc->cairo);
+
+    // Clear current path and append the stored path
+    cairo_new_path(hdc->cairo);
+    cairo_append_path(hdc->cairo, hdc->currentPath);
+
+    // Apply pen settings and stroke
+    if (ApplyPen(hdc->cairo, hdc->pen))
+    {
+        ApplyRop2(hdc->cairo, hdc->rop2);
+        cairo_stroke(hdc->cairo);
+    }
+
+    cairo_restore(hdc->cairo);
+
+    // Clear the path after stroking
+    cairo_path_destroy(hdc->currentPath);
+    hdc->currentPath = nullptr;
+
+    return TRUE;
+}
+
+BOOL FillPath(HDC hdc)
+{
+    if (!hdc || !hdc->cairo || !hdc->currentPath)
+        return FALSE;
+
+    cairo_save(hdc->cairo);
+
+    // Clear current path and append the stored path
+    cairo_new_path(hdc->cairo);
+    cairo_append_path(hdc->cairo, hdc->currentPath);
+
+    // Get path bounds for brush application
+    double x1, y1, x2, y2;
+    cairo_path_extents(hdc->cairo, &x1, &y1, &x2, &y2);
+    double width = x2 - x1;
+    double height = y2 - y1;
+
+    // Apply brush settings and fill
+    if (ApplyBrush(hdc->cairo, hdc->brush, width, height))
+    {
+        ApplyRop2(hdc->cairo, hdc->rop2);
+        cairo_fill(hdc->cairo);
+    }
+
+    cairo_restore(hdc->cairo);
+
+    // Clear the path after filling
+    cairo_path_destroy(hdc->currentPath);
+    hdc->currentPath = nullptr;
+
+    return TRUE;
+}
+
+BOOL StrokeAndFillPath(HDC hdc)
+{
+    if (!hdc || !hdc->cairo || !hdc->currentPath)
+        return FALSE;
+
+    cairo_save(hdc->cairo);
+
+    // Clear current path and append the stored path
+    cairo_new_path(hdc->cairo);
+    cairo_append_path(hdc->cairo, hdc->currentPath);
+
+    // Get path bounds for brush application
+    double x1, y1, x2, y2;
+    cairo_path_extents(hdc->cairo, &x1, &y1, &x2, &y2);
+    double width = x2 - x1;
+    double height = y2 - y1;
+
+    // Fill first
+    if (ApplyBrush(hdc->cairo, hdc->brush, width, height))
+    {
+        ApplyRop2(hdc->cairo, hdc->rop2);
+        cairo_fill_preserve(hdc->cairo);  // Preserve path for stroke
+    }
+
+    // Then stroke
+    if (ApplyPen(hdc->cairo, hdc->pen))
+    {
+        ApplyRop2(hdc->cairo, hdc->rop2);
+        cairo_stroke(hdc->cairo);
+    }
+
+    cairo_restore(hdc->cairo);
+
+    // Clear the path after stroking and filling
+    cairo_path_destroy(hdc->currentPath);
+    hdc->currentPath = nullptr;
+
+    return TRUE;
+}
+
+HRGN PathToRegion(HDC hdc)
+{
+    if (!hdc || !hdc->cairo || !hdc->currentPath)
+        return nullptr;
+
+    cairo_save(hdc->cairo);
+
+    // Create a temporary surface to render the path
+    cairo_surface_t *temp_surface = cairo_image_surface_create(CAIRO_FORMAT_A8, 1, 1);
+    cairo_t *temp_cr = cairo_create(temp_surface);
+
+    // Copy path to temporary context
+    cairo_new_path(temp_cr);
+    cairo_append_path(temp_cr, hdc->currentPath);
+
+    // Get path extents
+    double x1, y1, x2, y2;
+    cairo_path_extents(temp_cr, &x1, &y1, &x2, &y2);
+
+    cairo_destroy(temp_cr);
+    cairo_surface_destroy(temp_surface);
+
+    cairo_restore(hdc->cairo);
+
+    // Create a region from the path bounds
+    // Note: This is a simplified implementation. A full implementation would
+    // need to convert the actual path geometry to region rectangles.
+    RECT rc = { (LONG)x1, (LONG)y1, (LONG)x2, (LONG)y2 };
+    return CreateRectRgnIndirect(&rc);
+}
+
+BOOL SelectClipPath(HDC hdc, int mode)
+{
+    if (!hdc || !hdc->cairo || !hdc->currentPath)
+        return FALSE;
+
+    cairo_save(hdc->cairo);
+
+    switch (mode)
+    {
+    case RGN_AND:
+        // Intersect with current clip
+        cairo_append_path(hdc->cairo, hdc->currentPath);
+        cairo_clip(hdc->cairo);
+        break;
+
+    case RGN_OR:
+        // Union with current clip - not directly supported by cairo
+        // This is a simplified implementation
+        cairo_reset_clip(hdc->cairo);
+        cairo_append_path(hdc->cairo, hdc->currentPath);
+        cairo_clip(hdc->cairo);
+        break;
+
+    case RGN_XOR:
+        // XOR with current clip - not directly supported by cairo
+        // This is a simplified implementation
+        cairo_reset_clip(hdc->cairo);
+        cairo_append_path(hdc->cairo, hdc->currentPath);
+        cairo_clip(hdc->cairo);
+        break;
+
+    case RGN_DIFF:
+        // Difference with current clip - not directly supported by cairo
+        // This is a simplified implementation
+        cairo_reset_clip(hdc->cairo);
+        break;
+
+    case RGN_COPY:
+    default:
+        // Replace current clip
+        cairo_reset_clip(hdc->cairo);
+        cairo_append_path(hdc->cairo, hdc->currentPath);
+        cairo_clip(hdc->cairo);
+        break;
+    }
+
+    cairo_restore(hdc->cairo);
+
+    return TRUE;
+}
+
+int GetPath(HDC hdc, LPPOINT lpPoints, LPBYTE lpTypes, int nSize)
+{
+    if (!hdc || !hdc->currentPath)
+        return -1;
+
+    cairo_path_t *path = hdc->currentPath;
+    if (path->status != CAIRO_STATUS_SUCCESS)
+        return -1;
+
+    // Count the number of points needed
+    int pointCount = 0;
+    for (int i = 0; i < path->num_data; i += path->data[i].header.length)
+    {
+        cairo_path_data_t *data = &path->data[i];
+        switch (data->header.type)
+        {
+        case CAIRO_PATH_MOVE_TO:
+        case CAIRO_PATH_LINE_TO:
+            pointCount++;
+            break;
+        case CAIRO_PATH_CURVE_TO:
+            pointCount += 3;  // 3 control points
+            break;
+        case CAIRO_PATH_CLOSE_PATH:
+            // No additional points
+            break;
+        }
+    }
+
+    // If just querying size, return point count
+    if (!lpPoints || !lpTypes || nSize == 0)
+        return pointCount;
+
+    // If buffer too small, return required size
+    if (nSize < pointCount)
+        return pointCount;
+
+    // Fill the arrays
+    int pointIndex = 0;
+    for (int i = 0; i < path->num_data; i += path->data[i].header.length)
+    {
+        cairo_path_data_t *data = &path->data[i];
+        switch (data->header.type)
+        {
+        case CAIRO_PATH_MOVE_TO:
+            if (pointIndex < nSize)
+            {
+                lpPoints[pointIndex].x = (LONG)data[1].point.x;
+                lpPoints[pointIndex].y = (LONG)data[1].point.y;
+                lpTypes[pointIndex] = PT_MOVETO;
+                pointIndex++;
+            }
+            break;
+        case CAIRO_PATH_LINE_TO:
+            if (pointIndex < nSize)
+            {
+                lpPoints[pointIndex].x = (LONG)data[1].point.x;
+                lpPoints[pointIndex].y = (LONG)data[1].point.y;
+                lpTypes[pointIndex] = PT_LINETO;
+                pointIndex++;
+            }
+            break;
+        case CAIRO_PATH_CURVE_TO:
+            for (int j = 1; j <= 3 && pointIndex < nSize; j++, pointIndex++)
+            {
+                lpPoints[pointIndex].x = (LONG)data[j].point.x;
+                lpPoints[pointIndex].y = (LONG)data[j].point.y;
+                lpTypes[pointIndex] = (j == 3) ? PT_BEZIERTO : PT_BEZIERTO;
+                if (j == 3) lpTypes[pointIndex] |= PT_BEZIERTO;
+            }
+            break;
+        case CAIRO_PATH_CLOSE_PATH:
+            // Mark previous point as close figure
+            if (pointIndex > 0)
+                lpTypes[pointIndex - 1] |= PT_CLOSEFIGURE;
+            break;
+        }
+    }
+
+    return pointIndex;
+}
+
+BOOL SetMiterLimit(HDC hdc, FLOAT eNewLimit, PFLOAT peOldLimit)
+{
+    if (!hdc)
+        return FALSE;
+    double oldLimit = cairo_get_miter_limit(hdc->cairo);
+    if (peOldLimit)
+        *peOldLimit = (FLOAT)oldLimit;
+    // Apply to cairo context if available
+    assert(hdc->cairo);
+    cairo_set_miter_limit(hdc->cairo, eNewLimit);
+    return TRUE;
+}
+
+BOOL GetMiterLimit(HDC hdc, PFLOAT peLimit)
+{
+    if (!hdc || !peLimit)
+        return FALSE;
+    assert(hdc->cairo);
+    *peLimit = (FLOAT)cairo_get_miter_limit(hdc->cairo);
+    return TRUE;
 }

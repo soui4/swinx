@@ -17,6 +17,8 @@ _SDC::_SDC(HWND _hwnd)
     , cairo(nullptr)
     , textAlign(TA_TOP | TA_LEFT | TA_UPDATECP)
     , rop2(R2_EXT_OVER)
+    , pathRecording(FALSE)
+    , currentPath(nullptr)
 {
     ptOrigin.x = ptOrigin.y = 0;
     cairo_matrix_init_identity(&mtx);
@@ -26,6 +28,8 @@ _SDC::_SDC(HWND _hwnd)
 _SDC::~_SDC()
 {
     SLOG_STMD() << "delete sdc:" << this << " cairo:" << cairo;
+    if (currentPath)
+        cairo_path_destroy(currentPath);
     if (cairo)
         cairo_destroy(cairo);
 }

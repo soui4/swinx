@@ -21,6 +21,11 @@ typedef struct _SDC
     int nSave;
     UINT textAlign;
     int rop2;
+
+    // Path support
+    BOOL pathRecording;     // TRUE if path recording is active
+    cairo_path_t *currentPath;  // Current path being recorded
+
     _SDC(HWND _hwnd);
 
     ~_SDC();
