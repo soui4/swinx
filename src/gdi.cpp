@@ -2694,11 +2694,103 @@ BOOL Polyline(HDC hdc, const POINT *apt, int cpt)
 }
 
 BOOL  PolyBezier(HDC hdc, const POINT *apt, DWORD cpt){
-    return FALSE;
+    cairo_t *ctx = hdc->cairo;
+    if (!ctx || !apt || cpt < 4)
+        return FALSE;
+
+    // Validate point count: must be 1 + 3*n (start point + 3 points per curve)
+    if ((cpt - 1) % 3 != 0)
+        return FALSE;
+
+    // Save current position to restore later (PolyBezier doesn't update current position)
+    double saved_x, saved_y;
+    bool has_current_point = cairo_has_current_point(ctx);
+    if (has_current_point)
+        cairo_get_current_point(ctx, &saved_x, &saved_y);
+
+    // Start from the first point
+    cairo_move_to(ctx, apt[0].x, apt[0].y);
+
+    // Draw Bézier curves
+    for (DWORD i = 1; i < cpt; i += 3)
+    {
+        if (i + 2 >= cpt) break; // Safety check
+
+        // Each Bézier curve needs 3 points: control1, control2, end
+        cairo_curve_to(ctx,
+                      apt[i].x, apt[i].y,         // First control point
+                      apt[i+1].x, apt[i+1].y,     // Second control point
+                      apt[i+2].x, apt[i+2].y);    // End point
+    }
+
+    // If not recording path, stroke the curves
+    if (!hdc->pathRecording)
+    {
+        cairo_save(ctx);
+        if (ApplyPen(ctx, hdc->pen))
+        {
+            ApplyRop2(hdc->cairo, hdc->rop2);
+            cairo_stroke(ctx);
+        }
+        cairo_restore(ctx);
+    }
+
+    // Restore original current position (PolyBezier doesn't change current position)
+    if (has_current_point)
+        cairo_move_to(ctx, saved_x, saved_y);
+    else
+        cairo_new_sub_path(ctx); // Clear current point if there wasn't one
+
+    return TRUE;
 }
 
 BOOL  PolyBezierTo(HDC hdc, const POINT *apt, DWORD cpt){
-    return FALSE;
+    cairo_t *ctx = hdc->cairo;
+    if (!ctx || !apt || cpt < 3)
+        return FALSE;
+
+    // Validate point count: must be 3*n (3 points per curve)
+    if (cpt % 3 != 0)
+        return FALSE;
+
+    // Check if we have a current point (required for PolyBezierTo)
+    if (!cairo_has_current_point(ctx))
+        return FALSE;
+
+    // Draw Bézier curves starting from current position
+    for (DWORD i = 0; i < cpt; i += 3)
+    {
+        if (i + 2 >= cpt) break; // Safety check
+
+        // Each Bézier curve needs 3 points: control1, control2, end
+        // The starting point is the current position (for first curve) or end of previous curve
+        cairo_curve_to(ctx,
+                      apt[i].x, apt[i].y,         // First control point
+                      apt[i+1].x, apt[i+1].y,     // Second control point
+                      apt[i+2].x, apt[i+2].y);    // End point (becomes new current position)
+    }
+
+    // If not recording path, stroke the curves
+    if (!hdc->pathRecording)
+    {
+        // Save the final position before stroking (stroke clears the path)
+        double final_x, final_y;
+        cairo_get_current_point(ctx, &final_x, &final_y);
+
+        cairo_save(ctx);
+        if (ApplyPen(ctx, hdc->pen))
+        {
+            ApplyRop2(hdc->cairo, hdc->rop2);
+            cairo_stroke(ctx);
+        }
+        cairo_restore(ctx);
+
+        // Restore the final position after stroking
+        cairo_move_to(ctx, final_x, final_y);
+    }
+
+    // Current position is now at the end of the last curve (automatically updated by cairo_curve_to)
+    return TRUE;
 }
 
 int ClearRect(HDC hdc, const RECT *lprc, COLORREF cr)
