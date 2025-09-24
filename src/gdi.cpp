@@ -3562,6 +3562,8 @@ BOOL Polygon_Priv(HDC hdc, const POINT *apt, int cpt)
 
         if (ApplyBrush(ctx, hdc->brush, 0, 0))
         {
+            cairo_fill_rule_t mode = hdc->polyFillMode == ALTERNATE ? CAIRO_FILL_RULE_EVEN_ODD : CAIRO_FILL_RULE_WINDING;
+            cairo_set_fill_rule(ctx, mode);
             ApplyRop2(hdc->cairo, hdc->rop2);
             cairo_fill_preserve(ctx);  // Preserve path for stroke
         }
