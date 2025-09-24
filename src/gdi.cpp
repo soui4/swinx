@@ -2661,6 +2661,12 @@ BOOL RoundRect(HDC hdc, int left, int top, int right, int bottom, int width, int
     return TRUE;
 }
 
+int  SetPolyFillMode(HDC hdc,int mode){
+    int ret = hdc->polyFillMode;
+    hdc->polyFillMode = mode;
+    return ret;
+}
+
 BOOL Polyline(HDC hdc, const POINT *apt, int cpt)
 {
     cairo_t *ctx = hdc->cairo;
@@ -2685,6 +2691,14 @@ BOOL Polyline(HDC hdc, const POINT *apt, int cpt)
     }
 
     return TRUE;
+}
+
+BOOL  PolyBezier(HDC hdc, const POINT *apt, DWORD cpt){
+    return FALSE;
+}
+
+BOOL  PolyBezierTo(HDC hdc, const POINT *apt, DWORD cpt){
+    return FALSE;
 }
 
 int ClearRect(HDC hdc, const RECT *lprc, COLORREF cr)

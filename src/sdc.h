@@ -21,6 +21,7 @@ typedef struct _SDC
     int nSave;
     UINT textAlign;
     int rop2;
+    int polyFillMode;
 
     // Path support
     BOOL pathRecording;     // TRUE if path recording is active

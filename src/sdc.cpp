@@ -19,6 +19,7 @@ _SDC::_SDC(HWND _hwnd)
     , rop2(R2_EXT_OVER)
     , pathRecording(FALSE)
     , currentPath(nullptr)
+    , polyFillMode(ALTERNATE)
 {
     ptOrigin.x = ptOrigin.y = 0;
     cairo_matrix_init_identity(&mtx);

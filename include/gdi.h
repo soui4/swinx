@@ -641,6 +641,12 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     BOOL WINAPI Polyline(HDC hdc, CONST POINT *apt, int cpt);
 
+    BOOL WINAPI PolyBezier(HDC hdc, const POINT *apt, DWORD cpt);
+
+    BOOL WINAPI PolyBezierTo(HDC hdc, const POINT *apt, DWORD cpt);
+
+    int WINAPI  SetPolyFillMode(HDC hdc,int mode);
+
     BOOL WINAPI AlphaBlend(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, int hDest, HDC hdcSrc, int xoriginSrc, int yoriginSrc, int wSrc, int hSrc, BLENDFUNCTION ftn);
 
 #define EXPEND_MODE_NONE    0
