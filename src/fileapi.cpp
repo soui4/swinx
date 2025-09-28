@@ -749,9 +749,15 @@ BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFind
             }
             strcpy(lpFindFileData->cFileName, entry->d_name);
             strcpy(lpFindFileData->cAlternateFileName, "");
+            #ifdef __APPLE__
+            TimeSpec2FileTime(fileStat.st_ctimespec, &lpFindFileData->ftCreationTime);
+            TimeSpec2FileTime(fileStat.st_mtimespec, &lpFindFileData->ftLastWriteTime);
+            TimeSpec2FileTime(fileStat.st_atimespec, &lpFindFileData->ftLastAccessTime);
+            #else
             TimeSpec2FileTime(fileStat.st_ctim, &lpFindFileData->ftCreationTime);
             TimeSpec2FileTime(fileStat.st_mtim, &lpFindFileData->ftLastWriteTime);
             TimeSpec2FileTime(fileStat.st_atim, &lpFindFileData->ftLastAccessTime);
+            #endif
             lpFindFileData->nFileSizeLow = fileStat.st_size & 0xffffffff;
             lpFindFileData->nFileSizeHigh = (fileStat.st_size & 0xffffffff00000000) >> 32;
             break;
