@@ -704,10 +704,7 @@ HANDLE
 WINAPI
 FindFirstFileW(_In_ LPCWSTR lpFileName, _Out_ LPWIN32_FIND_DATAW lpFindFileData)
 {
-    std::string strName;
-    tostring(lpFileName, -1, strName);
-    WIN32_FIND_DATAA dataA;
-    return FindFirstFileA(strName.c_str(), &dataA);
+    return FindFirstFileExW(lpFileName, FindExInfoStandard, lpFindFileData, FindExSearchNameMatch, nullptr, 0);
 }
 
 BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFindFileData)
@@ -752,9 +749,9 @@ BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFind
             }
             strcpy(lpFindFileData->cFileName, entry->d_name);
             strcpy(lpFindFileData->cAlternateFileName, "");
-            //TimeSpec2FileTime(fileStat.st_ctim, &lpFindFileData->ftCreationTime);
-            //TimeSpec2FileTime(fileStat.st_mtim, &lpFindFileData->ftLastWriteTime);
-            //TimeSpec2FileTime(fileStat.st_atim, &lpFindFileData->ftLastAccessTime);
+            TimeSpec2FileTime(fileStat.st_ctim, &lpFindFileData->ftCreationTime);
+            TimeSpec2FileTime(fileStat.st_mtim, &lpFindFileData->ftLastWriteTime);
+            TimeSpec2FileTime(fileStat.st_atim, &lpFindFileData->ftLastAccessTime);
             lpFindFileData->nFileSizeLow = fileStat.st_size & 0xffffffff;
             lpFindFileData->nFileSizeHigh = (fileStat.st_size & 0xffffffff00000000) >> 32;
             break;
@@ -807,16 +804,17 @@ HANDLE WINAPI FindFirstFileExW(const wchar_t *filename, FINDEX_INFO_LEVELS level
     HANDLE handle = FindFirstFileExA(str.c_str(), level, &dataA, search_op, filter, flags);
     if (handle == INVALID_HANDLE_VALUE)
         return handle;
+    if(dataW){
+        dataW->dwFileAttributes = dataA.dwFileAttributes;
+        dataW->ftCreationTime = dataA.ftCreationTime;
+        dataW->ftLastAccessTime = dataA.ftLastAccessTime;
+        dataW->ftLastWriteTime = dataA.ftLastWriteTime;
+        dataW->nFileSizeHigh = dataA.nFileSizeHigh;
+        dataW->nFileSizeLow = dataA.nFileSizeLow;
 
-    dataW->dwFileAttributes = dataA.dwFileAttributes;
-    dataW->ftCreationTime = dataA.ftCreationTime;
-    dataW->ftLastAccessTime = dataA.ftLastAccessTime;
-    dataW->ftLastWriteTime = dataA.ftLastWriteTime;
-    dataW->nFileSizeHigh = dataA.nFileSizeHigh;
-    dataW->nFileSizeLow = dataA.nFileSizeLow;
-
-    file_name_AtoW(dataA.cFileName, dataW->cFileName, ARRAYSIZE(dataW->cFileName));
-    file_name_AtoW(dataA.cAlternateFileName, dataW->cAlternateFileName, ARRAYSIZE(dataW->cAlternateFileName));
+        file_name_AtoW(dataA.cFileName, dataW->cFileName, ARRAYSIZE(dataW->cFileName));
+        file_name_AtoW(dataA.cAlternateFileName, dataW->cAlternateFileName, ARRAYSIZE(dataW->cAlternateFileName));
+    }
     return handle;
 }
 
@@ -880,6 +878,16 @@ HANDLE WINAPI FindFirstFileExA(LPCSTR filename, FINDEX_INFO_LEVELS level, LPVOID
     }
     strcpy(info->path, strName.c_str());
     strcpy(info->name, name);
+   // Fill the output parameter with the first matching file
+    if (data)
+    {
+        if (!FindNextFileA((HANDLE)info, (LPWIN32_FIND_DATAA)data))
+        {
+            // No matching file found, cleanup and return INVALID_HANDLE_VALUE
+            FindClose((HANDLE)info);
+            return INVALID_HANDLE_VALUE;
+        }
+    }
     return (HANDLE)info;
 }
 
