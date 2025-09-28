@@ -10,6 +10,7 @@
 #elif defined(__APPLE__) && defined(__MACH__)
 #include <mach-o/dyld.h>
 #include <sys/event.h>
+#include <crt_externs.h>
 #endif
 #include <fcntl.h>
 #include <signal.h>
@@ -2618,6 +2619,34 @@ LPSTR WINAPI GetCommandLineA(void)
     static char cmdline[1024] = { 0 };
     if (cmdline[0] != 0)
         return cmdline;
+#ifdef __APPLE__
+    int argc = *_NSGetArgc();
+    char ***argv = _NSGetArgv();    
+    char *p = cmdline;
+    for (int i = 0; i < argc; i++) {
+        size_t arg_len = strlen((*argv)[i]);
+
+        if(strchr((*argv)[i],' ')){
+            if (p + arg_len + 2 - cmdline >= sizeof(cmdline) - 1)
+                break;
+            *p++ = '\"';
+            strcpy(p, (*argv)[i]);
+            p += arg_len;
+            *p++ = '\"';
+        }else{
+            if (p + arg_len - cmdline >= sizeof(cmdline) - 1)
+                break;
+            strcpy(p, (*argv)[i]);
+            p += arg_len;
+        }
+        if (i < argc - 1) {
+            if (p - cmdline < sizeof(cmdline) - 1) {
+                *p++ = ' ';
+            }
+        }
+    }
+    return cmdline;
+#else
     FILE *file = fopen("/proc/self/cmdline", "r");
     if (!file)
     {
@@ -2634,6 +2663,7 @@ LPSTR WINAPI GetCommandLineA(void)
     }
     fclose(file);
     return cmdline;
+#endif
 }
 
 LPWSTR WINAPI GetCommandLineW(void)
