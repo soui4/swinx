@@ -377,14 +377,17 @@ void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
             m_lstTypes.resize(length);
             for (int i = 0; i < length; ++i)
             {
-                xcb_get_atom_name_cookie_t cookie = xcb_get_atom_name(m_conn->connection, atoms[i]);
-                xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(m_conn->connection, cookie, NULL);
-                if (reply)
-                {
-                    SLOG_STMI() << "atom " << atoms[i] << " name is " << xcb_get_atom_name_name(reply);
-                    free(reply);
+                uint32_t cf = m_conn->atom2ClipFormat(atoms[i]);
+                if(cf){
+                    char szAtomName[200];
+                    SAtoms::getAtomName(atoms[i], szAtomName, 200);
+                    SLOG_STMI() << "dragenter and receive avaiable format=" << cf<<" atom="<<atoms[i]<<" atom name="<<szAtomName;
+                    for(int j=0;j<m_lstTypes.size();j++){
+                        if(m_lstTypes[j] == cf)
+                            break;
+                    }
+                    m_lstTypes.push_back(cf);
                 }
-                m_lstTypes[i] = m_conn->atom2ClipFormat(atoms[i]);
             }
             SLOG_STMI() << "dragenter and receive avaiable format count=" << length;
         }
@@ -402,7 +405,16 @@ void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
             {
                 uint32_t cf = m_conn->atom2ClipFormat(data32[i]);
                 if (cf)
+                {
+                    char szAtomName[200];
+                    SAtoms::getAtomName(data32[i], szAtomName, 200);
+                    SLOG_STMI() << "dragenter and receive avaiable format=" << cf<<" atom="<<data32[i]<<" atom name="<<szAtomName;
+                    for(int j=0;j<m_lstTypes.size();j++){
+                        if(m_lstTypes[j] == cf)
+                            break;
+                    }
                     m_lstTypes.push_back(cf);
+                }    
             }
         }
     }

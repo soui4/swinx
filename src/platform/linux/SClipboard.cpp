@@ -1055,7 +1055,10 @@ std::shared_ptr<std::vector<char>> SClipboard::getSelection(xcb_atom_t selection
     free(ge);
 
     if (no_selection)
+    {
+        SLOG_STMW() << "SClipboard: no selection notify, atom="<<fmtAtom;
         return buf;
+    }    
 
     xcb_atom_t type;
     std::vector<char> buf2;
