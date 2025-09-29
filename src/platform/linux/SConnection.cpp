@@ -2471,9 +2471,9 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     }
     case XCB_SELECTION_NOTIFY:
     {
-        // todo:hjx
         xcb_selection_notify_event_t *e2 = (xcb_selection_notify_event_t *)event;
         m_tsSelection = e2->time;
+        //SLOG_STMI()<<"selection notify, XCB_SELECTION_NOTIFY, property="<<e2->property;
         return false;
     }
     case XCB_LEAVE_NOTIFY:

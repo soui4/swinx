@@ -363,6 +363,7 @@ XDndDataObjectProxy::XDndDataObjectProxy(SConnection *conn, HWND hWnd, const uin
 
 void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
 {
+    m_lstTypes.clear();
     if (data32[1] & 1)
     {
         xcb_get_property_cookie_t cookie = xcb_get_property(m_conn->connection, false, m_hSource, m_conn->atoms.XdndTypeList, XCB_ATOM_ATOM, 0, SDragDrop::xdnd_max_type);
@@ -374,7 +375,6 @@ void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
                 length = SDragDrop::xdnd_max_type;
 
             xcb_atom_t *atoms = (xcb_atom_t *)xcb_get_property_value(reply);
-            m_lstTypes.resize(length);
             for (int i = 0; i < length; ++i)
             {
                 uint32_t cf = m_conn->atom2ClipFormat(atoms[i]);
@@ -382,14 +382,19 @@ void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
                     char szAtomName[200];
                     SAtoms::getAtomName(atoms[i], szAtomName, 200);
                     SLOG_STMI() << "dragenter and receive avaiable format=" << cf<<" atom="<<atoms[i]<<" atom name="<<szAtomName;
+                    BOOL bExisted = FALSE;
                     for(int j=0;j<m_lstTypes.size();j++){
                         if(m_lstTypes[j] == cf)
+                         {
+                            bExisted = TRUE;
                             break;
+                         }
                     }
-                    m_lstTypes.push_back(cf);
+                    if(!bExisted)
+                        m_lstTypes.push_back(cf);
                 }
             }
-            SLOG_STMI() << "dragenter and receive avaiable format count=" << length;
+            SLOG_STMI() << "dragenter and receive avaiable format count=" << m_lstTypes.size();
         }
         else
         {
@@ -409,11 +414,16 @@ void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
                     char szAtomName[200];
                     SAtoms::getAtomName(data32[i], szAtomName, 200);
                     SLOG_STMI() << "dragenter and receive avaiable format=" << cf<<" atom="<<data32[i]<<" atom name="<<szAtomName;
+                    BOOL bExisted = FALSE;
                     for(int j=0;j<m_lstTypes.size();j++){
                         if(m_lstTypes[j] == cf)
+                         {
+                            bExisted = TRUE;
                             break;
+                         }
                     }
-                    m_lstTypes.push_back(cf);
+                    if(!bExisted)
+                        m_lstTypes.push_back(cf);
                 }    
             }
         }

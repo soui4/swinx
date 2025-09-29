@@ -1110,6 +1110,7 @@ class Notify : public IEventChecker {
         else if (t == XCB_SELECTION_NOTIFY)
         {
             xcb_selection_notify_event_t *sn = (xcb_selection_notify_event_t *)event;
+            //SLOG_STMI()<<"XCB_SELECTION_NOTIFY, requestor="<<sn->requestor<<" window="<<window<<" property="<<sn->property;
             if (sn->requestor == window)
                 return true;
         }
