@@ -1,7 +1,7 @@
 #ifndef _SATOMH_
 #define _SATOMH_
 #include <xcb/xcb.h>
-
+#include <vector>
 class SAtoms {
   public:
     // make sure the order of atoms is same as AtomNames
@@ -10,6 +10,7 @@ class SAtoms {
     UTF8_STRING,
     CARDINAL,
     CLIPF_UTF8,
+    CLIPF_TEXT,
     CLIPF_BITMAP, 
     CLIPF_UNICODETEXT, 
     CLIPF_WAVE,
@@ -91,7 +92,9 @@ class SAtoms {
     WM_DISCONN,
 
     SO_SELECTION,
-    WM_CLASS_ATOM;
+    WM_CLASS_ATOM,
+
+    SO_ATOM_COUNT; //mark as the last atom.
 
 
     const char **AtomNames(int &atoms)
@@ -102,6 +105,7 @@ class SAtoms {
             "CARDINAL",
 
             "text/plain;charset=utf-8", // CLIPF_UTF8
+            "text/plain",               // CLIPF_TEXT
             "image/ppm",                // CLIPF_BITMAP
             "CLIPF_UNICODETEXT",
             "CLIPF_WAVE",
@@ -186,10 +190,14 @@ class SAtoms {
     }
 
     void Init(xcb_connection_t *conn,int nScrNo);
+
+    const std::vector<xcb_atom_t> & textAtoms() const{return m_textAtoms;}
     static int getAtomName(xcb_atom_t atom,char *buf,int bufSize);
     static xcb_atom_t registerAtom(const char *name,xcb_connection_t *xcb_conn=nullptr);
 private:
     static xcb_atom_t internAtom(xcb_connection_t *connection, uint8_t onlyIfExist, const char *atomName);
+
+    std::vector<xcb_atom_t> m_textAtoms;
 };
 
 #endif //_SATOMH_

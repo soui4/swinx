@@ -218,6 +218,9 @@ void SDataObjectProxy::fetchDataTypeList()
         for (size_t i = 0; i < len; i += sizeof(xcb_atom_t))
         {
             xcb_atom_t atom = *(xcb_atom_t *)buf;
+            // char buf2[200]={0};
+            // SAtoms::getAtomName(atom,buf2,200);
+            // SLOG_STMI()<<"clipboard atom="<<atom<<" name="<<buf2;
             m_lstTypes.push_back(m_conn->atom2ClipFormat(atom));
             buf += sizeof(xcb_atom_t);
         }

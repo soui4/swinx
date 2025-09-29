@@ -18,7 +18,7 @@ xcb_atom_t SAtoms::internAtom(xcb_connection_t *connection, uint8_t onlyIfExist,
 
 void SAtoms::Init(xcb_connection_t *conn, int nScrNo)
 {
-    const int kAtomCount = sizeof(SAtoms) / sizeof(xcb_atom_t);
+    const int kAtomCount = (FIELD_OFFSET(SAtoms,SO_ATOM_COUNT) - FIELD_OFFSET(SAtoms,TEXT) ) / sizeof(xcb_atom_t);
     xcb_intern_atom_cookie_t cookies[kAtomCount];
     int kAtomCount2 = 0;
     const char **kAtomNames = AtomNames(kAtomCount2);
@@ -45,6 +45,11 @@ void SAtoms::Init(xcb_connection_t *conn, int nScrNo)
         free(reply);
         atom++;
     }
+
+    //used as text atom.
+    m_textAtoms.push_back(CLIPF_UTF8);
+    m_textAtoms.push_back(UTF8_STRING);
+    m_textAtoms.push_back(CLIPF_TEXT);
 }
 
 int SAtoms::getAtomName(xcb_atom_t atom,char *buf,int bufSize){

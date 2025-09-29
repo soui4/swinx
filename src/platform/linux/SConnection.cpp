@@ -1152,21 +1152,36 @@ xcb_atom_t SConnection::clipFormat2Atom(UINT uFormat)
 
 uint32_t SConnection::atom2ClipFormat(xcb_atom_t atom)
 {
-    if (atom == atoms.CLIPF_UTF8)
-        return CF_TEXT;
-    else if (atom == atoms.CLIPF_UNICODETEXT)
+    if (atom == atoms.CLIPF_UNICODETEXT)
         return CF_UNICODETEXT;
     else if (atom == atoms.CLIPF_BITMAP)
         return CF_BITMAP;
     else if (atom == atoms.CLIPF_WAVE)
         return CF_WAVE;
-    else
+    else{
+        auto txtAtoms = atoms.textAtoms();
+        for(auto it : txtAtoms){
+            if(it == atom)
+                return CF_TEXT;
+        }
         return CF_MAX + atom; // for registed format
+    }
 }
 
 std::shared_ptr<std::vector<char>> SConnection::readSelection(bool bXdnd, uint32_t fmt)
 {
-    return m_clipboard->getDataInFormat(bXdnd ? atoms.XdndSelection : atoms.CLIPBOARD, clipFormat2Atom(fmt), SClipboard::kWaitTimeout);
+    if(fmt == CF_TEXT){
+        //mutiple clip atom were mapped to CF_TEXT
+        auto txtAtoms = atoms.textAtoms();
+        for(auto atom : txtAtoms){
+            auto ret = m_clipboard->getDataInFormat(bXdnd ? atoms.XdndSelection : atoms.CLIPBOARD, atom, SClipboard::kWaitTimeout);
+            if(ret && !ret->empty()) 
+                return ret;
+        }
+        return nullptr;
+    }else{
+        return m_clipboard->getDataInFormat(bXdnd ? atoms.XdndSelection : atoms.CLIPBOARD, clipFormat2Atom(fmt), SClipboard::kWaitTimeout);
+    }
 }
 
 struct MotifWmHints
