@@ -29,18 +29,18 @@
 #endif
 
 #ifdef _UNICODE
-#define lstrlen    lstrlenW
-#define lstrcpy    lstrcpyW
-#define _tcsncmp   wcsncmp
-#define _tcslen    wcslen
-#define _ttoi      _wtoi
-#define _tcsdup    wcsdup
-#define _tcsicmp   _wcsicmp
-#define _tcsnicmp  _wcsnicmp
-#define _tcscpy    wcscpy
+#define lstrlen   lstrlenW
+#define lstrcpy   lstrcpyW
+#define _tcsncmp  wcsncmp
+#define _tcslen   wcslen
+#define _ttoi     _wtoi
+#define _tcsdup   wcsdup
+#define _tcsicmp  _wcsicmp
+#define _tcsnicmp _wcsnicmp
+#define _tcscpy   wcscpy
 inline wchar_t *_wcsstok(wchar_t *strToken, const wchar_t *strDelimit)
 {
-    wchar_t *saveptr=NULL;
+    wchar_t *saveptr = NULL;
     return wcstok(strToken, strDelimit, &saveptr);
 }
 #define _tcstok    _wcsstok

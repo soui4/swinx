@@ -121,7 +121,7 @@ class CMenu : public CNativeWnd {
   public:
     CMenu(SMenuItem *pParent = nullptr);
 
-    virtual ~CMenu(void) ;
+    virtual ~CMenu(void);
 
     void SetParent(CMenu *pParent)
     {
@@ -643,7 +643,7 @@ BOOL CMenu::InsertMenu(UINT uPos, UINT uFlag, UINT_PTR uIDNewItem, LPCSTR lpNewI
     auto iteItem = m_lsMenuItem.insert(ite, SMenuItem(this));
     iteItem->m_id = uIDNewItem;
 
-    if ((MF_BITMAP|MF_OWNERDRAW) & uFlag)
+    if ((MF_BITMAP | MF_OWNERDRAW) & uFlag)
     {
         iteItem->m_data = lpNewItem;
     }
@@ -711,7 +711,7 @@ BOOL CMenu::GetMenuItemInfo(UINT item, BOOL fByPosition, LPCMENUITEMINFOA lpmi)
 
         if (pItem)
         {
-            if (lpmi->fMask & (MIIM_FTYPE|MIIM_TYPE))
+            if (lpmi->fMask & (MIIM_FTYPE | MIIM_TYPE))
             {
                 lpmi->fType = pItem->IsSeparator() ? MF_SEPARATOR : MF_STRING;
             }
@@ -1238,7 +1238,7 @@ void CMenu::PopupSubMenu(int iItem, BOOL bCheckFirstItem)
     CMenu *pSubMenu = pItem->GetSubMenu();
     if (!pSubMenu)
         return;
-    if(IsWindowVisible(pSubMenu->m_hWnd))
+    if (IsWindowVisible(pSubMenu->m_hWnd))
         return;
     if (!pSubMenu->m_bMenuInitialized)
     {
@@ -1252,7 +1252,7 @@ void CMenu::PopupSubMenu(int iItem, BOOL bCheckFirstItem)
     POINT showpt;
     showpt.x = rcWnd.right + 5, showpt.y = rcWnd.top + rcItem.top;
     m_iSelItem = iItem;
-    //SLOG_FMTI("show sub menu %d", iItem);
+    // SLOG_FMTI("show sub menu %d", iItem);
     pSubMenu->ShowMenu(0, showpt.x, showpt.y);
 }
 
@@ -1509,9 +1509,11 @@ BOOL CMenu::CheckMenuRadioItem(UINT idFirst, UINT idLast, UINT idCheck, UINT uFl
 
     if (!pItemRefFirst || !pItemRefLast || !pItemRefCheck)
         return FALSE;
-    for(UINT id = idFirst; id <= idLast; id++){
+    for (UINT id = idFirst; id <= idLast; id++)
+    {
         SMenuItem *pItem = FindItem(id, uFlags);
-        if(pItem){
+        if (pItem)
+        {
             pItem->SetSelect(pItem == pItemRefCheck);
         }
     }
@@ -1560,9 +1562,9 @@ void CMenu::DestroyMenu()
 BOOL CMenu::RemoveMenu(UINT uPosition, UINT uFlags)
 {
     SMenuItem *pItemRef = FindItem(uPosition, uFlags);
-    if(!pItemRef)
+    if (!pItemRef)
         return FALSE;
-    m_lsMenuItem.erase(m_lsMenuItem.begin()+(pItemRef-m_lsMenuItem.data()));
+    m_lsMenuItem.erase(m_lsMenuItem.begin() + (pItemRef - m_lsMenuItem.data()));
     return TRUE;
 }
 
@@ -1675,11 +1677,13 @@ BOOL WINAPI ModifyMenuA(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNe
 
 BOOL WINAPI ModifyMenuW(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem)
 {
-    if(uFlags & MFT_STRING){
+    if (uFlags & MFT_STRING)
+    {
         std::string str;
         tostring(lpNewItem, -1, str);
         return ModifyMenuA(hMenu, uPosition, uFlags, uIDNewItem, str.c_str());
-    }else
+    }
+    else
     {
         return ModifyMenuA(hMenu, uPosition, uFlags, uIDNewItem, (LPCSTR)lpNewItem);
     }
@@ -1814,14 +1818,16 @@ BOOL WINAPI InsertMenuA(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNe
 
 BOOL WINAPI InsertMenuW(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem)
 {
-    if((uFlags & (MF_BITMAP|MF_OWNERDRAW))==0 && lpNewItem){
+    if ((uFlags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && lpNewItem)
+    {
         std::string str;
         tostring(lpNewItem, -1, str);
         return InsertMenuA(hMenu, uPosition, uFlags, uIDNewItem, str.c_str());
-    }else{
+    }
+    else
+    {
         return InsertMenuA(hMenu, uPosition, uFlags, uIDNewItem, (LPCSTR)lpNewItem);
     }
-
 }
 
 BOOL WINAPI SetMenuItemInfoA(HMENU hMenu, UINT item, BOOL fByPosition, LPCMENUITEMINFOA lpmi)
@@ -1860,16 +1866,18 @@ BOOL WINAPI InsertMenuItemA(HMENU hMenu, UINT item, BOOL fByPosition, LPCMENUITE
     return FALSE;
 }
 
-
 BOOL WINAPI SetMenuItemInfoW(HMENU hMenu, UINT item, BOOL fByPosition, LPCMENUITEMINFOW lpmi)
 {
-    if(lpmi->fMask & MIIM_STRING){
+    if (lpmi->fMask & MIIM_STRING)
+    {
         std::string str;
         tostring(lpmi->dwTypeData, lpmi->cch, str);
         MENUITEMINFOA info = *(MENUITEMINFOA *)lpmi;
         info.dwTypeData = (LPSTR)str.c_str();
         return SetMenuItemInfoA(hMenu, item, fByPosition, &info);
-    }else{
+    }
+    else
+    {
         return SetMenuItemInfoA(hMenu, item, fByPosition, (LPMENUITEMINFOA)lpmi);
     }
 }
@@ -1877,36 +1885,40 @@ BOOL WINAPI SetMenuItemInfoW(HMENU hMenu, UINT item, BOOL fByPosition, LPCMENUIT
 BOOL WINAPI GetMenuItemInfoW(HMENU hMenu, UINT item, BOOL fByPosition, LPCMENUITEMINFOW lpmi)
 {
     MENUITEMINFOA info = *(MENUITEMINFOA *)lpmi;
-    if(info.fMask & MIIM_STRING){
-        char *buf = new char[lpmi->cch*4];
-        info.cch = lpmi->cch*4;
+    if (info.fMask & MIIM_STRING)
+    {
+        char *buf = new char[lpmi->cch * 4];
+        info.cch = lpmi->cch * 4;
         info.dwTypeData = buf;
     }
     BOOL ret = GetMenuItemInfoA(hMenu, item, fByPosition, &info);
-    *lpmi = *(MENUITEMINFOW*)&info;
-    if(info.fMask & MIIM_STRING)
+    *lpmi = *(MENUITEMINFOW *)&info;
+    if (info.fMask & MIIM_STRING)
     {
         std::wstring wstr;
         towstring(info.dwTypeData, -1, wstr);
-        if(lpmi->cch >= wstr.size())
+        if (lpmi->cch >= wstr.size())
         {
             lpmi->cch = wstr.size();
             wcscpy(lpmi->dwTypeData, wstr.c_str());
         }
-        delete []info.dwTypeData;
+        delete[] info.dwTypeData;
     }
     return ret;
 }
 
 BOOL WINAPI InsertMenuItemW(HMENU hMenu, UINT item, BOOL fByPosition, LPCMENUITEMINFOW lpmi)
 {
-    if(lpmi->fMask & MIIM_STRING){
+    if (lpmi->fMask & MIIM_STRING)
+    {
         std::string str;
         tostring(lpmi->dwTypeData, lpmi->cch, str);
         MENUITEMINFOA info = *(MENUITEMINFOA *)lpmi;
         info.dwTypeData = (LPSTR)str.c_str();
         return InsertMenuItemA(hMenu, item, fByPosition, &info);
-    }else{
+    }
+    else
+    {
         return InsertMenuItemA(hMenu, item, fByPosition, (LPMENUITEMINFOA)lpmi);
     }
 }
@@ -1918,11 +1930,14 @@ BOOL WINAPI AppendMenuA(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCSTR lp
 
 BOOL WINAPI AppendMenuW(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem)
 {
-    if((uFlags & (MF_BITMAP|MF_OWNERDRAW))==0 && lpNewItem){
+    if ((uFlags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && lpNewItem)
+    {
         std::string str;
         tostring(lpNewItem, -1, str);
         return AppendMenuA(hMenu, uFlags, uIDNewItem, str.c_str());
-    }else{
+    }
+    else
+    {
         return AppendMenuA(hMenu, uFlags, uIDNewItem, (LPCSTR)lpNewItem);
     }
 }

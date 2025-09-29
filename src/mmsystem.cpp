@@ -74,40 +74,45 @@ MMRESULT timeEndPeriod(UINT wPeriod)
 
 #ifdef __APPLE__
 class AudioPlayer {
-private:
+  private:
     SystemSoundID m_soundID;
-    AudioPlayer():m_soundID(0)
+    AudioPlayer()
+        : m_soundID(0)
     {
     }
 
-public:
-
-    BOOL play(LPCSTR pszSound,BOOL bPurge)
+  public:
+    BOOL play(LPCSTR pszSound, BOOL bPurge)
     {
         BOOL ret = FALSE;
-        do{
+        do
+        {
             CFStringRef soundPath = CFStringCreateWithCString(NULL, pszSound, kCFStringEncodingUTF8);
-            if (soundPath == NULL) {
+            if (soundPath == NULL)
+            {
                 break;
             }
-            
+
             CFURLRef soundURL = CFURLCreateWithFileSystemPath(NULL, soundPath, kCFURLPOSIXPathStyle, false);
-            if (soundURL == NULL) {
+            if (soundURL == NULL)
+            {
                 CFRelease(soundPath);
                 break;
             }
-            if(bPurge && m_soundID){
+            if (bPurge && m_soundID)
+            {
                 AudioServicesDisposeSystemSoundID(m_soundID);
             }
-            m_soundID=0;
+            m_soundID = 0;
             OSStatus status = AudioServicesCreateSystemSoundID(soundURL, &m_soundID);
-            if (status == noErr) {
+            if (status == noErr)
+            {
                 AudioServicesPlaySystemSound(m_soundID);
                 ret = TRUE;
             }
             CFRelease(soundURL);
             CFRelease(soundPath);
-        }while(false);
+        } while (false);
         return ret;
     }
     static AudioPlayer *getInstance()
@@ -118,18 +123,20 @@ public:
 };
 #elif defined(__linux__)
 class AudioPlayer {
-private:
+  private:
     pid_t m_soundID;
-    AudioPlayer():m_soundID(0)
+    AudioPlayer()
+        : m_soundID(0)
     {
     }
 
-public:
-
-    BOOL play(LPCSTR pszSound,BOOL bPurge)
+  public:
+    BOOL play(LPCSTR pszSound, BOOL bPurge)
     {
-        if (bPurge || pszSound == NULL || pszSound[0] == '\0') {
-            if (m_soundID != 0) {
+        if (bPurge || pszSound == NULL || pszSound[0] == '\0')
+        {
+            if (m_soundID != 0)
+            {
                 kill(m_soundID, SIGTERM);
                 waitpid(m_soundID, NULL, WNOHANG);
                 m_soundID = 0;
@@ -139,11 +146,13 @@ public:
         }
 
         pid_t pid = fork();
-        if (pid < 0) { 
+        if (pid < 0)
+        {
             return FALSE;
         }
-        if (pid == 0) { 
-            execlp("aplay", "aplay", pszSound, (char*)NULL);
+        if (pid == 0)
+        {
+            execlp("aplay", "aplay", pszSound, (char *)NULL);
             _exit(127);
         }
         m_soundID = pid;
@@ -158,11 +167,12 @@ public:
 #endif
 BOOL PlaySound(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound)
 {
-    if (fdwSound & (SND_MEMORY|SND_RESOURCE|SND_ALIAS|SND_ALIAS_ID)) {
+    if (fdwSound & (SND_MEMORY | SND_RESOURCE | SND_ALIAS | SND_ALIAS_ID))
+    {
         return FALSE;
     }
 #if defined(__APPLE__) || defined(__linux__)
-    return AudioPlayer::getInstance()->play(pszSound,fdwSound & SND_PURGE);
+    return AudioPlayer::getInstance()->play(pszSound, fdwSound & SND_PURGE);
 #else
     // For other platforms, return FALSE as before
     return FALSE;

@@ -106,7 +106,7 @@ extern "C"
 
     DWORD WINAPI GetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh);
 
-    BOOL WINAPI SetFileTime(HANDLE hFile, const LPFILETIME lpCreationTime,const LPFILETIME lpLastAccessTime,const LPFILETIME lpLastWriteTime);
+    BOOL WINAPI SetFileTime(HANDLE hFile, const LPFILETIME lpCreationTime, const LPFILETIME lpLastAccessTime, const LPFILETIME lpLastWriteTime);
 
     BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLastAccessTime, LPFILETIME lpLastWriteTime);
 
@@ -184,33 +184,32 @@ extern "C"
     BOOL WINAPI WritePrivateProfileStructW(LPCWSTR section, LPCWSTR key, LPVOID buf, UINT bufsize, LPCWSTR filename);
     BOOL WINAPI WritePrivateProfileStructA(LPCSTR section, LPCSTR key, LPVOID buf, UINT bufsize, LPCSTR filename);
 
- 
-    #ifdef UNICODE
-    #define GetProfileInt GetProfileIntW
-    #define GetProfileString GetProfileStringW
-    #define WriteProfileString WriteProfileStringW
-    #define GetPrivateProfileInt GetPrivateProfileIntW
-    #define GetPrivateProfileString GetPrivateProfileStringW
-    #define WritePrivateProfileString WritePrivateProfileStringW
-    #define GetPrivateProfileSection GetPrivateProfileSectionW
-    #define GetPrivateProfileSectionNames GetPrivateProfileSectionNamesW
-    #define WritePrivateProfileSection  WritePrivateProfileSectionW
-    #define GetPrivateProfileStruct GetPrivateProfileStructW
-    #define WritePrivateProfileStruct WritePrivateProfileStructW
-    #else
-    #define GetProfileInt GetProfileIntA
-    #define GetProfileString GetProfileStringA
-    #define WriteProfileString WriteProfileStringA
-    #define GetPrivateProfileInt GetPrivateProfileIntA
-    #define GetPrivateProfileString GetPrivateProfileStringA
-    #define WritePrivateProfileString WritePrivateProfileStringA
-    #define GetPrivateProfileSection GetPrivateProfileSectionA
-    #define GetPrivateProfileSectionNames GetPrivateProfileSectionNamesA
-    #define WritePrivateProfileSection  WritePrivateProfileSectionA
-    #define GetPrivateProfileStruct GetPrivateProfileStructA
-    #define WritePrivateProfileStruct WritePrivateProfileStructA
+#ifdef UNICODE
+#define GetProfileInt                 GetProfileIntW
+#define GetProfileString              GetProfileStringW
+#define WriteProfileString            WriteProfileStringW
+#define GetPrivateProfileInt          GetPrivateProfileIntW
+#define GetPrivateProfileString       GetPrivateProfileStringW
+#define WritePrivateProfileString     WritePrivateProfileStringW
+#define GetPrivateProfileSection      GetPrivateProfileSectionW
+#define GetPrivateProfileSectionNames GetPrivateProfileSectionNamesW
+#define WritePrivateProfileSection    WritePrivateProfileSectionW
+#define GetPrivateProfileStruct       GetPrivateProfileStructW
+#define WritePrivateProfileStruct     WritePrivateProfileStructW
+#else
+#define GetProfileInt                 GetProfileIntA
+#define GetProfileString              GetProfileStringA
+#define WriteProfileString            WriteProfileStringA
+#define GetPrivateProfileInt          GetPrivateProfileIntA
+#define GetPrivateProfileString       GetPrivateProfileStringA
+#define WritePrivateProfileString     WritePrivateProfileStringA
+#define GetPrivateProfileSection      GetPrivateProfileSectionA
+#define GetPrivateProfileSectionNames GetPrivateProfileSectionNamesA
+#define WritePrivateProfileSection    WritePrivateProfileSectionA
+#define GetPrivateProfileStruct       GetPrivateProfileStructA
+#define WritePrivateProfileStruct     WritePrivateProfileStructA
 
-    #endif // UNICODE
+#endif // UNICODE
 
     BOOL WINAPI SetCurrentDirectoryA(LPCSTR lpPathName);
     BOOL WINAPI SetCurrentDirectoryW(LPCWSTR lpPathName);

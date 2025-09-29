@@ -477,15 +477,15 @@ static bool ApplyBrush(cairo_t *ctx, HBRUSH hbr, double wid, double hei)
         cairo_pattern_t *pattern = info->create(wid, hei);
         cairo_set_source(ctx, pattern);
 #ifdef MOCOS_PATTERN_TEST
-            //todo: quartz surface on macos has device scale, I'not sure how to set it.
-            // if I setup a software surface, and set device scale as quartz surface, the following code is work well, but it's not work for quartz surface itself.
-            // do not remove this code.
-            cairo_surface_t * surface = cairo_get_target(ctx);
-            double dscale_x, dscale_y;
-            cairo_surface_get_device_scale(surface, &dscale_x, &dscale_y);
-            cairo_matrix_t matrix;
-            cairo_matrix_init_scale(&matrix, dscale_x, dscale_y);
-            cairo_pattern_set_matrix(pattern, &matrix);
+        // todo: quartz surface on macos has device scale, I'not sure how to set it.
+        // if I setup a software surface, and set device scale as quartz surface, the following code is work well, but it's not work for quartz surface itself.
+        // do not remove this code.
+        cairo_surface_t *surface = cairo_get_target(ctx);
+        double dscale_x, dscale_y;
+        cairo_surface_get_device_scale(surface, &dscale_x, &dscale_y);
+        cairo_matrix_t matrix;
+        cairo_matrix_init_scale(&matrix, dscale_x, dscale_y);
+        cairo_pattern_set_matrix(pattern, &matrix);
 #endif
         break;
     }
@@ -503,29 +503,37 @@ static BOOL ApplyFont(HDC hdc)
         const char *fontName = lf->lfFaceName;
         // If the font name is not ASCII, try to resolve to English name using fontconfig
         bool needResolve = false;
-        for (const char *p = lf->lfFaceName; *p; ++p) {
-            if ((*p) & 0x80) {
+        for (const char *p = lf->lfFaceName; *p; ++p)
+        {
+            if ((*p) & 0x80)
+            {
                 needResolve = true;
                 break;
             }
         }
-        if (needResolve) {
+        if (needResolve)
+        {
             static std::mutex mutex;
             static std::map<std::string, std::string> fontMap;
             std::lock_guard<std::mutex> lock(mutex);
             auto it = fontMap.find(lf->lfFaceName);
-            if (it != fontMap.end()) {
+            if (it != fontMap.end())
+            {
                 fontName = it->second.c_str();
-            } else {
+            }
+            else
+            {
                 FcPattern *pat = FcPatternCreate();
                 FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)lf->lfFaceName);
                 FcConfigSubstitute(NULL, pat, FcMatchPattern);
                 FcDefaultSubstitute(pat);
                 FcResult result;
                 FcPattern *font = FcFontMatch(NULL, pat, &result);
-                if (font) {
+                if (font)
+                {
                     FcChar8 *family = NULL;
-                    if (FcPatternGetString(font, FC_FAMILY, 0, &family) == FcResultMatch && family) {
+                    if (FcPatternGetString(font, FC_FAMILY, 0, &family) == FcResultMatch && family)
+                    {
                         char szFaceName[LF_FACESIZE];
                         strncpy(szFaceName, (const char *)family, LF_FACESIZE - 1);
                         szFaceName[LF_FACESIZE - 1] = '\0';
@@ -535,7 +543,8 @@ static BOOL ApplyFont(HDC hdc)
                     }
                     FcPatternDestroy(font);
                 }
-                if(fontName == lf->lfFaceName){
+                if (fontName == lf->lfFaceName)
+                {
                     fontMap.insert(std::make_pair(lf->lfFaceName, fontName));
                 }
                 FcPatternDestroy(pat);
@@ -922,7 +931,7 @@ HDC CreateCompatibleDC(HDC hdc)
         conn = SConnMgr::instance()->getConnection();
         if (!conn)
             return nullptr;
-        
+
         hwnd = conn->GetScreenWindow();
     }
     else
@@ -1447,7 +1456,7 @@ BOOL DrawBitmap9Patch(HDC hdc, LPCRECT pRcDest, HBITMAP hBmp, LPCRECT pRcSrc, LP
     //定义绘制模式
     UINT mode[3][3] = { { EXPEND_MODE_NONE, expendMode, EXPEND_MODE_NONE }, { expendMode, expendMode, expendMode }, { EXPEND_MODE_NONE, expendMode, EXPEND_MODE_NONE } };
     Antialias oldAntialias = GetAntialiasMode(hdc);
-    SetAntialiasMode(hdc, ANTIALIAS_NONE);//关闭抗锯齿，否则图片拼接边缘可能出现缝隙。
+    SetAntialiasMode(hdc, ANTIALIAS_NONE); //关闭抗锯齿，否则图片拼接边缘可能出现缝隙。
     for (int y = 0; y < 3; y++)
     {
         if (ySrc[y] == ySrc[y + 1])
@@ -1772,7 +1781,7 @@ static void DrawTextDecLines(HDC hdc, cairo_font_extents_t &font_ext, LPCSTR str
         }
         if (lf->lfUnderline)
         {
-            double y_line = y + font_ext.ascent + font_ext.descent+1;
+            double y_line = y + font_ext.ascent + font_ext.descent + 1;
             cairo_move_to(hdc->cairo, x + text_ext.x_bearing, y_line);
             cairo_line_to(hdc->cairo, x + text_ext.x_advance, y_line);
         }
@@ -1975,7 +1984,7 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
         }
         if (lf->lfUnderline)
         {
-            double y_line = pRect->top + font_ext.ascent + font_ext.descent +1;
+            double y_line = pRect->top + font_ext.ascent + font_ext.descent + 1;
             cairo_move_to(hdc->cairo, pRect->left, y_line);
             cairo_line_to(hdc->cairo, pRect->right, y_line);
         }
@@ -2062,22 +2071,22 @@ BOOL TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c)
     double old_x, old_y;
     cairo_get_current_point(hdc->cairo, &old_x, &old_y);
 
-        cairo_move_to(hdc->cairo, x, y);
+    cairo_move_to(hdc->cairo, x, y);
 
-        // If recording path, add text outline to path
-        if (hdc->pathRecording)
-        {
-            cairo_text_path2(hdc->cairo, lpString, c);
-        }
-        else
-        {
-            // Otherwise, show text normally
-            cairo_show_text2(hdc->cairo, lpString, c);
-            DrawTextDecLines(hdc, font_ext, lpString, c, x, y, text_ext);
-        }
+    // If recording path, add text outline to path
+    if (hdc->pathRecording)
+    {
+        cairo_text_path2(hdc->cairo, lpString, c);
+    }
+    else
+    {
+        // Otherwise, show text normally
+        cairo_show_text2(hdc->cairo, lpString, c);
+        DrawTextDecLines(hdc, font_ext, lpString, c, x, y, text_ext);
+    }
 
-        if (hdc->textAlign & TA_NOUPDATECP)
-            cairo_move_to(hdc->cairo, old_x, old_y);
+    if (hdc->textAlign & TA_NOUPDATECP)
+        cairo_move_to(hdc->cairo, old_x, old_y);
     cairo_restore(hdc->cairo);
     return TRUE;
 }
@@ -2544,11 +2553,11 @@ HGDIOBJ GetStockObject(int i)
     case DEFAULT_GUI_FONT:
     {
         static LOGFONTA lf = { 0 };
-        #ifdef _WIN32
+#ifdef _WIN32
         strcpy(lf.lfFaceName, "宋体");
-        #else
+#else
         strcpy(lf.lfFaceName, "simsun");
-        #endif//_WIN32
+#endif //_WIN32
         lf.lfHeight = 20;
         lf.lfWeight = 400;
         static _Handle font(OBJ_FONT, &lf, nullptr);
@@ -2661,7 +2670,8 @@ BOOL RoundRect(HDC hdc, int left, int top, int right, int bottom, int width, int
     return TRUE;
 }
 
-int  SetPolyFillMode(HDC hdc,int mode){
+int SetPolyFillMode(HDC hdc, int mode)
+{
     int ret = hdc->polyFillMode;
     hdc->polyFillMode = mode;
     return ret;
@@ -2693,7 +2703,8 @@ BOOL Polyline(HDC hdc, const POINT *apt, int cpt)
     return TRUE;
 }
 
-BOOL  PolyBezier(HDC hdc, const POINT *apt, DWORD cpt){
+BOOL PolyBezier(HDC hdc, const POINT *apt, DWORD cpt)
+{
     cairo_t *ctx = hdc->cairo;
     if (!ctx || !apt || cpt < 4)
         return FALSE;
@@ -2714,13 +2725,13 @@ BOOL  PolyBezier(HDC hdc, const POINT *apt, DWORD cpt){
     // Draw Bézier curves
     for (DWORD i = 1; i < cpt; i += 3)
     {
-        if (i + 2 >= cpt) break; // Safety check
+        if (i + 2 >= cpt)
+            break; // Safety check
 
         // Each Bézier curve needs 3 points: control1, control2, end
-        cairo_curve_to(ctx,
-                      apt[i].x, apt[i].y,         // First control point
-                      apt[i+1].x, apt[i+1].y,     // Second control point
-                      apt[i+2].x, apt[i+2].y);    // End point
+        cairo_curve_to(ctx, apt[i].x, apt[i].y,     // First control point
+                       apt[i + 1].x, apt[i + 1].y,  // Second control point
+                       apt[i + 2].x, apt[i + 2].y); // End point
     }
 
     // If not recording path, stroke the curves
@@ -2744,7 +2755,8 @@ BOOL  PolyBezier(HDC hdc, const POINT *apt, DWORD cpt){
     return TRUE;
 }
 
-BOOL  PolyBezierTo(HDC hdc, const POINT *apt, DWORD cpt){
+BOOL PolyBezierTo(HDC hdc, const POINT *apt, DWORD cpt)
+{
     cairo_t *ctx = hdc->cairo;
     if (!ctx || !apt || cpt < 3)
         return FALSE;
@@ -2760,14 +2772,14 @@ BOOL  PolyBezierTo(HDC hdc, const POINT *apt, DWORD cpt){
     // Draw Bézier curves starting from current position
     for (DWORD i = 0; i < cpt; i += 3)
     {
-        if (i + 2 >= cpt) break; // Safety check
+        if (i + 2 >= cpt)
+            break; // Safety check
 
         // Each Bézier curve needs 3 points: control1, control2, end
         // The starting point is the current position (for first curve) or end of previous curve
-        cairo_curve_to(ctx,
-                      apt[i].x, apt[i].y,         // First control point
-                      apt[i+1].x, apt[i+1].y,     // Second control point
-                      apt[i+2].x, apt[i+2].y);    // End point (becomes new current position)
+        cairo_curve_to(ctx, apt[i].x, apt[i].y,     // First control point
+                       apt[i + 1].x, apt[i + 1].y,  // Second control point
+                       apt[i + 2].x, apt[i + 2].y); // End point (becomes new current position)
     }
 
     // If not recording path, stroke the curves
@@ -2957,7 +2969,7 @@ BOOL Ellipse(HDC hdc, int left, int top, int right, int bottom)
 
 BOOL Pie(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4)
 {
-    if(!hdc)
+    if (!hdc)
         return FALSE;
     double wid = x2 - x1;
     double hei = y2 - y1;
@@ -2998,7 +3010,7 @@ BOOL Pie(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4
         cairo_translate(ctx, x1, y1);
         ApplyBrush(ctx, hdc->brush, wid, hei);
         ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_fill_preserve(ctx);  // Preserve path for stroke
+        cairo_fill_preserve(ctx); // Preserve path for stroke
         cairo_restore(ctx);
     }
     if (!IsNullPen(hdc->pen))
@@ -3083,7 +3095,7 @@ BOOL Chord(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int 
     cairo_scale(ctx, wid, hei);
     cairo_move_to(ctx, dx4, dy4);
     cairo_arc(ctx, 0, 0, 0.5, arc2, arc1);
-    cairo_line_to(ctx, dx4, dy4);  // Close with straight line
+    cairo_line_to(ctx, dx4, dy4); // Close with straight line
     cairo_close_path(ctx);
     cairo_restore(ctx);
 
@@ -3100,7 +3112,7 @@ BOOL Chord(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int 
         cairo_translate(ctx, x1, y1);
         ApplyBrush(ctx, hdc->brush, wid, hei);
         ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_fill_preserve(ctx);  // Preserve path for stroke
+        cairo_fill_preserve(ctx); // Preserve path for stroke
         cairo_restore(ctx);
     }
     if (!IsNullPen(hdc->pen))
@@ -3359,7 +3371,7 @@ struct _IconObj
     DWORD yHotspot;
     HBITMAP hbmMask;
     HBITMAP hbmColor;
-    WORD    cursorId;
+    WORD cursorId;
 };
 
 void SetCursorID(HICON hIcon, WORD cursorId)
@@ -3374,7 +3386,7 @@ WORD GetCursorID(HICON hIcon)
 
 POINT GetIconHotSpot(HICON hIcon)
 {
-    POINT ret= { (LONG)hIcon->xHotspot, (LONG)hIcon->yHotspot };
+    POINT ret = { (LONG)hIcon->xHotspot, (LONG)hIcon->yHotspot };
     return ret;
 }
 
@@ -3565,7 +3577,7 @@ BOOL Polygon_Priv(HDC hdc, const POINT *apt, int cpt)
             cairo_fill_rule_t mode = hdc->polyFillMode == ALTERNATE ? CAIRO_FILL_RULE_EVEN_ODD : CAIRO_FILL_RULE_WINDING;
             cairo_set_fill_rule(ctx, mode);
             ApplyRop2(hdc->cairo, hdc->rop2);
-            cairo_fill_preserve(ctx);  // Preserve path for stroke
+            cairo_fill_preserve(ctx); // Preserve path for stroke
         }
 
         if (ApplyPen(ctx, hdc->pen))
@@ -3849,11 +3861,11 @@ HDC WINAPI CreateICW(LPCWSTR lpszDriver,   // driver name
 }
 
 #if defined(CAIRO_HAS_QUARTZ_FONT) && CAIRO_HAS_QUARTZ_FONT
-    extern int macos_register_font(const char *path);
+extern int macos_register_font(const char *path);
 #endif
 int AddFontResourceExA(LPCSTR lpszFilename, // font file name
-                      DWORD fl,            // font characteristics
-                      PVOID pdv            // reserved
+                       DWORD fl,            // font characteristics
+                       PVOID pdv            // reserved
 )
 {
     int ret = 0;
@@ -3881,28 +3893,28 @@ int AddFontResourceExA(LPCSTR lpszFilename, // font file name
         FcConfigBuildFonts(config);
         ret = 1;
     } while (false);
-    #if defined(CAIRO_HAS_QUARTZ_FONT) && CAIRO_HAS_QUARTZ_FONT
-        return macos_register_font(lpszFilename);
-    #else
-        return ret;
-    #endif//CAIRO_HAS_QUARTZ_FONT
+#if defined(CAIRO_HAS_QUARTZ_FONT) && CAIRO_HAS_QUARTZ_FONT
+    return macos_register_font(lpszFilename);
+#else
+    return ret;
+#endif // CAIRO_HAS_QUARTZ_FONT
 }
-
 
 int AddFontResourceA(LPCSTR lpszFilename)
 {
     return AddFontResourceExA(lpszFilename, 0, 0);
 }
 
-int AddFontResourceW(LPCWSTR lpszFilename){
+int AddFontResourceW(LPCWSTR lpszFilename)
+{
     std::string str;
     tostring(lpszFilename, -1, str);
     return AddFontResourceExA(str.c_str(), 0, 0);
 }
 
 int AddFontResourceExW(LPCWSTR lpszFilename, // font file name
-                      DWORD fl,            // font characteristics
-                      PVOID pdv            // reserved
+                       DWORD fl,             // font characteristics
+                       PVOID pdv             // reserved
 )
 {
     std::string str;
@@ -4072,7 +4084,7 @@ BOOL StrokeAndFillPath(HDC hdc)
     if (ApplyBrush(hdc->cairo, hdc->brush, width, height))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_fill_preserve(hdc->cairo);  // Preserve path for stroke
+        cairo_fill_preserve(hdc->cairo); // Preserve path for stroke
     }
 
     // Then stroke
@@ -4194,7 +4206,7 @@ int GetPath(HDC hdc, LPPOINT lpPoints, LPBYTE lpTypes, int nSize)
             pointCount++;
             break;
         case CAIRO_PATH_CURVE_TO:
-            pointCount += 3;  // 3 control points
+            pointCount += 3; // 3 control points
             break;
         case CAIRO_PATH_CLOSE_PATH:
             // No additional points
@@ -4241,7 +4253,8 @@ int GetPath(HDC hdc, LPPOINT lpPoints, LPBYTE lpTypes, int nSize)
                 lpPoints[pointIndex].x = (LONG)data[j].point.x;
                 lpPoints[pointIndex].y = (LONG)data[j].point.y;
                 lpTypes[pointIndex] = (j == 3) ? PT_BEZIERTO : PT_BEZIERTO;
-                if (j == 3) lpTypes[pointIndex] |= PT_BEZIERTO;
+                if (j == 3)
+                    lpTypes[pointIndex] |= PT_BEZIERTO;
             }
             break;
         case CAIRO_PATH_CLOSE_PATH:

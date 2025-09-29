@@ -8,11 +8,12 @@ extern "C"
 {
 #endif //__cplusplus
 
-typedef enum _DlgMode{
-    OPEN=0,
-    SAVE,
-    FOLDER,
-}DlgMode;
+    typedef enum _DlgMode
+    {
+        OPEN = 0,
+        SAVE,
+        FOLDER,
+    } DlgMode;
 
 #define OFN_READONLY             0x00000001
 #define OFN_OVERWRITEPROMPT      0x00000002
@@ -240,9 +241,8 @@ typedef LPOPENFILENAMEA LPOPENFILENAME;
 #define PickFolder PickFolderA
 #endif
 
-
-BOOL WINAPI ChooseFontA(LPCHOOSEFONTA p);
-BOOL WINAPI ChooseFontW(LPCHOOSEFONTW p);
+    BOOL WINAPI ChooseFontA(LPCHOOSEFONTA p);
+    BOOL WINAPI ChooseFontW(LPCHOOSEFONTW p);
 
 #ifdef UNICODE
 #define ChooseFont ChooseFontW

@@ -3,7 +3,7 @@
 #include "uimsg.h"
 #ifdef __linux__
 #include "SDragdrop.h"
-#endif//__linux__
+#endif //__linux__
 #include "log.h"
 #define kLogTag "uimsg"
 
@@ -17,7 +17,7 @@ MsgPaint::~MsgPaint()
 void IpcMsg::gen_suid(suid_t *uid)
 {
     static std::atomic<uint32_t> s_uid_index(0);
-    uint32_t *p = (uint32_t*)uid;
+    uint32_t *p = (uint32_t *)uid;
     *p++ = getpid();
     *p++ = s_uid_index++;
 }
@@ -51,60 +51,60 @@ std::string IpcMsg::get_ipc_event_name(const suid_t id)
 }
 
 IpcMsg::IpcMsg(HWND hWnd, const uint32_t data[5])
-        : shareMem(nullptr)
-        , synEvt(INVALID_HANDLE_VALUE)
-        , hasResult(false)
-    {
-        hwnd = hWnd;
-        message = data[0];
-        suid_t id;
-        memcpy(id, data + 1, sizeof(id));
-        std::string strEvt = get_ipc_event_name(id);
-        //SLOG_STMI()<<"handle ipcmsg,event name="<<strEvt.c_str();
-        synEvt = CreateEventA(nullptr, FALSE, FALSE, strEvt.c_str());
+    : shareMem(nullptr)
+    , synEvt(INVALID_HANDLE_VALUE)
+    , hasResult(false)
+{
+    hwnd = hWnd;
+    message = data[0];
+    suid_t id;
+    memcpy(id, data + 1, sizeof(id));
+    std::string strEvt = get_ipc_event_name(id);
+    // SLOG_STMI()<<"handle ipcmsg,event name="<<strEvt.c_str();
+    synEvt = CreateEventA(nullptr, FALSE, FALSE, strEvt.c_str());
 
-        std::string strMem = get_share_mem_name(id);
-        //SLOG_STMI()<<"handle ipcmsg,share memory name="<<strMem.c_str();
-        shareMem = new swinx::SharedMemory;
-        shareMem->init(strMem.c_str(), 0); // open exist share mem.
-        MsgLayout *msgLayout = (MsgLayout *)shareMem->buffer();
-        if (message == WM_COPYDATA)
-        {
-            wParam = msgLayout->wp;
-            cds.dwData = msgLayout->lp;
-            LPBYTE extra = (LPBYTE)(msgLayout + 1);
-            cds.cbData = *(DWORD *)extra;
-            cds.lpData = extra + sizeof(DWORD);
-            lParam = (LPARAM)&cds;
-            //LOG_STMI("msg")<<"recv copydata msg, dwData="<<cds.dwData<<" cbData="<<cds.cbData;
-        }
-        else
-        {
-            wParam = msgLayout->wp;
-            lParam = msgLayout->lp;
-            //LOG_STMI("msg")<<"recv ipc msg="<<message<<" wp="<<wParam<<" lp="<<lParam;
-        }
+    std::string strMem = get_share_mem_name(id);
+    // SLOG_STMI()<<"handle ipcmsg,share memory name="<<strMem.c_str();
+    shareMem = new swinx::SharedMemory;
+    shareMem->init(strMem.c_str(), 0); // open exist share mem.
+    MsgLayout *msgLayout = (MsgLayout *)shareMem->buffer();
+    if (message == WM_COPYDATA)
+    {
+        wParam = msgLayout->wp;
+        cds.dwData = msgLayout->lp;
+        LPBYTE extra = (LPBYTE)(msgLayout + 1);
+        cds.cbData = *(DWORD *)extra;
+        cds.lpData = extra + sizeof(DWORD);
+        lParam = (LPARAM)&cds;
+        // LOG_STMI("msg")<<"recv copydata msg, dwData="<<cds.dwData<<" cbData="<<cds.cbData;
     }
-
-    IpcMsg::~IpcMsg()
+    else
     {
-        //LOG_STMI("msg")<<"ipc msg release";
-        if (!hasResult)
-        {
-            SetEvent(synEvt);
-        }
-        CloseHandle(synEvt);
-        delete shareMem;
+        wParam = msgLayout->wp;
+        lParam = msgLayout->lp;
+        // LOG_STMI("msg")<<"recv ipc msg="<<message<<" wp="<<wParam<<" lp="<<lParam;
     }
+}
 
-    void IpcMsg::SetResult(LRESULT res)
+IpcMsg::~IpcMsg()
+{
+    // LOG_STMI("msg")<<"ipc msg release";
+    if (!hasResult)
     {
-        //LOG_STMI("msg")<<"ipc msg SetResult "<<res;
-        hasResult = true;
-        MsgLayout *msgLayout = (MsgLayout *)shareMem->buffer();
-        msgLayout->ret = res;
         SetEvent(synEvt);
     }
+    CloseHandle(synEvt);
+    delete shareMem;
+}
+
+void IpcMsg::SetResult(LRESULT res)
+{
+    // LOG_STMI("msg")<<"ipc msg SetResult "<<res;
+    hasResult = true;
+    MsgLayout *msgLayout = (MsgLayout *)shareMem->buffer();
+    msgLayout->ret = res;
+    SetEvent(synEvt);
+}
 //-----------------------------------------------------------
 #ifdef __linux__
 DragEnterData::DragEnterData(XDndDataObjectProxy *_pData)
@@ -121,4 +121,4 @@ DragEnterData::~DragEnterData()
         pData = NULL;
     }
 }
-#endif//__linux__
+#endif //__linux__

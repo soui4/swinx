@@ -19,7 +19,7 @@
 #include "debug.h"
 #ifdef __linux__
 #include "SDragdrop.h"
-#endif//__linux__
+#endif //__linux__
 #include "synhandle.h"
 #include "cmnctl32/builtin_classname.h"
 #define kLogTag "wnd"
@@ -93,7 +93,7 @@ static BOOL InitWndDC(HWND hwnd, int cx, int cy)
     assert(hwnd);
     WndObj wndObj = WndMgr::fromHwnd(hwnd);
     assert(wndObj);
-    cairo_surface_t *surface = wndObj->mConnection->CreateWindowSurface(hwnd,wndObj->visualId,cx,cy);
+    cairo_surface_t *surface = wndObj->mConnection->CreateWindowSurface(hwnd, wndObj->visualId, cx, cy);
     wndObj->bmp = InitGdiObj(OBJ_BITMAP, surface);
     wndObj->hdc = new _SDC(hwnd);
     SelectObject(wndObj->hdc, wndObj->bmp);
@@ -247,7 +247,7 @@ BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
     CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, rgn, RGN_OR);
     DeleteObject(rgn);
     wndObj->invalid.bErase = wndObj->invalid.bErase || bErase;
-    wndObj->mConnection->SendExposeEvent(hWnd,lpRect);
+    wndObj->mConnection->SendExposeEvent(hWnd, lpRect);
     return TRUE;
 }
 
@@ -297,11 +297,11 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     pWnd->showSbFlags |= (cs->style & WS_HSCROLL) ? SB_HORZ : 0;
     pWnd->showSbFlags |= (cs->style & WS_VSCROLL) ? SB_VERT : 0;
     pWnd->visualId = conn->GetVisualID(TRUE);
-    #ifdef __linux__
+#ifdef __linux__
     int depth = XCB_COPY_FROM_PARENT;
-    #else
+#else
     int depth = 24;
-    #endif
+#endif
     if ((pWnd->dwExStyle & WS_EX_COMPOSITED) && !(pWnd->dwStyle & WS_CHILD) && conn->IsScreenComposited())
     {
         pWnd->dwStyle &= ~WS_CAPTION;
@@ -320,7 +320,8 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
         return 0;
     }
     WndMgr::insertWindow(hWnd, pWnd);
-    if(strcmp(cs->lpszClass,WC_MENUA ) != 0 && (cs->style & WS_SYSMENU)){
+    if (strcmp(cs->lpszClass, WC_MENUA) != 0 && (cs->style & WS_SYSMENU))
+    {
         pWnd->hSysMenu = CreatePopupMenu();
     }
     SetWindowLongPtrA(hWnd, GWLP_ID, cs->hMenu);
@@ -349,7 +350,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     }
     if (cs->dwExStyle & WS_EX_TOPMOST)
     {
-        SetWindowPos(hWnd,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE);
+        SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
     if (isTransparent)
     {
@@ -384,7 +385,9 @@ HWND WINAPI CreateWindowExW(DWORD exStyle, LPCWSTR className, LPCWSTR windowName
     if (IS_INTRESOURCE(className))
     {
         return CreateWindowExA(exStyle, (LPCSTR)className, strWndName.c_str(), style, x, y, width, height, parent, menu, instance, data);
-    }else{
+    }
+    else
+    {
         tostring(className, -1, strClsName);
         return CreateWindowExA(exStyle, strClsName.c_str(), strWndName.c_str(), style, x, y, width, height, parent, menu, instance, data);
     }
@@ -580,7 +583,8 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
         {
             if (CallMsgFilter(&msg, htCode == HTCAPTION ? MSGF_SIZE : MSGF_MOVE))
                 continue;
-            if(msg.message == WM_CANCELMODE){
+            if (msg.message == WM_CANCELMODE)
+            {
                 bQuit = TRUE;
                 break;
             }
@@ -591,7 +595,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
                 wndObj->mConnection->postMsg(msg.hwnd, msg.message, msg.wParam, msg.lParam);
                 break;
             }
-            else if(msg.message == WM_CANCELMODE)
+            else if (msg.message == WM_CANCELMODE)
             {
                 bQuit = TRUE;
                 break;
@@ -619,7 +623,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
                 { //
                     RECT rcNow = rcWnd;
                     rcNow.top += ptNow.y - ptClick.y;
-                    SLOG_STMI()<<"HandleNcTestCode SetWindowPos,cx="<<rcNow.right - rcNow.left<<" cy="<<rcNow.bottom - rcNow.top;
+                    SLOG_STMI() << "HandleNcTestCode SetWindowPos,cx=" << rcNow.right - rcNow.left << " cy=" << rcNow.bottom - rcNow.top;
                     SetWindowPos(hWnd, 0, rcNow.left, rcNow.top, rcNow.right - rcNow.left, rcNow.bottom - rcNow.top, SWP_NOZORDER);
                 }
                 break;
@@ -704,7 +708,7 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
         GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCEA(wndObj->clsAtom), &wc);
         if (wc.hCursor)
         {
-            wndObj->mConnection->SetCursor(hWnd,wc.hCursor);
+            wndObj->mConnection->SetCursor(hWnd, wc.hCursor);
         }
     }
     else if (htCode > HTCAPTION && htCode < HTBORDER)
@@ -735,8 +739,8 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
             cursorId = IDC_ARROW;
             break;
         }
-        //SLOG_STMI()<<"UpdateWindowCursor, hWnd="<<hWnd<<" cursor="<<(WORD)(ULONG_PTR)cursorId;
-        wndObj->mConnection->SetCursor(hWnd,LoadCursor(wndObj->hInstance, cursorId));
+        // SLOG_STMI()<<"UpdateWindowCursor, hWnd="<<hWnd<<" cursor="<<(WORD)(ULONG_PTR)cursorId;
+        wndObj->mConnection->SetCursor(hWnd, LoadCursor(wndObj->hInstance, cursorId));
     }
 }
 
@@ -850,7 +854,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             wndObj->mConnection->SetWindowOpacity(hWnd, wndObj->byAlpha);
         }
         return 0;
-        #ifdef __linux__
+#ifdef __linux__
     case UM_XDND_DRAG_ENTER:
     {
         SLOG_STMI() << "UM_XDND_DRAG_ENTER!";
@@ -935,7 +939,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         SLOG_STMI() << "UM_XDND_DRAG_DROP, set dragData to null";
         return 0;
     }
-    #endif//__linux__
+#endif //__linux__
     case WM_LBUTTONDOWN:
         if (bSkipMsg = (0 == HandleNcTestCode(hWnd, wndObj->htCode)))
             break;
@@ -960,48 +964,51 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     }
     break;
     case WM_MOUSEMOVE:
-    if(wp==0){
-        POINT pt;
-        wndObj->mConnection->GetCursorPos(&pt);
-        int htCode = CallWindowObjProc(wndObj, proc,hWnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
-        #ifdef __APPLE__
-        DWORD dwStyle = GetWindowLong(hWnd, GWL_STYLE);
-        if((dwStyle & WS_DLGFRAME) && (dwStyle & WS_THICKFRAME)){
-            if(htCode == HTBORDER || htCode==HTLEFT || htCode==HTRIGHT || htCode==HTTOP || htCode==HTBOTTOM || htCode==HTTOPLEFT || htCode==HTTOPRIGHT || htCode==HTBOTTOMLEFT || htCode==HTBOTTOMRIGHT){
-                htCode = HTCLIENT;//disalbe soui defined resize logic.
-            }
-        }
-        #endif
-        if (CallWindowObjProc(wndObj, proc,hWnd, WM_SETCURSOR, hWnd, htCode) == 0)
+        if (wp == 0)
         {
-            UpdateWindowCursor(wndObj, hWnd, htCode);
-        }
-        if (htCode != wndObj->htCode)
-        {
-            int oldHtCode = wndObj->htCode;
-            wndObj->htCode = htCode;
-            if (htCode != HTCLIENT && oldHtCode == HTCLIENT)
+            POINT pt;
+            wndObj->mConnection->GetCursorPos(&pt);
+            int htCode = CallWindowObjProc(wndObj, proc, hWnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
+#ifdef __APPLE__
+            DWORD dwStyle = GetWindowLong(hWnd, GWL_STYLE);
+            if ((dwStyle & WS_DLGFRAME) && (dwStyle & WS_THICKFRAME))
             {
-                CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSEHOVER, htCode, MAKELPARAM(pt.x, pt.y));
+                if (htCode == HTBORDER || htCode == HTLEFT || htCode == HTRIGHT || htCode == HTTOP || htCode == HTBOTTOM || htCode == HTTOPLEFT || htCode == HTTOPRIGHT || htCode == HTBOTTOMLEFT || htCode == HTBOTTOMRIGHT)
+                {
+                    htCode = HTCLIENT; // disalbe soui defined resize logic.
+                }
+            }
+#endif
+            if (CallWindowObjProc(wndObj, proc, hWnd, WM_SETCURSOR, hWnd, htCode) == 0)
+            {
+                UpdateWindowCursor(wndObj, hWnd, htCode);
+            }
+            if (htCode != wndObj->htCode)
+            {
+                int oldHtCode = wndObj->htCode;
+                wndObj->htCode = htCode;
+                if (htCode != HTCLIENT && oldHtCode == HTCLIENT)
+                {
+                    CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSEHOVER, htCode, MAKELPARAM(pt.x, pt.y));
+                    bSkipMsg = TRUE;
+                }
+                if (htCode == HTCLIENT && oldHtCode != HTCLIENT)
+                {
+                    CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSELEAVE, htCode, MAKELPARAM(pt.x, pt.y));
+                    bSkipMsg = TRUE;
+                }
+            }
+            else if (htCode != HTCLIENT)
+            {
+                CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSEMOVE, htCode, MAKELPARAM(pt.x, pt.y));
                 bSkipMsg = TRUE;
             }
-            if (htCode == HTCLIENT && oldHtCode != HTCLIENT)
+            if (!bSkipMsg && (wndObj->dwStyle & WS_DISABLED))
             {
-                CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSELEAVE, htCode, MAKELPARAM(pt.x, pt.y));
                 bSkipMsg = TRUE;
             }
         }
-        else if (htCode != HTCLIENT)
-        {
-            CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSEMOVE, htCode, MAKELPARAM(pt.x, pt.y));
-            bSkipMsg = TRUE;
-        }
-        if (!bSkipMsg && (wndObj->dwStyle & WS_DISABLED))
-        {
-            bSkipMsg = TRUE;
-        }
-    }
-    break;
+        break;
     case WM_MOUSEHOVER:
     {
         if (wndObj->hoverInfo.uHoverState != HS_Leave && (wndObj->hoverInfo.dwFlags & TME_HOVER))
@@ -1035,7 +1042,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSELEAVE, HTNOWHERE, MAKELPARAM(pt.x, pt.y));
         }
         wndObj->htCode = HTNOWHERE;
-        if (wndObj->hoverInfo.uHoverState != HS_Leave)//todo:hjx
+        if (wndObj->hoverInfo.uHoverState != HS_Leave) // todo:hjx
         {
             wndObj->hoverInfo.uHoverState = HS_Leave;
             if (!(wndObj->hoverInfo.dwFlags & TME_LEAVE))
@@ -1106,23 +1113,24 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     }
     case UM_SETTINGS:
     {
-        if(wp == SETTINGS_DPI){
+        if (wp == SETTINGS_DPI)
+        {
             int oldDpi = HIWORD(lp);
             int newDpi = LOWORD(lp);
-            float scale = newDpi*1.0f/oldDpi;
-            RECT rc= wndObj->rc;
-            POINT ptCenter = {(rc.left+rc.right)/2,(rc.top+rc.bottom)/2};
-            int wid = rc.right-rc.left;
-            int hei = rc.bottom -rc.top;
+            float scale = newDpi * 1.0f / oldDpi;
+            RECT rc = wndObj->rc;
+            POINT ptCenter = { (rc.left + rc.right) / 2, (rc.top + rc.bottom) / 2 };
+            int wid = rc.right - rc.left;
+            int hei = rc.bottom - rc.top;
             ptCenter.x *= scale;
             ptCenter.y *= scale;
             wid *= scale;
             hei *= scale;
-            rc.left = rc.right=ptCenter.x;
+            rc.left = rc.right = ptCenter.x;
             rc.top = rc.bottom = ptCenter.y;
-            InflateRect(&rc, wid/2, hei/2);
-            SLOG_STMI()<<"WM_DPICHANGED, hWnd="<<hWnd<<" scale="<<scale<<" rc.left="<<rc.left<<" rc.top="<<rc.top<<" rc.right="<<rc.right<<" rc.bottom="<<rc.bottom;
-            CallWindowProcPriv(proc, hWnd, WM_DPICHANGED, MAKELONG(newDpi, newDpi),(LPARAM)&rc);
+            InflateRect(&rc, wid / 2, hei / 2);
+            SLOG_STMI() << "WM_DPICHANGED, hWnd=" << hWnd << " scale=" << scale << " rc.left=" << rc.left << " rc.top=" << rc.top << " rc.right=" << rc.right << " rc.bottom=" << rc.bottom;
+            CallWindowProcPriv(proc, hWnd, WM_DPICHANGED, MAKELONG(newDpi, newDpi), (LPARAM)&rc);
         }
         return 1;
     }
@@ -1155,7 +1163,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             wndObj->rc.right = wndObj->rc.left + sz.cx;
             wndObj->rc.bottom = wndObj->rc.top + sz.cy;
             cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(wndObj->bmp);
-            surface = wndObj->mConnection->ResizeSurface(surface,hWnd,wndObj->visualId, sz.cx,sz.cy);
+            surface = wndObj->mConnection->ResizeSurface(surface, hWnd, wndObj->visualId, sz.cx, sz.cy);
             SetGdiObjPtr(wndObj->bmp, surface);
             RECT rc = wndObj->rc;
             OffsetRect(&rc, -rc.left, -rc.top);
@@ -1215,8 +1223,8 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             {
                 _DrawCaret(hWnd, wndObj->hdc, wndObj);
             }
-            CallWindowObjProc(wndObj, proc, hWnd, WM_NCPAINT, (LPARAM)wndObj->invalid.hRgn, 0);            // call ncpaint
-            SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0); // clear current region
+            CallWindowObjProc(wndObj, proc, hWnd, WM_NCPAINT, (LPARAM)wndObj->invalid.hRgn, 0); // call ncpaint
+            SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0);                                       // clear current region
         }
     }
     wndObj->mConnection->AfterProcMsg(hWnd, msg, wp, lp, ret);
@@ -1259,7 +1267,6 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     return ret;
 }
 
-
 SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, HANDLE &hEvt)
 {
     if (!connCur->IsWindow(hWnd))
@@ -1267,7 +1274,7 @@ SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM w
     suid_t uuid;
     IpcMsg::gen_suid(&uuid);
     std::string strName = IpcMsg::get_share_mem_name(uuid);
-    //SLOG_STMI()<<"post ipc msg: share mem name="<<strName.c_str();
+    // SLOG_STMI()<<"post ipc msg: share mem name="<<strName.c_str();
     SharedMemory *shareMem = new SharedMemory;
 
     int bufLen = 0;
@@ -1306,7 +1313,7 @@ SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM w
     }
 
     std::string evtName = IpcMsg::get_ipc_event_name(uuid);
-    //SLOG_STMI()<<"post ipc msg: event name="<<evtName.c_str();
+    // SLOG_STMI()<<"post ipc msg: event name="<<evtName.c_str();
 
     hEvt = CreateEventA(nullptr, FALSE, FALSE, evtName.c_str());
 
@@ -1331,7 +1338,8 @@ class CallStackCount {
     }
 };
 
-static int CALLBACK CbEnumPopupWindow(HWND hwnd, LPARAM lParam){
+static int CALLBACK CbEnumPopupWindow(HWND hwnd, LPARAM lParam)
+{
     std::list<HWND> *lstPopups = (std::list<HWND> *)lParam;
     lstPopups->push_back(hwnd);
     return 1;
@@ -1339,14 +1347,16 @@ static int CALLBACK CbEnumPopupWindow(HWND hwnd, LPARAM lParam){
 
 static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, UINT fuFlags, UINT uTimeout, PDWORD_PTR lpdwResult)
 {
-    if(hWnd == HWND_BROADCAST){
-        //send message to all popup window owned by this process.
-        if(uTimeout == INFINITE || uTimeout>500)
-            uTimeout=500;
+    if (hWnd == HWND_BROADCAST)
+    {
+        // send message to all popup window owned by this process.
+        if (uTimeout == INFINITE || uTimeout > 500)
+            uTimeout = 500;
         std::list<HWND> lstPopups;
         EnumWindows(CbEnumPopupWindow, (LPARAM)&lstPopups);
-        for(auto it:lstPopups){
-            _SendMessageTimeout(bWideChar,it,msg,wp,lp,fuFlags,uTimeout,NULL);
+        for (auto it : lstPopups)
+        {
+            _SendMessageTimeout(bWideChar, it, msg, wp, lp, fuFlags, uTimeout, NULL);
         }
         return 0;
     }
@@ -1422,7 +1432,7 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         CloseHandle(hEvt);
         return ret == WAIT_OBJECT_0;
     }
-    if(pWnd->bDestroyed)
+    if (pWnd->bDestroyed)
         return 0;
     SConnection *connWnd = SConnMgr::instance()->getConnection(pWnd->tid);
     if (!connWnd)
@@ -1439,7 +1449,9 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
             msgWrap.wParam = wp;
             msgWrap.lParam = lp;
             *lpdwResult = CallWindowProcPriv(wndProc, hWnd, WM_MSG_W2A, 0, (LPARAM)&msgWrap);
-        }else{
+        }
+        else
+        {
             *lpdwResult = CallWindowProcPriv(wndProc, hWnd, msg, wp, lp);
         }
         return 1;
@@ -1686,8 +1698,10 @@ static void onExStyleChange(HWND hWnd, WndObj &wndObj, DWORD newExStyle)
     if (newExStyle & WS_EX_TOPMOST)
     {
         wndObj->mConnection->SetZOrder(hWnd, wndObj.data(), HWND_TOPMOST);
-    }else{
-        wndObj->mConnection->SetZOrder(hWnd, wndObj.data(), HWND_NOTOPMOST);//todo:hjx
+    }
+    else
+    {
+        wndObj->mConnection->SetZOrder(hWnd, wndObj.data(), HWND_NOTOPMOST); // todo:hjx
     }
 }
 
@@ -1968,9 +1982,10 @@ BOOL SetCaretPos(int X, int Y)
         _InvalidCaret(caretInfo->hOwner, wndObj);
     }
     BOOL ret = pConn->SetCaretPos(X, Y);
-    if(ret){
+    if (ret)
+    {
         WndObj wndObj = WndMgr::fromHwnd(caretInfo->hOwner);
-        if(wndObj && wndObj->bCaretVisible)
+        if (wndObj && wndObj->bCaretVisible)
             _InvalidCaret(caretInfo->hOwner, wndObj);
     }
     return ret;
@@ -2167,7 +2182,7 @@ BOOL UpdateWindow(HWND hWnd)
     GetRgnBox(wndObj->invalid.hRgn, &rcBox);
     if (IsRectEmpty(&rcBox))
         return FALSE;
-    wndObj->mConnection->updateWindow(hWnd,rcBox);
+    wndObj->mConnection->updateWindow(hWnd, rcBox);
     return TRUE;
 }
 
@@ -2207,7 +2222,7 @@ static BOOL _GetWndRect(HWND hWnd, RECT *rc)
     {
         *rc = wndObj->rc;
         return TRUE;
-    }    
+    }
     else
     {
         SConnection *conn = SConnMgr::instance()->getConnection();
@@ -2401,7 +2416,7 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
     RECT rcPart = GetScrollBarPartRect(bVert, sb, iPart, pRcAll);
     RECT rcRail = GetScrollBarPartRect(bVert, sb, SB_RAIL, pRcAll);
     int railLen = bVert ? (rcRail.bottom - rcRail.top) : (rcRail.right - rcRail.left);
-    InvalidateRect(hWnd, &rcPart,TRUE);
+    InvalidateRect(hWnd, &rcPart, TRUE);
     if (iPart != SB_THUMBTRACK)
     {
         SendMessageA(hWnd, bVert ? WM_VSCROLL : WM_HSCROLL, iPart, 0);
@@ -2422,7 +2437,7 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
         if (msg.message == WM_QUIT)
             break;
         PeekMessage(&msg, 0, 0, 0, PM_REMOVE);
-        if(msg.message == WM_CANCELMODE)
+        if (msg.message == WM_CANCELMODE)
             break;
         if (CallMsgFilter(&msg, MSGF_SCROLLBAR))
             continue;
@@ -2460,13 +2475,13 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
                 if (sb->iHitTest != -1)
                 {
                     RECT rc = GetScrollBarPartRect(bVert, sb, sb->iHitTest, pRcAll);
-                    InvalidateRect(hWnd,&rc,TRUE);
+                    InvalidateRect(hWnd, &rc, TRUE);
                 }
                 sb->iHitTest = iHitTest;
                 if (sb->iHitTest != -1)
                 {
                     RECT rc = GetScrollBarPartRect(bVert, sb, sb->iHitTest, pRcAll);
-                    InvalidateRect(hWnd,&rc,TRUE);
+                    InvalidateRect(hWnd, &rc, TRUE);
                 }
             }
             if (iPart == SB_THUMBTRACK)
@@ -2487,7 +2502,7 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
                     nNewTrackPos = sb->nMax - sb->nMin - sb->nPage + 1;
                 }
                 sb->nTrackPos = nNewTrackPos;
-                InvalidateRect(hWnd,&rcRail,TRUE);
+                InvalidateRect(hWnd, &rcRail, TRUE);
                 SendMessageA(hWnd, bVert ? WM_VSCROLL : WM_HSCROLL, MAKEWPARAM(SB_THUMBTRACK, nNewTrackPos), 0);
             }
         }
@@ -2509,7 +2524,7 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
         SendMessageA(hWnd, bVert ? WM_VSCROLL : WM_HSCROLL, MAKEWPARAM(SB_THUMBPOSITION, sb->nTrackPos), 0);
         SendMessageA(hWnd, bVert ? WM_VSCROLL : WM_HSCROLL, MAKEWPARAM(SB_ENDSCROLL, 0), 0);
         sb->nTrackPos = -1;
-        InvalidateRect(hWnd, &rcRail,TRUE);
+        InvalidateRect(hWnd, &rcRail, TRUE);
     }
     sb->iHitTest = -1;
     sb->bDraging = FALSE;
@@ -2647,7 +2662,7 @@ LRESULT OnMsgW2A(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
     MSG *msg = (MSG *)lp;
     LRESULT ret = 0;
     if (IsWindowUnicode(hWnd))
-        return CallWindowProcPriv(wndObj->winproc,hWnd, msg->message, msg->wParam, msg->lParam);
+        return CallWindowProcPriv(wndObj->winproc, hWnd, msg->message, msg->wParam, msg->lParam);
 
     switch (msg->message)
     {
@@ -2673,7 +2688,7 @@ LRESULT OnMsgW2A(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
     {
         std::string str;
         tostring((LPCWSTR)lp, -1, str);
-        ret = CallWindowProcPriv(wndObj->winproc,hWnd,  msg->message, 0, (LPARAM)str.c_str());
+        ret = CallWindowProcPriv(wndObj->winproc, hWnd, msg->message, 0, (LPARAM)str.c_str());
     }
     break;
     default:
@@ -2683,7 +2698,7 @@ LRESULT OnMsgW2A(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
     return ret;
 }
 
-static void UpdateScroll(HWND hWnd, WndObj &wndObj, BOOL bVert,ScrollBar &sb, RECT &rcSb, int htSb)
+static void UpdateScroll(HWND hWnd, WndObj &wndObj, BOOL bVert, ScrollBar &sb, RECT &rcSb, int htSb)
 {
     if (htSb != sb.iHitTest)
     {
@@ -2719,7 +2734,7 @@ static LRESULT OnNcMouseHover(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
         GetScrollBarRect(hWnd, SB_HORZ, &rcSb);
         ScrollBar &sb = wndObj->sbHorz;
         int htSb = ScrollBarHitTest(FALSE, &sb, &rcSb, pt);
-        UpdateScroll(hWnd, wndObj,FALSE, sb, rcSb, htSb);
+        UpdateScroll(hWnd, wndObj, FALSE, sb, rcSb, htSb);
     }
     return 0;
 }
@@ -2731,14 +2746,14 @@ static LRESULT OnNcMouseLeave(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
         RECT rcSb;
         GetScrollBarRect(hWnd, SB_VERT, &rcSb);
         ScrollBar &sb = wndObj->sbVert;
-        UpdateScroll(hWnd, wndObj,TRUE, sb, rcSb, -1);
+        UpdateScroll(hWnd, wndObj, TRUE, sb, rcSb, -1);
     }
     if (wndObj->dwStyle & WS_HSCROLL)
     {
         RECT rcSb;
         GetScrollBarRect(hWnd, SB_HORZ, &rcSb);
         ScrollBar &sb = wndObj->sbHorz;
-        UpdateScroll(hWnd, wndObj,FALSE, sb, rcSb, -1);
+        UpdateScroll(hWnd, wndObj, FALSE, sb, rcSb, -1);
     }
     return 0;
 }
@@ -2892,7 +2907,7 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         case SC_MINIMIZE:
         case SC_MAXIMIZE:
         case SC_RESTORE:
-            wndObj->mConnection->SendSysCommand(hWnd,action);
+            wndObj->mConnection->SendSysCommand(hWnd, action);
             break;
         case SC_CLOSE:
             SendMessage(hWnd, WM_CLOSE, 0, 0);
@@ -3142,7 +3157,7 @@ int ReleaseDC(HWND hWnd, HDC hdc)
         return 1;
     RECT rc;
     GetClipBox(hdc, &rc);
-    wndObj->mConnection->commitCanvas(hWnd,rc);
+    wndObj->mConnection->commitCanvas(hWnd, rc);
     return 1;
 }
 
@@ -3425,13 +3440,13 @@ int SetScrollInfo(HWND hWnd, int fnBar, LPCSCROLLINFO lpsi, BOOL fRedraw)
         {
             RECT rcWnd = wndObj->rc;
             OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top);
-            InvalidateRect(hWnd, &rcWnd,TRUE);
+            InvalidateRect(hWnd, &rcWnd, TRUE);
         }
         else
         {
             RECT rcBar;
             if (GetScrollBarRect(hWnd, fnBar, &rcBar))
-                InvalidateRect(hWnd, &rcBar,TRUE);
+                InvalidateRect(hWnd, &rcBar, TRUE);
         }
     }
     return TRUE;
@@ -3630,7 +3645,7 @@ BOOL WINAPI FlashWindow(HWND hWnd, BOOL bInvert)
 {
     FLASHWINFO info = { sizeof(info), 0 };
     info.hwnd = hWnd;
-    info.dwFlags = FLASHW_ALL|FLASHW_TIMER;
+    info.dwFlags = FLASHW_ALL | FLASHW_TIMER;
     info.dwTimeout = 200;
     info.uCount = 5;
     return FlashWindowEx(&info);
@@ -3682,7 +3697,8 @@ HWND WINAPI FindWindowExW(HWND hParent, HWND hChildAfter, LPCWSTR lpClassName, L
     }
 }
 
-HMENU WINAPI GetSystemMenu(HWND hWnd, BOOL bRevert){
+HMENU WINAPI GetSystemMenu(HWND hWnd, BOOL bRevert)
+{
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (wndObj)
     {
@@ -3697,6 +3713,6 @@ HMENU WINAPI GetSystemMenu(HWND hWnd, BOOL bRevert){
             return 0;
         }
         return hRet;
-    }    
+    }
     return 0;
 }

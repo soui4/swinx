@@ -191,17 +191,14 @@ extern "C"
     pid_t WINAPI GetCurrentProcessId();
 
     pid_t WINAPI GetProcessId(HANDLE Process);
-    
+
     HANDLE WINAPI GetCurrentProcess_Priv(void);
-    #ifndef __APPLE__
-    #define GetCurrentProcess GetCurrentProcess_Priv
-    #endif
+#ifndef __APPLE__
+#define GetCurrentProcess GetCurrentProcess_Priv
+#endif
     void WINAPI GetLocalTime(SYSTEMTIME *pSysTime);
     void WINAPI GetSystemTime(SYSTEMTIME *lpSystemTime);
-    BOOL WINAPI LocalFileTimeToFileTime(
-                  const FILETIME* lpLocalFileTime,
-                 LPFILETIME lpFileTime
-      );
+    BOOL WINAPI LocalFileTimeToFileTime(const FILETIME *lpLocalFileTime, LPFILETIME lpFileTime);
     BOOL WINAPI FileTimeToLocalFileTime(const FILETIME *lpFileTime, LPFILETIME lpLocalFileTime);
 
     time_t _mkgmtime(struct tm *_Tm);
@@ -727,9 +724,9 @@ typedef int(WINAPI *PROC)();
     // only support resume thread that was created with flag CREATE_SUSPENDED
     DWORD WINAPI ResumeThread(HANDLE hThread);
 
-    #ifdef __APPLE__
+#ifdef __APPLE__
     BOOL WINAPI GetAppleBundlePath(char *path, int maxLen);
-    #endif//__APPLE__
+#endif //__APPLE__
 #ifdef __cplusplus
 }
 #endif //__cplusplus

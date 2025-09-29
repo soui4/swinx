@@ -474,7 +474,7 @@ HLOCAL WINAPI LocalReAlloc(HLOCAL hmem, SIZE_T size, UINT flags)
                 size = HeapSize(GetProcessHeap(), 0, hmem);
                 ret = LocalAlloc(flags, size);
                 ptr = LocalLock(ret);
-                memcpy(ptr, (void*)hmem, size);
+                memcpy(ptr, (void *)hmem, size);
                 LocalUnlock(ret);
                 LocalFree(hmem);
             }

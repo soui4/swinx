@@ -351,7 +351,7 @@ extern "C"
 
     BOOL WINAPI IsWindowUnicode(HWND hWnd);
 
-    typedef int (CALLBACK *WNDENUMPROC)(HWND hwnd, LPARAM lParam);
+    typedef int(CALLBACK *WNDENUMPROC)(HWND hwnd, LPARAM lParam);
 
     BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam);
 
@@ -389,7 +389,7 @@ extern "C"
 #endif // UNICODE
 
     HMENU WINAPI GetSystemMenu(HWND hWnd, BOOL bRevert);
-    
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus

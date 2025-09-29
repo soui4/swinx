@@ -3,7 +3,8 @@
 #include <windows.h>
 #include "log.h"
 #define kLogTag "sharememory"
-namespace swinx{
+namespace swinx
+{
 SharedMemory::~SharedMemory()
 {
     if (shmid == -1)
@@ -89,4 +90,4 @@ void SharedMemory::detach()
     m_bDetached = true;
 }
 
-}//end of ns swinx
+} // namespace swinx

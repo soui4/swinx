@@ -134,19 +134,23 @@ static UINT DragQueryFileSize(HDROP hDrop)
     UINT i = 0;
     while (buf)
     {
-        const char * end = strstr(buf, "\r\n");
+        const char *end = strstr(buf, "\r\n");
         if (end)
         {
             i++;
             buf = end + 2;
-        }else{
+        }
+        else
+        {
             end = strstr(buf, "\n");
-            if(end)
+            if (end)
             {
                 i++;
-                buf =end+1;
-            }else{
-                if(buf[0]!=0)
+                buf = end + 1;
+            }
+            else
+            {
+                if (buf[0] != 0)
                     i++;
                 break;
             }
@@ -165,24 +169,24 @@ UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
     UINT i = 0;
     while (i < iFile)
     {
-        const char * end = strstr(buf, "\r\n");
+        const char *end = strstr(buf, "\r\n");
         if (!end)
         {
-            end = strstr(buf,"\n");
-            if(!end)
+            end = strstr(buf, "\n");
+            if (!end)
                 return 0;
         }
         i++;
-        if(end[0]==0x0d)
-            buf = end+2;
+        if (end[0] == 0x0d)
+            buf = end + 2;
         else
-            buf = end+1;
+            buf = end + 1;
     }
     const char *end = strstr(buf, "\r\n");
     if (!end)
     {
-        end = strstr(buf,"\n");
-        if(!end)
+        end = strstr(buf, "\n");
+        if (!end)
             end = buf + strlen(buf);
     }
     if (!lpszFile)
@@ -352,14 +356,12 @@ BOOL WINAPI PathMatchSpecA(LPCSTR pszFile, LPCSTR pszSpec)
     return PathMatchSpecExA(pszFile, pszSpec, 0);
 }
 
-
-char * WINAPI PathFindFileNameA(const char *path)
+char *WINAPI PathFindFileNameA(const char *path)
 {
     const char *last_slash = path;
     while (path && *path)
     {
-        if ((*path == '\\' || *path == '/' || *path == ':') &&
-                path[1] && path[1] != '\\' && path[1] != '/')
+        if ((*path == '\\' || *path == '/' || *path == ':') && path[1] && path[1] != '\\' && path[1] != '/')
             last_slash = path + 1;
         path = CharNextA(path);
     }
@@ -367,14 +369,13 @@ char * WINAPI PathFindFileNameA(const char *path)
     return (char *)last_slash;
 }
 
-wchar_t * WINAPI PathFindFileNameW(const wchar_t *path)
+wchar_t *WINAPI PathFindFileNameW(const wchar_t *path)
 {
     const wchar_t *last_slash = path;
 
     while (path && *path)
     {
-        if ((*path == '\\' || *path == '/' || *path == ':') &&
-                path[1] && path[1] != '\\' && path[1] != '/')
+        if ((*path == '\\' || *path == '/' || *path == ':') && path[1] && path[1] != '\\' && path[1] != '/')
             last_slash = path + 1;
         path++;
     }
@@ -382,11 +383,9 @@ wchar_t * WINAPI PathFindFileNameW(const wchar_t *path)
     return (wchar_t *)last_slash;
 }
 
-
-char * WINAPI PathFindExtensionA(const char *path)
+char *WINAPI PathFindExtensionA(const char *path)
 {
     const char *lastpoint = NULL;
-
 
     if (path)
     {
@@ -403,7 +402,7 @@ char * WINAPI PathFindExtensionA(const char *path)
     return (LPSTR)(lastpoint ? lastpoint : path);
 }
 
-wchar_t * WINAPI PathFindExtensionW(const wchar_t *path)
+wchar_t *WINAPI PathFindExtensionW(const wchar_t *path)
 {
     const wchar_t *lastpoint = NULL;
 
@@ -438,7 +437,6 @@ BOOL WINAPI PathIsRelativeW(const wchar_t *path)
     return !(*path == '/');
 }
 
-
 BOOL WINAPI PathFileExistsA(const char *path)
 {
     if (!path)
@@ -454,7 +452,6 @@ BOOL WINAPI PathFileExistsW(const wchar_t *path)
     DWORD attrs = GetFileAttributesW(path);
     return attrs != INVALID_FILE_ATTRIBUTES;
 }
-
 
 BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
 {
@@ -557,7 +554,6 @@ BOOL WINAPI PathCanonicalizeA(char *buffer, const char *path)
     return ret;
 }
 
-
 void WINAPI PathQuoteSpacesA(char *path)
 {
     if (path && strchr(path, ' '))
@@ -590,7 +586,6 @@ void WINAPI PathQuoteSpacesW(wchar_t *path)
     }
 }
 
-
 #define PATH_CHAR_CLASS_LETTER      0x00000001
 #define PATH_CHAR_CLASS_ASTERIX     0x00000002
 #define PATH_CHAR_CLASS_DOT         0x00000004
@@ -602,75 +597,74 @@ void WINAPI PathQuoteSpacesW(wchar_t *path)
 #define PATH_CHAR_CLASS_OTHER_VALID 0x00000100
 #define PATH_CHAR_CLASS_DOUBLEQUOTE 0x00000200
 
-#define PATH_CHAR_CLASS_INVALID     0x00000000
-#define PATH_CHAR_CLASS_ANY         0xffffffff
+#define PATH_CHAR_CLASS_INVALID 0x00000000
+#define PATH_CHAR_CLASS_ANY     0xffffffff
 
-static const DWORD path_charclass[] =
-{
-    /* 0x00 */  PATH_CHAR_CLASS_INVALID,      /* 0x01 */  PATH_CHAR_CLASS_INVALID,
-    /* 0x02 */  PATH_CHAR_CLASS_INVALID,      /* 0x03 */  PATH_CHAR_CLASS_INVALID,
-    /* 0x04 */  PATH_CHAR_CLASS_INVALID,      /* 0x05 */  PATH_CHAR_CLASS_INVALID,
-    /* 0x06 */  PATH_CHAR_CLASS_INVALID,      /* 0x07 */  PATH_CHAR_CLASS_INVALID,
-    /* 0x08 */  PATH_CHAR_CLASS_INVALID,      /* 0x09 */  PATH_CHAR_CLASS_INVALID,
-    /* 0x0a */  PATH_CHAR_CLASS_INVALID,      /* 0x0b */  PATH_CHAR_CLASS_INVALID,
-    /* 0x0c */  PATH_CHAR_CLASS_INVALID,      /* 0x0d */  PATH_CHAR_CLASS_INVALID,
-    /* 0x0e */  PATH_CHAR_CLASS_INVALID,      /* 0x0f */  PATH_CHAR_CLASS_INVALID,
-    /* 0x10 */  PATH_CHAR_CLASS_INVALID,      /* 0x11 */  PATH_CHAR_CLASS_INVALID,
-    /* 0x12 */  PATH_CHAR_CLASS_INVALID,      /* 0x13 */  PATH_CHAR_CLASS_INVALID,
-    /* 0x14 */  PATH_CHAR_CLASS_INVALID,      /* 0x15 */  PATH_CHAR_CLASS_INVALID,
-    /* 0x16 */  PATH_CHAR_CLASS_INVALID,      /* 0x17 */  PATH_CHAR_CLASS_INVALID,
-    /* 0x18 */  PATH_CHAR_CLASS_INVALID,      /* 0x19 */  PATH_CHAR_CLASS_INVALID,
-    /* 0x1a */  PATH_CHAR_CLASS_INVALID,      /* 0x1b */  PATH_CHAR_CLASS_INVALID,
-    /* 0x1c */  PATH_CHAR_CLASS_INVALID,      /* 0x1d */  PATH_CHAR_CLASS_INVALID,
-    /* 0x1e */  PATH_CHAR_CLASS_INVALID,      /* 0x1f */  PATH_CHAR_CLASS_INVALID,
-    /* ' '  */  PATH_CHAR_CLASS_SPACE,        /* '!'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '"'  */  PATH_CHAR_CLASS_DOUBLEQUOTE,  /* '#'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '$'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '%'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '&'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '\'' */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '('  */  PATH_CHAR_CLASS_OTHER_VALID,  /* ')'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '*'  */  PATH_CHAR_CLASS_ASTERIX,      /* '+'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* ','  */  PATH_CHAR_CLASS_COMMA,        /* '-'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '.'  */  PATH_CHAR_CLASS_DOT,          /* '/'  */  PATH_CHAR_CLASS_INVALID,
-    /* '0'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '1'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '2'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '3'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '4'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '5'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '6'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '7'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '8'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '9'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* ':'  */  PATH_CHAR_CLASS_COLON,        /* ';'  */  PATH_CHAR_CLASS_SEMICOLON,
-    /* '<'  */  PATH_CHAR_CLASS_INVALID,      /* '='  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '>'  */  PATH_CHAR_CLASS_INVALID,      /* '?'  */  PATH_CHAR_CLASS_LETTER,
-    /* '@'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* 'A'  */  PATH_CHAR_CLASS_ANY,
-    /* 'B'  */  PATH_CHAR_CLASS_ANY,          /* 'C'  */  PATH_CHAR_CLASS_ANY,
-    /* 'D'  */  PATH_CHAR_CLASS_ANY,          /* 'E'  */  PATH_CHAR_CLASS_ANY,
-    /* 'F'  */  PATH_CHAR_CLASS_ANY,          /* 'G'  */  PATH_CHAR_CLASS_ANY,
-    /* 'H'  */  PATH_CHAR_CLASS_ANY,          /* 'I'  */  PATH_CHAR_CLASS_ANY,
-    /* 'J'  */  PATH_CHAR_CLASS_ANY,          /* 'K'  */  PATH_CHAR_CLASS_ANY,
-    /* 'L'  */  PATH_CHAR_CLASS_ANY,          /* 'M'  */  PATH_CHAR_CLASS_ANY,
-    /* 'N'  */  PATH_CHAR_CLASS_ANY,          /* 'O'  */  PATH_CHAR_CLASS_ANY,
-    /* 'P'  */  PATH_CHAR_CLASS_ANY,          /* 'Q'  */  PATH_CHAR_CLASS_ANY,
-    /* 'R'  */  PATH_CHAR_CLASS_ANY,          /* 'S'  */  PATH_CHAR_CLASS_ANY,
-    /* 'T'  */  PATH_CHAR_CLASS_ANY,          /* 'U'  */  PATH_CHAR_CLASS_ANY,
-    /* 'V'  */  PATH_CHAR_CLASS_ANY,          /* 'W'  */  PATH_CHAR_CLASS_ANY,
-    /* 'X'  */  PATH_CHAR_CLASS_ANY,          /* 'Y'  */  PATH_CHAR_CLASS_ANY,
-    /* 'Z'  */  PATH_CHAR_CLASS_ANY,          /* '['  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '\\' */  PATH_CHAR_CLASS_BACKSLASH,    /* ']'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '^'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* '_'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '`'  */  PATH_CHAR_CLASS_OTHER_VALID,  /* 'a'  */  PATH_CHAR_CLASS_ANY,
-    /* 'b'  */  PATH_CHAR_CLASS_ANY,          /* 'c'  */  PATH_CHAR_CLASS_ANY,
-    /* 'd'  */  PATH_CHAR_CLASS_ANY,          /* 'e'  */  PATH_CHAR_CLASS_ANY,
-    /* 'f'  */  PATH_CHAR_CLASS_ANY,          /* 'g'  */  PATH_CHAR_CLASS_ANY,
-    /* 'h'  */  PATH_CHAR_CLASS_ANY,          /* 'i'  */  PATH_CHAR_CLASS_ANY,
-    /* 'j'  */  PATH_CHAR_CLASS_ANY,          /* 'k'  */  PATH_CHAR_CLASS_ANY,
-    /* 'l'  */  PATH_CHAR_CLASS_ANY,          /* 'm'  */  PATH_CHAR_CLASS_ANY,
-    /* 'n'  */  PATH_CHAR_CLASS_ANY,          /* 'o'  */  PATH_CHAR_CLASS_ANY,
-    /* 'p'  */  PATH_CHAR_CLASS_ANY,          /* 'q'  */  PATH_CHAR_CLASS_ANY,
-    /* 'r'  */  PATH_CHAR_CLASS_ANY,          /* 's'  */  PATH_CHAR_CLASS_ANY,
-    /* 't'  */  PATH_CHAR_CLASS_ANY,          /* 'u'  */  PATH_CHAR_CLASS_ANY,
-    /* 'v'  */  PATH_CHAR_CLASS_ANY,          /* 'w'  */  PATH_CHAR_CLASS_ANY,
-    /* 'x'  */  PATH_CHAR_CLASS_ANY,          /* 'y'  */  PATH_CHAR_CLASS_ANY,
-    /* 'z'  */  PATH_CHAR_CLASS_ANY,          /* '{'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '|'  */  PATH_CHAR_CLASS_INVALID,      /* '}'  */  PATH_CHAR_CLASS_OTHER_VALID,
-    /* '~'  */  PATH_CHAR_CLASS_OTHER_VALID
+static const DWORD path_charclass[] = {
+    /* 0x00 */ PATH_CHAR_CLASS_INVALID,     /* 0x01 */ PATH_CHAR_CLASS_INVALID,
+    /* 0x02 */ PATH_CHAR_CLASS_INVALID,     /* 0x03 */ PATH_CHAR_CLASS_INVALID,
+    /* 0x04 */ PATH_CHAR_CLASS_INVALID,     /* 0x05 */ PATH_CHAR_CLASS_INVALID,
+    /* 0x06 */ PATH_CHAR_CLASS_INVALID,     /* 0x07 */ PATH_CHAR_CLASS_INVALID,
+    /* 0x08 */ PATH_CHAR_CLASS_INVALID,     /* 0x09 */ PATH_CHAR_CLASS_INVALID,
+    /* 0x0a */ PATH_CHAR_CLASS_INVALID,     /* 0x0b */ PATH_CHAR_CLASS_INVALID,
+    /* 0x0c */ PATH_CHAR_CLASS_INVALID,     /* 0x0d */ PATH_CHAR_CLASS_INVALID,
+    /* 0x0e */ PATH_CHAR_CLASS_INVALID,     /* 0x0f */ PATH_CHAR_CLASS_INVALID,
+    /* 0x10 */ PATH_CHAR_CLASS_INVALID,     /* 0x11 */ PATH_CHAR_CLASS_INVALID,
+    /* 0x12 */ PATH_CHAR_CLASS_INVALID,     /* 0x13 */ PATH_CHAR_CLASS_INVALID,
+    /* 0x14 */ PATH_CHAR_CLASS_INVALID,     /* 0x15 */ PATH_CHAR_CLASS_INVALID,
+    /* 0x16 */ PATH_CHAR_CLASS_INVALID,     /* 0x17 */ PATH_CHAR_CLASS_INVALID,
+    /* 0x18 */ PATH_CHAR_CLASS_INVALID,     /* 0x19 */ PATH_CHAR_CLASS_INVALID,
+    /* 0x1a */ PATH_CHAR_CLASS_INVALID,     /* 0x1b */ PATH_CHAR_CLASS_INVALID,
+    /* 0x1c */ PATH_CHAR_CLASS_INVALID,     /* 0x1d */ PATH_CHAR_CLASS_INVALID,
+    /* 0x1e */ PATH_CHAR_CLASS_INVALID,     /* 0x1f */ PATH_CHAR_CLASS_INVALID,
+    /* ' '  */ PATH_CHAR_CLASS_SPACE,       /* '!'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '"'  */ PATH_CHAR_CLASS_DOUBLEQUOTE, /* '#'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '$'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '%'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '&'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '\'' */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '('  */ PATH_CHAR_CLASS_OTHER_VALID, /* ')'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '*'  */ PATH_CHAR_CLASS_ASTERIX,     /* '+'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* ','  */ PATH_CHAR_CLASS_COMMA,       /* '-'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '.'  */ PATH_CHAR_CLASS_DOT,         /* '/'  */ PATH_CHAR_CLASS_INVALID,
+    /* '0'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '1'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '2'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '3'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '4'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '5'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '6'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '7'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '8'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '9'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* ':'  */ PATH_CHAR_CLASS_COLON,       /* ';'  */ PATH_CHAR_CLASS_SEMICOLON,
+    /* '<'  */ PATH_CHAR_CLASS_INVALID,     /* '='  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '>'  */ PATH_CHAR_CLASS_INVALID,     /* '?'  */ PATH_CHAR_CLASS_LETTER,
+    /* '@'  */ PATH_CHAR_CLASS_OTHER_VALID, /* 'A'  */ PATH_CHAR_CLASS_ANY,
+    /* 'B'  */ PATH_CHAR_CLASS_ANY,         /* 'C'  */ PATH_CHAR_CLASS_ANY,
+    /* 'D'  */ PATH_CHAR_CLASS_ANY,         /* 'E'  */ PATH_CHAR_CLASS_ANY,
+    /* 'F'  */ PATH_CHAR_CLASS_ANY,         /* 'G'  */ PATH_CHAR_CLASS_ANY,
+    /* 'H'  */ PATH_CHAR_CLASS_ANY,         /* 'I'  */ PATH_CHAR_CLASS_ANY,
+    /* 'J'  */ PATH_CHAR_CLASS_ANY,         /* 'K'  */ PATH_CHAR_CLASS_ANY,
+    /* 'L'  */ PATH_CHAR_CLASS_ANY,         /* 'M'  */ PATH_CHAR_CLASS_ANY,
+    /* 'N'  */ PATH_CHAR_CLASS_ANY,         /* 'O'  */ PATH_CHAR_CLASS_ANY,
+    /* 'P'  */ PATH_CHAR_CLASS_ANY,         /* 'Q'  */ PATH_CHAR_CLASS_ANY,
+    /* 'R'  */ PATH_CHAR_CLASS_ANY,         /* 'S'  */ PATH_CHAR_CLASS_ANY,
+    /* 'T'  */ PATH_CHAR_CLASS_ANY,         /* 'U'  */ PATH_CHAR_CLASS_ANY,
+    /* 'V'  */ PATH_CHAR_CLASS_ANY,         /* 'W'  */ PATH_CHAR_CLASS_ANY,
+    /* 'X'  */ PATH_CHAR_CLASS_ANY,         /* 'Y'  */ PATH_CHAR_CLASS_ANY,
+    /* 'Z'  */ PATH_CHAR_CLASS_ANY,         /* '['  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '\\' */ PATH_CHAR_CLASS_BACKSLASH,   /* ']'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '^'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '_'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '`'  */ PATH_CHAR_CLASS_OTHER_VALID, /* 'a'  */ PATH_CHAR_CLASS_ANY,
+    /* 'b'  */ PATH_CHAR_CLASS_ANY,         /* 'c'  */ PATH_CHAR_CLASS_ANY,
+    /* 'd'  */ PATH_CHAR_CLASS_ANY,         /* 'e'  */ PATH_CHAR_CLASS_ANY,
+    /* 'f'  */ PATH_CHAR_CLASS_ANY,         /* 'g'  */ PATH_CHAR_CLASS_ANY,
+    /* 'h'  */ PATH_CHAR_CLASS_ANY,         /* 'i'  */ PATH_CHAR_CLASS_ANY,
+    /* 'j'  */ PATH_CHAR_CLASS_ANY,         /* 'k'  */ PATH_CHAR_CLASS_ANY,
+    /* 'l'  */ PATH_CHAR_CLASS_ANY,         /* 'm'  */ PATH_CHAR_CLASS_ANY,
+    /* 'n'  */ PATH_CHAR_CLASS_ANY,         /* 'o'  */ PATH_CHAR_CLASS_ANY,
+    /* 'p'  */ PATH_CHAR_CLASS_ANY,         /* 'q'  */ PATH_CHAR_CLASS_ANY,
+    /* 'r'  */ PATH_CHAR_CLASS_ANY,         /* 's'  */ PATH_CHAR_CLASS_ANY,
+    /* 't'  */ PATH_CHAR_CLASS_ANY,         /* 'u'  */ PATH_CHAR_CLASS_ANY,
+    /* 'v'  */ PATH_CHAR_CLASS_ANY,         /* 'w'  */ PATH_CHAR_CLASS_ANY,
+    /* 'x'  */ PATH_CHAR_CLASS_ANY,         /* 'y'  */ PATH_CHAR_CLASS_ANY,
+    /* 'z'  */ PATH_CHAR_CLASS_ANY,         /* '{'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '|'  */ PATH_CHAR_CLASS_INVALID,     /* '}'  */ PATH_CHAR_CLASS_OTHER_VALID,
+    /* '~'  */ PATH_CHAR_CLASS_OTHER_VALID
 };
 
 BOOL WINAPI PathIsValidCharA(char c, DWORD _class)
@@ -689,7 +683,6 @@ BOOL WINAPI PathIsValidCharW(wchar_t c, DWORD _class)
     return _class & path_charclass[c];
 }
 
-
 int WINAPI PathCommonPrefixA(const char *file1, const char *file2, char *path)
 {
     const char *iter1 = file1;
@@ -701,7 +694,6 @@ int WINAPI PathCommonPrefixA(const char *file1, const char *file2, char *path)
 
     if (!file1 || !file2)
         return 0;
-
 
     for (;;)
     {
@@ -769,56 +761,55 @@ BOOL WINAPI PathIsPrefixW(const wchar_t *prefix, const wchar_t *path)
     return prefix && path && PathCommonPrefixW(path, prefix, NULL) == (int)lstrlenW(prefix);
 }
 
-DWORD WINAPI GetFullPathNameW(
-    LPCWSTR lpFileName,
-    DWORD nBufferLength,
-    LPWSTR lpBuffer,
-    LPWSTR* lpFilePart
-  ){
-    if(PathIsRelativeW(lpFileName)){
-        GetCurrentDirectoryW(nBufferLength,lpBuffer);
-        if(wcslen(lpBuffer)+wcslen(lpFileName)>nBufferLength-2)
+DWORD WINAPI GetFullPathNameW(LPCWSTR lpFileName, DWORD nBufferLength, LPWSTR lpBuffer, LPWSTR *lpFilePart)
+{
+    if (PathIsRelativeW(lpFileName))
+    {
+        GetCurrentDirectoryW(nBufferLength, lpBuffer);
+        if (wcslen(lpBuffer) + wcslen(lpFileName) > nBufferLength - 2)
             return 0;
-        wcscat(lpBuffer,lpFileName);
-    }else{
-        if(wcslen(lpFileName)>nBufferLength)
-            return 0;
-        wcscpy(lpBuffer,lpFileName);
+        wcscat(lpBuffer, lpFileName);
     }
-    wchar_t *tmp=wcsdup(lpBuffer);
-    PathCanonicalizeW(lpBuffer,tmp);
+    else
+    {
+        if (wcslen(lpFileName) > nBufferLength)
+            return 0;
+        wcscpy(lpBuffer, lpFileName);
+    }
+    wchar_t *tmp = wcsdup(lpBuffer);
+    PathCanonicalizeW(lpBuffer, tmp);
     free(tmp);
-    if(lpFilePart){
+    if (lpFilePart)
+    {
         *lpFilePart = PathFindFileNameW(lpBuffer);
     }
     return wcslen(lpBuffer);
-  }
+}
 
-
-  DWORD WINAPI GetFullPathNameA(
-    LPCSTR lpFileName,
-    DWORD nBufferLength,
-    LPSTR lpBuffer,
-    LPSTR* lpFilePart
-  ){
-    if(PathIsRelativeA(lpFileName)){
-        GetCurrentDirectoryA(nBufferLength,lpBuffer);
-        if(strlen(lpBuffer)+strlen(lpFileName)>nBufferLength-2)
+DWORD WINAPI GetFullPathNameA(LPCSTR lpFileName, DWORD nBufferLength, LPSTR lpBuffer, LPSTR *lpFilePart)
+{
+    if (PathIsRelativeA(lpFileName))
+    {
+        GetCurrentDirectoryA(nBufferLength, lpBuffer);
+        if (strlen(lpBuffer) + strlen(lpFileName) > nBufferLength - 2)
             return 0;
-        strcat(lpBuffer,lpFileName);
-    }else{
-        if(strlen(lpFileName)>nBufferLength)
-            return 0;
-        strcpy(lpBuffer,lpFileName);
+        strcat(lpBuffer, lpFileName);
     }
-    char *tmp=strdup(lpBuffer);
-    PathCanonicalizeA(lpBuffer,tmp);
+    else
+    {
+        if (strlen(lpFileName) > nBufferLength)
+            return 0;
+        strcpy(lpBuffer, lpFileName);
+    }
+    char *tmp = strdup(lpBuffer);
+    PathCanonicalizeA(lpBuffer, tmp);
     free(tmp);
-    if(lpFilePart){
+    if (lpFilePart)
+    {
         *lpFilePart = PathFindFileNameA(lpBuffer);
     }
     return strlen(lpBuffer);
-  }
+}
 
 static int is_executable(const char *filename)
 {
@@ -848,8 +839,10 @@ static int is_executable(const char *filename)
 }
 
 // 更准确判断字符串是否为网址（支持常见域名后缀和IP）
-static bool is_probably_url(const char* str) {
-    if (!str) return false;
+static bool is_probably_url(const char *str)
+{
+    if (!str)
+        return false;
     // 1. 以http/https/ftp/mailto等协议开头
     if (strncmp(str, "http://", 7) == 0 || strncmp(str, "https://", 8) == 0 || strncmp(str, "ftp://", 6) == 0 || strncmp(str, "mailto:", 7) == 0)
         return true;
@@ -857,10 +850,17 @@ static bool is_probably_url(const char* str) {
     if (strncasecmp(str, "www.", 4) == 0)
         return true;
     // 3. 检查是否为常见域名后缀
-    const char* dot = strrchr(str, '.');
-    if (dot && dot != str) {
-        static const char* tlds[] = {".com",".net",".org",".cn",".gov",".edu",".io",".co",".dev",".xyz",".info",".me",".cc",".tv",".ai",".app",".shop",".site",".top",".club",".online",".store",".tech",".pro",".link",".live",".news",".fun",".work",".cloud",".wiki",".mobi",".name",".today",".space",".website",".page",".life",".run",".group",".vip",".ltd",".red",".blue",".green",".pink",".black",".gold",".plus",".team",".center",".company",".email",".market",".press",".solutions",".world",".zone",".asia",".biz",".cat",".jobs",".law",".moda",".museum",".tel",".travel",".us",".uk",".de",".fr",".jp",".kr",".hk",".tw",".sg",".my",".au",".ca",".es",".it",".ru",".ch",".se",".no",".fi",".pl",".tr",".be",".at",".cz",".sk",".hu",".ro",".bg",".lt",".lv",".ee",".gr",".pt",".ie",".il",".za",".mx",".ar",".br",".cl",".co",".pe",".ve",".uy",".ec",".bo",".py",".do",".cr",".pa",".gt",".hn",".ni",".sv",".cu",".pr",".jm",".tt",".bs",".ag",".bb",".dm",".gd",".kn",".lc",".vc",".sr",".gy",".bz",".ai",".bm",".ky",".ms",".tc",".vg",".vi",".fk",".gs",".aq",".bv",".hm",".tf",".wf",".yt",".pm",".re",".tf",".mq",".gp",".bl",".mf",".sx",".cw",".bq",".aw",".an",".nl",".dk",".is",".fo",".gl",".sj",".ax",".by",".ua",".md",".ge",".am",".az",".kg",".kz",".tj",".tm",".uz",".af",".pk",".bd",".lk",".np",".mv",".bt",".ir",".iq",".sy",".jo",".lb",".ps",".kw",".qa",".bh",".om",".ye",".sa",".ae",".dz",".eg",".ly",".ma",".sd",".tn",".eh",".ss",".cm",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw",".ng",".gh",".ci",".sn",".ml",".bf",".ne",".tg",".bj",".sl",".lr",".gm",".gn",".gw",".mr",".sd",".ss",".cf",".td",".gq",".ga",".cg",".cd",".ao",".gw",".cv",".st",".sc",".mg",".yt",".mu",".km",".tz",".ke",".ug",".rw",".bi",".dj",".er",".et",".so",".zm",".mw",".mz",".zw",".na",".bw",".sz",".ls",".sz",".zm",".zw"};
-        for (size_t i = 0; i < sizeof(tlds)/sizeof(tlds[0]); ++i) {
+    const char *dot = strrchr(str, '.');
+    if (dot && dot != str)
+    {
+        static const char *tlds[] = { ".com", ".net", ".org", ".cn", ".gov", ".edu", ".io", ".co", ".dev", ".xyz", ".info", ".me", ".cc", ".tv", ".ai", ".app", ".shop", ".site", ".top", ".club", ".online", ".store", ".tech", ".pro", ".link", ".live", ".news", ".fun", ".work", ".cloud", ".wiki", ".mobi", ".name", ".today", ".space", ".website", ".page", ".life", ".run", ".group", ".vip", ".ltd", ".red", ".blue", ".green", ".pink", ".black", ".gold", ".plus", ".team", ".center", ".company", ".email", ".market", ".press", ".solutions", ".world", ".zone", ".asia", ".biz", ".cat", ".jobs", ".law", ".moda", ".museum", ".tel", ".travel", ".us", ".uk", ".de", ".fr", ".jp", ".kr", ".hk", ".tw", ".sg", ".my", ".au", ".ca", ".es", ".it", ".ru", ".ch", ".se", ".no", ".fi", ".pl", ".tr", ".be", ".at", ".cz", ".sk", ".hu", ".ro", ".bg", ".lt", ".lv", ".ee", ".gr", ".pt", ".ie", ".il",
+                                      ".za",  ".mx",  ".ar",  ".br", ".cl",  ".co",  ".pe", ".ve", ".uy",  ".ec",  ".bo",   ".py", ".do", ".cr", ".pa", ".gt",  ".hn",   ".ni",   ".sv",  ".cu",   ".pr",     ".jm",    ".tt",   ".bs",  ".ag",   ".bb",   ".dm",   ".gd",  ".kn",   ".lc",    ".vc",   ".sr",   ".gy",   ".bz",    ".ai",    ".bm",      ".ky",   ".ms",   ".tc",  ".vg",    ".vi",  ".fk",  ".gs",  ".aq",   ".bv",    ".hm",   ".tf",    ".wf",   ".yt",   ".pm",   ".re",     ".tf",      ".mq",    ".gp",     ".bl",    ".mf",        ".sx",    ".cw",   ".bq",   ".aw",  ".an",  ".nl",   ".dk",  ".is",   ".fo",     ".gl",  ".sj",     ".ax", ".by", ".ua", ".md", ".ge", ".am", ".az", ".kg", ".kz", ".tj", ".tm", ".uz", ".af", ".pk", ".bd", ".lk", ".np", ".mv", ".bt", ".ir", ".iq", ".sy", ".jo", ".lb", ".ps", ".kw", ".qa", ".bh", ".om", ".ye", ".sa", ".ae", ".dz", ".eg", ".ly",
+                                      ".ma",  ".sd",  ".tn",  ".eh", ".ss",  ".cm",  ".cf", ".td", ".gq",  ".ga",  ".cg",   ".cd", ".ao", ".gw", ".cv", ".st",  ".sc",   ".mg",   ".yt",  ".mu",   ".km",     ".tz",    ".ke",   ".ug",  ".rw",   ".bi",   ".dj",   ".er",  ".et",   ".so",    ".zm",   ".mw",   ".mz",   ".zw",    ".na",    ".bw",      ".sz",   ".ls",   ".sz",  ".zm",    ".zw",  ".ng",  ".gh",  ".ci",   ".sn",    ".ml",   ".bf",    ".ne",   ".tg",   ".bj",   ".sl",     ".lr",      ".gm",    ".gn",     ".gw",    ".mr",        ".sd",    ".ss",   ".cf",   ".td",  ".gq",  ".ga",   ".cg",  ".cd",   ".ao",     ".gw",  ".cv",     ".st", ".sc", ".mg", ".yt", ".mu", ".km", ".tz", ".ke", ".ug", ".rw", ".bi", ".dj", ".er", ".et", ".so", ".zm", ".mw", ".mz", ".zw", ".na", ".bw", ".sz", ".ls", ".sz", ".zm", ".zw", ".ng", ".gh", ".ci", ".sn", ".ml", ".bf", ".ne", ".tg", ".bj",
+                                      ".sl",  ".lr",  ".gm",  ".gn", ".gw",  ".mr",  ".sd", ".ss", ".cf",  ".td",  ".gq",   ".ga", ".cg", ".cd", ".ao", ".gw",  ".cv",   ".st",   ".sc",  ".mg",   ".yt",     ".mu",    ".km",   ".tz",  ".ke",   ".ug",   ".rw",   ".bi",  ".dj",   ".er",    ".et",   ".so",   ".zm",   ".mw",    ".mz",    ".zw",      ".na",   ".bw",   ".sz",  ".ls",    ".sz",  ".zm",  ".zw",  ".ng",   ".gh",    ".ci",   ".sn",    ".ml",   ".bf",   ".ne",   ".tg",     ".bj",      ".sl",    ".lr",     ".gm",    ".gn",        ".gw",    ".mr",   ".sd",   ".ss",  ".cf",  ".td",   ".gq",  ".ga",   ".cg",     ".cd",  ".ao",     ".gw", ".cv", ".st", ".sc", ".mg", ".yt", ".mu", ".km", ".tz", ".ke", ".ug", ".rw", ".bi", ".dj", ".er", ".et", ".so", ".zm", ".mw", ".mz", ".zw", ".na", ".bw", ".sz", ".ls", ".sz", ".zm", ".zw", ".ng", ".gh", ".ci", ".sn", ".ml", ".bf", ".ne",
+                                      ".tg",  ".bj",  ".sl",  ".lr", ".gm",  ".gn",  ".gw", ".mr", ".sd",  ".ss",  ".cf",   ".td", ".gq", ".ga", ".cg", ".cd",  ".ao",   ".gw",   ".cv",  ".st",   ".sc",     ".mg",    ".yt",   ".mu",  ".km",   ".tz",   ".ke",   ".ug",  ".rw",   ".bi",    ".dj",   ".er",   ".et",   ".so",    ".zm",    ".mw",      ".mz",   ".zw",   ".na",  ".bw",    ".sz",  ".ls",  ".sz",  ".zm",   ".zw",    ".ng",   ".gh",    ".ci",   ".sn",   ".ml",   ".bf",     ".ne",      ".tg",    ".bj",     ".sl",    ".lr",        ".gm",    ".gn",   ".gw",   ".mr",  ".sd",  ".ss",   ".cf",  ".td",   ".gq",     ".ga",  ".cg",     ".cd", ".ao", ".gw", ".cv", ".st", ".sc", ".mg", ".yt", ".mu", ".km", ".tz", ".ke", ".ug", ".rw", ".bi", ".dj", ".er", ".et", ".so", ".zm", ".mw", ".mz", ".zw", ".na", ".bw", ".sz", ".ls", ".sz", ".zm", ".zw", ".ng", ".gh", ".ci", ".sn", ".ml",
+                                      ".bf",  ".ne",  ".tg",  ".bj", ".sl",  ".lr",  ".gm", ".gn", ".gw",  ".mr",  ".sd",   ".ss", ".cf", ".td", ".gq", ".ga",  ".cg",   ".cd",   ".ao",  ".gw",   ".cv",     ".st",    ".sc",   ".mg",  ".yt",   ".mu",   ".km",   ".tz",  ".ke",   ".ug",    ".rw",   ".bi",   ".dj",   ".er",    ".et",    ".so",      ".zm",   ".mw",   ".mz",  ".zw",    ".na",  ".bw",  ".sz",  ".ls",   ".sz",    ".zm",   ".zw",    ".ng",   ".gh",   ".ci",   ".sn",     ".ml",      ".bf",    ".ne",     ".tg",    ".bj",        ".sl",    ".lr",   ".gm",   ".gn",  ".gw",  ".mr",   ".sd",  ".ss",   ".cf",     ".td",  ".gq",     ".ga", ".cg", ".cd", ".ao", ".gw", ".cv", ".st", ".sc", ".mg", ".yt", ".mu", ".km", ".tz", ".ke", ".ug", ".rw", ".bi", ".dj", ".er", ".et", ".so", ".zm", ".mw", ".mz", ".zw", ".na", ".bw", ".sz", ".ls", ".sz", ".zm", ".zw" };
+        for (size_t i = 0; i < sizeof(tlds) / sizeof(tlds[0]); ++i)
+        {
             size_t tldlen = strlen(tlds[i]);
             if (strlen(dot) >= tldlen && strncasecmp(dot, tlds[i], tldlen) == 0)
                 return true;
@@ -868,7 +868,8 @@ static bool is_probably_url(const char* str) {
     }
     // 4. 检查是否为IPv4地址
     int d1, d2, d3, d4;
-    if (sscanf(str, "%d.%d.%d.%d", &d1, &d2, &d3, &d4) == 4) {
+    if (sscanf(str, "%d.%d.%d.%d", &d1, &d2, &d3, &d4) == 4)
+    {
         if (d1 >= 0 && d1 <= 255 && d2 >= 0 && d2 <= 255 && d3 >= 0 && d3 <= 255 && d4 >= 0 && d4 <= 255)
             return true;
     }
@@ -884,30 +885,32 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
         // 检查是否为网址（含.且无本地文件）
         const char *url = lpFile;
         std::string urlBuf;
-        if (is_probably_url(lpFile)) {
-            if (strncmp(lpFile, "http://", 7) != 0 && strncmp(lpFile, "https://", 8) != 0) {
+        if (is_probably_url(lpFile))
+        {
+            if (strncmp(lpFile, "http://", 7) != 0 && strncmp(lpFile, "https://", 8) != 0)
+            {
                 urlBuf = "https://";
                 urlBuf += lpFile;
                 url = urlBuf.c_str();
             }
         }
-        #ifdef __linux__
+#ifdef __linux__
         int len = strlen(url);
         char *cmd = new char[len + 12];
         sprintf(cmd, "xdg-open '%s'", url);
         int ret = system(cmd);
         delete[] cmd;
         return ret == 0;
-        #elif defined(__APPLE__)
+#elif defined(__APPLE__)
         int len = strlen(url);
         char *cmd = new char[len + 10];
         sprintf(cmd, "open '%s'", url);
         int ret = system(cmd);
         delete[] cmd;
         return (ret == 0);
-        #else
+#else
         return FALSE;
-        #endif
+#endif
     }
     else
     {

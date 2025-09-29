@@ -5,7 +5,7 @@
 #define kLogTag "commondlg"
 
 extern BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode);
-extern BOOL SChooseColor(HWND parent,const COLORREF initClr[16],COLORREF *out);
+extern BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out);
 static BOOL _GetOpenFileNameW(LPOPENFILENAMEW p, DlgMode mode)
 {
     std::string strFilter, strCustomFilter, strFile, strFileTitle, strInitDir, strTitle, strDefExt;
@@ -88,12 +88,12 @@ BOOL GetSaveFileNameW(LPOPENFILENAMEW p)
 
 BOOL ChooseColorA(LPCHOOSECOLORA p)
 {
-    return SChooseColor(p->hwndOwner,p->lpCustColors, &p->rgbResult);
+    return SChooseColor(p->hwndOwner, p->lpCustColors, &p->rgbResult);
 }
 
 BOOL ChooseColorW(LPCHOOSECOLORW p)
 {
-    return SChooseColor(p->hwndOwner,p->lpCustColors, &p->rgbResult);
+    return SChooseColor(p->hwndOwner, p->lpCustColors, &p->rgbResult);
 }
 
 BOOL WINAPI PickFolderA(_In_ LPBROWSEINFOA lpbi)

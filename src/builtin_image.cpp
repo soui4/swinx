@@ -102,10 +102,12 @@ BOOL BuiltinImage::drawBiIdx(HDC hdc, int imgId, int idx, const RECT *rcDst, BYT
     int hei = bm.bmHeight;
     RECT rcSrc = { 0, 0, wid, hei };
     OffsetRect(&rcSrc, idx * wid, 0);
-    if(rcDst->right - rcDst->left < wid || rcDst->bottom - rcDst->top < hei)
+    if (rcDst->right - rcDst->left < wid || rcDst->bottom - rcDst->top < hei)
     {
         DrawBitmapEx(hdc, rcDst, biInfo->hBmp, &rcSrc, EXPEND_MODE_STRETCH, byAlpha);
-    }else{
+    }
+    else
+    {
         DrawBitmap9Patch(hdc, rcDst, biInfo->hBmp, &rcSrc, &biInfo->margin, biInfo->expendMode, byAlpha);
     }
     return TRUE;

@@ -140,20 +140,22 @@ static void TimeSpec2FileTime(const struct timespec &ts, LPFILETIME fts)
     memcpy(fts, &nsec, sizeof(uint64_t));
 }
 
-BOOL WINAPI SetFileTime(HANDLE hFile, const LPFILETIME lpCreationTime,const LPFILETIME lpLastAccessTime,const LPFILETIME lpLastWriteTime)
+BOOL WINAPI SetFileTime(HANDLE hFile, const LPFILETIME lpCreationTime, const LPFILETIME lpLastAccessTime, const LPFILETIME lpLastWriteTime)
 {
     _FileData *fd = GetFD(hFile);
     if (!fd)
         return FALSE;
-    struct timespec ts[2]; 
-    if(lpLastAccessTime){
+    struct timespec ts[2];
+    if (lpLastAccessTime)
+    {
         FileTime2TimeSpec(lpLastAccessTime, ts[0]);
     }
-    if(lpLastWriteTime){
+    if (lpLastWriteTime)
+    {
         FileTime2TimeSpec(lpLastWriteTime, ts[1]);
     }
-    
-    return 0== utimensat(fd->fd, "", ts, 0);
+
+    return 0 == utimensat(fd->fd, "", ts, 0);
 }
 
 BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLastAccessTime, LPFILETIME lpLastWriteTime)
@@ -167,15 +169,15 @@ BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLa
         struct stat st;
         if (0 != fstat(fd->fd, &st))
             return FALSE;
-        #ifdef __APPLE__
+#ifdef __APPLE__
         TimeSpec2FileTime(st.st_atimespec, lpLastAccessTime);
         TimeSpec2FileTime(st.st_mtimespec, lpLastWriteTime);
         TimeSpec2FileTime(st.st_ctimespec, lpCreationTime);
-        #else
+#else
         TimeSpec2FileTime(st.st_ctim, lpCreationTime);
         TimeSpec2FileTime(st.st_mtim, lpLastWriteTime);
         TimeSpec2FileTime(st.st_atim, lpLastAccessTime);
-        #endif
+#endif
         return TRUE;
     }
     else
@@ -235,7 +237,7 @@ static bool grow_file(int unix_fd, uint64_t new_size)
     /* this should work around ftruncate implementations that can't extend files */
     if (pwrite(unix_fd, &zero, 1, size) != -1)
     {
-        return ftruncate(unix_fd, size) == 0 ;
+        return ftruncate(unix_fd, size) == 0;
     }
     return false;
 }
@@ -571,51 +573,62 @@ DWORD GetFileAttributesW(LPCWSTR lpFileName)
     return GetFileAttributesA(str.c_str());
 }
 
-BOOL WINAPI SetFileAttributesA(LPCSTR lpFileName, DWORD dwFileAttributes){
-    if (!lpFileName) 
+BOOL WINAPI SetFileAttributesA(LPCSTR lpFileName, DWORD dwFileAttributes)
+{
+    if (!lpFileName)
         return FALSE;
-    
+
     // 获取当前文件状态
     struct stat st;
-    if (lstat(lpFileName, &st) != 0) {
+    if (lstat(lpFileName, &st) != 0)
+    {
         return FALSE;
     }
-    
+
     // 处理只读属性 (在Windows中FILE_ATTRIBUTE_READONLY对应Linux的写权限)
-    if (dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
+    if (dwFileAttributes & FILE_ATTRIBUTE_READONLY)
+    {
         // 清除写权限
         mode_t new_mode = st.st_mode & ~(S_IWUSR | S_IWGRP | S_IWOTH);
-        if (chmod(lpFileName, new_mode) != 0) {
+        if (chmod(lpFileName, new_mode) != 0)
+        {
             return FALSE;
         }
-    } else {
+    }
+    else
+    {
         // 设置写权限 (如果对象是文件且之前是只读的)
-        if (!(st.st_mode & S_IWUSR)) {
+        if (!(st.st_mode & S_IWUSR))
+        {
             mode_t new_mode = st.st_mode | S_IWUSR;
-            if (chmod(lpFileName, new_mode) != 0) {
+            if (chmod(lpFileName, new_mode) != 0)
+            {
                 return FALSE;
             }
         }
     }
-    
+
     // 处理隐藏属性 (在Linux中以.开头的文件是隐藏文件)
-    if (dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) {
+    if (dwFileAttributes & FILE_ATTRIBUTE_HIDDEN)
+    {
         // 注意：在Linux中，重命名文件以添加前导点比较复杂，
         // 因为需要确保目标文件不存在且需要处理路径。
         // 这里简化处理，只在获取属性时检查文件名是否以.开头。
         // 实际应用中可能需要更复杂的处理。
     }
-    
+
     // 处理目录属性
-    if (dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+    if (dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+    {
         // 这个属性通常是只读的，由文件系统决定
         // 不需要特殊处理
     }
-    
+
     return TRUE;
 }
 
-BOOL WINAPI SetFileAttributesW(LPCWSTR lpFileName, DWORD dwFileAttributes){
+BOOL WINAPI SetFileAttributesW(LPCWSTR lpFileName, DWORD dwFileAttributes)
+{
     std::string str;
     tostring(lpFileName, -1, str);
     return SetFileAttributesA(str.c_str(), dwFileAttributes);
@@ -749,15 +762,15 @@ BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFind
             }
             strcpy(lpFindFileData->cFileName, entry->d_name);
             strcpy(lpFindFileData->cAlternateFileName, "");
-            #ifdef __APPLE__
+#ifdef __APPLE__
             TimeSpec2FileTime(fileStat.st_ctimespec, &lpFindFileData->ftCreationTime);
             TimeSpec2FileTime(fileStat.st_mtimespec, &lpFindFileData->ftLastWriteTime);
             TimeSpec2FileTime(fileStat.st_atimespec, &lpFindFileData->ftLastAccessTime);
-            #else
+#else
             TimeSpec2FileTime(fileStat.st_ctim, &lpFindFileData->ftCreationTime);
             TimeSpec2FileTime(fileStat.st_mtim, &lpFindFileData->ftLastWriteTime);
             TimeSpec2FileTime(fileStat.st_atim, &lpFindFileData->ftLastAccessTime);
-            #endif
+#endif
             lpFindFileData->nFileSizeLow = fileStat.st_size & 0xffffffff;
             lpFindFileData->nFileSizeHigh = (fileStat.st_size & 0xffffffff00000000) >> 32;
             break;
@@ -810,7 +823,8 @@ HANDLE WINAPI FindFirstFileExW(const wchar_t *filename, FINDEX_INFO_LEVELS level
     HANDLE handle = FindFirstFileExA(str.c_str(), level, &dataA, search_op, filter, flags);
     if (handle == INVALID_HANDLE_VALUE)
         return handle;
-    if(dataW){
+    if (dataW)
+    {
         dataW->dwFileAttributes = dataA.dwFileAttributes;
         dataW->ftCreationTime = dataA.ftCreationTime;
         dataW->ftLastAccessTime = dataA.ftLastAccessTime;
@@ -884,7 +898,7 @@ HANDLE WINAPI FindFirstFileExA(LPCSTR filename, FINDEX_INFO_LEVELS level, LPVOID
     }
     strcpy(info->path, strName.c_str());
     strcpy(info->name, name);
-   // Fill the output parameter with the first matching file
+    // Fill the output parameter with the first matching file
     if (data)
     {
         if (!FindNextFileA((HANDLE)info, (LPWIN32_FIND_DATAA)data))

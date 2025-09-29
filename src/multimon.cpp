@@ -23,11 +23,11 @@ HMONITOR MonitorFromWindow(HWND hWnd, DWORD dwFlags)
     WndObj pWnd = WndMgr::fromHwnd(hWnd);
     if (!pWnd)
         return FALSE;
-    SConnection * conn = SConnMgr::instance()->getConnection(pWnd->tid);
+    SConnection *conn = SConnMgr::instance()->getConnection(pWnd->tid);
     return conn->GetScreen(dwFlags);
 }
 
-HMONITOR MonitorFromPoint(POINT pt,  DWORD dwFlags )
+HMONITOR MonitorFromPoint(POINT pt, DWORD dwFlags)
 {
     SConnection *pConn = SConnMgr::instance()->getConnection();
     return pConn->GetScreen(dwFlags);
@@ -54,8 +54,8 @@ BOOL GetMonitorInfoA(HMONITOR hMonitor, LPMONITORINFO lpmi)
     lpmi->rcMonitor.left = 0;
     lpmi->rcMonitor.top = 0;
     lpmi->rcMonitor.right = pConn->GetScreenWidth(hMonitor);
-    lpmi->rcMonitor.bottom =  pConn->GetScreenHeight(hMonitor);
+    lpmi->rcMonitor.bottom = pConn->GetScreenHeight(hMonitor);
     lpmi->rcWork = lpmi->rcMonitor;
-    pConn->GetWorkArea(hMonitor,&lpmi->rcWork);
+    pConn->GetWorkArea(hMonitor, &lpmi->rcWork);
     return TRUE;
 }

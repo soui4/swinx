@@ -44,7 +44,8 @@ ClassMgr *ClassMgr::instance()
     return &_thisObj;
 }
 
-CLASS *ClassMgr::_find_class(HINSTANCE module, LPCSTR clsName){
+CLASS *ClassMgr::_find_class(HINSTANCE module, LPCSTR clsName)
+{
     for (auto &it : class_list)
     {
         if (stricmp(it->name, clsName) == 0)
@@ -61,13 +62,15 @@ CLASS *ClassMgr::find_class(HINSTANCE module, LPCSTR clsName)
     {
         ATOM atom = (ATOM) reinterpret_cast<LONG_PTR>(clsName);
         int len = SAtoms::getAtomName(atom, NULL, 0);
-        char *buf = new char[len+1];
-        SAtoms::getAtomName(atom, buf, len+1);
-        CLASS *ret = _find_class(module,buf);
+        char *buf = new char[len + 1];
+        SAtoms::getAtomName(atom, buf, len + 1);
+        CLASS *ret = _find_class(module, buf);
         delete[] buf;
         return ret;
-    }else{
-        return _find_class(module,clsName);
+    }
+    else
+    {
+        return _find_class(module, clsName);
     }
 }
 

@@ -174,12 +174,12 @@ ATARI ATARIST
 RISCOS-LATIN1
 */
 #ifdef __APPLE__
-#define ICONV_UTF32LE      "UTF-32LE"
-#define ICONV_UTF16LE      "UTF-16LE"
+#define ICONV_UTF32LE "UTF-32LE"
+#define ICONV_UTF16LE "UTF-16LE"
 #else
-#define ICONV_UTF32LE      "UTF32LE"
-#define ICONV_UTF16LE      "UTF16LE"
-#endif//__APPLE__
+#define ICONV_UTF32LE "UTF32LE"
+#define ICONV_UTF16LE "UTF16LE"
+#endif //__APPLE__
 #define ICONV_WINDOWS_936  "WINDOWS-936"
 #define ICONV_WINDOWS_1250 "WINDOWS-1250"
 #define ICONV_WINDOWS_1251 "WINDOWS-1251"
@@ -459,27 +459,30 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
 #endif
 }
 
-
 #ifdef __APPLE__
 // 获取当前进程的 RPATH 列表
-static int get_current_rpaths(std::list<std::string> &rpaths) {
+static int get_current_rpaths(std::list<std::string> &rpaths)
+{
     // 1. 获取当前可执行文件的 Mach-O 头
-    const struct mach_header_64* header = (const struct mach_header_64*)_dyld_get_image_header(0);
-    if (header == nullptr) {
+    const struct mach_header_64 *header = (const struct mach_header_64 *)_dyld_get_image_header(0);
+    if (header == nullptr)
+    {
         std::cerr << "Failed to get Mach-O header." << std::endl;
         return 0;
     }
 
     // 2. 遍历加载命令
     uintptr_t cmd_ptr = (uintptr_t)(header + 1); // 第一个加载命令的地址
-    for (uint32_t i = 0; i < header->ncmds; i++) {
-        const struct load_command* cmd = (const struct load_command*)cmd_ptr;
-        
+    for (uint32_t i = 0; i < header->ncmds; i++)
+    {
+        const struct load_command *cmd = (const struct load_command *)cmd_ptr;
+
         // 检查是否为 RPATH 命令
-        if (cmd->cmd == LC_RPATH) {
-            const struct rpath_command* rpath_cmd = (const struct rpath_command*)cmd;
+        if (cmd->cmd == LC_RPATH)
+        {
+            const struct rpath_command *rpath_cmd = (const struct rpath_command *)cmd;
             // 获取 RPATH 字符串（紧跟在命令结构体后）
-            const char* rpath = (const char*)(rpath_cmd + 1);
+            const char *rpath = (const char *)(rpath_cmd + 1);
             rpaths.push_back(rpath);
         }
 
@@ -488,7 +491,7 @@ static int get_current_rpaths(std::list<std::string> &rpaths) {
 
     return rpaths.size();
 }
-#endif//__APPLE__
+#endif //__APPLE__
 
 class DllLoader {
   public:
@@ -500,7 +503,7 @@ class DllLoader {
         char *p = strrchr(szPath, '/');
         assert(p);
         p[1] = 0;
-        #ifdef __APPLE__
+#ifdef __APPLE__
         const char rpaths[] = "@executable_path/";
         std::list<std::string> lstRPaths;
         get_current_rpaths(lstRPaths);
@@ -511,10 +514,10 @@ class DllLoader {
             {
                 path.replace(0, sizeof(rpaths) - 1, szPath);
             }
-            path+="/";
+            path += "/";
             m_lstDirs.push_back(path);
         }
-        #endif//__APPLE__
+#endif //__APPLE__
         m_lstDirs.push_back(szPath);
     }
 
@@ -597,6 +600,7 @@ class DllLoader {
         SLOG_FMTE("LoadLibraryA: dlopen failed for %s, error: %s", lpFileName, dlerror());
         return NULL;
     }
+
   private:
     std::mutex m_mutex;
     std::list<std::string> m_lstDirs;
@@ -620,7 +624,7 @@ HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
         {
             SLOG_FMTE("LoadLibraryA: dlopen failed for %s, error: %s", lpFileName, dlerror());
             break;
-        }    
+        }
         ret = s_dllLoader.LoadDll(lpFileName, RTLD_NOW);
         if (ret)
             break;
@@ -628,22 +632,22 @@ HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
         const char *ext = strrchr(lpFileName, '.');
         if (!ext)
         {
-            // no ext, add so as the extend name
-            #ifdef __APPLE__
+// no ext, add so as the extend name
+#ifdef __APPLE__
             sprintf(szPath, "%s.dylib", lpFileName);
-            #else
+#else
             sprintf(szPath, "%s.so", lpFileName);
-            #endif
+#endif
         }
         else if (stricmp(ext, ".dll") == 0)
         {
             // windows dll name pattern, change to libxxx.so
             sprintf(szPath, "lib%s", lpFileName);
-            #ifdef __APPLE__
+#ifdef __APPLE__
             strcpy(szPath + 3 + (ext - lpFileName), ".dylib");
-            #else
+#else
             strcpy(szPath + 3 + (ext - lpFileName), ".so");
-            #endif
+#endif
         }
         else
         {
@@ -806,14 +810,16 @@ void GetSystemTime(SYSTEMTIME *pSysTime)
     pSysTime->wMilliseconds = tvNow.tv_usec / 1000;
 }
 
-static const int64_t EPOCH = ((int64_t)116444736000000000LL);//  1601-01-01 00:00:00
-static void TimeT2FileTime(time_t t, FILETIME *pft) {
+static const int64_t EPOCH = ((int64_t)116444736000000000LL); //  1601-01-01 00:00:00
+static void TimeT2FileTime(time_t t, FILETIME *pft)
+{
     long long int ll = (long long int)t * 10000000LL + EPOCH;
     pft->dwLowDateTime = (uint32_t)ll;
     pft->dwHighDateTime = (uint32_t)(ll >> 32);
 }
 
-static time_t FileTime2TimeT(const FILETIME &ft) {
+static time_t FileTime2TimeT(const FILETIME &ft)
+{
     ULARGE_INTEGER uli;
     uli.LowPart = ft.dwLowDateTime;
     uli.HighPart = ft.dwHighDateTime;
@@ -825,17 +831,19 @@ static time_t FileTime2TimeT(const FILETIME &ft) {
 
 BOOL LocalFileTimeToFileTime(const FILETIME *lpLocalFileTime, LPFILETIME lpFileTime)
 {
-    time_t localTime =FileTime2TimeT(*lpLocalFileTime);
+    time_t localTime = FileTime2TimeT(*lpLocalFileTime);
     // 转换为UTC time_t
     struct tm *utcTm = gmtime(&localTime);
-    if (!utcTm) {
+    if (!utcTm)
+    {
         return FALSE;
     }
     time_t utcTime = mktime(utcTm);
-    if (utcTime == (time_t)-1) {
-        return FALSE; 
+    if (utcTime == (time_t)-1)
+    {
+        return FALSE;
     }
-    
+
     TimeT2FileTime(utcTime, lpFileTime);
     return TRUE;
 }
@@ -844,12 +852,14 @@ BOOL FileTimeToLocalFileTime(const FILETIME *lpFileTime, LPFILETIME lpLocalFileT
 {
     time_t utcTime = FileTime2TimeT(*lpFileTime);
     struct tm *utcTm = localtime(&utcTime);
-    if (!utcTm) {
+    if (!utcTm)
+    {
         return FALSE;
     }
     time_t localTime = mktime(utcTm);
-    if (localTime == (time_t)-1) {
-        return  FALSE;
+    if (localTime == (time_t)-1)
+    {
+        return FALSE;
     }
     TimeT2FileTime(localTime, lpLocalFileTime);
     return TRUE;
@@ -1400,20 +1410,20 @@ int GetSystemMetrics(int nIndex)
         break;
     case SM_CXDRAG:
     case SM_CYDRAG:
-        ret= 4;
+        ret = 4;
         break;
     case SM_CXMINTRACK:
     case SM_CYMINTRACK:
-        ret= 6;
+        ret = 6;
         break;
     default:
         printf("unknown index for GetSystemMetrics, index=%d\n", nIndex);
         break;
     }
-    #ifdef __APPLE__
-    if(nIndex==SM_CXCURSOR || nIndex==SM_CYCURSOR)
+#ifdef __APPLE__
+    if (nIndex == SM_CXCURSOR || nIndex == SM_CYCURSOR)
         return ret;
-    #endif
+#endif
     return ret * GetSystemScale() / 100;
 }
 
@@ -1888,7 +1898,7 @@ HCURSOR LoadCursorA(HINSTANCE hInstance, LPCSTR lpCursorName)
 
 HCURSOR LoadCursorW(HINSTANCE hInstance, LPCWSTR lpCursorName)
 {
-    if(IS_INTRESOURCE(lpCursorName))
+    if (IS_INTRESOURCE(lpCursorName))
         return LoadCursorA(hInstance, (LPCSTR)lpCursorName);
     std::string str;
     tostring(lpCursorName, -1, str);
@@ -2061,24 +2071,25 @@ DWORD GetModuleFileNameA(HMODULE hModule, LPSTR lpFilename, DWORD nSize)
     }
     else
     {
-        char path[MAX_PATH]={0};
+        char path[MAX_PATH] = { 0 };
         ssize_t len;
-        #ifdef __APPLE__
+#ifdef __APPLE__
         uint32_t size = sizeof(path);
-        if(_NSGetExecutablePath(path, &size)!=0){
-            perror("readlink");
-            return 0;
-        }
-        len = strlen(path);
-        #else
-        len = readlink("/proc/self/exe", path, sizeof(path) - 1);
-        if (len==-1)
+        if (_NSGetExecutablePath(path, &size) != 0)
         {
             perror("readlink");
             return 0;
         }
-        #endif
-        
+        len = strlen(path);
+#else
+        len = readlink("/proc/self/exe", path, sizeof(path) - 1);
+        if (len == -1)
+        {
+            perror("readlink");
+            return 0;
+        }
+#endif
+
         if (lpFilename == 0)
             return len;
         if (nSize < len)
@@ -2272,9 +2283,9 @@ DWORD
 WINAPI
 GetTempPathA(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return +1) LPSTR lpBuffer)
 {
-    if(nBufferLength<5)
+    if (nBufferLength < 5)
         return 0;
-    strcpy(lpBuffer,"/tmp");
+    strcpy(lpBuffer, "/tmp");
     return 5;
 }
 
@@ -2282,9 +2293,9 @@ DWORD
 WINAPI
 GetTempPathW(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return +1) LPWSTR lpBuffer)
 {
-    if(nBufferLength<5)
+    if (nBufferLength < 5)
         return 0;
-    wcscpy(lpBuffer,L"/tmp");
+    wcscpy(lpBuffer, L"/tmp");
     return 5;
 }
 
@@ -2393,17 +2404,18 @@ HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName)
     }
     else
     {
-        #ifdef __APPLE__
+#ifdef __APPLE__
         uint32_t count = _dyld_image_count();
-        assert(count>=1);
-        const struct mach_header* header = _dyld_get_image_header(0);
-        if(!header){
+        assert(count >= 1);
+        const struct mach_header *header = _dyld_get_image_header(0);
+        if (!header)
+        {
             return 0;
         }
         return (HMODULE)header;
-        #else
+#else
         char pathexe[MAX_PATH];
-        GetModuleFileNameA(NULL,pathexe,MAX_PATH);
+        GetModuleFileNameA(NULL, pathexe, MAX_PATH);
         FILE *fp;
         char path[1024];
         char line[1024];
@@ -2427,7 +2439,7 @@ HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName)
         }
         fclose(fp);
         return (HMODULE)module_addr;
-        #endif//__APPLE__
+#endif //__APPLE__
     }
 }
 
@@ -2473,7 +2485,8 @@ DWORD WINAPI GetEnvironmentVariableW(LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSiz
     std::string name;
     tostring(lpName, -1, name);
     const char *value = getenv(name.c_str());
-    if (!value){
+    if (!value)
+    {
         SetLastError(ERROR_ENVVAR_NOT_FOUND);
         return 0;
     }
@@ -2621,26 +2634,32 @@ LPSTR WINAPI GetCommandLineA(void)
         return cmdline;
 #ifdef __APPLE__
     int argc = *_NSGetArgc();
-    char ***argv = _NSGetArgv();    
+    char ***argv = _NSGetArgv();
     char *p = cmdline;
-    for (int i = 0; i < argc; i++) {
+    for (int i = 0; i < argc; i++)
+    {
         size_t arg_len = strlen((*argv)[i]);
 
-        if(strchr((*argv)[i],' ')){
+        if (strchr((*argv)[i], ' '))
+        {
             if (p + arg_len + 2 - cmdline >= sizeof(cmdline) - 1)
                 break;
             *p++ = '\"';
             strcpy(p, (*argv)[i]);
             p += arg_len;
             *p++ = '\"';
-        }else{
+        }
+        else
+        {
             if (p + arg_len - cmdline >= sizeof(cmdline) - 1)
                 break;
             strcpy(p, (*argv)[i]);
             p += arg_len;
         }
-        if (i < argc - 1) {
-            if (p - cmdline < sizeof(cmdline) - 1) {
+        if (i < argc - 1)
+        {
+            if (p - cmdline < sizeof(cmdline) - 1)
+            {
                 *p++ = ' ';
             }
         }
@@ -2804,12 +2823,13 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
 #elif defined(__APPLE__) && defined(__MACH__)
 struct NotifyHandle : FdHandle
 {
-    std::vector<int> watchedFds;  // 监控的文件描述符列表
-    std::string rootPath;         // 根路径
+    std::vector<int> watchedFds; // 监控的文件描述符列表
+    std::string rootPath;        // 根路径
     BOOL watchSubtree;           // 是否监控子目录
     DWORD notifyFilter;          // 通知过滤器
 
-    NotifyHandle(int kq) : FdHandle(kq)
+    NotifyHandle(int kq)
+        : FdHandle(kq)
     {
         type = HNotifyHandle;
     }
@@ -2832,7 +2852,7 @@ struct NotifyHandle : FdHandle
 };
 
 // 添加单个路径到kqueue监控
-static bool add_path_to_kqueue(NotifyHandle* handle, const char* path)
+static bool add_path_to_kqueue(NotifyHandle *handle, const char *path)
 {
     int pathFd = open(path, O_RDONLY);
     if (pathFd == -1)
@@ -2883,7 +2903,7 @@ static bool add_path_to_kqueue(NotifyHandle* handle, const char* path)
         fflags = NOTE_DELETE | NOTE_WRITE | NOTE_EXTEND | NOTE_ATTRIB | NOTE_RENAME;
     }
 
-    EV_SET(&kev, pathFd, EVFILT_VNODE, EV_ADD | EV_CLEAR, fflags, 0, (void*)(LONG_PTR)pathFd);
+    EV_SET(&kev, pathFd, EVFILT_VNODE, EV_ADD | EV_CLEAR, fflags, 0, (void *)(LONG_PTR)pathFd);
 
     if (kevent(handle->fd, &kev, 1, NULL, 0, NULL) == -1)
     {
@@ -2896,7 +2916,7 @@ static bool add_path_to_kqueue(NotifyHandle* handle, const char* path)
 }
 
 // 递归添加目录及其子目录到监控
-static void add_directory_watch(NotifyHandle* handle, const char* dirPath)
+static void add_directory_watch(NotifyHandle *handle, const char *dirPath)
 {
     // 添加当前目录
     if (!add_path_to_kqueue(handle, dirPath))
@@ -2911,13 +2931,13 @@ static void add_directory_watch(NotifyHandle* handle, const char* dirPath)
     }
 
     // 遍历子目录
-    DIR* dir = opendir(dirPath);
+    DIR *dir = opendir(dirPath);
     if (!dir)
     {
         return;
     }
 
-    struct dirent* entry;
+    struct dirent *entry;
     while ((entry = readdir(dir)) != NULL)
     {
         // 跳过 "." 和 ".."
@@ -2957,7 +2977,7 @@ HANDLE WINAPI FindFirstChangeNotificationA(LPCSTR lpPathName, BOOL bWatchSubtree
     }
 
     // 创建通知句柄
-    NotifyHandle* notifyHandle = new NotifyHandle(kq);
+    NotifyHandle *notifyHandle = new NotifyHandle(kq);
     notifyHandle->rootPath = lpPathName;
     notifyHandle->watchSubtree = bWatchSubtree;
     notifyHandle->notifyFilter = dwNotifyFilter;
@@ -3009,7 +3029,7 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
 
     // 读取并处理kqueue事件
     struct kevent events[10];
-    struct timespec timeout = {0, 0}; // 非阻塞读取
+    struct timespec timeout = { 0, 0 }; // 非阻塞读取
 
     int nEvents = kevent(notifyHandle->fd, NULL, 0, events, 10, &timeout);
     if (nEvents <= 0)
@@ -3020,7 +3040,7 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
     // 处理所有事件，清空事件队列
     for (int i = 0; i < nEvents; i++)
     {
-        struct kevent& event = events[i];
+        struct kevent &event = events[i];
 
         // 检查是否是我们监控的文件描述符
         bool isWatchedFd = false;

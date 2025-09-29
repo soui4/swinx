@@ -752,7 +752,7 @@ static BOOL PROFILE_Open(LPCWSTR filename, BOOL write_access)
 
     if (hFile == INVALID_HANDLE_VALUE)
     {
-//        SLOG_STMW() << "Error " << GetLastError() << " opening file " << filename;
+        //        SLOG_STMW() << "Error " << GetLastError() << " opening file " << filename;
         return FALSE;
     }
 
@@ -1105,19 +1105,16 @@ INT WINAPI GetPrivateProfileStringW(LPCWSTR section, LPCWSTR entry, LPCWSTR def_
  */
 INT WINAPI GetPrivateProfileStringA(LPCSTR section, LPCSTR entry, LPCSTR def_val, LPSTR buffer, UINT len, LPCSTR filename)
 {
-    std::wstring section_tmp, entry_tmp, defval_tmp,filname_tmp;
-    if (towstring(section, -1, section_tmp) &&
-        towstring(entry, -1, entry_tmp) &&
-        towstring(def_val, -1, defval_tmp) &&
-        towstring(filename, -1, filname_tmp)
-    )
+    std::wstring section_tmp, entry_tmp, defval_tmp, filname_tmp;
+    if (towstring(section, -1, section_tmp) && towstring(entry, -1, entry_tmp) && towstring(def_val, -1, defval_tmp) && towstring(filename, -1, filname_tmp))
     {
-        wchar_t *buffer_tmp= new wchar_t[len];
+        wchar_t *buffer_tmp = new wchar_t[len];
         INT ret = GetPrivateProfileStringW(section_tmp.c_str(), entry_tmp.c_str(), defval_tmp.c_str(), buffer_tmp, len, filname_tmp.c_str());
-        if(ret){
-            ret = WideCharToMultiByte(CP_UTF8,0,buffer_tmp,ret,buffer,len,NULL,NULL);
+        if (ret)
+        {
+            ret = WideCharToMultiByte(CP_UTF8, 0, buffer_tmp, ret, buffer, len, NULL, NULL);
         }
-        delete [] buffer_tmp;
+        delete[] buffer_tmp;
         return ret;
     }
     return 0;
@@ -1160,13 +1157,13 @@ BOOL WINAPI WriteProfileStringW(LPCWSTR section, LPCWSTR entry, LPCWSTR string)
  */
 UINT WINAPI GetPrivateProfileIntW(LPCWSTR section, LPCWSTR entry, INT def_val, LPCWSTR filename)
 {
-    WCHAR buffer[30]={0};
+    WCHAR buffer[30] = { 0 };
     ULONG result;
 
-    if (GetPrivateProfileStringW( section, entry, L"", buffer, ARRAYSIZE( buffer ),
-                                  filename ) == 0)
+    if (GetPrivateProfileStringW(section, entry, L"", buffer, ARRAYSIZE(buffer), filename) == 0)
         return def_val;
-    if (!buffer[0]) return (UINT)def_val;
+    if (!buffer[0])
+        return (UINT)def_val;
     result = wcstoul(buffer, NULL, 10);
     return result;
 }
@@ -1176,10 +1173,8 @@ UINT WINAPI GetPrivateProfileIntW(LPCWSTR section, LPCWSTR entry, INT def_val, L
  */
 UINT WINAPI GetPrivateProfileIntA(LPCSTR section, LPCSTR entry, INT def_val, LPCSTR filename)
 {
-    std::wstring section_tmp, entry_tmp, defval_tmp,filname_tmp;
-    if (towstring(section, -1, section_tmp) &&
-        towstring(entry, -1, entry_tmp) &&
-        towstring(filename, -1, filname_tmp))
+    std::wstring section_tmp, entry_tmp, defval_tmp, filname_tmp;
+    if (towstring(section, -1, section_tmp) && towstring(entry, -1, entry_tmp) && towstring(filename, -1, filname_tmp))
     {
         return GetPrivateProfileIntW(section_tmp.c_str(), entry_tmp.c_str(), def_val, filname_tmp.c_str());
     }
@@ -1206,15 +1201,15 @@ INT WINAPI GetPrivateProfileSectionW(LPCWSTR section, LPWSTR buffer, DWORD len, 
 INT WINAPI GetPrivateProfileSectionA(LPCSTR section, LPSTR buffer, DWORD len, LPCSTR filename)
 {
     std::wstring section_tmp, filname_tmp;
-    if (towstring(section, -1, section_tmp) &&
-        towstring(filename, -1, filname_tmp))
+    if (towstring(section, -1, section_tmp) && towstring(filename, -1, filname_tmp))
     {
-        WCHAR *buffer_tmp= new wchar_t[len];
-        int ret = GetPrivateProfileSectionW(section_tmp.c_str(), buffer_tmp,len, filname_tmp.c_str());
-        if(ret){
-            ret = WideCharToMultiByte(CP_UTF8,0,buffer_tmp,ret,buffer,len,NULL,NULL);
+        WCHAR *buffer_tmp = new wchar_t[len];
+        int ret = GetPrivateProfileSectionW(section_tmp.c_str(), buffer_tmp, len, filname_tmp.c_str());
+        if (ret)
+        {
+            ret = WideCharToMultiByte(CP_UTF8, 0, buffer_tmp, ret, buffer, len, NULL, NULL);
         }
-        delete [] buffer_tmp;
+        delete[] buffer_tmp;
         return ret;
     }
     return 0;
@@ -1242,18 +1237,19 @@ INT WINAPI GetProfileSectionW(LPCWSTR section, LPWSTR buffer, DWORD len)
 BOOL WINAPI WritePrivateProfileStringW(LPCWSTR section, LPCWSTR entry, LPCWSTR string, LPCWSTR filename)
 {
     BOOL ret = FALSE;
-    EnterCriticalSection( &PROFILE_CritSect );
+    EnterCriticalSection(&PROFILE_CritSect);
 
-    if (PROFILE_Open( filename, TRUE ))
+    if (PROFILE_Open(filename, TRUE))
     {
         if (!section)
             SetLastError(ERROR_FILE_NOT_FOUND);
         else
-            ret = PROFILE_SetString( section, entry, string, FALSE);
-        if (ret) ret = PROFILE_FlushFile();
+            ret = PROFILE_SetString(section, entry, string, FALSE);
+        if (ret)
+            ret = PROFILE_FlushFile();
     }
 
-    LeaveCriticalSection( &PROFILE_CritSect );
+    LeaveCriticalSection(&PROFILE_CritSect);
     return ret;
 }
 
@@ -1263,10 +1259,7 @@ BOOL WINAPI WritePrivateProfileStringW(LPCWSTR section, LPCWSTR entry, LPCWSTR s
 BOOL WINAPI WritePrivateProfileStringA(LPCSTR section, LPCSTR entry, LPCSTR string, LPCSTR filename)
 {
     std::wstring section_tmp, entry_tmp, string_tmp, filname_tmp;
-    if (towstring(section, -1, section_tmp) &&
-        towstring(entry, -1, entry_tmp) &&
-        towstring(string, -1, string_tmp) &&
-        towstring(filename, -1, filname_tmp))
+    if (towstring(section, -1, section_tmp) && towstring(entry, -1, entry_tmp) && towstring(string, -1, string_tmp) && towstring(filename, -1, filname_tmp))
     {
         return WritePrivateProfileStringW(section_tmp.c_str(), entry_tmp.c_str(), string_tmp.c_str(), filname_tmp.c_str());
     }
@@ -1279,29 +1272,30 @@ BOOL WINAPI WritePrivateProfileStringA(LPCSTR section, LPCSTR entry, LPCSTR stri
 BOOL WINAPI WritePrivateProfileSectionW(LPCWSTR section, LPCWSTR string, LPCWSTR filename)
 {
     BOOL ret = FALSE;
-    EnterCriticalSection( &PROFILE_CritSect );
+    EnterCriticalSection(&PROFILE_CritSect);
 
-    if (PROFILE_Open( filename, TRUE ))
+    if (PROFILE_Open(filename, TRUE))
     {
         PROFILE_DeleteAllKeys(section);
         ret = TRUE;
         LPWSTR p;
         while (*string && ret)
         {
-            WCHAR *buf = (WCHAR*)HeapAlloc( GetProcessHeap(), 0, (lstrlenW( string ) + 1) * sizeof(WCHAR) );
-            lstrcpyW( buf, string );
-            if ((p = wcschr( buf, '=')))
+            WCHAR *buf = (WCHAR *)HeapAlloc(GetProcessHeap(), 0, (lstrlenW(string) + 1) * sizeof(WCHAR));
+            lstrcpyW(buf, string);
+            if ((p = wcschr(buf, '=')))
             {
                 *p = '\0';
-                ret = PROFILE_SetString( section, buf, p+1, TRUE );
+                ret = PROFILE_SetString(section, buf, p + 1, TRUE);
             }
-            HeapFree( GetProcessHeap(), 0, buf );
-            string += lstrlenW( string ) + 1;
+            HeapFree(GetProcessHeap(), 0, buf);
+            string += lstrlenW(string) + 1;
         }
-        if (ret) ret = PROFILE_FlushFile();
+        if (ret)
+            ret = PROFILE_FlushFile();
     }
 
-    LeaveCriticalSection( &PROFILE_CritSect );
+    LeaveCriticalSection(&PROFILE_CritSect);
     return ret;
 }
 
@@ -1311,9 +1305,7 @@ BOOL WINAPI WritePrivateProfileSectionW(LPCWSTR section, LPCWSTR string, LPCWSTR
 BOOL WINAPI WritePrivateProfileSectionA(LPCSTR section, LPCSTR string, LPCSTR filename)
 {
     std::wstring section_tmp, string_tmp, filname_tmp;
-    if (towstring(section, -1, section_tmp) &&
-        towstring(string, -1, string_tmp) &&
-        towstring(filename, -1, filname_tmp))
+    if (towstring(section, -1, section_tmp) && towstring(string, -1, string_tmp) && towstring(filename, -1, filname_tmp))
     {
         return WritePrivateProfileSectionW(section_tmp.c_str(), string_tmp.c_str(), filname_tmp.c_str());
     }
@@ -1377,12 +1369,12 @@ BOOL WINAPI WriteProfileSectionW(LPCWSTR section, LPCWSTR keys_n_values)
 DWORD WINAPI GetPrivateProfileSectionNamesW(LPWSTR buffer, DWORD size, LPCWSTR filename)
 {
     DWORD ret = 0;
-    EnterCriticalSection( &PROFILE_CritSect );
+    EnterCriticalSection(&PROFILE_CritSect);
 
-    if (PROFILE_Open( filename, FALSE ))
-        ret += PROFILE_GetSectionNames( buffer + ret, size - ret );
+    if (PROFILE_Open(filename, FALSE))
+        ret += PROFILE_GetSectionNames(buffer + ret, size - ret);
 
-    LeaveCriticalSection( &PROFILE_CritSect );
+    LeaveCriticalSection(&PROFILE_CritSect);
 
     return ret;
 }
@@ -1397,10 +1389,11 @@ DWORD WINAPI GetPrivateProfileSectionNamesA(LPSTR buffer, DWORD size, LPCSTR fil
     {
         wchar_t *tmp = new wchar_t[size];
         DWORD ret = GetPrivateProfileSectionNamesW(tmp, size, filename_tmp.c_str());
-        if(ret){
+        if (ret)
+        {
             ret = WideCharToMultiByte(CP_UTF8, 0, tmp, ret, buffer, size, NULL, NULL);
         }
-        delete [] tmp;
+        delete[] tmp;
         return ret;
     }
     return 0;
@@ -1473,9 +1466,7 @@ done:
 BOOL WINAPI GetPrivateProfileStructA(LPCSTR section, LPCSTR key, LPVOID buffer, UINT len, LPCSTR filename)
 {
     std::wstring section_tmp, key_tmp, filename_tmp;
-    if (towstring(section, -1, section_tmp) &&
-        towstring(key, -1, key_tmp) &&
-        towstring(filename, -1, filename_tmp))
+    if (towstring(section, -1, section_tmp) && towstring(key, -1, key_tmp) && towstring(filename, -1, filename_tmp))
     {
         return GetPrivateProfileStructW(section_tmp.c_str(), key_tmp.c_str(), buffer, len, filename_tmp.c_str());
     }
@@ -1520,9 +1511,7 @@ BOOL WINAPI WritePrivateProfileStructW(LPCWSTR section, LPCWSTR key, LPVOID buf,
 BOOL WINAPI WritePrivateProfileStructA(LPCSTR section, LPCSTR key, LPVOID buf, UINT bufsize, LPCSTR filename)
 {
     std::wstring section_tmp, key_tmp, filename_tmp;
-    if (towstring(section, -1, section_tmp) &&
-        towstring(key, -1, key_tmp) &&
-        towstring(filename, -1, filename_tmp))
+    if (towstring(section, -1, section_tmp) && towstring(key, -1, key_tmp) && towstring(filename, -1, filename_tmp))
     {
         return WritePrivateProfileStructW(section_tmp.c_str(), key_tmp.c_str(), buf, bufsize, filename_tmp.c_str());
     }

@@ -130,7 +130,7 @@ int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_ex
     int num_glyphs;
     if (len < 0)
         len = strlen(utf8);
-    if(len == 0)
+    if (len == 0)
         return 0;
     glyphs = stack_glyphs;
     num_glyphs = ARRAY_LENGTH(stack_glyphs);
@@ -152,7 +152,8 @@ int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_ex
     return num_glyphs;
 }
 
-void cairo_text_path2 (cairo_t *cr, const char *utf8, int length){
+void cairo_text_path2(cairo_t *cr, const char *utf8, int length)
+{
     cairo_scaled_font_t *scaled_font = cairo_get_scaled_font(cr);
     cairo_glyph_t *glyphs, *last_glyph;
     cairo_glyph_t stack_glyphs[CAIRO_STACK_ARRAY_LENGTH(cairo_glyph_t)];
@@ -160,7 +161,7 @@ void cairo_text_path2 (cairo_t *cr, const char *utf8, int length){
     double x, y;
     int num_glyphs;
 
-    if(length < 0)
+    if (length < 0)
         length = strlen(utf8);
 
     // Return early if no text
@@ -175,11 +176,10 @@ void cairo_text_path2 (cairo_t *cr, const char *utf8, int length){
     num_glyphs = ARRAY_LENGTH(stack_glyphs);
 
     // Convert text to glyphs
-    cairo_status_t status = cairo_scaled_font_text_to_glyphs(scaled_font, x, y, utf8, length,
-                                                           &glyphs, &num_glyphs,
-                                                           NULL, NULL, NULL);
+    cairo_status_t status = cairo_scaled_font_text_to_glyphs(scaled_font, x, y, utf8, length, &glyphs, &num_glyphs, NULL, NULL, NULL);
 
-    if (num_glyphs > 0) {
+    if (num_glyphs > 0)
+    {
         // Add glyphs to the current path
         cairo_glyph_path(cr, glyphs, num_glyphs);
 
@@ -194,7 +194,8 @@ void cairo_text_path2 (cairo_t *cr, const char *utf8, int length){
     }
 
     // Clean up allocated memory if needed
-    if (glyphs && glyphs != stack_glyphs) {
+    if (glyphs && glyphs != stack_glyphs)
+    {
         cairo_glyph_free(glyphs);
     }
 }

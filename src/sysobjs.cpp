@@ -14,7 +14,7 @@
 #include "handle.h"
 #include "synhandle.h"
 #include "uimsg.h"
-using namespace  swinx;
+using namespace swinx;
 
 enum
 {
@@ -31,7 +31,7 @@ static const char *kGlobalShareMemName = "/share_soui_A95AB24431E7";
 static const char *kFifoNameTemplate = "/tmp/soui-2BACFFE6-9ED7-4AC8-B699-A95AB24431E1.%d";
 static const char *kFileMapNameTemplate = "/shm-soui-2BACFFE6-9ED7-4AC8-B699-A95AB24431E1.%d";
 static const char *kGlobalShareMemName = "/share_mem_soui-2BACFFE6-9ED7-4AC8-B699-A95AB24431E7";
-#endif//__APPLE__
+#endif //__APPLE__
 struct EventData
 {
     BOOL bManualReset;
@@ -96,7 +96,7 @@ class GLobalHandleTable {
         : m_header(nullptr)
         , m_table(nullptr)
     {
-        setlocale(LC_ALL, "zh_CN.UTF-8"); //init locale
+        setlocale(LC_ALL, "zh_CN.UTF-8"); // init locale
 
         m_sharedMem = new SharedMemory();
         SharedMemory::InitStat ret = m_sharedMem->init(name, maxObjects * sizeof(HandleData) + sizeof(TableHeader));

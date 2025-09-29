@@ -42,15 +42,15 @@ extern "C"
         HBITMAP hbmpItem;
     } MENUITEMINFOW, *LPMENUITEMINFOW, *const LPCMENUITEMINFOW;
 
-    #ifdef _UNICODE
-    #define MENUITEMINFO MENUITEMINFOW
-    #define LPMENUITEMINFO LPMENUITEMINFOW
-    #define LPCMENUITEMINFO LPCMENUITEMINFOW
-    #else
-    #define MENUITEMINFO MENUITEMINFOA
-    #define LPMENUITEMINFO LPMENUITEMINFOA
-    #define LPCMENUITEMINFO LPCMENUITEMINFOA
-    #endif
+#ifdef _UNICODE
+#define MENUITEMINFO    MENUITEMINFOW
+#define LPMENUITEMINFO  LPMENUITEMINFOW
+#define LPCMENUITEMINFO LPCMENUITEMINFOW
+#else
+#define MENUITEMINFO    MENUITEMINFOA
+#define LPMENUITEMINFO  LPMENUITEMINFOA
+#define LPCMENUITEMINFO LPCMENUITEMINFOA
+#endif
 
 #define MIIM_BITMAP     0x00000080  // 检索或设置 hbmpItem 成员。
 #define MIIM_CHECKMARKS 0x00000008  // 检索或设置 hbmpChecked 和 hbmpUnchecked 成员。
@@ -136,19 +136,19 @@ extern "C"
     BOOL WINAPI ModifyMenuW(HMENU hMnu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem);
 
 #ifdef UNICODE
-#define InsertMenuItem InsertMenuItemW
+#define InsertMenuItem  InsertMenuItemW
 #define SetMenuItemInfo SetMenuItemInfoW
 #define GetMenuItemInfo GetMenuItemInfoW
-#define InsertMenu InsertMenuW
-#define AppendMenu AppendMenuW
-#define ModifyMenu ModifyMenuW
+#define InsertMenu      InsertMenuW
+#define AppendMenu      AppendMenuW
+#define ModifyMenu      ModifyMenuW
 #else
-#define InsertMenuItem InsertMenuItemA
+#define InsertMenuItem  InsertMenuItemA
 #define SetMenuItemInfo SetMenuItemInfoA
 #define GetMenuItemInfo GetMenuItemInfoA
-#define InsertMenu InsertMenuA
-#define AppendMenu AppendMenuA
-#define ModifyMenu ModifyMenuA
+#define InsertMenu      InsertMenuA
+#define AppendMenu      AppendMenuA
+#define ModifyMenu      ModifyMenuA
 #endif // UNICDOE
 
     WINUSERAPI
