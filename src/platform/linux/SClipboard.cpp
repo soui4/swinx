@@ -922,13 +922,18 @@ bool SClipboard::hasFormat(UINT fmt)
 
 HANDLE SClipboard::getClipboardData(UINT fmt)
 {
+    UINT initFmt = fmt;
+    if(initFmt == CF_UNICODETEXT)
+    {
+        fmt = CF_TEXT;
+    }
     xcb_atom_t fmtAtom = m_conn->clipFormat2Atom(fmt);
     std::shared_ptr<std::vector<char>> buf = getDataInFormat(m_conn->atoms.CLIPBOARD, fmtAtom, kWaitTimeout);
     if (!buf)
     {
         return nullptr;
     }
-    if (fmt == CF_UNICODETEXT)
+    if (initFmt == CF_UNICODETEXT)
     {
         std::wstring str;
         towstring(buf->data(), buf->size(), str);
@@ -969,11 +974,11 @@ HANDLE SClipboard::setClipboardData(UINT uFormat, HANDLE hMem)
         GlobalUnlock(hMem);
         uFormat = CF_TEXT;
     }
-    IDataObject *pDo = getDataObject(FALSE);
     FORMATETC formatetc = { (CLIPFORMAT)uFormat, nullptr, 0, 0, TYMED_HGLOBAL }; // Pointer to the FORMATETC structure
-    STGMEDIUM medium;
-    pDo->SetData(&formatetc, &medium, TRUE);
-    pDo->Release();
+    STGMEDIUM medium={0};
+    medium.hGlobal = hMem;
+    medium.tymed = TYMED_HGLOBAL;
+    m_doClip->SetData(&formatetc, &medium, TRUE);
     m_ts = m_conn->getSectionTs();
     return hMem;
 }

@@ -3111,23 +3111,9 @@ HWND SConnection::GetClipboardOwner()
     return m_clipboard->getClipboardOwner();
 }
 
-HANDLE
-SConnection::GetClipboardData(UINT uFormat)
+HANDLE SConnection::GetClipboardData(UINT uFormat)
 {
-    HANDLE ret = m_clipboard->getClipboardData(uFormat);
-    if (uFormat == CF_UNICODETEXT)
-    {
-        const char *src = (const char *)GlobalLock(ret);
-        size_t len = GlobalSize(ret);
-        std::wstring wstr;
-        towstring(src, len, wstr);
-        GlobalUnlock(ret);
-        ret = GlobalReAlloc(ret, wstr.length() * sizeof(wchar_t), 0);
-        void *buf = GlobalLock(ret);
-        memcpy(buf, wstr.c_str(), wstr.length() * sizeof(wchar_t));
-        GlobalUnlock(ret);
-    }
-    return ret;
+    return m_clipboard->getClipboardData(uFormat);
 }
 
 HANDLE SConnection::SetClipboardData(UINT uFormat, HANDLE hMem)
