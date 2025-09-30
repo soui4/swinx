@@ -3639,6 +3639,27 @@ void SConnection::UpdateWindowIcon(HWND hWnd, _Window * wndObj)
             xcb_flush(wndObj->mConnection->connection);
     }
 
+    void SConnection::OnStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWORD newStyle){
+    }
+
+    void SConnection::OnExStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWORD newStyle){
+        if (newStyle & WS_EX_TOPMOST)
+        {
+            SetZOrder(hWnd, wndObj, HWND_TOPMOST);
+        }
+        else
+        {
+            SetZOrder(hWnd, wndObj, HWND_NOTOPMOST); 
+        }
+        if((oldStyle & WS_EX_TOOLWINDOW) != (newStyle & WS_EX_TOOLWINDOW))
+        {
+            const uint32_t mask = XCB_CW_OVERRIDE_REDIRECT;
+            uint32_t values[] = {(newStyle & WS_EX_TOOLWINDOW) ? 1u : 0};
+            xcb_change_window_attributes(connection, hWnd, mask, values);
+            xcb_flush(connection);  
+        }
+    }
+
     void SConnection::SendClientMessage(HWND hWnd, uint32_t type, uint32_t *data, int len)
     {
         xcb_client_message_event_t client_msg_event = {

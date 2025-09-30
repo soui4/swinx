@@ -1680,6 +1680,7 @@ BOOL SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int x, int y, int cx, int cy,
 
 static void onStyleChange(HWND hWnd, WndObj &wndObj, DWORD newStyle)
 {
+    DWORD dwOldStyle = wndObj->dwStyle;
     wndObj->dwStyle = newStyle;
     // update scrollbar flags.
     DWORD sbflag = 0;
@@ -1692,19 +1693,14 @@ static void onStyleChange(HWND hWnd, WndObj &wndObj, DWORD newStyle)
         wndObj->showSbFlags = sbflag;
         InvalidateRect(hWnd, &wndObj->rc, TRUE);
     }
+    wndObj->mConnection->OnStyleChanged(hWnd,wndObj.data(), dwOldStyle,newStyle);
 }
 
 static void onExStyleChange(HWND hWnd, WndObj &wndObj, DWORD newExStyle)
 {
+    DWORD dwOldStyle = wndObj->dwExStyle;
     wndObj->dwExStyle = newExStyle;
-    if (newExStyle & WS_EX_TOPMOST)
-    {
-        wndObj->mConnection->SetZOrder(hWnd, wndObj.data(), HWND_TOPMOST);
-    }
-    else
-    {
-        wndObj->mConnection->SetZOrder(hWnd, wndObj.data(), HWND_NOTOPMOST); // todo:hjx
-    }
+    wndObj->mConnection->OnExStyleChanged(hWnd,wndObj.data(), dwOldStyle,newExStyle);
 }
 
 static LONG_PTR GetWindowLongSize(HWND hWnd, int nIndex, uint32_t size)

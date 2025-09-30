@@ -242,6 +242,8 @@ public:
     uint32_t GetVisualID(BOOL bScreen) const;
     uint32_t GetCmap() const;
     void SetZOrder(HWND hWnd, _Window * wndObj,HWND hWndInsertAfter);
+    void OnStyleChanged(HWND hWnd, _Window* wndObj,DWORD oldStyle,DWORD newStyle);
+    void OnExStyleChanged(HWND hWnd, _Window* wndObj,DWORD oldStyle,DWORD newStyle);
     void SendClientMessage(HWND hWnd, uint32_t type, uint32_t *data, int len);
     uint32_t GetIpcAtom() const {
         return atoms.WM_WIN4XCB_IPC;

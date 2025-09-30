@@ -1320,6 +1320,20 @@ void SConnection::SetZOrder(HWND hWnd, _Window *wndObj, HWND hWndInsertAfter) {
     setNsWindowZorder(hWnd, hWndInsertAfter);
 }
 
+void SConnection::OnStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWORD newStyle){
+
+}
+void SConnection::OnExStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWORD newStyle){
+    if (newStyle & WS_EX_TOPMOST)
+    {
+        SetZOrder(hWnd, wndObj, HWND_TOPMOST);
+    }
+    else
+    {
+        SetZOrder(hWnd, wndObj, HWND_NOTOPMOST); 
+    }
+}
+
 void SConnection::SendClientMessage(HWND hWnd, uint32_t type, uint32_t *data, int len) {
     // Empty implementation
 }
