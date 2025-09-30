@@ -1416,6 +1416,9 @@ int GetSystemMetrics(int nIndex)
     case SM_CYMINTRACK:
         ret = 6;
         break;
+    case SM_CXDOUBLECLK:
+    case SM_CYDOUBLECLK:
+        ret =1;
     default:
         printf("unknown index for GetSystemMetrics, index=%d\n", nIndex);
         break;

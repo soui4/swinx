@@ -3200,6 +3200,7 @@ BOOL SConnection::OnSetWindowText(HWND hWnd, _Window *wndObj, LPCSTR lpszString)
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_NAME, atoms.UTF8_STRING, 8, wndObj->title.length(), wndObj->title.c_str());
     xcb_flush(connection);
     updateWmclass(hWnd,wndObj);
+    //SLOG_STMI()<<"OnSetWindowText, hWnd="<<hWnd<<" title="<<wndObj->title.c_str();
     return TRUE;
 }
 

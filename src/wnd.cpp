@@ -457,9 +457,11 @@ BOOL WINAPI DestroyWindow(HWND hWnd)
 BOOL WINAPI IsWindow(HWND hWnd)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return FALSE;
-    return !wndObj->bDestroyed;
+    if (wndObj){
+        return !wndObj->bDestroyed;
+    }
+    SConnection * pConn = SConnMgr::instance()->getConnection();
+    return pConn->IsWindow(hWnd);
 }
 
 BOOL ClientToScreen(HWND hWnd, LPPOINT ppt)
