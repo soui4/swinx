@@ -23,11 +23,12 @@ class SMimeEnumFORMATETC : public SUnkImpl<IEnumFORMATETC> {
         /* [annotation] */
         _Out_opt_ ULONG *pceltFetched) override
     {
-        if (m_iFmt + celt > m_mimeData->m_lstData.size())
+        auto data = m_mimeData->formatedData();
+        if (m_iFmt + celt > data.size())
             return E_UNEXPECTED;
         if (pceltFetched)
             *pceltFetched = m_iFmt;
-        auto it = m_mimeData->m_lstData.begin();
+        auto it = data.begin();
         ULONG i = 0;
         while (i < m_iFmt)
         {
@@ -101,6 +102,16 @@ void SMimeData::set(FormatedData *data)
     }
     m_lstData.push_back(data);
 //    SLOG_STMI() << "SMimeData::set,format=" << data->fmt << " format size=" << m_lstData.size();
+}
+
+bool SMimeData::isEmpty() const
+{
+    return m_lstData.empty();
+}
+
+const std::list<FormatedData *> &SMimeData::formatedData() const
+{
+    return m_lstData;
 }
 
 HRESULT SMimeData::QueryGetData(FORMATETC *pformatetc)
@@ -373,6 +384,7 @@ SClipboard::SClipboard(SConnection *conn)
     , m_requestor(XCB_NONE)
     , m_owner(XCB_NONE)
     , m_bOpen(FALSE)
+    , m_bModified(FALSE)
     , m_ts(XCB_CURRENT_TIME)
     , m_doSel(NULL)
     , m_incr_active(FALSE)
@@ -744,6 +756,7 @@ void SClipboard::handleSelectionClear(xcb_selection_clear_event_t *e)
     if (m_ts != XCB_CURRENT_TIME && e->time < m_ts)
         return;
     xcb_window_t owner = getClipboardOwner();
+    //SLOG_STMI()<<"handleSelectionClear, clipboard owner="<<owner<<" m_owner="<<m_owner;
     if (owner != m_owner)
     {
         std::unique_lock<std::recursive_mutex> lock(m_mutex);
@@ -782,6 +795,7 @@ xcb_window_t SClipboard::getClipboardOwner() const
 
 BOOL SClipboard::emptyClipboard()
 {
+    //SLOG_STMI()<<"emptyClipboard";
     std::unique_lock<std::recursive_mutex> lock(m_mutex);
     if (m_doExClip)
     {
@@ -894,8 +908,11 @@ void SClipboard::flushClipboard()
         m_doExClip->Release();
         m_doExClip = NULL;
     }
-    xcb_set_selection_owner(m_conn->connection, m_owner, m_conn->atoms.CLIPBOARD, XCB_CURRENT_TIME);
-    m_conn->flush();
+    if(m_bModified)
+    {
+        xcb_set_selection_owner(m_conn->connection, m_owner, m_conn->atoms.CLIPBOARD, XCB_CURRENT_TIME);
+        m_conn->flush();
+    }
 }
 
 bool SClipboard::hasFormat(UINT fmt)
@@ -980,6 +997,7 @@ HANDLE SClipboard::setClipboardData(UINT uFormat, HANDLE hMem)
     medium.tymed = TYMED_HGLOBAL;
     m_doClip->SetData(&formatetc, &medium, TRUE);
     m_ts = m_conn->getSectionTs();
+    m_bModified = TRUE;
     return hMem;
 }
 
@@ -995,6 +1013,7 @@ BOOL SClipboard::openClipboard(HWND hWndNewOwner)
     if (m_bOpen)
         return FALSE;
     m_bOpen = TRUE;
+    m_bModified = FALSE;
     return TRUE;
 }
 
@@ -1003,8 +1022,9 @@ BOOL SClipboard::closeClipboard()
     m_mutex.unlock();
     if (!m_bOpen)
         return FALSE;
-    m_bOpen = FALSE;
     flushClipboard();
+    m_bOpen = FALSE;
+    m_bModified=FALSE;
     return TRUE;
 }
 

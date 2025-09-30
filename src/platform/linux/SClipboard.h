@@ -35,7 +35,10 @@ public:
 
 	void clear();
 	void set(FormatedData* data);
+	bool isEmpty() const;
 
+	const std::list<FormatedData*> & formatedData() const;
+protected:
 	std::list<FormatedData*> m_lstData;
 	std::recursive_mutex m_mutex;
 public:
@@ -212,7 +215,8 @@ private:
 	xcb_window_t m_requestor;
 	xcb_window_t m_owner;
 	BOOL m_bOpen;
-
+	BOOL m_bModified;
+	
 	std::recursive_mutex m_mutex;
 	SMimeData* m_doClip;
 	IDataObject* m_doExClip;
