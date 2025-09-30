@@ -36,11 +36,16 @@ public:
 	void clear();
 	void set(FormatedData* data);
 	bool isEmpty() const;
-
+	void lock() {
+		m_mutex.lock();
+	}
+	void unlock() {
+		m_mutex.unlock();
+	}
 	const std::list<FormatedData*> & formatedData() const;
 protected:
 	std::list<FormatedData*> m_lstData;
-	std::recursive_mutex m_mutex;
+	mutable std::recursive_mutex m_mutex;
 public:
 	HRESULT WINAPI GetData(FORMATETC* pformatetcIn,STGMEDIUM* pmedium)override;
 

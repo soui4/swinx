@@ -35,12 +35,22 @@ public:
 	~SMimeData();
 
 	void clear();
-
-	std::recursive_mutex m_mutex;
-	std::list<FormatedData*> m_lstData;
-
 	void set(FormatedData* data);
 	void flush();
+	bool isEmpty() const;
+	void lock() {
+		m_mutex.lock();
+	}
+	void unlock() {
+		m_mutex.unlock();
+	}
+	const std::list<FormatedData*> & formatedData() const {
+		return m_lstData;
+	}
+protected:
+	mutable std::recursive_mutex m_mutex;
+	std::list<FormatedData*> m_lstData;
+
 public:
 	HRESULT WINAPI GetData(FORMATETC* pformatetcIn,STGMEDIUM* pmedium)override;
 
@@ -99,6 +109,7 @@ public:
 private:
 	HWND m_owner;
 	BOOL m_bOpen;
+	BOOL m_bModified;
 
 	std::recursive_mutex m_mutex;
 	SMimeData* m_doClip;

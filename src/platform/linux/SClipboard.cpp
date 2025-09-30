@@ -14,8 +14,12 @@ class SMimeEnumFORMATETC : public SUnkImpl<IEnumFORMATETC> {
         : m_mimeData(mimeData)
         , m_iFmt(0)
     {
+        mimeData->lock();
     }
-
+    ~SMimeEnumFORMATETC()
+    {
+        m_mimeData->unlock();
+    }
     HRESULT STDMETHODCALLTYPE Next(
         /* [in] */ ULONG celt,
         /* [annotation] */
@@ -106,6 +110,7 @@ void SMimeData::set(FormatedData *data)
 
 bool SMimeData::isEmpty() const
 {
+    std::unique_lock<std::recursive_mutex> lock(m_mutex);
     return m_lstData.empty();
 }
 
@@ -795,6 +800,8 @@ xcb_window_t SClipboard::getClipboardOwner() const
 
 BOOL SClipboard::emptyClipboard()
 {
+    if(!m_bOpen)
+        return FALSE;
     //SLOG_STMI()<<"emptyClipboard";
     std::unique_lock<std::recursive_mutex> lock(m_mutex);
     if (m_doExClip)
@@ -803,8 +810,7 @@ BOOL SClipboard::emptyClipboard()
         m_doExClip = NULL;
     }
     m_doClip->clear();
-    xcb_set_selection_owner(m_conn->connection, XCB_NONE, m_conn->atoms.CLIPBOARD, XCB_TIME_CURRENT_TIME);
-    m_conn->flush();
+    m_bModified = TRUE;
     return TRUE;
 }
 
