@@ -1,4 +1,5 @@
-﻿#import <Cocoa/Cocoa.h>
+﻿#include "wnd.h"
+#import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
@@ -1324,6 +1325,8 @@ void SConnection::OnStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWORD
 
 }
 void SConnection::OnExStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWORD newStyle){
+    if(GetParent(hWnd))
+        return;
     if (newStyle & WS_EX_TOPMOST)
     {
         SetZOrder(hWnd, wndObj, HWND_TOPMOST);
@@ -1331,6 +1334,9 @@ void SConnection::OnExStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWO
     else
     {
         SetZOrder(hWnd, wndObj, HWND_NOTOPMOST); 
+    }
+    if((oldStyle & WS_EX_TOOLWINDOW) != (newStyle & WS_EX_TOOLWINDOW)){
+        setNsWindowToolWindow(hWnd, newStyle & WS_EX_TOOLWINDOW);
     }
 }
 

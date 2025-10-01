@@ -2849,3 +2849,23 @@ BOOL isNsWindowEnableIme(HWND hWnd){
         return FALSE;
     }
 }
+
+void setNsWindowToolWindow(HWND hWnd, BOOL bToolWindow){
+    @autoreleasepool{
+        SNsWindow *win = getNsWindow(hWnd);
+        if([win isHidden])
+            return;
+        // 获取当前宿主窗口
+        NSWindow *hostWin = [win window];
+        if(hostWin){
+            // 记录当前位置和大小
+            NSRect frame = [win frame];
+            // 将SNsWindow从宿主窗口移除
+            [win removeFromSuperview];
+            // 重新显示窗口，保持原来的位置和大小
+            [win setFrame:frame];
+            // 重新显示窗口
+            showNsWindow(hWnd, SW_SHOWNORMAL);
+        }
+    }
+}

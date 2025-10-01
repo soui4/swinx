@@ -3643,6 +3643,8 @@ void SConnection::UpdateWindowIcon(HWND hWnd, _Window * wndObj)
     }
 
     void SConnection::OnExStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWORD newStyle){
+        if(GetParent(hWnd))
+            return;
         if (newStyle & WS_EX_TOPMOST)
         {
             SetZOrder(hWnd, wndObj, HWND_TOPMOST);

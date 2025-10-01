@@ -61,4 +61,6 @@ BOOL enableNsWindow(HWND hWnd, BOOL bEnable);
 void enableNsWindowIme(HWND hWnd, BOOL bEnable);
 BOOL isNsWindowEnableIme(HWND hWnd);
 
+void setNsWindowToolWindow(HWND hWnd, BOOL bToolWindow);
+
 #endif//_SNSWINDOW_H_
