@@ -230,7 +230,7 @@ public:
       void OnWindowDestroy(HWND hWnd,_Window *wnd);
       void SetWindowVisible(HWND hWnd, _Window *wnd, BOOL bVisible, int nCmdShow);
       void SetParent(HWND hWnd, _Window *wnd,HWND parent);
-      void SendExposeEvent(HWND hWnd, LPCRECT rc);
+      void SendExposeEvent(HWND hWnd, LPCRECT rc,BOOL bForce=FALSE);
       void SetWindowMsgTransparent(HWND hWnd,_Window * wndObj,BOOL bTransparent);
       void AssociateHIMC(HWND hWnd,_Window *wndObj,HIMC hIMC);
 

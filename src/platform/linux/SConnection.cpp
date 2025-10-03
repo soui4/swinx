@@ -904,14 +904,16 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             proc(msg->hwnd, WM_TIMER, msg->wParam, msg->time);
             m_mutex4Msg.RestoreLock(preLock);
             delete msg;
-            return PeekMessage(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
-        }else if(msg->message == WM_TIMER && msg->wParam == TM_DELAY){
+            return peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+        }
+        else if(msg->message == WM_TIMER && msg->wParam == TM_DELAY){
             // delay timer for paint
+            HWND hWnd = msg->hwnd;
             m_msgQueue.erase(it);
             KillTimer(msg->hwnd, msg->wParam);
-            SendExposeEvent(msg->hwnd,nullptr);
             delete msg;
-            return PeekMessage(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+            SendExposeEvent(hWnd,NULL,TRUE);
+            return peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
         }
         m_msgPeek = msg;
         if (wRemoveMsg == PM_NOREMOVE)
@@ -920,10 +922,6 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         }
         else
         {
-            if (msg->message == WM_PAINT)
-            {
-                m_tsLastPaint = GetTickCount64();
-            }
             m_msgQueue.erase(it);
             m_bMsgNeedFree = true;
         }
@@ -1480,21 +1478,23 @@ void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
     xcb_flush(connection);
 }
 
-void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc)
+void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc,BOOL bForce)
 {
-    if (!IsWindowVisible(hWnd))
+    if(!IsWindowVisible(hWnd))
         return;
     uint64_t now = GetTickCount64();
-    uint64_t elapsed = now - m_tsLastPaint;
-    const static int kMinInterval = 16; // 60 fps
-    if(m_tsLastPaint != -1 && elapsed < kMinInterval){
-        // avoid send too many expose event in a short time.
-        if(!existTimer(hWnd, TM_DELAY))
-        {
-            SetTimer(hWnd, TM_DELAY, kMinInterval-elapsed, NULL);
+    if(!bForce){
+        uint64_t elapsed = now - m_tsLastPaint;
+        const static int kMinInterval = 10; // 100 fps
+        if(m_tsLastPaint != -1 && elapsed < kMinInterval){
+            //avoid send too many expose event in a short time.
+            if(!existTimer(hWnd, TM_DELAY))
+            {
+                SetTimer(hWnd, TM_DELAY, kMinInterval-elapsed, NULL);
+            }
+            //SLOG_STMI()<<"too many expose event, delay "<<elapsed<<"ms";
+            return;
         }
-        //SLOG_STMI()<<"too many expose event, delay "<<elapsed<<"ms";
-        return;
     }
     xcb_expose_event_t expose_event;
     expose_event.response_type = XCB_EXPOSE;
@@ -1505,6 +1505,7 @@ void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc)
     expose_event.height = 0;
     xcb_send_event(connection, false, hWnd, XCB_EVENT_MASK_EXPOSURE, (const char *)&expose_event);
     xcb_flush(connection);
+    m_tsLastPaint = now;
 }
 
 void SConnection::SetWindowMsgTransparent(HWND hWnd, _Window *wndObj, BOOL bTransparent)
@@ -3682,13 +3683,18 @@ void SConnection::UpdateWindowIcon(HWND hWnd, _Window * wndObj)
 
 BOOL SConnection::IsWindowVisible(HWND hWnd)
 {
-    xcb_get_window_attributes_cookie_t cookie = xcb_get_window_attributes(connection, hWnd);
-    xcb_get_window_attributes_reply_t *reply = xcb_get_window_attributes_reply(connection, cookie, NULL);
-    if (!reply)
-        return FALSE;
-    uint8_t mapState = reply->map_state;
-    free(reply);
-    return mapState == XCB_MAP_STATE_VIEWABLE;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(wndObj){
+        return (wndObj->dwStyle & WS_VISIBLE)!=0;
+    }else{
+        xcb_get_window_attributes_cookie_t cookie = xcb_get_window_attributes(connection, hWnd);
+        xcb_get_window_attributes_reply_t *reply = xcb_get_window_attributes_reply(connection, cookie, NULL);
+        if (!reply)
+            return FALSE;
+        uint8_t mapState = reply->map_state;
+        free(reply);
+        return mapState == XCB_MAP_STATE_VIEWABLE;
+    }
 }
 
 
