@@ -1485,11 +1485,12 @@ void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc,BOOL bForce)
     uint64_t now = GetTickCount64();
     if(!bForce){
         uint64_t elapsed = now - m_tsLastPaint;
-        const static int kMinInterval = 10; // 100 fps
+        const static int kMinInterval = 16; // 60 fps
         if(m_tsLastPaint != -1 && elapsed < kMinInterval){
             //avoid send too many expose event in a short time.
-            if(!existTimer(hWnd, TM_DELAY))
+            if(!m_bDelayPaint)
             {
+                m_bDelayPaint = true;
                 SetTimer(hWnd, TM_DELAY, kMinInterval-elapsed, NULL);
             }
             //SLOG_STMI()<<"too many expose event, delay "<<elapsed<<"ms";
@@ -1505,6 +1506,7 @@ void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc,BOOL bForce)
     expose_event.height = 0;
     xcb_send_event(connection, false, hWnd, XCB_EVENT_MASK_EXPOSURE, (const char *)&expose_event);
     xcb_flush(connection);
+    m_bDelayPaint = false;
     m_tsLastPaint = now;
 }
 

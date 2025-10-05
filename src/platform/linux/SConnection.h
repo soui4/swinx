@@ -339,6 +339,7 @@ public:
     bool m_bBlockTimer;
     uint64_t m_tsLastMsg=-1;
     uint64_t m_tsLastPaint=-1;
+    bool     m_bDelayPaint = false;
     HDC m_deskDC;
     HBITMAP m_deskBmp;
 
