@@ -53,6 +53,8 @@ extern "C"
 
     LONG WINAPI InterlockedIncrement(LONG volatile *v);
 
+    LONG WINAPI InterlockedCompareExchange(LONG volatile *v, LONG Exchange, LONG Comparand);
+
     void qsort_s(void *_Base, size_t _NumOfElements, size_t _SizeOfElements, int(__cdecl *_PtFuncCompare)(void *, const void *, const void *), void *_Context);
 
     BOOL IIDFromString(LPCWSTR s, GUID *id);

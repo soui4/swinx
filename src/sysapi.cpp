@@ -998,6 +998,11 @@ LONG InterlockedIncrement(LONG volatile *v)
     return __atomic_fetch_add(v, 1, __ATOMIC_SEQ_CST) + 1;
 }
 
+LONG InterlockedCompareExchange(LONG volatile *v, LONG Exchange, LONG Comparand)
+{
+    return __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+}
+
 void qsort_s(void *base, size_t num, size_t width, int(__cdecl *comp)(void *, const void *, const void *), void *context)
 {
     char *lo, *hi;       /* ends of sub-array currently sorting */
