@@ -1,5 +1,4 @@
-﻿#include "wnd.h"
-#import <Cocoa/Cocoa.h>
+﻿#import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
