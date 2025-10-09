@@ -1356,13 +1356,19 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
         pWnd->hIMC = ImmCreateContext();
         pWnd->hIMC->xim = m_xim;
     }
-
+    PaintInfo *pi = new PaintInfo;
+    pi->bDelayPaint=false;
+    pi->tsPaint = -1;
+    pWnd->pPrivData = pi;
     xcb_flush(connection);
     return hWnd;
 }
 
 void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
 {
+    PaintInfo *pi = (PaintInfo*)wnd->pPrivData;
+    delete pi;
+    wnd->pPrivData = nullptr;
     KillWindowTimer(hWnd);
     if (GetCapture() == hWnd)
     {
@@ -1480,23 +1486,31 @@ void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
 
 void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc,BOOL bForce)
 {
-    if(!IsWindowVisible(hWnd))
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(!wndObj)
         return;
+    if(wndObj->dwStyle & WS_VISIBLE == 0)
+        return;
+    PaintInfo *pi = (PaintInfo*)wndObj->pPrivData;
     uint64_t now = GetTickCount64();
     if(!bForce){
-        uint64_t elapsed = now - m_tsLastPaint;
         const static int kMinInterval = 16; // 60 fps
-        if(m_tsLastPaint != -1 && elapsed < kMinInterval){
+        uint64_t elapsed = now - pi->tsPaint;
+        if(pi->tsPaint != -1 && elapsed < kMinInterval){
             //avoid send too many expose event in a short time.
-            if(!m_bDelayPaint)
+            if(!pi->bDelayPaint)
             {
-                m_bDelayPaint = true;
+                pi->bDelayPaint = true;
                 SetTimer(hWnd, TM_DELAY, kMinInterval-elapsed, NULL);
             }
             //SLOG_STMI()<<"too many expose event, delay "<<elapsed<<"ms";
             return;
         }
     }
+    
+    pi->bDelayPaint = false;
+    pi->tsPaint = now;
+
     xcb_expose_event_t expose_event;
     expose_event.response_type = XCB_EXPOSE;
     expose_event.window = hWnd;
@@ -1506,8 +1520,6 @@ void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc,BOOL bForce)
     expose_event.height = 0;
     xcb_send_event(connection, false, hWnd, XCB_EVENT_MASK_EXPOSURE, (const char *)&expose_event);
     xcb_flush(connection);
-    m_bDelayPaint = false;
-    m_tsLastPaint = now;
 }
 
 void SConnection::SetWindowMsgTransparent(HWND hWnd, _Window *wndObj, BOOL bTransparent)

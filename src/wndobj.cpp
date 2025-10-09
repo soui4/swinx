@@ -27,6 +27,7 @@ _Window::_Window(size_t extraLen)
     , cmap(0)
     , hIMC(NULL)
     , hSysMenu(NULL)
+    , pPrivData(nullptr)
 {
     invalid.hRgn = CreateRectRgn(0, 0, 0, 0);
     invalid.bErase = TRUE;
@@ -47,6 +48,7 @@ _Window::~_Window()
 {
     assert(cmap == 0);
     assert(hIMC == 0);
+    assert(pPrivData==nullptr);
     if (dropTarget)
     {
         dropTarget->Release();

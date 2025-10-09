@@ -94,6 +94,7 @@ public:
     DWORD_PTR userdata;  /* User private data */
     HIMC      hIMC;
     HMENU hSysMenu;     /* system menu */
+    void * pPrivData;   /* private data, used by sconnection */
     int cbWndExtra;      /* class cbWndExtra at window creation */
     char* extra;
 

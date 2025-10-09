@@ -894,11 +894,11 @@ void SClipboard::flushClipboard()
     if (m_doExClip)
     {
         // copy extenal dataobject to internal dataobject
-        m_doClip->clear();
         IEnumFORMATETC *enum_fmt;
         HRESULT hr = m_doExClip->EnumFormatEtc(DATADIR_GET, &enum_fmt);
         if (FAILED(hr))
             return;
+        m_doClip->clear();
         FORMATETC fmt;
         while (enum_fmt->Next(1, &fmt, NULL) == S_OK)
         {
@@ -913,6 +913,7 @@ void SClipboard::flushClipboard()
 
         m_doExClip->Release();
         m_doExClip = NULL;
+        m_bModified = TRUE;
     }
     if(m_bModified)
     {

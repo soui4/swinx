@@ -33,6 +33,11 @@ struct TimerInfo
     TIMERPROC proc;
 };
 
+struct PaintInfo{
+  bool bDelayPaint;
+  uint64_t tsPaint;
+};
+
 struct hook_table;
 
 struct IEventChecker {
@@ -338,8 +343,6 @@ public:
     std::list<TimerInfo> m_lstTimer;
     bool m_bBlockTimer;
     uint64_t m_tsLastMsg=-1;
-    uint64_t m_tsLastPaint=-1;
-    bool     m_bDelayPaint = false;
     HDC m_deskDC;
     HBITMAP m_deskBmp;
 
