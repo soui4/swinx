@@ -24,10 +24,22 @@ install(TARGETS swinx
 )
 
 install(TARGETS swinx
+    CONFIGURATIONS Release
+    LIBRARY DESTINATION bin/Release
+    NAMELINK_SKIP
+)
+
+install(TARGETS swinx
     CONFIGURATIONS Debug
     RUNTIME DESTINATION bin/Debug
     LIBRARY DESTINATION lib/Debug
     ARCHIVE DESTINATION lib/Debug
+)
+
+install(TARGETS swinx
+    CONFIGURATIONS Debug
+    LIBRARY DESTINATION bin/Debug
+    NAMELINK_SKIP
 )
 
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION include/swinx)

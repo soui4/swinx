@@ -670,3 +670,16 @@ install(TARGETS cairo
     LIBRARY DESTINATION lib/Debug
     ARCHIVE DESTINATION lib/Debug
 )
+
+
+install(TARGETS cairo
+    CONFIGURATIONS Release
+    LIBRARY DESTINATION bin/Release
+    NAMELINK_SKIP
+)
+
+install(TARGETS cairo
+    CONFIGURATIONS Debug
+    LIBRARY DESTINATION bin/Debug
+    NAMELINK_SKIP
+)
