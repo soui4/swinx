@@ -290,6 +290,7 @@ public:
         }
   private:
     int _waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, DWORD dwWaitMask);
+    BOOL _onEnumWindows(HWND hParent, HWND hChildAfter,WNDENUMPROC lpEnumFunc, LPARAM lParam,BOOL bIncludeDescendants,BOOL &bContinue);
     void readXResources();
     void initializeXFixes();
     void clearSystemCursor();

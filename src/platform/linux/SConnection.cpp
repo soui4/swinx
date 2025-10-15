@@ -3383,7 +3383,19 @@ HWND SConnection::OnFindWindowEx(HWND hParent, HWND hChildAfter, LPCSTR lpClassN
     return param.hRet;
 }
 
-BOOL SConnection::OnEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEnumFunc, LPARAM lParam)
+BOOL SConnection::OnEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEnumFunc, LPARAM lParam){
+    BOOL bContinue=TRUE;
+    BOOL bRet = _onEnumWindows(hParent, hChildAfter, lpEnumFunc, lParam,FALSE,bContinue);
+    if(!bRet)
+        return FALSE;
+    if(!bContinue || hParent)
+        return TRUE;
+    //enum descendant windows for openkylin or uos
+    bRet = _onEnumWindows(hParent, hChildAfter, lpEnumFunc, lParam,TRUE,bContinue);
+    return bRet;
+}
+
+BOOL SConnection::_onEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEnumFunc, LPARAM lParam,BOOL bIncludeDescendants,BOOL &bContinue)
 {
     if (!hParent)
         hParent = screen->root;
@@ -3392,24 +3404,37 @@ BOOL SConnection::OnEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEn
     if (!tree_reply)
         return FALSE;
     xcb_window_t *children = xcb_query_tree_children(tree_reply);
+    int child_count = tree_reply->children_len;
     int i = 0;
     if (hChildAfter)
     {
-        while (i < tree_reply->children_len)
+        while (i < child_count)
         {
             if (children[i] == hChildAfter)
+            {
+                i++;
                 break;
+            }
             i++;
         }
     }
-    BOOL bContinue = TRUE;
-    for (; bContinue && i < tree_reply->children_len; i++)
+    bContinue = TRUE; 
+    for (; bContinue && i < child_count; i++)
     {
-        bContinue = lpEnumFunc(children[i], lParam);
+        HWND current_child = children[i];
+        bContinue = lpEnumFunc(current_child, lParam);
+        if (!bContinue)
+            break;
+        if(bIncludeDescendants){
+            _onEnumWindows(current_child, 0, lpEnumFunc, lParam,TRUE,bContinue);
+            if (!bContinue)
+                break; 
+        }
     }
     free(tree_reply);
     return TRUE;
 }
+
 
 void SConnection::OnActiveChange(HWND hWnd, BOOL bActivate)
 {
