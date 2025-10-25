@@ -38,7 +38,7 @@ class SKeyboard {
     SHORT getKeyState(uint8_t vk)
     {
         BYTE  st = m_byKeyboardState[vk];
-        return ((st & 0x80) << 8) | (st & 0x01);
+        return ((st & 0x80)?0xff80:0x0000) | (st & 0x01);
     }
 
     void getKeyboardState(PBYTE lpKeyState) {
@@ -69,6 +69,7 @@ class SKeyboard {
     int keySymToVk(xcb_keysym_t keysym, UINT modifiers) const;
 
     uint32_t onKeyEvent(bool bPress, xcb_keycode_t code, uint16_t state, xcb_timestamp_t ts);
+    void onMouseEvent(uint16_t state);
     void onMappingNotifyEvent(xcb_mapping_notify_event_t* event);
     void setKeyState(uint8_t vk, BYTE state);
     SHORT    getRepeatCount() const { return m_repeatCount; }

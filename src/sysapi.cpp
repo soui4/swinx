@@ -3137,6 +3137,8 @@ struct ThreadParam
     ThreadObj *info;
 };
 
+static __thread UINT_PTR tls_exitCode = 0;
+
 static void *Swinx_ThreadProc(void *p)
 {
     ThreadParam *param = (ThreadParam *)p;
@@ -3149,10 +3151,10 @@ static void *Swinx_ThreadProc(void *p)
         WaitForSingleObject(param->info->hEventResume, INFINITE);
         // SLOG_STMI() << "waiting for resume done";
     }
-    param->lpStartAddress(param->lpParameter);
+    tls_exitCode = param->lpStartAddress(param->lpParameter);
     delete param;
     param->info->writeSignal(); // wakeup waitings for the thread object.
-    return nullptr;
+    return &tls_exitCode;
 }
 
 HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, tid_t *lpThreadId)
@@ -3190,4 +3192,21 @@ DWORD WINAPI ResumeThread(HANDLE hThread)
     SetEvent(threadObj->hEventResume);
     // SLOG_STMI() << "resume thread done";
     return 0;
+}
+
+DWORD WINAPI SuspendThread(HANDLE hThread)
+{
+    //not support
+    return 0;
+}
+
+BOOL WINAPI TerminateThread(HANDLE hThread, DWORD dwExitCode)
+{
+    //not support
+    return 0;
+}
+
+VOID WINAPI ExitThread(DWORD dwExitCode)
+{
+    tls_exitCode = dwExitCode;
 }

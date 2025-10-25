@@ -348,7 +348,7 @@ public:
     HBITMAP m_deskBmp;
 
     HWND m_hWndCapture;
-
+    HWND m_hWndLastMouseMove;
     HWND m_hWndActive;
     HWND m_hFocus;
     xcb_window_t m_setting_owner=0;

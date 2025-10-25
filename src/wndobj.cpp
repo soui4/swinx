@@ -26,7 +26,7 @@ _Window::_Window(size_t extraLen)
     , userdata(0)
     , cmap(0)
     , hIMC(NULL)
-    , hSysMenu(NULL)
+    , hSysMenu(0)
     , pPrivData(nullptr)
 {
     invalid.hRgn = CreateRectRgn(0, 0, 0, 0);
@@ -75,7 +75,7 @@ _Window::~_Window()
     if (hSysMenu)
     {
         DestroyMenu(hSysMenu);
-        hSysMenu = NULL;
+        hSysMenu = 0;
     }
     if (extra)
         free(extra);

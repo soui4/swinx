@@ -726,6 +726,11 @@ typedef int(WINAPI *PROC)();
     // only support resume thread that was created with flag CREATE_SUSPENDED
     DWORD WINAPI ResumeThread(HANDLE hThread);
 
+    DWORD WINAPI SuspendThread(HANDLE hThread);
+
+    BOOL WINAPI TerminateThread(HANDLE hThread, DWORD dwExitCode);
+
+    VOID WINAPI ExitThread(DWORD dwExitCode);
 #ifdef __APPLE__
     BOOL WINAPI GetAppleBundlePath(char *path, int maxLen);
 #endif //__APPLE__

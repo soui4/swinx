@@ -70,15 +70,6 @@ BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out) {
 static BOOL GetOpenFileNameMac(OPENFILENAMEA *lpofn) {
     @autoreleasepool {
         NSOpenPanel *panel = [NSOpenPanel openPanel];
-        // 设置父窗口
-        if (lpofn->hwndOwner) {
-            int parentId = getNsWindowId(lpofn->hwndOwner);
-            NSWindow *parentWindow = [NSApp windowWithWindowNumber:parentId];
-            if (parentWindow) {
-                [panel beginSheetModalForWindow:parentWindow completionHandler:^(NSInteger c){}];
-            }
-        }
-        
         // 处理过滤器字符串
         if (lpofn->lpstrFilter) {
             NSMutableArray *allowedTypes = [NSMutableArray array];
@@ -210,15 +201,6 @@ static BOOL GetSaveFileNameMac(OPENFILENAMEA *lpofn) {
     @autoreleasepool {
         NSSavePanel *panel = [NSSavePanel savePanel];
         
-        // 设置父窗口
-        if (lpofn->hwndOwner) {
-            int parentId = getNsWindowId(lpofn->hwndOwner);
-            NSWindow *parentWindow = [NSApp windowWithWindowNumber:parentId];
-            if (parentWindow) {
-                [panel beginSheetModalForWindow:parentWindow completionHandler:^(NSInteger c){}];
-            }
-        }
-        
         // 处理过滤器字符串
         if (lpofn->lpstrFilter) {
             NSMutableArray *allowedTypes = [NSMutableArray array];
@@ -301,15 +283,6 @@ static BOOL SelectFolderMac(HWND hwndOwner,const char * lpszTitle,char * lpszFol
         panel.canChooseDirectories = YES;
         panel.allowsMultipleSelection = NO;
         panel.resolvesAliases = YES;
-        
-        // 设置父窗口
-        if (hwndOwner) {
-            int parentId = getNsWindowId(hwndOwner);
-            NSWindow *parentWindow = [NSApp windowWithWindowNumber:parentId];
-            if (parentWindow) {
-                [panel beginSheetModalForWindow:parentWindow completionHandler:^(NSInteger c){}];
-            }
-        }
         
         // 设置对话框标题
         if (lpszTitle) {

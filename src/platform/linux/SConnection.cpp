@@ -335,6 +335,7 @@ SConnection::SConnection(int screenNum)
     m_hWndCapture = 0;
     m_hWndActive = 0;
     m_hFocus = 0;
+    m_hWndLastMouseMove = 0;
     m_bBlockTimer = false;
 
     m_deskDC = new _SDC(screen->root);
@@ -926,6 +927,8 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             m_bMsgNeedFree = true;
         }
         memcpy(pMsg, (MSG *)m_msgPeek, sizeof(MSG));
+        if(pMsg->message == WM_MOUSEMOVE)
+            m_hWndLastMouseMove = pMsg->hwnd;
         if (!m_msgQueue.empty()) // wake up the next waitMsg.
             SetEvent(m_evtSync);
         return TRUE;
@@ -1968,11 +1971,7 @@ HCURSOR SConnection::SetCursor(HWND hWnd,HCURSOR cursor)
 {
     HCURSOR ret = cursor;
     if (!hWnd){
-        if(!m_msgStack.empty()){
-            hWnd = m_msgStack.back()->hwnd;
-        }else{
-            hWnd = m_hWndActive;
-        }
+        hWnd = m_hWndLastMouseMove;
     }
     if(!hWnd)
         return ret;
@@ -2051,6 +2050,10 @@ static WPARAM ButtonState2Mask(uint16_t state)
         wp |= MK_SHIFT;
     if (state & XCB_KEY_BUT_MASK_CONTROL)
         wp |= MK_CONTROL;
+    if(state & XCB_KEY_BUT_MASK_MOD_1)
+        wp |= MK_ALT;
+    if(state & XCB_KEY_BUT_MASK_MOD_4)
+        wp |= MK_WINDOW;
     if (state & XCB_BUTTON_MASK_1)
         wp |= MK_LBUTTON;
     if (state & XCB_BUTTON_MASK_2)
@@ -2524,7 +2527,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         uint32_t tst = (scanCode << 16);
         int cn = m_keyboard->getRepeatCount();
         pMsg->lParam = (scanCode << 16) | m_keyboard->getRepeatCount();
-        // SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
+        SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
         break;
     }
     case XCB_KEY_RELEASE:
@@ -2538,7 +2541,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
         pMsg->lParam = scanCode << 16;
-        // SLOG_FMTI("onkeyup, detail=%d,vk=%d", e2->detail, vk);
+        SLOG_FMTI("onkeyup, detail=%d,vk=%d", e2->detail, vk);
         break;
     }
     case XCB_EXPOSE:
@@ -2820,6 +2823,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     case XCB_BUTTON_PRESS:
     {
         xcb_button_press_event_t *e2 = (xcb_button_press_event_t *)event;
+        m_keyboard->onMouseEvent(e2->state);
         m_tsSelection = e2->time;
         if (e2->detail >= XCB_BUTTON_INDEX_1 && e2->detail <= XCB_BUTTON_INDEX_3)
         {

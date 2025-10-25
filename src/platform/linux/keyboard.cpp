@@ -549,6 +549,20 @@ uint32_t SKeyboard::onKeyEvent(bool bPress, xcb_keycode_t code, uint16_t state, 
     return vk;
 }
 
+//update control key state from mouse event.
+void SKeyboard::onMouseEvent(uint16_t state)
+{
+    m_byKeyboardState[VK_SHIFT] = (state & XCB_KEY_BUT_MASK_SHIFT)?0x80:0x00;
+    m_byKeyboardState[VK_CONTROL] = (state & XCB_KEY_BUT_MASK_CONTROL)?0x80:0x00;
+
+    m_byKeyboardState[VK_MENU] = (state & XCB_KEY_BUT_MASK_MOD_1)?0x80:0x00;
+    m_byKeyboardState[VK_LWIN] = m_byKeyboardState[VK_RWIN] = (state & XCB_KEY_BUT_MASK_MOD_4)?0x80:0x00;
+
+    m_byKeyboardState[VK_LBUTTON] = (state & XCB_BUTTON_MASK_1)?0x80:0x00;
+    m_byKeyboardState[VK_MBUTTON] = (state & XCB_BUTTON_MASK_2)?0x80:0x00;
+    m_byKeyboardState[VK_RBUTTON] = (state & XCB_BUTTON_MASK_3)?0x80:0x00;
+}
+
 void SKeyboard::onMappingNotifyEvent(xcb_mapping_notify_event_t *event)
 {
     updateKeymap();
