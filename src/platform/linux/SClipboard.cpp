@@ -77,7 +77,13 @@ SMimeData::SMimeData()
 
 SMimeData::~SMimeData()
 {
-    clear();
+    //todo: fix the next lock work.
+    //std::unique_lock<std::recursive_mutex> lock(m_mutex);
+    for (auto it : m_lstData)
+    {
+        delete it;
+    }
+    m_lstData.clear();
     m_fmtEnum->Release();
 }
 
