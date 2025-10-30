@@ -28,7 +28,6 @@ public:
 
 class SMimeEnumFORMATETC;
 class SMimeData : public SUnkImpl<IDataObject> {
-	SMimeEnumFORMATETC* m_fmtEnum;
 public:
 	SMimeData();
 	~SMimeData();
@@ -36,12 +35,8 @@ public:
 	void clear();
 	void set(FormatedData* data);
 	bool isEmpty() const;
-	void lock() {
-		m_mutex.lock();
-	}
-	void unlock() {
-		m_mutex.unlock();
-	}
+	void lock() ;
+	void unlock() ;
 	const std::list<FormatedData*> & formatedData() const;
 protected:
 	std::list<FormatedData*> m_lstData;

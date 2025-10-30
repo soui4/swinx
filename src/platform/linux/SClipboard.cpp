@@ -14,11 +14,13 @@ class SMimeEnumFORMATETC : public SUnkImpl<IEnumFORMATETC> {
         : m_mimeData(mimeData)
         , m_iFmt(0)
     {
+        mimeData->AddRef();
         mimeData->lock();
     }
     ~SMimeEnumFORMATETC()
     {
         m_mimeData->unlock();
+        m_mimeData->Release();
     }
     HRESULT STDMETHODCALLTYPE Next(
         /* [in] */ ULONG celt,
@@ -72,19 +74,20 @@ class SMimeEnumFORMATETC : public SUnkImpl<IEnumFORMATETC> {
 
 SMimeData::SMimeData()
 {
-    m_fmtEnum = new SMimeEnumFORMATETC(this);
 }
 
 SMimeData::~SMimeData()
 {
-    //todo: fix the next lock work.
-    //std::unique_lock<std::recursive_mutex> lock(m_mutex);
-    for (auto it : m_lstData)
-    {
-        delete it;
-    }
-    m_lstData.clear();
-    m_fmtEnum->Release();
+    clear();
+}
+
+void SMimeData::lock()
+{
+    m_mutex.lock();
+}
+void SMimeData::unlock()
+{
+    m_mutex.unlock();
 }
 
 void SMimeData::clear()
@@ -210,9 +213,7 @@ HRESULT SMimeData::EnumFormatEtc(DWORD dwDirection, IEnumFORMATETC **ppenumForma
 {
     if (dwDirection == DATADIR_GET)
     {
-        *ppenumFormatEtc = m_fmtEnum;
-        m_fmtEnum->Reset();
-        m_fmtEnum->AddRef();
+        *ppenumFormatEtc = new SMimeEnumFORMATETC(this);
         return S_OK;
     }
     return E_NOTIMPL;
