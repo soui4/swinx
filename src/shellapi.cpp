@@ -1001,3 +1001,292 @@ BOOL WINAPI ShellExecuteExW(LPSHELLEXECUTEINFOW lpExecInfo)
     lpExecInfo->hProcess = infoA.hProcess;
     return bRet;
 }
+
+HRESULT SHCreateStreamOnFileA(LPCSTR pszFile,DWORD grfMode,IStream **ppstm){
+    return SHCreateStreamOnFileExA(pszFile,grfMode,0,FALSE,nullptr,ppstm);
+}
+HRESULT SHCreateStreamOnFileW(LPCWSTR pszFile,DWORD grfMode,IStream **ppstm){
+    std::string strFile;
+    tostring(pszFile,-1,strFile);
+    return SHCreateStreamOnFileA(strFile.c_str(),grfMode,ppstm);
+}
+
+HRESULT SHCreateStreamOnFileExW(LPCWSTR pszFile,DWORD grfMode,DWORD dwAttributes,BOOL fCreate,IStream *pstmTemplate,IStream **ppstm){
+    std::string strFile;
+    tostring(pszFile,-1,strFile);
+    return SHCreateStreamOnFileExA(strFile.c_str(),grfMode,dwAttributes,fCreate, pstmTemplate,ppstm);
+}
+
+// Custom IStream implementation for file operations
+class FileStream : public SUnkImpl<IStream>
+{
+private:
+    FILE* m_file;
+    LONG m_refCount;
+    DWORD m_grfMode;
+
+public:
+    FileStream(FILE* file, DWORD grfMode) : m_file(file), m_grfMode(grfMode)
+    {
+    }
+
+    // IUnknown methods
+    STDMETHOD(QueryInterface)(REFIID riid, void** ppvObject)
+    {
+        if (!ppvObject)
+            return E_INVALIDARG;
+
+        *ppvObject = nullptr;
+
+        if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_ISequentialStream) || IsEqualIID(riid, IID_IStream))
+        {
+            *ppvObject = static_cast<IStream*>(this);
+            AddRef();
+            return S_OK;
+        }
+
+        return E_NOINTERFACE;
+    }
+
+    STDMETHOD_(ULONG, AddRef)()
+    {
+        return InterlockedIncrement(&m_refCount);
+    }
+
+    STDMETHOD_(ULONG, Release)()
+    {
+        LONG count = InterlockedDecrement(&m_refCount);
+        if (count == 0)
+        {
+            if (m_file)
+            {
+                fclose(m_file);
+                m_file = nullptr;
+            }
+            delete this;
+        }
+        return count;
+    }
+
+    // ISequentialStream methods
+    STDMETHOD(Read)(void* pv, ULONG cb, ULONG* pcbRead)
+    {
+        if (!m_file)
+            return STG_E_ACCESSDENIED;
+
+        if (!(m_grfMode & 0x00000001)) // GENERIC_READ
+            return STG_E_ACCESSDENIED;
+
+        size_t bytesRead = fread(pv, 1, cb, m_file);
+        if (pcbRead)
+            *pcbRead = (bytesRead > 0 || cb == 0) ? (ULONG)bytesRead : 0;
+
+        if (bytesRead < cb && ferror(m_file))
+            return E_FAIL;
+
+        return S_OK;
+    }
+
+    STDMETHOD(Write)(const void* pv, ULONG cb, ULONG* pcbWritten)
+    {
+        if (!m_file)
+            return STG_E_ACCESSDENIED;
+
+        if (!(m_grfMode & 0x00000002)) // GENERIC_WRITE
+            return STG_E_ACCESSDENIED;
+
+        size_t bytesWritten = fwrite(pv, 1, cb, m_file);
+        if (pcbWritten)
+            *pcbWritten = (ULONG)bytesWritten;
+
+        if (bytesWritten < cb)
+            return E_FAIL;
+
+        return S_OK;
+    }
+
+    // IStream methods
+    STDMETHOD(Seek)(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER* plibNewPosition)
+    {
+        if (!m_file)
+            return STG_E_ACCESSDENIED;
+
+        int origin;
+        switch (dwOrigin)
+        {
+        case STREAM_SEEK_SET:
+            origin = SEEK_SET;
+            break;
+        case STREAM_SEEK_CUR:
+            origin = SEEK_CUR;
+            break;
+        case STREAM_SEEK_END:
+            origin = SEEK_END;
+            break;
+        default:
+            return STG_E_INVALIDFUNCTION;
+        }
+
+        if (fseek(m_file, dlibMove.QuadPart, origin) != 0)
+            return E_FAIL;
+
+        if (plibNewPosition)
+        {
+            long pos = ftell(m_file);
+            if (pos < 0)
+                return E_FAIL;
+            plibNewPosition->QuadPart = pos;
+        }
+
+        return S_OK;
+    }
+
+    STDMETHOD(SetSize)(ULARGE_INTEGER libNewSize)
+    {
+        if (!m_file)
+            return STG_E_ACCESSDENIED;
+
+        long oldPos = ftell(m_file);
+        if (oldPos < 0)
+            return E_FAIL;
+
+        if (fseek(m_file, libNewSize.QuadPart, SEEK_SET) != 0)
+            return E_FAIL;
+
+        if (ftruncate(fileno(m_file), libNewSize.QuadPart) != 0)
+            return E_FAIL;
+
+        if (fseek(m_file, oldPos, SEEK_SET) != 0)
+            return E_FAIL;
+
+        return S_OK;
+    }
+
+    STDMETHOD(CopyTo)(IStream* pstm, ULARGE_INTEGER cb, ULARGE_INTEGER* pcbRead, ULARGE_INTEGER* pcbWritten)
+    {
+        return E_NOTIMPL;
+    }
+
+    STDMETHOD(Commit)(DWORD grfCommitFlags)
+    {
+        if (!m_file)
+            return STG_E_ACCESSDENIED;
+
+        if (fflush(m_file) != 0)
+            return E_FAIL;
+
+        return S_OK;
+    }
+
+    STDMETHOD(Revert)()
+    {
+        return E_NOTIMPL;
+    }
+
+    STDMETHOD(LockRegion)(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType)
+    {
+        return E_NOTIMPL;
+    }
+
+    STDMETHOD(UnlockRegion)(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType)
+    {
+        return E_NOTIMPL;
+    }
+
+    STDMETHOD(Stat)(STATSTG* pstatstg, DWORD grfStatFlag)
+    {
+        if (!pstatstg)
+            return E_INVALIDARG;
+
+        memset(pstatstg, 0, sizeof(STATSTG));
+        
+        if (!(grfStatFlag & STATFLAG_NONAME))
+        {
+            // We don't fill the name as it's not essential for basic operation
+            pstatstg->pwcsName = nullptr;
+        }
+        
+        pstatstg->type = STGTY_STREAM;
+        
+        // Get file size
+        if (m_file)
+        {
+            long oldPos = ftell(m_file);
+            if (fseek(m_file, 0, SEEK_END) == 0)
+            {
+                long fileSize = ftell(m_file);
+                if (fileSize >= 0)
+                    pstatstg->cbSize.QuadPart = fileSize;
+                fseek(m_file, oldPos, SEEK_SET);
+            }
+        }
+        
+        pstatstg->grfMode = m_grfMode;
+        
+        return S_OK;
+    }
+
+    STDMETHOD(Clone)(IStream** ppstm)
+    {
+        return E_NOTIMPL;
+    }
+
+};
+
+HRESULT SHCreateStreamOnFileExA(LPCSTR pszFile,DWORD grfMode,DWORD dwAttributes,BOOL fCreate,IStream *pstmTemplate,IStream **ppstm){
+    if (!pszFile || !ppstm)
+        return E_INVALIDARG;
+
+    *ppstm = nullptr;
+
+    if (pstmTemplate)
+        return E_NOTIMPL; // We don't support template streams
+
+    // Map Windows GENERIC_* flags to standard POSIX flags
+    const char* mode = "";
+    bool canRead = (grfMode & 0x00000001) != 0;   // GENERIC_READ
+    bool canWrite = (grfMode & 0x00000002) != 0;  // GENERIC_WRITE
+    
+    // Determine file access mode
+    if (canRead && canWrite) {
+        mode = fCreate ? "w+b" : "r+b";
+    } else if (canRead) {
+        mode = "rb";
+    } else if (canWrite) {
+        mode = fCreate ? "wb" : "r+b";
+    } else {
+        return STG_E_ACCESSDENIED;
+    }
+
+    FILE* file = fopen(pszFile, mode);
+    
+    // If we couldn't open for read+write and we're not creating, try opening for read-only
+    if (!file && !fCreate && canRead && canWrite) {
+        file = fopen(pszFile, "rb");
+    }
+
+    // If still no file and we're supposed to create it
+    if (!file && fCreate) {
+        file = fopen(pszFile, mode);
+    }
+
+    if (!file) {
+        // Try to determine the appropriate error code
+        if (errno == ENOENT)
+            return STG_E_FILENOTFOUND;
+        else if (errno == EACCES)
+            return STG_E_ACCESSDENIED;
+        else
+            return E_FAIL;
+    }
+
+    // Create our stream implementation
+    FileStream* stream = new FileStream(file, grfMode);
+    if (!stream) {
+        fclose(file);
+        return E_OUTOFMEMORY;
+    }
+
+    *ppstm = static_cast<IStream*>(stream);
+    return S_OK;
+}

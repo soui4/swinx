@@ -611,7 +611,7 @@ typedef interface IApartmentShutdown IApartmentShutdown;
 
 struct ISequentialStream;
 
-DEFINE_GUID(IID_ISequentialStream, 0x0c733a30, 0x2a1c, 0x11ce, 0xad, 0xe5, 0, 0xaa, 0, 0x44, 0x77, 0x3d);
+DEFINE_GUID(IID_ISequentialStream, 0x0000002d, 0, 0, 0xC0, 0, 0, 0, 0, 0, 0, 0x46);
 
 #if defined(__cplusplus) && !defined(CINTERFACE)
 

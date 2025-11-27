@@ -5,6 +5,7 @@
 #include <ctypes.h>
 #include <winuser.h>
 #include <guiddef.h>
+#include <objidl.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -245,6 +246,18 @@ extern "C"
 #define ShellExecute     ShellExecuteA
 #define ShellExecuteEx   ShellExecuteExA
 #endif // UNICODE
+
+    HRESULT WINAPI SHCreateStreamOnFileA(LPCSTR pszFile,DWORD grfMode,IStream **ppstm);
+    HRESULT WINAPI SHCreateStreamOnFileW(LPCWSTR pszFile,DWORD grfMode,IStream **ppstm);
+    HRESULT WINAPI SHCreateStreamOnFileExA(LPCSTR pszFile,DWORD grfMode,DWORD dwAttributes,BOOL fCreate,IStream *pstmTemplate,IStream **ppstm);
+    HRESULT WINAPI SHCreateStreamOnFileExW(LPCWSTR pszFile,DWORD grfMode,DWORD dwAttributes,BOOL fCreate,IStream *pstmTemplate,IStream **ppstm);
+#ifdef UNICODE
+#define SHCreateStreamOnFile SHCreateStreamOnFileW
+#define SHCreateStreamOnFileEx SHCreateStreamOnFileExW
+#else
+#define SHCreateStreamOnFile SHCreateStreamOnFileA
+#define SHCreateStreamOnFileEx SHCreateStreamOnFileExA
+#endif//UNICODE
 
 #ifdef __cplusplus
 }
