@@ -104,7 +104,9 @@ extern "C"
 #endif // ifndef SNDMSG
 
     WINCOMMCTRLAPI void WINAPI InitCommonControls(void);
+#ifndef _WIN32_IE
 #define _WIN32_IE 0x0601
+#endif//_WIN32_IE
 
 #if (_WIN32_IE >= 0x0300)
     typedef struct tagINITCOMMONCONTROLSEX

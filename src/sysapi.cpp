@@ -641,19 +641,26 @@ HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
         }
         else if (stricmp(ext, ".dll") == 0)
         {
-            // windows dll name pattern, change to libxxx.so
-            sprintf(szPath, "lib%s", lpFileName);
+            // windows dll name pattern, change to xxx.so
+            strcpy(szPath,lpFileName);
 #ifdef __APPLE__
-            strcpy(szPath + 3 + (ext - lpFileName), ".dylib");
+            strcpy(szPath + (ext - lpFileName), ".dylib");
 #else
-            strcpy(szPath + 3 + (ext - lpFileName), ".so");
+            strcpy(szPath + (ext - lpFileName), ".so");
 #endif
+            ret = s_dllLoader.LoadDll(szPath,RTLD_NOW);
+            if(ret)
+                break;
+        }else{
+            strcpy(szPath,lpFileName);
         }
-        else
-        {
-            break;
+        if(strchr(szPath, '/') == NULL && strncmp(szPath, "lib", 3)!=0){
+            //add lib prefix to szPath;
+            char szTmp[MAX_PATH];
+            strcpy(szTmp, szPath);
+            sprintf(szPath, "lib%s", szTmp);
         }
-        ret = LoadLibraryA(szPath);
+        ret = s_dllLoader.LoadDll(szPath,RTLD_NOW);
     } while (false);
     return ret;
 }
