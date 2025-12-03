@@ -2,6 +2,17 @@ add_compile_options(-Wno-format-truncation)
 add_compile_options(-Wno-attributes)
 find_package(PkgConfig REQUIRED)
 
+# Find ALSA library for audio playback (now optional)
+pkg_check_modules(ALSA QUIET alsa)
+
+# Check if ALSA was found and set compile definition accordingly
+if(ALSA_FOUND)
+    message(STATUS "ALSA found, enabling native audio support")
+    add_definitions(-DHAS_ALSA)
+else()
+    message(STATUS "ALSA not found, will use avplay fallback for audio, please install libasound2-dev")
+endif()
+
 # Use internal compiled libraries instead of system packages
 # Ensure our thirdparty libraries are available
 if(NOT TARGET cairo)
@@ -47,6 +58,7 @@ if (NOT ENABLE_SOUI_CORE_LIB)
         xcb-imdkit         # Our internal xcb-imdkit target
         uuid               # System UUID library
         dbus-1             # Our internal D-Bus library
+        ${ALSA_LIBRARIES}  # ALSA library for audio playback (optional)
     )
     # Add dependencies to ensure proper build order for all internal libraries
     add_dependencies(swinx cairo fontconfig freetype pixman-1 xcb-imdkit xkbcommon dbus-1)
@@ -57,6 +69,7 @@ if (NOT ENABLE_SOUI_CORE_LIB)
     )
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS})
+    target_link_libraries(swinx ${ALSA_LIBRARIES})
     add_dependencies(swinx cairo fontconfig freetype pixman-1 xcb-imdkit xkbcommon dbus-1)
 endif()
 
@@ -70,8 +83,7 @@ target_include_directories(swinx
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/sysinclude
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xkbcommon
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xcb-imdkit/include
+    PRIVATE ${ALSA_INCLUDE_DIRS}
 )
-
-
 
 
