@@ -7,7 +7,7 @@
 #include <wnd.h>
 #include "log.h"
 #define kLogTag "traywnd"
-
+#undef interface
 
 @interface IconProxy : NSObject{
     NSStatusItem *_statusItem;
