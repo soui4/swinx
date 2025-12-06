@@ -47,7 +47,7 @@ set(LIBS
     ${Carbon_LIBRARY}
     ${Audio_LIBRARY}
 )
-if (NOT ENABLE_SOUI_CORE_LIB)
+if (NOT SOUI_ENABLE_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
     target_link_libraries(swinx PRIVATE ${LIBS})
 
