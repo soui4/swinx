@@ -22,7 +22,7 @@ struct _FileData
         : fd(-1)
     {
     }
-    ~_FileData()
+    virtual ~_FileData()
     {
         if (fd != -1)
         {
@@ -1304,14 +1304,31 @@ int WINAPI DelDirW(const wchar_t *src_dir, BOOL bAllowUndo)
     return DelDirA(str.c_str(), bAllowUndo);
 }
 
+struct _StdFileData : _FileData
+{
+    _StdFileData(int _fd)
+    {
+        fd = _fd;
+    }
+    virtual ~_StdFileData()
+    {
+        fd = -1;
+    }
+};
 HANDLE WINAPI GetStdHandle(DWORD nStdHandle){
+    static _StdFileData stdfdData[] = {{STDIN_FILENO},{STDOUT_FILENO},{STDERR_FILENO}};
+    static _Handle stdfd[3] = {
+        {FILE_OBJ, stdfdData+0, nullptr},
+        {FILE_OBJ, stdfdData+1, nullptr},
+        {FILE_OBJ, stdfdData+2, nullptr}
+    };
     switch(nStdHandle){
         case STD_INPUT_HANDLE:
-            return InitHandle(FILE_OBJ, STDIN_FILENO, FreeFileData);
+            return stdfd+0;
         case STD_OUTPUT_HANDLE:
-            return InitHandle(FILE_OBJ, STDOUT_FILENO, FreeFileData);
+            return stdfd+1;
         case STD_ERROR_HANDLE:
-            return InitHandle(FILE_OBJ, STDERR_FILENO, FreeFileData);
+            return stdfd+2;
         default:
             return INVALID_HANDLE_VALUE;
     }
