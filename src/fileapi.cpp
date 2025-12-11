@@ -1303,3 +1303,16 @@ int WINAPI DelDirW(const wchar_t *src_dir, BOOL bAllowUndo)
     tostring(src_dir, -1, str);
     return DelDirA(str.c_str(), bAllowUndo);
 }
+
+HANDLE WINAPI GetStdHandle(DWORD nStdHandle){
+    switch(nStdHandle){
+        case STD_INPUT_HANDLE:
+            return InitHandle(FILE_OBJ, STDIN_FILENO, FreeFileData);
+        case STD_OUTPUT_HANDLE:
+            return InitHandle(FILE_OBJ, STDOUT_FILENO, FreeFileData);
+        case STD_ERROR_HANDLE:
+            return InitHandle(FILE_OBJ, STDERR_FILENO, FreeFileData);
+        default:
+            return INVALID_HANDLE_VALUE;
+    }
+}
