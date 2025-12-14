@@ -9,7 +9,25 @@
 
 #define _CONVERT_BUFSIZE 2048
 
-typedef int (*convert_func)();
+typedef 
+int
+(*convert_func1)(
+    State state,
+    void * *from,
+    size_t *from_left,
+    void * *to,
+    size_t *to_left,
+    XlcCharSet *p_charset);
+
+typedef
+    int
+(*convert_func2)(
+    State state,
+    void * *from,
+    size_t *from_left,
+    void * *to,
+    size_t *to_left,
+    XlcCharSet charset);
 
 static size_t get_buf_size(size_t length) {
     length *= 3;                                                 /* XXX */
@@ -22,7 +40,7 @@ XCBIMDKIT_EXPORT
 void xcb_compound_text_init() { _XlcInitCTInfo(); }
 
 int indirect_convert(void **from, size_t *from_left, void **to, size_t *to_left,
-                     convert_func tocs, convert_func csto) {
+                     convert_func1 tocs, convert_func2 csto) {
     char buf[_CONVERT_BUFSIZE];
     void *cs;
     size_t cs_left;
