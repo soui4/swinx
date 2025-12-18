@@ -48,7 +48,7 @@ _Window::~_Window()
 {
     assert(cmap == 0);
     assert(hIMC == 0);
-    assert(pPrivData==nullptr);
+    assert(pPrivData == nullptr);
     if (dropTarget)
     {
         dropTarget->Release();

@@ -1002,36 +1002,40 @@ BOOL WINAPI ShellExecuteExW(LPSHELLEXECUTEINFOW lpExecInfo)
     return bRet;
 }
 
-HRESULT SHCreateStreamOnFileA(LPCSTR pszFile,DWORD grfMode,IStream **ppstm){
-    return SHCreateStreamOnFileExA(pszFile,grfMode,0,FALSE,nullptr,ppstm);
+HRESULT SHCreateStreamOnFileA(LPCSTR pszFile, DWORD grfMode, IStream **ppstm)
+{
+    return SHCreateStreamOnFileExA(pszFile, grfMode, 0, FALSE, nullptr, ppstm);
 }
-HRESULT SHCreateStreamOnFileW(LPCWSTR pszFile,DWORD grfMode,IStream **ppstm){
+HRESULT SHCreateStreamOnFileW(LPCWSTR pszFile, DWORD grfMode, IStream **ppstm)
+{
     std::string strFile;
-    tostring(pszFile,-1,strFile);
-    return SHCreateStreamOnFileA(strFile.c_str(),grfMode,ppstm);
+    tostring(pszFile, -1, strFile);
+    return SHCreateStreamOnFileA(strFile.c_str(), grfMode, ppstm);
 }
 
-HRESULT SHCreateStreamOnFileExW(LPCWSTR pszFile,DWORD grfMode,DWORD dwAttributes,BOOL fCreate,IStream *pstmTemplate,IStream **ppstm){
+HRESULT SHCreateStreamOnFileExW(LPCWSTR pszFile, DWORD grfMode, DWORD dwAttributes, BOOL fCreate, IStream *pstmTemplate, IStream **ppstm)
+{
     std::string strFile;
-    tostring(pszFile,-1,strFile);
-    return SHCreateStreamOnFileExA(strFile.c_str(),grfMode,dwAttributes,fCreate, pstmTemplate,ppstm);
+    tostring(pszFile, -1, strFile);
+    return SHCreateStreamOnFileExA(strFile.c_str(), grfMode, dwAttributes, fCreate, pstmTemplate, ppstm);
 }
 
 // Custom IStream implementation for file operations
-class FileStream : public SUnkImpl<IStream>
-{
-private:
-    FILE* m_file;
+class FileStream : public SUnkImpl<IStream> {
+  private:
+    FILE *m_file;
     LONG m_refCount;
     DWORD m_grfMode;
 
-public:
-    FileStream(FILE* file, DWORD grfMode) : m_file(file), m_grfMode(grfMode)
+  public:
+    FileStream(FILE *file, DWORD grfMode)
+        : m_file(file)
+        , m_grfMode(grfMode)
     {
     }
 
     // IUnknown methods
-    STDMETHOD(QueryInterface)(REFIID riid, void** ppvObject)
+    STDMETHOD(QueryInterface)(REFIID riid, void **ppvObject)
     {
         if (!ppvObject)
             return E_INVALIDARG;
@@ -1040,7 +1044,7 @@ public:
 
         if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_ISequentialStream) || IsEqualIID(riid, IID_IStream))
         {
-            *ppvObject = static_cast<IStream*>(this);
+            *ppvObject = static_cast<IStream *>(this);
             AddRef();
             return S_OK;
         }
@@ -1069,7 +1073,7 @@ public:
     }
 
     // ISequentialStream methods
-    STDMETHOD(Read)(void* pv, ULONG cb, ULONG* pcbRead)
+    STDMETHOD(Read)(void *pv, ULONG cb, ULONG *pcbRead)
     {
         if (!m_file)
             return STG_E_ACCESSDENIED;
@@ -1087,7 +1091,7 @@ public:
         return S_OK;
     }
 
-    STDMETHOD(Write)(const void* pv, ULONG cb, ULONG* pcbWritten)
+    STDMETHOD(Write)(const void *pv, ULONG cb, ULONG *pcbWritten)
     {
         if (!m_file)
             return STG_E_ACCESSDENIED;
@@ -1106,7 +1110,7 @@ public:
     }
 
     // IStream methods
-    STDMETHOD(Seek)(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER* plibNewPosition)
+    STDMETHOD(Seek)(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER *plibNewPosition)
     {
         if (!m_file)
             return STG_E_ACCESSDENIED;
@@ -1162,7 +1166,7 @@ public:
         return S_OK;
     }
 
-    STDMETHOD(CopyTo)(IStream* pstm, ULARGE_INTEGER cb, ULARGE_INTEGER* pcbRead, ULARGE_INTEGER* pcbWritten)
+    STDMETHOD(CopyTo)(IStream *pstm, ULARGE_INTEGER cb, ULARGE_INTEGER *pcbRead, ULARGE_INTEGER *pcbWritten)
     {
         return E_NOTIMPL;
     }
@@ -1193,21 +1197,21 @@ public:
         return E_NOTIMPL;
     }
 
-    STDMETHOD(Stat)(STATSTG* pstatstg, DWORD grfStatFlag)
+    STDMETHOD(Stat)(STATSTG *pstatstg, DWORD grfStatFlag)
     {
         if (!pstatstg)
             return E_INVALIDARG;
 
         memset(pstatstg, 0, sizeof(STATSTG));
-        
+
         if (!(grfStatFlag & STATFLAG_NONAME))
         {
             // We don't fill the name as it's not essential for basic operation
             pstatstg->pwcsName = nullptr;
         }
-        
+
         pstatstg->type = STGTY_STREAM;
-        
+
         // Get file size
         if (m_file)
         {
@@ -1220,20 +1224,20 @@ public:
                 fseek(m_file, oldPos, SEEK_SET);
             }
         }
-        
+
         pstatstg->grfMode = m_grfMode;
-        
+
         return S_OK;
     }
 
-    STDMETHOD(Clone)(IStream** ppstm)
+    STDMETHOD(Clone)(IStream **ppstm)
     {
         return E_NOTIMPL;
     }
-
 };
 
-HRESULT SHCreateStreamOnFileExA(LPCSTR pszFile,DWORD grfMode,DWORD dwAttributes,BOOL fCreate,IStream *pstmTemplate,IStream **ppstm){
+HRESULT SHCreateStreamOnFileExA(LPCSTR pszFile, DWORD grfMode, DWORD dwAttributes, BOOL fCreate, IStream *pstmTemplate, IStream **ppstm)
+{
     if (!pszFile || !ppstm)
         return E_INVALIDARG;
 
@@ -1243,34 +1247,44 @@ HRESULT SHCreateStreamOnFileExA(LPCSTR pszFile,DWORD grfMode,DWORD dwAttributes,
         return E_NOTIMPL; // We don't support template streams
 
     // Map Windows GENERIC_* flags to standard POSIX flags
-    const char* mode = "";
-    bool canRead = (grfMode & 0x00000001) != 0;   // GENERIC_READ
-    bool canWrite = (grfMode & 0x00000002) != 0;  // GENERIC_WRITE
-    
+    const char *mode = "";
+    bool canRead = (grfMode & 0x00000001) != 0;  // GENERIC_READ
+    bool canWrite = (grfMode & 0x00000002) != 0; // GENERIC_WRITE
+
     // Determine file access mode
-    if (canRead && canWrite) {
+    if (canRead && canWrite)
+    {
         mode = fCreate ? "w+b" : "r+b";
-    } else if (canRead) {
+    }
+    else if (canRead)
+    {
         mode = "rb";
-    } else if (canWrite) {
+    }
+    else if (canWrite)
+    {
         mode = fCreate ? "wb" : "r+b";
-    } else {
+    }
+    else
+    {
         return STG_E_ACCESSDENIED;
     }
 
-    FILE* file = fopen(pszFile, mode);
-    
+    FILE *file = fopen(pszFile, mode);
+
     // If we couldn't open for read+write and we're not creating, try opening for read-only
-    if (!file && !fCreate && canRead && canWrite) {
+    if (!file && !fCreate && canRead && canWrite)
+    {
         file = fopen(pszFile, "rb");
     }
 
     // If still no file and we're supposed to create it
-    if (!file && fCreate) {
+    if (!file && fCreate)
+    {
         file = fopen(pszFile, mode);
     }
 
-    if (!file) {
+    if (!file)
+    {
         // Try to determine the appropriate error code
         if (errno == ENOENT)
             return STG_E_FILENOTFOUND;
@@ -1281,12 +1295,13 @@ HRESULT SHCreateStreamOnFileExA(LPCSTR pszFile,DWORD grfMode,DWORD dwAttributes,
     }
 
     // Create our stream implementation
-    FileStream* stream = new FileStream(file, grfMode);
-    if (!stream) {
+    FileStream *stream = new FileStream(file, grfMode);
+    if (!stream)
+    {
         fclose(file);
         return E_OUTOFMEMORY;
     }
 
-    *ppstm = static_cast<IStream*>(stream);
+    *ppstm = static_cast<IStream *>(stream);
     return S_OK;
 }

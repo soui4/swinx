@@ -1315,21 +1315,19 @@ struct _StdFileData : _FileData
         fd = -1;
     }
 };
-HANDLE WINAPI GetStdHandle(DWORD nStdHandle){
-    static _StdFileData stdfdData[] = {{STDIN_FILENO},{STDOUT_FILENO},{STDERR_FILENO}};
-    static _Handle stdfd[3] = {
-        {FILE_OBJ, stdfdData+0, nullptr},
-        {FILE_OBJ, stdfdData+1, nullptr},
-        {FILE_OBJ, stdfdData+2, nullptr}
-    };
-    switch(nStdHandle){
-        case STD_INPUT_HANDLE:
-            return stdfd+0;
-        case STD_OUTPUT_HANDLE:
-            return stdfd+1;
-        case STD_ERROR_HANDLE:
-            return stdfd+2;
-        default:
-            return INVALID_HANDLE_VALUE;
+HANDLE WINAPI GetStdHandle(DWORD nStdHandle)
+{
+    static _StdFileData stdfdData[] = { { STDIN_FILENO }, { STDOUT_FILENO }, { STDERR_FILENO } };
+    static _Handle stdfd[3] = { { FILE_OBJ, stdfdData + 0, nullptr }, { FILE_OBJ, stdfdData + 1, nullptr }, { FILE_OBJ, stdfdData + 2, nullptr } };
+    switch (nStdHandle)
+    {
+    case STD_INPUT_HANDLE:
+        return stdfd + 0;
+    case STD_OUTPUT_HANDLE:
+        return stdfd + 1;
+    case STD_ERROR_HANDLE:
+        return stdfd + 2;
+    default:
+        return INVALID_HANDLE_VALUE;
     }
 }

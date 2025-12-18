@@ -131,14 +131,16 @@ class AudioPlayer {
 #ifdef HAS_ALSA // HAS_ALSA
 #include <alsa/asoundlib.h>
 // WAV文件头部结构 - RIFF chunk
-struct RiffHeader {
-    char riff[4];           // "RIFF"
-    uint32_t fileSize;      // 文件大小-8
-    char wave[4];           // "WAVE"
+struct RiffHeader
+{
+    char riff[4];      // "RIFF"
+    uint32_t fileSize; // 文件大小-8
+    char wave[4];      // "WAVE"
 };
 
 // fmt chunk
-struct FmtChunk {
+struct FmtChunk
+{
     char fmt[4];            // "fmt "
     uint32_t fmtSize;       // fmt块大小(通常16或18)
     uint16_t format;        // 格式类别(1=PCM)
@@ -150,53 +152,63 @@ struct FmtChunk {
 };
 
 // data chunk header
-struct DataChunkHeader {
-    char data[4];           // "data"
-    uint32_t dataSize;      // 数据块大小
+struct DataChunkHeader
+{
+    char data[4];      // "data"
+    uint32_t dataSize; // 数据块大小
 };
 
-
-struct PlayStatus{
+struct PlayStatus
+{
     std::atomic<bool> bStop;
     std::atomic<bool> bDone;
 };
 
 // 播放线程参数
-struct PlayThreadArg {
-    char* fileName;
+struct PlayThreadArg
+{
+    char *fileName;
     std::shared_ptr<PlayStatus> status;
 };
 
 class AudioPlayer {
-private:
+  private:
     std::mutex m_mutex;
     // use shared_ptr to manage stop flags and avoid ownership races
-    std::map<pthread_t, std::shared_ptr<PlayStatus> > m_threads;
+    std::map<pthread_t, std::shared_ptr<PlayStatus>> m_threads;
 
-    AudioPlayer() {}
+    AudioPlayer()
+    {
+    }
 
-    ~AudioPlayer() {
+    ~AudioPlayer()
+    {
         stopAll();
     }
 
     // 跳过WAV文件中的非data chunk
-    static bool seekToDataChunk(int fd, DataChunkHeader& dataHeader) {
+    static bool seekToDataChunk(int fd, DataChunkHeader &dataHeader)
+    {
         char chunkId[4];
         uint32_t chunkSize;
 
-        while (read(fd, chunkId, 4) == 4) {
-            if (read(fd, &chunkSize, 4) != 4) {
+        while (read(fd, chunkId, 4) == 4)
+        {
+            if (read(fd, &chunkSize, 4) != 4)
+            {
                 return false;
             }
 
-            if (memcmp(chunkId, "data", 4) == 0) {
+            if (memcmp(chunkId, "data", 4) == 0)
+            {
                 memcpy(dataHeader.data, chunkId, 4);
                 dataHeader.dataSize = chunkSize;
                 return true;
             }
 
             // 跳过这个chunk
-            if (lseek(fd, chunkSize, SEEK_CUR) == -1) {
+            if (lseek(fd, chunkSize, SEEK_CUR) == -1)
+            {
                 return false;
             }
         }
@@ -204,18 +216,20 @@ private:
     }
 
     // 音频播放线程函数
-    static void* playThread(void* arg) {
-        PlayThreadArg* threadArg = (PlayThreadArg*)arg;
-        char* fileName = threadArg->fileName;
+    static void *playThread(void *arg)
+    {
+        PlayThreadArg *threadArg = (PlayThreadArg *)arg;
+        char *fileName = threadArg->fileName;
         std::shared_ptr<PlayStatus> status = threadArg->status;
         delete threadArg;
 
-        snd_pcm_t* pcmHandle = nullptr;
+        snd_pcm_t *pcmHandle = nullptr;
         int fd = -1;
 
         // 打开WAV文件
         fd = open(fileName, O_RDONLY);
-        if (fd < 0) {
+        if (fd < 0)
+        {
             SLOG_STMW() << "Failed to open audio file: " << fileName;
             goto cleanup;
         }
@@ -223,50 +237,57 @@ private:
         {
             // 读取RIFF头
             RiffHeader riffHeader;
-            if (read(fd, &riffHeader, sizeof(RiffHeader)) != sizeof(RiffHeader)) {
+            if (read(fd, &riffHeader, sizeof(RiffHeader)) != sizeof(RiffHeader))
+            {
                 SLOG_STMW() << "Failed to read RIFF header from file: " << fileName;
                 goto cleanup;
             }
 
             // 检查是否为有效的WAV文件
-            if (memcmp(riffHeader.riff, "RIFF", 4) != 0 || memcmp(riffHeader.wave, "WAVE", 4) != 0) {
+            if (memcmp(riffHeader.riff, "RIFF", 4) != 0 || memcmp(riffHeader.wave, "WAVE", 4) != 0)
+            {
                 SLOG_STMW() << "Invalid WAV file: " << fileName;
                 goto cleanup;
             }
 
             // 读取fmt chunk
             FmtChunk fmtChunk;
-            if (read(fd, &fmtChunk, sizeof(FmtChunk)) != sizeof(FmtChunk)) {
+            if (read(fd, &fmtChunk, sizeof(FmtChunk)) != sizeof(FmtChunk))
+            {
                 SLOG_STMW() << "Failed to read fmt chunk from file: " << fileName;
                 goto cleanup;
             }
 
-            if (memcmp(fmtChunk.fmt, "fmt ", 4) != 0) {
+            if (memcmp(fmtChunk.fmt, "fmt ", 4) != 0)
+            {
                 SLOG_STMW() << "Invalid fmt chunk in file: " << fileName;
                 goto cleanup;
             }
 
             // 跳过fmt chunk中的扩展数据
-            if (fmtChunk.fmtSize > 16) {
+            if (fmtChunk.fmtSize > 16)
+            {
                 lseek(fd, fmtChunk.fmtSize - 16, SEEK_CUR);
             }
 
             // 查找data chunk
             DataChunkHeader dataHeader;
-            if (!seekToDataChunk(fd, dataHeader)) {
+            if (!seekToDataChunk(fd, dataHeader))
+            {
                 SLOG_STMW() << "Failed to find data chunk in file: " << fileName;
                 goto cleanup;
             }
 
             // 打开ALSA PCM设备
             int err = snd_pcm_open(&pcmHandle, "default", SND_PCM_STREAM_PLAYBACK, 0);
-            if (err < 0) {
+            if (err < 0)
+            {
                 SLOG_STMW() << "Failed to open ALSA device: " << snd_strerror(err);
                 goto cleanup;
             }
 
             // 设置硬件参数
-            snd_pcm_hw_params_t* hwParams;
+            snd_pcm_hw_params_t *hwParams;
             snd_pcm_hw_params_alloca(&hwParams);
             snd_pcm_hw_params_any(pcmHandle, hwParams);
 
@@ -274,14 +295,23 @@ private:
 
             // 设置格式
             snd_pcm_format_t format;
-            switch (fmtChunk.bitsPerSample) {
-                case 8:  format = SND_PCM_FORMAT_U8; break;
-                case 16: format = SND_PCM_FORMAT_S16_LE; break;
-                case 24: format = SND_PCM_FORMAT_S24_LE; break;
-                case 32: format = SND_PCM_FORMAT_S32_LE; break;
-                default:
-                    SLOG_STMW() << "Unsupported bits per sample: " << fmtChunk.bitsPerSample;
-                    goto cleanup;
+            switch (fmtChunk.bitsPerSample)
+            {
+            case 8:
+                format = SND_PCM_FORMAT_U8;
+                break;
+            case 16:
+                format = SND_PCM_FORMAT_S16_LE;
+                break;
+            case 24:
+                format = SND_PCM_FORMAT_S24_LE;
+                break;
+            case 32:
+                format = SND_PCM_FORMAT_S32_LE;
+                break;
+            default:
+                SLOG_STMW() << "Unsupported bits per sample: " << fmtChunk.bitsPerSample;
+                goto cleanup;
             }
             snd_pcm_hw_params_set_format(pcmHandle, hwParams, format);
             snd_pcm_hw_params_set_channels(pcmHandle, hwParams, fmtChunk.channels);
@@ -290,7 +320,8 @@ private:
             snd_pcm_hw_params_set_rate_near(pcmHandle, hwParams, &rate, nullptr);
 
             err = snd_pcm_hw_params(pcmHandle, hwParams);
-            if (err < 0) {
+            if (err < 0)
+            {
                 SLOG_STMW() << "Failed to set ALSA hw params: " << snd_strerror(err);
                 goto cleanup;
             }
@@ -303,29 +334,35 @@ private:
             ssize_t bytesRead;
             snd_pcm_uframes_t frames;
 
-            while (!status->bStop.load() && (bytesRead = read(fd, buffer, bufferSize)) > 0) {
+            while (!status->bStop.load() && (bytesRead = read(fd, buffer, bufferSize)) > 0)
+            {
                 frames = bytesRead / fmtChunk.blockAlign;
                 snd_pcm_sframes_t written = snd_pcm_writei(pcmHandle, buffer, frames);
-                if (written < 0) {
+                if (written < 0)
+                {
                     written = snd_pcm_recover(pcmHandle, written, 0);
                 }
-                if (written < 0) {
+                if (written < 0)
+                {
                     SLOG_STMW() << "ALSA write error: " << snd_strerror(written);
                     break;
                 }
             }
 
             // 等待播放完成
-            if (!status->bStop.load()) {
+            if (!status->bStop.load())
+            {
                 snd_pcm_drain(pcmHandle);
             }
         }
 
     cleanup:
-        if (pcmHandle) {
+        if (pcmHandle)
+        {
             snd_pcm_close(pcmHandle);
         }
-        if (fd >= 0) {
+        if (fd >= 0)
+        {
             close(fd);
         }
         free(fileName);
@@ -333,12 +370,14 @@ private:
         return nullptr;
     }
 
-    void stopAll() {
+    void stopAll()
+    {
         // Move thread list to local so we don't hold the mutex while joining
-        std::map<pthread_t, std::shared_ptr<PlayStatus> > local;
+        std::map<pthread_t, std::shared_ptr<PlayStatus>> local;
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            for (auto& pair : m_threads) {
+            for (auto &pair : m_threads)
+            {
                 pair.second->bStop.store(true);
             }
             // transfer ownership
@@ -346,7 +385,8 @@ private:
         }
 
         // join threads without holding the mutex (prevents deadlock with threads trying to erase their entry)
-        for (auto& pair : local) {
+        for (auto &pair : local)
+        {
             pthread_join(pair.first, nullptr);
         }
 
@@ -354,28 +394,34 @@ private:
         local.clear();
     }
 
-public:
+  public:
     BOOL play(LPCSTR pszSound, BOOL bPurge)
     {
         // 如果是停止播放请求
-        if (pszSound == NULL || pszSound[0] == '\0') {
+        if (pszSound == NULL || pszSound[0] == '\0')
+        {
             stopAll();
             return TRUE;
         }
 
         // 如果需要清除当前播放
-        if (bPurge) {
+        if (bPurge)
+        {
             stopAll();
         }
-        
+
         // 清理已完成的线程
         {
             std::lock_guard<std::mutex> lock(m_mutex);
-            for (auto it = m_threads.begin(); it != m_threads.end(); ) {
-                if (it->second->bDone.load()) {
+            for (auto it = m_threads.begin(); it != m_threads.end();)
+            {
+                if (it->second->bDone.load())
+                {
                     pthread_join(it->first, nullptr);
                     it = m_threads.erase(it);
-                } else {
+                }
+                else
+                {
                     ++it;
                 }
             }
@@ -385,19 +431,22 @@ public:
         auto status = std::make_shared<PlayStatus>();
         status->bDone.store(false);
         status->bStop.store(false);
-        
+
         // 创建播放线程参数
-        PlayThreadArg* threadArg = new PlayThreadArg();
+        PlayThreadArg *threadArg = new PlayThreadArg();
         threadArg->fileName = strdup(pszSound);
         threadArg->status = status;
 
         // 创建播放线程
         pthread_t thread;
-        if (pthread_create(&thread, NULL, playThread, threadArg) == 0) {
+        if (pthread_create(&thread, NULL, playThread, threadArg) == 0)
+        {
             std::lock_guard<std::mutex> lock(m_mutex);
             m_threads[thread] = status;
             return TRUE;
-        } else {
+        }
+        else
+        {
             SLOG_STMW() << "Failed to create audio playback thread";
             free(threadArg->fileName);
             delete threadArg;
@@ -411,7 +460,7 @@ public:
         return &instance;
     }
 };
-#else //HAS_ALSA
+#else  // HAS_ALSA
 class AudioPlayer {
   private:
     pid_t m_soundID;
@@ -454,7 +503,7 @@ class AudioPlayer {
         return &instance;
     }
 };
-#endif// HAS_ALSA
+#endif // HAS_ALSA
 
 #endif
 BOOL PlaySound(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound)

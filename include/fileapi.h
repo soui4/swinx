@@ -355,9 +355,9 @@ typedef LPWIN32_FIND_DATAA LPWIN32_FIND_DATA;
 #define DelDir     DelDirA
 #endif // !UNICODE
 
-#define STD_INPUT_HANDLE    ((DWORD)-10)
-#define STD_OUTPUT_HANDLE   ((DWORD)-11)
-#define STD_ERROR_HANDLE    ((DWORD)-12)
+#define STD_INPUT_HANDLE  ((DWORD)-10)
+#define STD_OUTPUT_HANDLE ((DWORD)-11)
+#define STD_ERROR_HANDLE  ((DWORD)-12)
 
     HANDLE WINAPI GetStdHandle(DWORD nStdHandle);
 

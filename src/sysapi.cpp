@@ -642,25 +642,28 @@ HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
         else if (stricmp(ext, ".dll") == 0)
         {
             // windows dll name pattern, change to xxx.so
-            strcpy(szPath,lpFileName);
+            strcpy(szPath, lpFileName);
 #ifdef __APPLE__
             strcpy(szPath + (ext - lpFileName), ".dylib");
 #else
             strcpy(szPath + (ext - lpFileName), ".so");
 #endif
-            ret = s_dllLoader.LoadDll(szPath,RTLD_NOW);
-            if(ret)
+            ret = s_dllLoader.LoadDll(szPath, RTLD_NOW);
+            if (ret)
                 break;
-        }else{
-            strcpy(szPath,lpFileName);
         }
-        if(strchr(szPath, '/') == NULL && strncmp(szPath, "lib", 3)!=0){
-            //add lib prefix to szPath;
+        else
+        {
+            strcpy(szPath, lpFileName);
+        }
+        if (strchr(szPath, '/') == NULL && strncmp(szPath, "lib", 3) != 0)
+        {
+            // add lib prefix to szPath;
             char szTmp[MAX_PATH];
             strcpy(szTmp, szPath);
             sprintf(szPath, "lib%s", szTmp);
         }
-        ret = s_dllLoader.LoadDll(szPath,RTLD_NOW);
+        ret = s_dllLoader.LoadDll(szPath, RTLD_NOW);
     } while (false);
     return ret;
 }
@@ -1430,7 +1433,7 @@ int GetSystemMetrics(int nIndex)
         break;
     case SM_CXDOUBLECLK:
     case SM_CYDOUBLECLK:
-        ret =1;
+        ret = 1;
         break;
     default:
         printf("unknown index for GetSystemMetrics, index=%d\n", nIndex);
@@ -3203,13 +3206,13 @@ DWORD WINAPI ResumeThread(HANDLE hThread)
 
 DWORD WINAPI SuspendThread(HANDLE hThread)
 {
-    //not support
+    // not support
     return 0;
 }
 
 BOOL WINAPI TerminateThread(HANDLE hThread, DWORD dwExitCode)
 {
-    //not support
+    // not support
     return 0;
 }
 
