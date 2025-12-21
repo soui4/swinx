@@ -5,7 +5,7 @@ install cmake git
 ## ubuntu, debian
 sudo apt install build-essential libxcb1-dev libxcb-render0-dev libgl1-mesa-dev freeglut3-dev uuid-dev pkg-config libasound2-dev
 ## centos, fedora
-sudo yum install build-essential libxcb-devel mesa-libGL-devel libuuid-devel
+sudo yum install build-essential libxcb-devel xcb-util-renderutil-devel mesa-libGL-devel libuuid-devel
 ## macos
 brew install ninja pkgconf glfw3 glew
 
