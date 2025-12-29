@@ -1013,6 +1013,18 @@ LONG InterlockedCompareExchange(LONG volatile *v, LONG Exchange, LONG Comparand)
     return __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 }
 
+int64_t InterlockedDecrement64(int64_t volatile *v){
+    return __atomic_fetch_sub(v, 1, __ATOMIC_SEQ_CST) - 1;
+}
+
+int64_t InterlockedIncrement64(int64_t volatile *v){
+    return __atomic_fetch_add(v, 1, __ATOMIC_SEQ_CST) + 1;
+}
+
+int64_t InterlockedCompareExchange64(int64_t volatile *v, int64_t Exchange, int64_t Comparand){
+    return __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+}
+
 void qsort_s(void *base, size_t num, size_t width, int(__cdecl *comp)(void *, const void *, const void *), void *context)
 {
     char *lo, *hi;       /* ends of sub-array currently sorting */
