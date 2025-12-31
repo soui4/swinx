@@ -4,6 +4,7 @@
 #include <objc/NSObjCRuntime.h>
 #include <cairo-quartz.h>
 #include <map>
+#include <set>
 #include <mutex>
 #include <assert.h>
 #include <windows.h>
@@ -283,16 +284,37 @@ static void RevertNSRect(NSScreen *screen, BOOL fullscreen, NSRect *r)
     r->origin.y = screen_height - r->origin.y - r->size.height;
 }
 
+
+class SNsWindowMgr{
+public:
+    SNsWindowMgr(){}
+    ~SNsWindowMgr(){}
+
+    BOOL add(HWND hWnd){
+        std::unique_lock<std::recursive_mutex> lock(m_mutex);
+        return m_hWndSet.insert(hWnd).second;
+    }
+    BOOL remove(HWND hWnd){
+        std::unique_lock<std::recursive_mutex> lock(m_mutex);
+        return m_hWndSet.erase(hWnd) > 0;
+    }
+    BOOL contains(HWND hWnd){
+        std::unique_lock<std::recursive_mutex> lock(m_mutex);
+        return m_hWndSet.find(hWnd) != m_hWndSet.end();
+    }
+private:
+    std::set<HWND> m_hWndSet;
+    std::recursive_mutex m_mutex;
+};
+
+static SNsWindowMgr s_hWndMgr;
+
 @class SNsWindow;
 
-
 SNsWindow *getNsWindow(HWND hWnd){
-    @try{
-        return (__bridge SNsWindow *)(void*)hWnd;
-    }@catch(NSException *exception){
-        SLOG_STMW()<<"getNsWindow() exception:"<<exception.description.UTF8String;
+    if(!s_hWndMgr.contains(hWnd))
         return nil;
-    }
+    return (__bridge SNsWindow *)(void*)hWnd;
 }
 
 BOOL IsNsWindow(HWND hWnd){
@@ -385,6 +407,8 @@ defer:(BOOL)flag;
     if (!self)
         return nil;
     m_hWnd = (HWND)(__bridge_retained void *)self;
+    s_hWndMgr.add(m_hWnd);
+
     SLOG_STMI()<<"hjx SNsWindow initWithFrame, m_hWnd="<<m_hWnd;
     m_pListener = listener;
     m_byAlpha = 255;
@@ -413,6 +437,7 @@ defer:(BOOL)flag;
     [self removeFromSuperview];
     m_pListener->OnNsEvent(m_hWnd, WM_DESTROY, 0, 0);
     SLOG_STMI()<<"hjx destroy: hWnd="<<m_hWnd;
+    s_hWndMgr.remove(m_hWnd);
     CFBridgingRelease((void*)m_hWnd);
 }
 
