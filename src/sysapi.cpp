@@ -2463,8 +2463,12 @@ HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName)
         while (fgets(line, sizeof(line), fp))
         {
             if (strstr(line, pathexe) != NULL)
-            {                                                  // 替换为你的可执行文件路径
+            {
+#if __WORDSIZE == 64
                 sscanf(line, "%lx", (UINT_PTR *)&module_addr); // 从行中读取模块地址
+#else
+                sscanf(line, "%x", (UINT_PTR *)&module_addr);
+#endif
                 break;
             }
         }
