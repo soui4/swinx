@@ -502,6 +502,7 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
                 /* \.. backs up a directory, over the root if it has no \ following X:.
                  * .. is ignored if it would remove a UNC server name or initial /
                  */
+                dst--;
                 if (dst != buffer)
                 {
                     *dst = '\0'; /* Allow PathIsUNCServerShareA test on lpszBuf */
@@ -790,10 +791,12 @@ DWORD WINAPI GetFullPathNameA(LPCSTR lpFileName, DWORD nBufferLength, LPSTR lpBu
 {
     if (PathIsRelativeA(lpFileName))
     {
-        GetCurrentDirectoryA(nBufferLength, lpBuffer);
-        if (strlen(lpBuffer) + strlen(lpFileName) > nBufferLength - 2)
+        int len = GetCurrentDirectoryA(nBufferLength, lpBuffer);
+        if (len + strlen(lpFileName) > nBufferLength - 2)
             return 0;
-        strcat(lpBuffer, lpFileName);
+        LPSTR p = lpBuffer + len;
+        *p++ = '/';
+        strcpy(p, lpFileName);
     }
     else
     {

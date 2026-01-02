@@ -354,10 +354,9 @@ SConnection::SConnection(int screenNum)
     xcb_compound_text_init();
     m_xim = xcb_xim_create(connection, screenNum, NULL);
 
-    xcb_xim_im_callback xim_callback = {
-        .forward_event = &SConnection::xim_forward_event,
-        .commit_string = &SConnection::xim_commit_string,
-    };
+    xcb_xim_im_callback xim_callback = {0};
+    xim_callback.forward_event = &SConnection::xim_forward_event;
+    xim_callback.commit_string = &SConnection::xim_commit_string;
     xcb_xim_set_im_callback(m_xim, &xim_callback, this);
     xcb_xim_set_log_handler(m_xim, xim_logger);
     xcb_xim_set_use_compound_text(m_xim, true);
