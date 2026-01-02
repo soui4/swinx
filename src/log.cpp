@@ -253,16 +253,16 @@ Log::~Log()
         char buf[MAX_LOGLEN] = { 0 };
         const char *levelStr = (m_level >= SLOG_VERBOSE && m_level <= SLOG_FATAL) ? kLevelStr[m_level] : "invalid";
 #ifdef NDEBUG
-        snprintf(buf, sizeof(buf), "tid=%ld,%s,%s,%s", (int64_t)tid, m_tag, levelStr, m_logbuf);
+        snprintf(buf, sizeof(buf), "tid=%ld,%s,%s,%s", (long int)tid, m_tag, levelStr, m_logbuf);
 #else
-        snprintf(buf, sizeof(buf), "tid=%ld,%04d-%02d-%02d %02d:%02d:%02d %03dms %s,%s,%s,%s", (int64_t)tid, wtm.wYear, wtm.wMonth, wtm.wDay, wtm.wHour, wtm.wMinute, wtm.wSecond, wtm.wMilliseconds, m_tag, levelStr, m_logbuf, m_lineInfo.str().c_str());
+        snprintf(buf, sizeof(buf), "tid=%ld,%04d-%02d-%02d %02d:%02d:%02d %03dms %s,%s,%s,%s", (long int)tid, wtm.wYear, wtm.wMonth, wtm.wDay, wtm.wHour, wtm.wMinute, wtm.wSecond, wtm.wMilliseconds, m_tag, levelStr, m_logbuf, m_lineInfo.str().c_str());
 #endif
         gs_LogFunc(buf, m_level);
     }
     else if (m_level >= gs_level)
     {
         char buf[MAX_LOGLEN] = { 0 };
-        snprintf(buf, sizeof(buf), "tid=%ld,%04d-%02d-%02d %02d:%02d:%02d %03dms %s,%d,%s,%s\n", (int64_t)tid, wtm.wYear, wtm.wMonth, wtm.wDay, wtm.wHour, wtm.wMinute, wtm.wSecond, wtm.wMilliseconds, m_tag, m_level, m_logbuf, m_lineInfo.str().c_str());
+        snprintf(buf, sizeof(buf), "tid=%ld,%04d-%02d-%02d %02d:%02d:%02d %03dms %s,%d,%s,%s\n", (long int)tid, wtm.wYear, wtm.wMonth, wtm.wDay, wtm.wHour, wtm.wMinute, wtm.wSecond, wtm.wMilliseconds, m_tag, m_level, m_logbuf, m_lineInfo.str().c_str());
         OutputDebugStringA(buf);
     }
 }
