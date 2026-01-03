@@ -58,6 +58,7 @@ if (NOT SOUI_ENABLE_CORE_LIB)
         xcb-imdkit         # Our internal xcb-imdkit target
         uuid               # System UUID library
         dbus-1             # Our internal D-Bus library
+        atomic
         ${ALSA_LIBRARIES}  # ALSA library for audio playback (optional)
     )
     # Add dependencies to ensure proper build order for all internal libraries
