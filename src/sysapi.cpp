@@ -29,6 +29,10 @@
 #include "cursormgr.h"
 #define kLogTag "sysapi"
 
+#ifndef WCHAR_SIZE
+#define WCHAR_SIZE 4
+#endif//WCHAR_SIZE
+
 using namespace swinx;
 /*
 ANSI_X3.4-1968 ANSI_X3.4-1986 ASCII CP367 IBM367 ISO-IR-6 ISO646-US ISO_646.IRV:1991 US US-ASCII CSASCII

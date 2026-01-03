@@ -3,6 +3,10 @@
 #include <ctypes.h>
 #include <assert.h>
 
+#ifndef WCHAR_SIZE
+#define WCHAR_SIZE 4
+#endif//WCHAR_SIZE
+
 namespace swinx {
 	enum { SURROGATE_LEAD_FIRST = 0xD800 };
 	enum { SURROGATE_LEAD_LAST = 0xDBFF };
