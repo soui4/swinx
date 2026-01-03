@@ -67,6 +67,9 @@ if (NOT SOUI_ENABLE_CORE_LIB)
     set_target_properties(swinx PROPERTIES
         LINK_FLAGS "-Wl,--export-dynamic"
     )
+    set_target_properties(swinx PROPERTIES
+        INSTALL_RPATH "\$ORIGIN"
+    )
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS})
     target_link_libraries(swinx ${ALSA_LIBRARIES})
