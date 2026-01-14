@@ -6,6 +6,51 @@
 #include "winuser.h"
 #include "wnd.h"
 
+// 为了支持进程激活，需要包含ApplicationServices
+#include <ApplicationServices/ApplicationServices.h>
+
+// 自定义文件过滤委托
+@interface FileFilterDelegate : NSObject <NSOpenSavePanelDelegate>
+@property (nonatomic, strong) NSArray<NSString *> *allowedExtensions;
+@property (nonatomic, assign) BOOL strictFiltering;
+- (instancetype)initWithExtensions:(NSArray<NSString *> *)extensions;
+@end
+
+@implementation FileFilterDelegate
+
+- (instancetype)initWithExtensions:(NSArray<NSString *> *)extensions {
+    self = [super init];
+    if (self) {
+        _allowedExtensions = [extensions copy];
+        _strictFiltering = YES;
+    }
+    return self;
+}
+
+- (BOOL)panel:(id)sender shouldEnableURL:(NSURL *)url {
+    if (!self.strictFiltering || !self.allowedExtensions || self.allowedExtensions.count == 0) {
+        return YES;
+    }
+
+    // 允许目录
+    NSNumber *isDirectory;
+    if ([url getResourceValue:&isDirectory forKey:NSURLIsDirectoryKey error:nil] && [isDirectory boolValue]) {
+        return YES;
+    }
+
+    // 检查文件扩展名
+    NSString *pathExtension = [[url pathExtension] lowercaseString];
+    for (NSString *allowedExt in self.allowedExtensions) {
+        if ([pathExtension isEqualToString:[allowedExt lowercaseString]]) {
+            return YES;
+        }
+    }
+
+    return NO;
+}
+
+@end
+
 BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out) {
     @autoreleasepool {
         // 创建颜色面板
@@ -70,55 +115,99 @@ BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out) {
 static BOOL GetOpenFileNameMac(OPENFILENAMEA *lpofn) {
     @autoreleasepool {
         NSOpenPanel *panel = [NSOpenPanel openPanel];
+
         // 处理过滤器字符串
+        NSMutableArray *allowedTypes = [NSMutableArray array];
         if (lpofn->lpstrFilter) {
-            NSMutableArray *allowedTypes = [NSMutableArray array];
             const char *filter = lpofn->lpstrFilter;
-            
+
             while (*filter) {
                 NSString *description = [NSString stringWithUTF8String:filter];
                 filter += strlen(filter) + 1;
-                
+
                 NSString *extensions = [NSString stringWithUTF8String:filter];
                 filter += strlen(filter) + 1;
-                
+
+                // 处理扩展名字符串，支持多种格式
                 NSArray *extArray = [extensions componentsSeparatedByString:@";"];
                 for (NSString *ext in extArray) {
-                    NSString *cleanExt = [ext stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"*."]];
-                    if (cleanExt.length > 0) {
-                        [allowedTypes addObject:cleanExt];
+                    // 更仔细地清理扩展名
+                    NSString *cleanExt = [ext stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+
+                    // 移除 "*." 前缀
+                    if ([cleanExt hasPrefix:@"*."]) {
+                        cleanExt = [cleanExt substringFromIndex:2];
+                    } else if ([cleanExt hasPrefix:@"."]) {
+                        cleanExt = [cleanExt substringFromIndex:1];
+                    }
+
+                    // 确保扩展名不为空且不是通配符
+                    if (cleanExt.length > 0 && ![cleanExt isEqualToString:@"*"]) {
+                        // 转换为小写以确保匹配
+                        cleanExt = [cleanExt lowercaseString];
+                        if (![allowedTypes containsObject:cleanExt]) {
+                            [allowedTypes addObject:cleanExt];
+                        }
                     }
                 }
             }
-            
-            if (allowedTypes.count > 0) {
-                panel.allowedFileTypes = allowedTypes;
-            }
         }
-        
+
+        // 设置文件类型过滤
+        if (allowedTypes.count > 0) {
+            // 调试输出：显示解析出的扩展名
+            NSLog(@"[FileDialog] Parsed extensions: %@", allowedTypes);
+
+            // 使用allowedFileTypes，虽然在新版本中被弃用，但仍然有效
+            // 这样可以避免链接UniformTypeIdentifiers框架的问题
+            #pragma clang diagnostic push
+            #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            panel.allowedFileTypes = allowedTypes;
+            #pragma clang diagnostic pop
+
+            // 不设置allowsOtherFileTypes为YES，这样可以严格按照过滤器过滤
+            panel.allowsOtherFileTypes = NO;
+        } else {
+            NSLog(@"[FileDialog] No file type filters applied");
+        }
+
         // 设置初始目录
         if (lpofn->lpstrInitialDir) {
             NSString *initialDir = [NSString stringWithUTF8String:lpofn->lpstrInitialDir];
             panel.directoryURL = [NSURL fileURLWithPath:initialDir];
         }
-        
+
         // 设置标题
         if (lpofn->lpstrTitle) {
             panel.title = [NSString stringWithUTF8String:lpofn->lpstrTitle];
         }
-        
+
         // 处理标志位
         panel.allowsMultipleSelection = (lpofn->Flags & OFN_ALLOWMULTISELECT) != 0;
         panel.canChooseFiles = YES;
         panel.canChooseDirectories = NO;
         panel.showsHiddenFiles = (lpofn->Flags & OFN_HIDEREADONLY) == 0;
-        
+
         if (lpofn->Flags & OFN_FILEMUSTEXIST) {
             panel.canCreateDirectories = NO;
         } else {
             panel.canCreateDirectories = YES;
         }
-        
+
+        // 设置文件过滤委托以实现更精确的过滤
+        FileFilterDelegate *filterDelegate = nil;
+        if (allowedTypes.count > 0) {
+            filterDelegate = [[FileFilterDelegate alloc] initWithExtensions:allowedTypes];
+            panel.delegate = filterDelegate;
+        }
+
+        // 确保应用程序处于前台状态，解决窗口激活问题
+        // 使用多种方法确保窗口能够正确激活
+        [NSApp activateIgnoringOtherApps:YES];
+
+        // 确保应用程序获得焦点
+        [[NSRunningApplication currentApplication] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+
         // 运行面板
         NSInteger result = [panel runModal];
         
@@ -200,31 +289,62 @@ static BOOL GetOpenFileNameMac(OPENFILENAMEA *lpofn) {
 static BOOL GetSaveFileNameMac(OPENFILENAMEA *lpofn) {
     @autoreleasepool {
         NSSavePanel *panel = [NSSavePanel savePanel];
-        
+
         // 处理过滤器字符串
+        NSMutableArray *allowedTypes = [NSMutableArray array];
         if (lpofn->lpstrFilter) {
-            NSMutableArray *allowedTypes = [NSMutableArray array];
             const char *filter = lpofn->lpstrFilter;
-            
+
             while (*filter) {
                 NSString *description = [NSString stringWithUTF8String:filter];
                 filter += strlen(filter) + 1;
-                
+
                 NSString *extensions = [NSString stringWithUTF8String:filter];
                 filter += strlen(filter) + 1;
-                
+
+                // 处理扩展名字符串，支持多种格式
                 NSArray *extArray = [extensions componentsSeparatedByString:@";"];
                 for (NSString *ext in extArray) {
-                    NSString *cleanExt = [ext stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"*."]];
-                    if (cleanExt.length > 0) {
-                        [allowedTypes addObject:cleanExt];
+                    // 更仔细地清理扩展名
+                    NSString *cleanExt = [ext stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+
+                    // 移除 "*." 前缀
+                    if ([cleanExt hasPrefix:@"*."]) {
+                        cleanExt = [cleanExt substringFromIndex:2];
+                    } else if ([cleanExt hasPrefix:@"."]) {
+                        cleanExt = [cleanExt substringFromIndex:1];
+                    }
+
+                    // 确保扩展名不为空且不是通配符
+                    if (cleanExt.length > 0 && ![cleanExt isEqualToString:@"*"]) {
+                        // 转换为小写以确保匹配
+                        cleanExt = [cleanExt lowercaseString];
+                        if (![allowedTypes containsObject:cleanExt]) {
+                            [allowedTypes addObject:cleanExt];
+                        }
                     }
                 }
             }
-            
-            if (allowedTypes.count > 0) {
-                panel.allowedFileTypes = allowedTypes;
-            }
+        }
+
+        // 设置文件类型过滤
+        if (allowedTypes.count > 0) {
+            // 使用allowedFileTypes，虽然在新版本中被弃用，但仍然有效
+            // 这样可以避免链接UniformTypeIdentifiers框架的问题
+            #pragma clang diagnostic push
+            #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            panel.allowedFileTypes = allowedTypes;
+            #pragma clang diagnostic pop
+
+            // 不设置allowsOtherFileTypes为YES，这样可以严格按照过滤器过滤
+            panel.allowsOtherFileTypes = NO;
+        }
+
+        // 设置文件过滤委托以实现更精确的过滤
+        FileFilterDelegate *filterDelegate = nil;
+        if (allowedTypes.count > 0) {
+            filterDelegate = [[FileFilterDelegate alloc] initWithExtensions:allowedTypes];
+            panel.delegate = filterDelegate;
         }
         
         // 设置初始目录
@@ -251,7 +371,14 @@ static BOOL GetSaveFileNameMac(OPENFILENAMEA *lpofn) {
         
         // 处理标志位
         panel.showsHiddenFiles = (lpofn->Flags & OFN_HIDEREADONLY) == 0;
-        
+
+        // 确保应用程序处于前台状态，解决窗口激活问题
+        // 使用多种方法确保窗口能够正确激活
+        [NSApp activateIgnoringOtherApps:YES];
+
+        // 确保应用程序获得焦点
+        [[NSRunningApplication currentApplication] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+
         // 运行面板
         NSInteger result = [panel runModal];
         
@@ -290,7 +417,14 @@ static BOOL SelectFolderMac(HWND hwndOwner,const char * lpszTitle,char * lpszFol
             panel.title = title;
             panel.message = title; // message显示更大的标题
         }
-        
+
+        // 确保应用程序处于前台状态，解决窗口激活问题
+        // 使用多种方法确保窗口能够正确激活
+        [NSApp activateIgnoringOtherApps:YES];
+
+        // 确保应用程序获得焦点
+        [[NSRunningApplication currentApplication] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+
         // 运行模态对话框
         NSInteger result = [panel runModal];
         
