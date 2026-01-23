@@ -882,6 +882,47 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
 {
     if (!lpOperation || stricmp(lpOperation, "open") != 0)
         return FALSE;
+    
+    // 处理资源管理器选中文件/文件夹功能
+    if (lpFile && stricmp(lpFile, "explorer.exe") == 0 && lpParameters)
+    {
+        // 检查是否为 /select, 命令
+        const char *selectPrefix = "/select,";
+        size_t prefixLen = strlen(selectPrefix);
+        if (strncmp(lpParameters, selectPrefix, prefixLen) == 0)
+        {
+            // 提取要选中的文件路径
+            const char *filePath = lpParameters + prefixLen;
+            
+#ifdef __linux__
+            // Linux: 使用 xdg-open 打开文件所在目录
+            std::string dirPath = filePath;
+            size_t lastSlash = dirPath.find_last_of('/');
+            if (lastSlash != std::string::npos)
+            {
+                dirPath = dirPath.substr(0, lastSlash);
+            }
+            int len = dirPath.length();
+            char *cmd = new char[len + 12];
+            sprintf(cmd, "xdg-open '%s'", dirPath.c_str());
+            int ret = system(cmd);
+            delete[] cmd;
+            return ret == 0;
+#elif defined(__APPLE__)
+            // macOS: 使用 open -R 命令选中文件
+            int len = strlen(filePath);
+            char *cmd = new char[len + 20];
+            sprintf(cmd, "open -R '%s'", filePath);
+            int ret = system(cmd);
+            delete[] cmd;
+            return (ret == 0);
+#else
+            return FALSE;
+#endif
+        }
+    }
+    
+    // 原有逻辑
     int exe = is_executable(lpFile);
     if (exe <= 0)
     {
