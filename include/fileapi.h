@@ -343,16 +343,25 @@ typedef LPWIN32_FIND_DATAA LPWIN32_FIND_DATA;
     int WINAPI DelDirA(const char *src_dir, BOOL bAllowUndo);
     int WINAPI DelDirW(const wchar_t *src_dir, BOOL bAllowUndo);
 
+    BOOL WINAPI MoveFileA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName);
+    BOOL WINAPI MoveFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName);
+
+    BOOL WINAPI RemoveDirectoryA(LPCSTR lpPathName);
+    BOOL WINAPI RemoveDirectoryW(LPCWSTR lpPathName);
 #ifdef UNICODE
 #define CopyFile   CopyFileW
 #define CopyDir    CopyDirW
 #define DeleteFile DeleteFileW
 #define DelDir     DelDirW
+#define MoveFile   MoveFileW
+#define RemoveDirectory RemoveDirectoryW
 #else
 #define CopyFile   CopyFileA
 #define CopyDir    CopyDirA
 #define DeleteFile DeleteFileA
 #define DelDir     DelDirA
+#define MoveFile   MoveFileA
+#define RemoveDirectory RemoveDirectoryA
 #endif // !UNICODE
 
 #define STD_INPUT_HANDLE  ((DWORD)-10)

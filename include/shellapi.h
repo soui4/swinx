@@ -128,8 +128,6 @@ extern "C"
     wchar_t *WINAPI PathFindFileNameW(const wchar_t *path);
     char *WINAPI PathFindExtensionA(const char *path);
     wchar_t *WINAPI PathFindExtensionW(const wchar_t *path);
-    BOOL WINAPI PathFileExistsA(const char *path);
-    BOOL WINAPI PathFileExistsW(const wchar_t *path);
     BOOL WINAPI PathCanonicalizeA(char *buffer, const char *path);
     BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path);
     BOOL WINAPI PathIsValidCharA(char c, DWORD _class);
@@ -144,7 +142,6 @@ extern "C"
 #define PathIsRelative    PathIsRelativeW
 #define PathFindFileName  PathFindFileNameW
 #define PathFindExtension PathFindExtensionW
-#define PathFileExists    PathFileExistsW
 #define PathCanonicalize  PathCanonicalizeW
 #define PathIsValidChar   PathIsValidCharW
 #define PathCommonPrefix  PathCommonPrefixW
@@ -154,7 +151,6 @@ extern "C"
 #define PathIsRelative    PathIsRelativeA
 #define PathFindFileName  PathFindFileNameA
 #define PathFindExtension PathFindExtensionA
-#define PathFileExists    PathFileExistsA
 #define PathCanonicalize  PathCanonicalizeA
 #define PathIsValidChar   PathIsValidCharA
 #define PathCommonPrefix  PathCommonPrefixA
@@ -258,6 +254,94 @@ extern "C"
 #define SHCreateStreamOnFile   SHCreateStreamOnFileA
 #define SHCreateStreamOnFileEx SHCreateStreamOnFileExA
 #endif // UNICODE
+
+// Shell File Operations
+
+#define FO_MOVE                    0x0001
+#define FO_COPY                    0x0002
+#define FO_DELETE                  0x0003
+#define FO_RENAME                  0x0004
+
+// SHFILEOPSTRUCT.fFlags and IFileOperation::SetOperationFlags() flag values
+
+#define FOF_MULTIDESTFILES         0x0001
+#define FOF_CONFIRMMOUSE           0x0002
+#define FOF_SILENT                 0x0004  // don't display progress UI (confirm prompts may be displayed still)
+#define FOF_RENAMEONCOLLISION      0x0008  // automatically rename the source files to avoid the collisions
+#define FOF_NOCONFIRMATION         0x0010  // don't display confirmation UI, assume "yes" for cases that can be bypassed, "no" for those that can not
+#define FOF_WANTMAPPINGHANDLE      0x0020  // Fill in SHFILEOPSTRUCT.hNameMappings
+                                           // Must be freed using SHFreeNameMappings
+#define FOF_ALLOWUNDO              0x0040  // enable undo including Recycle behavior for IFileOperation::Delete()
+#define FOF_FILESONLY              0x0080  // only operate on the files (non folders), both files and folders are assumed without this
+#define FOF_SIMPLEPROGRESS         0x0100  // means don't show names of files
+#define FOF_NOCONFIRMMKDIR         0x0200  // don't dispplay confirmatino UI before making any needed directories, assume "Yes" in these cases
+#define FOF_NOERRORUI              0x0400  // don't put up error UI, other UI may be displayed, progress, confirmations
+#define FOF_NOCOPYSECURITYATTRIBS  0x0800  // dont copy file security attributes (ACLs)
+#define FOF_NORECURSION            0x1000  // don't recurse into directories for operations that would recurse
+#define FOF_NO_CONNECTED_ELEMENTS  0x2000  // don't operate on connected elements ("xxx_files" folders that go with .htm files)
+#define FOF_WANTNUKEWARNING        0x4000  // during delete operation, warn if object is being permanently destroyed instead of recycling (partially overrides FOF_NOCONFIRMATION)
+#define FOF_NORECURSEREPARSE       0x8000  // deprecated; the operations engine always does the right thing on FolderLink objects (symlinks, reparse points, folder shortcuts)
+#define FOF_NO_UI                   (FOF_SILENT | FOF_NOCONFIRMATION | FOF_NOERRORUI | FOF_NOCONFIRMMKDIR) // don't display any UI at all
+
+typedef WORD FILEOP_FLAGS;
+
+#define PO_DELETE       0x0013  // printer is being deleted
+#define PO_RENAME       0x0014  // printer is being renamed
+#define PO_PORTCHANGE   0x0020  // port this printer connected to is being changed
+                                // if this id is set, the strings received by
+                                // the copyhook are a doubly-null terminated
+                                // list of strings.  The first is the printer
+                                // name and the second is the printer port.
+#define PO_REN_PORT     0x0034  // PO_RENAME and PO_PORTCHANGE at same time.
+
+// no POF_ flags currently defined
+
+typedef WORD PRINTEROP_FLAGS;
+
+// implicit parameters are:
+//      if pFrom or pTo are unqualified names the current directories are
+//      taken from the global current drive/directory settings managed
+//      by Get/SetCurrentDrive/Directory
+//
+//      the global confirmation settings
+
+typedef struct _SHFILEOPSTRUCTA
+{
+    HWND            hwnd;
+    UINT            wFunc;
+    LPCSTR         pFrom;
+    LPCSTR         pTo;
+    FILEOP_FLAGS    fFlags;
+    BOOL            fAnyOperationsAborted;
+    LPVOID          hNameMappings;
+    LPCSTR           lpszProgressTitle; // only used if FOF_SIMPLEPROGRESS
+} SHFILEOPSTRUCTA, *LPSHFILEOPSTRUCTA;
+typedef struct _SHFILEOPSTRUCTW
+{
+    HWND            hwnd;
+    UINT            wFunc;
+    LPCWSTR         pFrom;
+    LPCWSTR         pTo;
+    FILEOP_FLAGS    fFlags;
+    BOOL            fAnyOperationsAborted;
+    LPVOID          hNameMappings;
+    LPCWSTR          lpszProgressTitle; // only used if FOF_SIMPLEPROGRESS
+} SHFILEOPSTRUCTW, *LPSHFILEOPSTRUCTW;
+#ifdef UNICODE
+typedef SHFILEOPSTRUCTW SHFILEOPSTRUCT;
+typedef LPSHFILEOPSTRUCTW LPSHFILEOPSTRUCT;
+#else
+typedef SHFILEOPSTRUCTA SHFILEOPSTRUCT;
+typedef LPSHFILEOPSTRUCTA LPSHFILEOPSTRUCT;
+#endif
+
+int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp);
+int WINAPI SHFileOperationW(LPSHFILEOPSTRUCTW lpFileOp);
+#ifdef UNICODE
+#define SHFileOperation  SHFileOperationW
+#else
+#define SHFileOperation  SHFileOperationA
+#endif // !UNICODE
 
 #ifdef __cplusplus
 }

@@ -5,6 +5,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <errno.h>
 #ifdef __linux__
 #include <sys/inotify.h>
 #elif defined(__APPLE__) && defined(__MACH__)
@@ -18,6 +19,10 @@
 #include <iconv.h>
 #include <setjmp.h>
 #include <dirent.h>
+#include <map>
+#include <vector>
+#include <set>
+#include <string>
 #include "SConnection.h"
 #include "wnd.h"
 #include "uimsg.h"
@@ -2747,37 +2752,86 @@ HANDLE WINAPI FindFirstChangeNotificationW(LPCWSTR lpPathName, BOOL bWatchSubtre
 #ifdef __linux__
 struct NotifyHandle : FdHandle
 {
-    std::list<int> lstWd;
+    std::map<int, std::string> mapWdPath;  // watch descriptor -> path mapping
+    std::map<std::string, int> mapPathWd;  // path -> watch descriptor mapping
+    BOOL bWatchSubtree;                     // 是否监控子目录
+    uint32_t mask;                          // inotify mask
 
     NotifyHandle(int _fd)
         : FdHandle(_fd)
+        , bWatchSubtree(FALSE)
+        , mask(0)
     {
         type = HNotifyHandle;
     }
 
     ~NotifyHandle()
     {
-        for (auto wd : lstWd)
+        for (auto it : mapWdPath)
         {
+            inotify_rm_watch(fd, it.first);
+        }
+        mapWdPath.clear();
+        mapPathWd.clear();
+        close(fd);
+    }
+
+    // 添加单个路径监控
+    bool addWatch(const char *path)
+    {
+        // 检查是否已经在监控
+        if (mapPathWd.find(path) != mapPathWd.end())
+            return true;
+
+        int wd = inotify_add_watch(fd, path, mask);
+        if (wd == -1)
+            return false;
+
+        mapWdPath[wd] = path;
+        mapPathWd[path] = wd;
+        return true;
+    }
+
+    // 移除单个路径监控
+    void removeWatch(int wd)
+    {
+        auto it = mapWdPath.find(wd);
+        if (it != mapWdPath.end())
+        {
+            mapPathWd.erase(it->second);
+            mapWdPath.erase(it);
             inotify_rm_watch(fd, wd);
         }
-        lstWd.clear();
-        close(fd);
+    }
+
+    // 移除路径监控(通过路径)
+    void removeWatchByPath(const std::string &path)
+    {
+        auto it = mapPathWd.find(path);
+        if (it != mapPathWd.end())
+        {
+            int wd = it->second;
+            mapPathWd.erase(it);
+            mapWdPath.erase(wd);
+            inotify_rm_watch(fd, wd);
+        }
     }
 };
 
-static void add_path_watch(NotifyHandle *pHandle, const char *path, BOOL bWatchSubtree, uint32_t mask)
+// 递归添加目录及其子目录的监控
+static void add_path_watch_recursive(NotifyHandle *pHandle, const char *path)
 {
-    int wd = inotify_add_watch(pHandle->fd, path, mask);
-    if (wd == -1)
-    {
+    if (!pHandle->addWatch(path))
         return;
-    }
-    pHandle->lstWd.push_back(wd);
-    if (!bWatchSubtree)
+
+    if (!pHandle->bWatchSubtree)
         return;
+
     // 监视子目录
     DIR *dir = opendir(path);
+    if (!dir)
+        return;
+
     struct dirent *entry;
     while ((entry = readdir(dir)) != NULL)
     {
@@ -2789,12 +2843,31 @@ static void add_path_watch(NotifyHandle *pHandle, const char *path, BOOL bWatchS
             if (entry->d_type == DT_DIR)
             {
                 // 递归监视子目录
-                add_path_watch(pHandle, full_path, TRUE, mask);
+                add_path_watch_recursive(pHandle, full_path);
             }
         }
     }
 
     closedir(dir);
+}
+
+// 递归移除目录及其子目录的监控
+static void remove_path_watch_recursive(NotifyHandle *pHandle, const std::string &path)
+{
+    // 先移除所有子目录
+    std::vector<std::string> toRemove;
+    for (auto &it : pHandle->mapPathWd)
+    {
+        if (it.first.find(path) == 0)  // 路径以path开头
+        {
+            toRemove.push_back(it.first);
+        }
+    }
+
+    for (auto &p : toRemove)
+    {
+        pHandle->removeWatchByPath(p);
+    }
 }
 
 HANDLE WINAPI FindFirstChangeNotificationA(LPCSTR lpPathName, BOOL bWatchSubtree, DWORD dwNotifyFilter)
@@ -2825,8 +2898,11 @@ HANDLE WINAPI FindFirstChangeNotificationA(LPCSTR lpPathName, BOOL bWatchSubtree
         return INVALID_HANDLE_VALUE;
     }
     NotifyHandle *notifyHandle = new NotifyHandle(fd);
-    add_path_watch(notifyHandle, lpPathName, bWatchSubtree, mask);
-    if (notifyHandle->lstWd.empty())
+    notifyHandle->bWatchSubtree = bWatchSubtree;
+    notifyHandle->mask = mask;
+
+    add_path_watch_recursive(notifyHandle, lpPathName);
+    if (notifyHandle->mapWdPath.empty())
     {
         delete notifyHandle;
         return INVALID_HANDLE_VALUE;
@@ -2839,36 +2915,101 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
     _SynHandle *synHandle = GetSynHandle(hChangeHandle);
     if (!synHandle || synHandle->getType() != HNotifyHandle)
         return FALSE;
+
+    int tst = WaitForSingleObject(hChangeHandle, 0);
+    if (tst != WAIT_OBJECT_0)
+        return FALSE;
+
     NotifyHandle *notifyHandle = (NotifyHandle *)synHandle;
 
-    struct inotify_event evt;
-    int evt_len = FIELD_OFFSET(struct inotify_event, name);
-    if (read(notifyHandle->getReadFd(), &evt, evt_len) == evt_len)
+    // 读取并处理inotify事件
+    char buf[4096] __attribute__((aligned(__alignof__(struct inotify_event))));
+    ssize_t totalRead = 0;
+
+    while (true)
     {
-        char szBuf[1024];
-        int remain = evt.len;
-        for (; remain > 0;)
+        ssize_t bytesRead = read(notifyHandle->fd, buf, sizeof(buf));
+        if (bytesRead <= 0)
+            break;
+
+        totalRead += bytesRead;
+
+        // 解析inotify事件
+        const struct inotify_event *event;
+        for (char *ptr = buf; ptr < buf + bytesRead; ptr += sizeof(struct inotify_event) + event->len)
         {
-            int len = std::min(1024, remain);
-            int readed = read(notifyHandle->getReadFd(), szBuf, len);
-            assert(readed == len);
-            remain -= readed;
+            event = (const struct inotify_event *)ptr;
+
+            // 如果不监控子目录,不需要处理目录创建/删除
+            if (!notifyHandle->bWatchSubtree)
+                continue;
+
+            // 获取事件对应的路径
+            auto it = notifyHandle->mapWdPath.find(event->wd);
+            if (it == notifyHandle->mapWdPath.end())
+                continue;
+
+            std::string parentPath = it->second;
+
+            // 只处理有名称的事件
+            if (event->len == 0)
+                continue;
+
+            std::string fullPath = parentPath + "/" + event->name;
+
+            // 处理目录创建事件
+            if ((event->mask & IN_CREATE) && (event->mask & IN_ISDIR))
+            {
+                // 新建了子目录,添加监控
+                add_path_watch_recursive(notifyHandle, fullPath.c_str());
+            }
+            // 处理目录删除事件
+            else if ((event->mask & IN_DELETE) && (event->mask & IN_ISDIR))
+            {
+                // 删除了子目录,移除监控
+                remove_path_watch_recursive(notifyHandle, fullPath);
+            }
+            // 处理目录移入事件
+            else if ((event->mask & IN_MOVED_TO) && (event->mask & IN_ISDIR))
+            {
+                // 目录移入,添加监控
+                add_path_watch_recursive(notifyHandle, fullPath.c_str());
+            }
+            // 处理目录移出事件
+            else if ((event->mask & IN_MOVED_FROM) && (event->mask & IN_ISDIR))
+            {
+                // 目录移出,移除监控
+                remove_path_watch_recursive(notifyHandle, fullPath);
+            }
+            // 处理监控被删除事件
+            else if (event->mask & IN_IGNORED)
+            {
+                // 监控的目录被删除了,从映射中移除
+                notifyHandle->removeWatch(event->wd);
+            }
         }
-        return TRUE;
+
+        // 如果读取的数据小于缓冲区大小,说明已经读完了
+        if (bytesRead < (ssize_t)sizeof(buf))
+            break;
     }
-    return FALSE;
+
+    return totalRead > 0;
 }
 
 #elif defined(__APPLE__) && defined(__MACH__)
 struct NotifyHandle : FdHandle
 {
-    std::vector<int> watchedFds; // 监控的文件描述符列表
-    std::string rootPath;        // 根路径
-    BOOL watchSubtree;           // 是否监控子目录
-    DWORD notifyFilter;          // 通知过滤器
+    std::map<int, std::string> mapFdPath;  // fd -> path mapping
+    std::map<std::string, int> mapPathFd;  // path -> fd mapping
+    std::string rootPath;                   // 根路径
+    BOOL watchSubtree;                      // 是否监控子目录
+    DWORD notifyFilter;                     // 通知过滤器
 
     NotifyHandle(int kq)
         : FdHandle(kq)
+        , watchSubtree(FALSE)
+        , notifyFilter(0)
     {
         type = HNotifyHandle;
     }
@@ -2876,11 +3017,12 @@ struct NotifyHandle : FdHandle
     ~NotifyHandle()
     {
         // 关闭所有监控的文件描述符
-        for (int watchFd : watchedFds)
+        for (auto &it : mapFdPath)
         {
-            close(watchFd);
+            close(it.first);
         }
-        watchedFds.clear();
+        mapFdPath.clear();
+        mapPathFd.clear();
 
         // 关闭kqueue
         if (fd != -1)
@@ -2888,11 +3030,28 @@ struct NotifyHandle : FdHandle
             close(fd);
         }
     }
+
+    // 移除路径监控
+    void removeWatchByPath(const std::string &path)
+    {
+        auto it = mapPathFd.find(path);
+        if (it != mapPathFd.end())
+        {
+            int watchFd = it->second;
+            mapPathFd.erase(it);
+            mapFdPath.erase(watchFd);
+            close(watchFd);
+        }
+    }
 };
 
 // 添加单个路径到kqueue监控
 static bool add_path_to_kqueue(NotifyHandle *handle, const char *path)
 {
+    // 检查是否已经在监控
+    if (handle->mapPathFd.find(path) != handle->mapPathFd.end())
+        return true;
+
     int pathFd = open(path, O_RDONLY);
     if (pathFd == -1)
     {
@@ -2905,11 +3064,11 @@ static bool add_path_to_kqueue(NotifyHandle *handle, const char *path)
     // 根据通知过滤器设置kqueue事件标志
     if (handle->notifyFilter & FILE_NOTIFY_CHANGE_FILE_NAME)
     {
-        fflags |= NOTE_DELETE | NOTE_RENAME;
+        fflags |= NOTE_DELETE | NOTE_RENAME | NOTE_WRITE;  // NOTE_WRITE用于检测新文件
     }
     if (handle->notifyFilter & FILE_NOTIFY_CHANGE_DIR_NAME)
     {
-        fflags |= NOTE_DELETE | NOTE_RENAME;
+        fflags |= NOTE_DELETE | NOTE_RENAME | NOTE_WRITE;  // NOTE_WRITE用于检测新目录
     }
     if (handle->notifyFilter & FILE_NOTIFY_CHANGE_ATTRIBUTES)
     {
@@ -2950,7 +3109,8 @@ static bool add_path_to_kqueue(NotifyHandle *handle, const char *path)
         return false;
     }
 
-    handle->watchedFds.push_back(pathFd);
+    handle->mapFdPath[pathFd] = path;
+    handle->mapPathFd[path] = pathFd;
     return true;
 }
 
@@ -3048,7 +3208,7 @@ HANDLE WINAPI FindFirstChangeNotificationA(LPCSTR lpPathName, BOOL bWatchSubtree
     }
 
     // 检查是否成功添加了任何监控
-    if (notifyHandle->watchedFds.empty())
+    if (notifyHandle->mapFdPath.empty())
     {
         delete notifyHandle;
         SetLastError(ERROR_ACCESS_DENIED);
@@ -3081,22 +3241,70 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
     {
         struct kevent &event = events[i];
 
-        // 检查是否是我们监控的文件描述符
-        bool isWatchedFd = false;
-        for (int watchFd : notifyHandle->watchedFds)
+        // 查找事件对应的路径
+        auto it = notifyHandle->mapFdPath.find((int)event.ident);
+        if (it == notifyHandle->mapFdPath.end())
+            continue;
+
+        std::string watchedPath = it->second;
+
+        // 如果监控子目录且检测到目录内容变化,需要检查是否有新增或删除的子目录
+        if (notifyHandle->watchSubtree && (event.fflags & NOTE_WRITE))
         {
-            if (event.ident == (uintptr_t)watchFd)
+            // 检查目录是否存在
+            struct stat statBuf;
+            if (stat(watchedPath.c_str(), &statBuf) != 0 || !S_ISDIR(statBuf.st_mode))
+                continue;
+
+            // 扫描目录,查找新增的子目录
+            DIR *dir = opendir(watchedPath.c_str());
+            if (dir)
             {
-                isWatchedFd = true;
-                break;
+                std::set<std::string> currentSubDirs;
+                struct dirent *entry;
+                while ((entry = readdir(dir)) != NULL)
+                {
+                    if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                        continue;
+
+                    char fullPath[PATH_MAX];
+                    snprintf(fullPath, sizeof(fullPath), "%s/%s", watchedPath.c_str(), entry->d_name);
+
+                    if (stat(fullPath, &statBuf) == 0 && S_ISDIR(statBuf.st_mode))
+                    {
+                        currentSubDirs.insert(fullPath);
+
+                        // 如果是新目录且未监控,添加监控
+                        if (notifyHandle->mapPathFd.find(fullPath) == notifyHandle->mapPathFd.end())
+                        {
+                            add_directory_watch(notifyHandle, fullPath);
+                        }
+                    }
+                }
+                closedir(dir);
             }
         }
 
-        if (isWatchedFd && (event.fflags & (NOTE_DELETE | NOTE_RENAME | NOTE_WRITE | NOTE_EXTEND | NOTE_ATTRIB)))
+        // 处理目录删除或重命名事件
+        if (event.fflags & (NOTE_DELETE | NOTE_RENAME))
         {
-            // 找到了匹配的文件系统变化事件
-            // 继续读取剩余事件以清空队列，但不处理
-            continue;
+            // 目录被删除或重命名,移除监控
+            if (notifyHandle->watchSubtree)
+            {
+                // 移除所有以此路径开头的监控
+                std::vector<std::string> toRemove;
+                for (auto &pathIt : notifyHandle->mapPathFd)
+                {
+                    if (pathIt.first.find(watchedPath) == 0)
+                    {
+                        toRemove.push_back(pathIt.first);
+                    }
+                }
+                for (auto &path : toRemove)
+                {
+                    notifyHandle->removeWatchByPath(path);
+                }
+            }
         }
     }
 
