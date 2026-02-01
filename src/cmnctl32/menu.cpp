@@ -885,7 +885,7 @@ CMenu *CMenu::GetSubMenu(int nPos)
 
 UINT CMenu::TrackPopupMenu(UINT flag, int x, int y, HWND hOwner, LPTPMPARAMS prcRect)
 {
-    if (!IsWindow(m_hWnd))
+    if (!IsWindow(m_hWnd) || GetMenuItemCount() == 0)
         return (UINT)-1;
     if (!s_MenuData)
         s_MenuData = new SMenuRunData(hOwner);
