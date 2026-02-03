@@ -71,6 +71,7 @@ class CDropFileTarget : public SUnkImpl<IDropTarget> {
         HDROP hdrop = static_cast<HDROP>(GlobalLock(medium.hGlobal));
         SendMessage(m_hOwner, WM_DROPFILES, (WPARAM)hdrop, 0);
         GlobalUnlock(medium.hGlobal);
+        ReleaseStgMedium(&medium);
         *pdwEffect = DROPEFFECT_COPY;
         return S_OK;
     }

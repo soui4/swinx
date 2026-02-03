@@ -17,6 +17,8 @@ enum
     HFdHandle,
     HNotifyHandle,
     HThread,
+    HTimer,
+    HNamedTimer,
 };
 
 struct _SynHandle

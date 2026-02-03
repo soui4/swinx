@@ -339,6 +339,42 @@ extern "C"
 
     BOOL WINAPI FlushInstructionCache(HANDLE hProcess, LPCVOID lpBaseAddress, size_t dwSize);
 
+    // Virtual memory functions
+    LPVOID WINAPI VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
+    BOOL WINAPI VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
+
+    // Timer related functions
+    typedef VOID (CALLBACK *PTIMERAPCROUTINE)(LPVOID lpArgToCompletionRoutine, DWORD dwTimerLowValue, DWORD dwTimerHighValue);
+    typedef VOID (CALLBACK *WAITORTIMERCALLBACK)(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
+
+    HANDLE WINAPI CreateWaitableTimerA(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL bManualReset, LPCSTR lpTimerName);
+    HANDLE WINAPI CreateWaitableTimerW(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL bManualReset, LPCWSTR lpTimerName);
+
+#ifdef UNICODE
+#define CreateWaitableTimer CreateWaitableTimerW
+#else
+#define CreateWaitableTimer CreateWaitableTimerA
+#endif // UNICODE
+
+    BOOL WINAPI SetWaitableTimer(HANDLE hTimer, const LARGE_INTEGER *lpDueTime, LONG lPeriod, PTIMERAPCROUTINE lpCompletionRoutine, LPVOID lpArgToCompletionRoutine, BOOL fResume);
+    BOOL WINAPI CancelWaitableTimer(HANDLE hTimer);
+    HANDLE WINAPI OpenWaitableTimerA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpTimerName);
+    HANDLE WINAPI OpenWaitableTimerW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpTimerName);
+
+#ifdef UNICODE
+#define OpenWaitableTimer OpenWaitableTimerW
+#else
+#define OpenWaitableTimer OpenWaitableTimerA
+#endif // UNICODE
+
+    // Timer Queue related functions
+    HANDLE WINAPI CreateTimerQueue(void);
+    BOOL WINAPI CreateTimerQueueTimer(PHANDLE phNewTimer, HANDLE hTimerQueue, WAITORTIMERCALLBACK Callback, PVOID Parameter, DWORD DueTime, DWORD Period, ULONG Flags);
+    BOOL WINAPI ChangeTimerQueueTimer(HANDLE hTimerQueue, HANDLE hTimer, DWORD DueTime, DWORD Period);
+    BOOL WINAPI DeleteTimerQueueTimer(HANDLE hTimerQueue, HANDLE hTimer, HANDLE hCompletionEvent);
+    BOOL WINAPI DeleteTimerQueue(HANDLE hTimerQueue);
+    BOOL WINAPI DeleteTimerQueueEx(HANDLE hTimerQueue, HANDLE hCompletionEvent);
+
     HGLOBAL WINAPI GlobalAlloc(UINT flags, SIZE_T size);
     HGLOBAL WINAPI GlobalReAlloc(_In_ HGLOBAL hMem, _In_ SIZE_T dwBytes, _In_ UINT uFlags);
     HGLOBAL WINAPI GlobalFree(HLOCAL hmem);
@@ -497,6 +533,172 @@ typedef int(WINAPI *PROC)();
 #define SECTION_MAP_EXECUTE_EXPLICIT 0x0020 // not included in SECTION_ALL_ACCESS
 
 #define SECTION_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | SECTION_QUERY | SECTION_MAP_WRITE | SECTION_MAP_READ | SECTION_MAP_EXECUTE | SECTION_EXTEND_SIZE)
+
+// System information structures
+typedef struct _SYSTEM_INFO {
+    union {
+        DWORD dwOemId;
+        struct {
+            WORD wProcessorArchitecture;
+            WORD wReserved;
+        } DUMMYSTRUCTNAME;
+    } DUMMYUNIONNAME;
+    DWORD dwPageSize;
+    LPVOID lpMinimumApplicationAddress;
+    LPVOID lpMaximumApplicationAddress;
+    DWORD_PTR dwActiveProcessorMask;
+    DWORD dwNumberOfProcessors;
+    DWORD dwProcessorType;
+    DWORD dwAllocationGranularity;
+    WORD wProcessorLevel;
+    WORD wProcessorRevision;
+} SYSTEM_INFO, *LPSYSTEM_INFO;
+
+// Processor architecture constants
+#define PROCESSOR_ARCHITECTURE_INTEL 0
+#define PROCESSOR_ARCHITECTURE_MIPS 1
+#define PROCESSOR_ARCHITECTURE_ALPHA 2
+#define PROCESSOR_ARCHITECTURE_PPC 3
+#define PROCESSOR_ARCHITECTURE_SHX 4
+#define PROCESSOR_ARCHITECTURE_ARM 5
+#define PROCESSOR_ARCHITECTURE_IA64 6
+#define PROCESSOR_ARCHITECTURE_ALPHA64 7
+#define PROCESSOR_ARCHITECTURE_MSIL 8
+#define PROCESSOR_ARCHITECTURE_AMD64 9
+#define PROCESSOR_ARCHITECTURE_IA32_ON_WIN64 10
+#define PROCESSOR_ARCHITECTURE_NEUTRAL 11
+#define PROCESSOR_ARCHITECTURE_ARM64 12
+#define PROCESSOR_ARCHITECTURE_ARM32_ON_WIN64 13
+#define PROCESSOR_ARCHITECTURE_IA32_ON_ARM64 14
+
+// OS version structures
+typedef struct _OSVERSIONINFOA {
+    DWORD dwOSVersionInfoSize;
+    DWORD dwMajorVersion;
+    DWORD dwMinorVersion;
+    DWORD dwBuildNumber;
+    DWORD dwPlatformId;
+    CHAR   szCSDVersion[ 128 ];     // Maintenance string for PSS usage
+} OSVERSIONINFOA, *POSVERSIONINFOA, *LPOSVERSIONINFOA;
+
+typedef struct _OSVERSIONINFOW {
+    DWORD dwOSVersionInfoSize;
+    DWORD dwMajorVersion;
+    DWORD dwMinorVersion;
+    DWORD dwBuildNumber;
+    DWORD dwPlatformId;
+    WCHAR  szCSDVersion[ 128 ];     // Maintenance string for PSS usage
+} OSVERSIONINFOW, *POSVERSIONINFOW, *LPOSVERSIONINFOW;
+#ifdef UNICODE
+typedef OSVERSIONINFOW OSVERSIONINFO;
+typedef POSVERSIONINFOW POSVERSIONINFO;
+typedef LPOSVERSIONINFOW LPOSVERSIONINFO;
+#else
+typedef OSVERSIONINFOA OSVERSIONINFO;
+typedef POSVERSIONINFOA POSVERSIONINFO;
+typedef LPOSVERSIONINFOA LPOSVERSIONINFO;
+#endif // UNICODE
+
+typedef struct _OSVERSIONINFOEXA {
+    DWORD dwOSVersionInfoSize;
+    DWORD dwMajorVersion;
+    DWORD dwMinorVersion;
+    DWORD dwBuildNumber;
+    DWORD dwPlatformId;
+    CHAR   szCSDVersion[ 128 ];     // Maintenance string for PSS usage
+    WORD   wServicePackMajor;
+    WORD   wServicePackMinor;
+    WORD   wSuiteMask;
+    BYTE  wProductType;
+    BYTE  wReserved;
+} OSVERSIONINFOEXA, *POSVERSIONINFOEXA, *LPOSVERSIONINFOEXA;
+typedef struct _OSVERSIONINFOEXW {
+    DWORD dwOSVersionInfoSize;
+    DWORD dwMajorVersion;
+    DWORD dwMinorVersion;
+    DWORD dwBuildNumber;
+    DWORD dwPlatformId;
+    WCHAR  szCSDVersion[ 128 ];     // Maintenance string for PSS usage
+    WORD   wServicePackMajor;
+    WORD   wServicePackMinor;
+    WORD   wSuiteMask;
+    BYTE  wProductType;
+    BYTE  wReserved;
+} OSVERSIONINFOEXW, *POSVERSIONINFOEXW, *LPOSVERSIONINFOEXW;
+#ifdef UNICODE
+typedef OSVERSIONINFOEXW OSVERSIONINFOEX;
+typedef POSVERSIONINFOEXW POSVERSIONINFOEX;
+typedef LPOSVERSIONINFOEXW LPOSVERSIONINFOEX;
+#else
+typedef OSVERSIONINFOEXA OSVERSIONINFOEX;
+typedef POSVERSIONINFOEXA POSVERSIONINFOEX;
+typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
+#endif // UNICODE
+
+// Platform ID constants
+#define VER_PLATFORM_WIN32s 0
+#define VER_PLATFORM_WIN32_WINDOWS 1
+#define VER_PLATFORM_WIN32_NT 2
+
+// Virtual memory constants
+#define MEM_COMMIT 0x1000
+#define MEM_RESERVE 0x2000
+#define MEM_DECOMMIT 0x4000
+#define MEM_RELEASE 0x8000
+#define MEM_FREE 0x10000
+#define MEM_PRIVATE 0x20000
+#define MEM_MAPPED 0x40000
+#define MEM_RESET 0x80000
+#define MEM_TOP_DOWN 0x100000
+#define MEM_WRITE_WATCH 0x200000
+#define MEM_PHYSICAL 0x400000
+#define MEM_ROTATE 0x800000
+#define MEM_DIFFERENT_IMAGE_BASE_OK 0x800000
+#define MEM_COALESCE_PLACEHOLDERS 0x1000000
+#define MEM_PRESERVE_PLACEHOLDER 0x2000000
+#define MEM_RESERVE_PLACEHOLDER 0x4000000
+
+#define PAGE_NOACCESS 0x01
+#define PAGE_READONLY 0x02
+#define PAGE_READWRITE 0x04
+#define PAGE_WRITECOPY 0x08
+#define PAGE_EXECUTE 0x10
+#define PAGE_EXECUTE_READ 0x20
+#define PAGE_EXECUTE_READWRITE 0x40
+#define PAGE_EXECUTE_WRITECOPY 0x80
+#define PAGE_GUARD 0x100
+#define PAGE_NOCACHE 0x200
+#define PAGE_WRITECOMBINE 0x400
+
+// System information functions
+VOID WINAPI GetSystemInfo(LPSYSTEM_INFO lpSystemInfo);
+BOOL WINAPI GetVersionExA(LPOSVERSIONINFOA lpVersionInformation);
+BOOL WINAPI GetVersionExW(LPOSVERSIONINFOW lpVersionInformation);
+
+#ifdef UNICODE
+#define GetVersionEx GetVersionExW
+#else
+#define GetVersionEx GetVersionExA
+#endif // UNICODE
+
+// Computer and user name functions
+BOOL WINAPI GetComputerNameA(LPSTR lpBuffer, LPDWORD lpnSize);
+BOOL WINAPI GetComputerNameW(LPWSTR lpBuffer, LPDWORD lpnSize);
+
+#ifdef UNICODE
+#define GetComputerName GetComputerNameW
+#else
+#define GetComputerName GetComputerNameA
+#endif // UNICODE
+
+BOOL WINAPI GetUserNameA(LPSTR lpBuffer, LPDWORD lpnSize);
+BOOL WINAPI GetUserNameW(LPWSTR lpBuffer, LPDWORD lpnSize);
+
+#ifdef UNICODE
+#define GetUserName GetUserNameW
+#else
+#define GetUserName GetUserNameA
+#endif // UNICODE
 
 #define FILE_MAP_WRITE      SECTION_MAP_WRITE
 #define FILE_MAP_READ       SECTION_MAP_READ

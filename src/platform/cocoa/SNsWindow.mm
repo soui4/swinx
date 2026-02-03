@@ -35,8 +35,13 @@ static BOOL EnumDataOjbect(IDataObject *pdo, FUNENUMDATOBOJECT fun, NSPasteboard
         if (FAILED(hr))
             continue;
         if (medium.tymed != TYMED_HGLOBAL)
+        {
+            ReleaseStgMedium(&medium);
             continue;
-        if (!fun(fmt.cfFormat, medium.hGlobal, param))
+        }
+        BOOL ret = fun(fmt.cfFormat, medium.hGlobal, param);
+        ReleaseStgMedium(&medium);
+        if (!ret)
             break;
     }
     enum_fmt->Release();
@@ -63,7 +68,7 @@ static NSImage* CreateDragImageForDataObject(IDataObject *pDataObject,POINT *ptO
     // 检查是否有文本数据 - 优先检查Unicode文本
     FORMATETC fmtUnicodeText = {CF_UNICODETEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
     FORMATETC fmtText = {CF_TEXT, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
-    STGMEDIUM medium;
+    STGMEDIUM medium={0};
     BOOL hasText = FALSE;
     NSString *textContent = nil;
 
@@ -95,6 +100,7 @@ static NSImage* CreateDragImageForDataObject(IDataObject *pDataObject,POINT *ptO
         }
         GlobalUnlock(medium.hGlobal);
     }
+    ReleaseStgMedium(&medium);
 
     if (hasText && textContent) {
 
@@ -202,6 +208,7 @@ static NSImage* CreateDragImageForDataObject(IDataObject *pDataObject,POINT *ptO
             [path stroke];
             [dragImage unlockFocus];
         }
+        ReleaseStgMedium(&medium);
     }
 
     return dragImage;
@@ -889,9 +896,9 @@ defer:(BOOL)flag;
         _doDragging = nullptr;
     }
     WndObj wndObj = WndMgr::fromHwnd(m_hWnd);
-    if(wndObj->dropTarget)
-        return;
-    wndObj->dropTarget->DragLeave();
+    if(wndObj->dropTarget){
+        wndObj->dropTarget->DragLeave();
+    }
 }
 
 
@@ -982,51 +989,75 @@ defer:(BOOL)flag;
 }
 
 - (void)insertText:(id)aString replacementRange:(NSRange)replacementRange {
-    NSEvent *currentEvent = [NSApp currentEvent];
-    if([self hasMarkedText]){
-        [self unmarkText];
-        //send WM_IME_CHAR  message
-        const char *str;
-        /* Could be NSString or NSAttributedString, so we have
-        * to test and convert it before return as SDL event */
-        if ([aString isKindOfClass: [NSAttributedString class]]) {
-            str = [[aString string] UTF8String];
-        } else {
-            str = [aString UTF8String];
+    @try {
+        if (!aString) {
+            return;
         }
-        SLOG_STMI()<<"hjx insertText:"<<str<<" hWnd="<<m_hWnd;
-        std::wstring wstr;
-        towstring(str, -1, wstr);
-        for(int i=0;i<wstr.length();i++){
-            m_pListener->OnNsEvent(m_hWnd, WM_IME_CHAR, wstr[i], 0);
-        }
-    }else{
-        if(currentEvent.type==NSEventTypeKeyDown){
-            [self onKeyDown:currentEvent];
+        
+        NSEvent *currentEvent = [NSApp currentEvent];
+        if([self hasMarkedText]){
+            [self unmarkText];
+            //send WM_IME_CHAR  message
+            const char *str = NULL;
+            /* Could be NSString or NSAttributedString, so we have
+            * to test and convert it before return as SDL event */
+            if ([aString isKindOfClass: [NSAttributedString class]]) {
+                NSString *stringValue = [aString string];
+                if (stringValue) {
+                    str = [stringValue UTF8String];
+                }
+            } else if ([aString isKindOfClass: [NSString class]]) {
+                str = [aString UTF8String];
+            }
+            
+            if (str) {
+                SLOG_STMI()<<"hjx insertText:"<<str<<" hWnd="<<m_hWnd;
+                std::wstring wstr;
+                towstring(str, -1, wstr);
+                for(int i=0;i<wstr.length();i++){
+                    m_pListener->OnNsEvent(m_hWnd, WM_IME_CHAR, wstr[i], 0);
+                }
+            }
         }else{
-            [self onKeyUp:currentEvent];
+            if(currentEvent && currentEvent.type==NSEventTypeKeyDown){
+                [self onKeyDown:currentEvent];
+            }else if(currentEvent && currentEvent.type==NSEventTypeKeyUp){
+                [self onKeyUp:currentEvent];
+            }
         }
+    } @catch (NSException *exception) {
+        SLOG_STMI()<<"hjx insertText exception:"<<[exception description];
     }
 
 }
 
 - (void)setMarkedText:(id)aString selectedRange:(NSRange)selectedRange replacementRange:(NSRange)replacementRange
 {
-    if ([aString isKindOfClass:[NSAttributedString class]]) {
-        aString = [aString string];
-    }
+    @try {
+        if (!aString) {
+            [self unmarkText];
+            return;
+        }
+        
+        if ([aString isKindOfClass:[NSAttributedString class]]) {
+            aString = [aString string];
+        }
 
-    if ([aString length] == 0) {
+        if ([aString length] == 0) {
+            [self unmarkText];
+            return;
+        }
+
+        if (_markedText != aString) {
+            _markedText = aString;
+        }
+
+        _selectedRange = selectedRange;
+        _markedRange = NSMakeRange(0, [aString length]);
+    } @catch (NSException *exception) {
+        SLOG_STMI()<<"hjx setMarkedText exception:"<<[exception description];
         [self unmarkText];
-        return;
     }
-
-    if (_markedText != aString) {
-        _markedText = aString;
-    }
-
-    _selectedRange = selectedRange;
-    _markedRange = NSMakeRange(0, [aString length]);
 }
 
 - (void)unmarkText

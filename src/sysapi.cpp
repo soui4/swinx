@@ -7,11 +7,14 @@
 #include <sys/wait.h>
 #include <errno.h>
 #ifdef __linux__
+#include <sys/sysinfo.h>
 #include <sys/inotify.h>
+#include <unistd.h>
 #elif defined(__APPLE__) && defined(__MACH__)
 #include <mach-o/dyld.h>
 #include <sys/event.h>
 #include <crt_externs.h>
+#include <sys/sysctl.h>
 #endif
 #include <fcntl.h>
 #include <signal.h>
@@ -2296,6 +2299,243 @@ HWND WINAPI GetClipboardOwner(VOID)
     return conn->GetClipboardOwner();
 }
 
+//---------------------------------------------------
+// 系统信息相关 API
+
+VOID WINAPI GetSystemInfo(LPSYSTEM_INFO lpSystemInfo)
+{
+    if (!lpSystemInfo)
+        return;
+    
+    // 初始化系统信息结构
+    memset(lpSystemInfo, 0, sizeof(SYSTEM_INFO));
+    
+    // 设置处理器架构
+#ifdef __x86_64__
+    lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_AMD64;
+#elif __i386__
+    lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_INTEL;
+#elif __arm64__
+    lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_ARM64;
+#elif __arm__
+    lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_ARM;
+#else
+    lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_UNKNOWN;
+#endif
+    
+    // 设置页面大小
+    lpSystemInfo->dwPageSize = sysconf(_SC_PAGESIZE);
+    
+    // 设置处理器数量
+#ifdef __linux__
+    lpSystemInfo->dwNumberOfProcessors = sysconf(_SC_NPROCESSORS_CONF);
+#elif __APPLE__
+    int count;
+    size_t size = sizeof(count);
+    sysctlbyname("hw.ncpu", &count, &size, NULL, 0);
+    lpSystemInfo->dwNumberOfProcessors = count;
+#else
+    lpSystemInfo->dwNumberOfProcessors = 1;
+#endif
+    
+    // 设置处理器类型
+    //lpSystemInfo->dwProcessorType = PROCESSOR_INTEL_PENTIUM;
+    
+    // 设置分配粒度
+    lpSystemInfo->dwAllocationGranularity = 65536; // 默认值
+    
+    // 设置处理器级别
+    lpSystemInfo->wProcessorLevel = 6;
+    
+    // 设置处理器版本
+    lpSystemInfo->wProcessorRevision = 0;
+}
+
+BOOL WINAPI GetVersionExA(LPOSVERSIONINFOA lpVersionInfo)
+{
+    if (!lpVersionInfo)
+        return FALSE;
+    
+    // 验证结构大小
+    if (lpVersionInfo->dwOSVersionInfoSize < sizeof(OSVERSIONINFOA))
+        return FALSE;
+    
+    // 初始化版本信息
+    memset(lpVersionInfo, 0, lpVersionInfo->dwOSVersionInfoSize);
+    lpVersionInfo->dwOSVersionInfoSize = sizeof(OSVERSIONINFOA);
+    
+    // 设置版本号（模拟 Windows 10）
+    lpVersionInfo->dwMajorVersion = 10;
+    lpVersionInfo->dwMinorVersion = 0;
+    lpVersionInfo->dwBuildNumber = 19041;
+    lpVersionInfo->dwPlatformId = VER_PLATFORM_WIN32_NT;
+    
+    // 设置版本字符串
+    strcpy(lpVersionInfo->szCSDVersion, "");
+    
+    return TRUE;
+}
+
+BOOL WINAPI GetVersionExW(LPOSVERSIONINFOW lpVersionInfo)
+{
+    if (!lpVersionInfo)
+        return FALSE;
+    
+    // 验证结构大小
+    if (lpVersionInfo->dwOSVersionInfoSize < sizeof(OSVERSIONINFOW))
+        return FALSE;
+    
+    // 初始化版本信息
+    memset(lpVersionInfo, 0, lpVersionInfo->dwOSVersionInfoSize);
+    lpVersionInfo->dwOSVersionInfoSize = sizeof(OSVERSIONINFOW);
+    
+    // 设置版本号（模拟 Windows 10）
+    lpVersionInfo->dwMajorVersion = 10;
+    lpVersionInfo->dwMinorVersion = 0;
+    lpVersionInfo->dwBuildNumber = 19041;
+    lpVersionInfo->dwPlatformId = VER_PLATFORM_WIN32_NT;
+    
+    // 设置版本字符串
+    wcscpy(lpVersionInfo->szCSDVersion, L"");
+    
+    return TRUE;
+}
+
+BOOL WINAPI GetComputerNameA(LPSTR lpBuffer, LPDWORD nSize)
+{
+    if (!lpBuffer || !nSize)
+        return FALSE;
+    
+    char hostname[256];
+    if (gethostname(hostname, sizeof(hostname)) != 0)
+        return FALSE;
+    
+    size_t len = strlen(hostname);
+    if (len >= *nSize)
+    {
+        *nSize = len + 1;
+        return FALSE;
+    }
+    
+    strcpy(lpBuffer, hostname);
+    *nSize = len + 1;
+    
+    return TRUE;
+}
+
+BOOL WINAPI GetComputerNameW(LPWSTR lpBuffer, LPDWORD nSize)
+{
+    if (!lpBuffer || !nSize)
+        return FALSE;
+    
+    char hostname[256];
+    if (gethostname(hostname, sizeof(hostname)) != 0)
+        return FALSE;
+    
+    std::wstring wHostname;
+    towstring(hostname, -1, wHostname);
+    
+    size_t len = wHostname.length();
+    if (len >= *nSize)
+    {
+        *nSize = len + 1;
+        return FALSE;
+    }
+    
+    wcscpy(lpBuffer, wHostname.c_str());
+    *nSize = len + 1;
+    
+    return TRUE;
+}
+
+BOOL WINAPI GetUserNameA(LPSTR lpBuffer, LPDWORD nSize)
+{
+    if (!lpBuffer || !nSize)
+        return FALSE;
+    
+    const char *username = getenv("USER");
+    if (!username)
+        username = getenv("LOGNAME");
+    if (!username)
+        return FALSE;
+    
+    size_t len = strlen(username);
+    if (len >= *nSize)
+    {
+        *nSize = len + 1;
+        return FALSE;
+    }
+    
+    strcpy(lpBuffer, username);
+    *nSize = len + 1;
+    
+    return TRUE;
+}
+
+BOOL WINAPI GetUserNameW(LPWSTR lpBuffer, LPDWORD nSize)
+{
+    if (!lpBuffer || !nSize)
+        return FALSE;
+    
+    const char *username = getenv("USER");
+    if (!username)
+        username = getenv("LOGNAME");
+    if (!username)
+        return FALSE;
+    
+    std::wstring wUsername;
+    towstring(username, -1, wUsername);
+    
+    size_t len = wUsername.length();
+    if (len >= *nSize)
+    {
+        *nSize = len + 1;
+        return FALSE;
+    }
+    
+    wcscpy(lpBuffer, wUsername.c_str());
+    *nSize = len + 1;
+    
+    return TRUE;
+}
+
+//---------------------------------------------------
+// 虚拟内存相关 API
+
+LPVOID WINAPI VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect)
+{
+    if (dwSize == 0)
+        return NULL;
+    
+    int prot = PROT_NONE;
+    if (flProtect & PAGE_EXECUTE)
+        prot |= PROT_EXEC;
+    if (flProtect & PAGE_READONLY)
+        prot |= PROT_READ;
+    if (flProtect & PAGE_READWRITE)
+        prot |= PROT_WRITE|PROT_READ;
+    
+    int flags = MAP_PRIVATE | MAP_ANONYMOUS;
+    
+    void *addr = mmap(lpAddress, dwSize, prot, flags, -1, 0);
+    if (addr == MAP_FAILED)
+        return NULL;
+    
+    return addr;
+}
+
+BOOL WINAPI VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType)
+{
+    if (!lpAddress)
+        return FALSE;
+    
+    int flags = 0;
+    if (dwFreeType == MEM_RELEASE)
+        flags = MAP_FIXED;
+    
+    return munmap(lpAddress, dwSize) == 0;
+}
+
 HANDLE
 WINAPI
 GetClipboardData(_In_ UINT uFormat)
@@ -2427,6 +2667,7 @@ UINT WINAPI GetACP(void)
 {
     return CP_UTF8;
 }
+
 
 BOOL WINAPI IsDBCSLeadByte(BYTE c)
 {

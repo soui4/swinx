@@ -85,7 +85,7 @@ BOOL OffsetRect(LPRECT prc, int dx, int dy)
     prc->right += dx;
     prc->top += dy;
     prc->bottom += dy;
-    return 0;
+    return TRUE;
 }
 
 BOOL IsRectEmpty(const RECT *prc)

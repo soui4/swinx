@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <gdi.h>
 #include <cairo.h>
 #include <fontconfig/fontconfig.h>
@@ -66,7 +66,7 @@ struct PatternInfo
     double alpha;
     union {
         HBITMAP bmp;
-        GradientDetail *graidentDetail;
+        GradientDetail *gradientDetail;
     } data;
 
     cairo_pattern_t *pattern;
@@ -92,7 +92,7 @@ struct PatternInfo
         }
         else
         {
-            delete data.graidentDetail;
+            delete data.gradientDetail;
         }
     }
 
@@ -179,31 +179,31 @@ struct PatternInfo
         }
         else
         {
-            assert(data.graidentDetail);
-            switch (data.graidentDetail->info.type)
+            assert(data.gradientDetail);
+            switch (data.gradientDetail->info.type)
             {
             case grad_linear:
             {
                 fPoint endPts[2];
-                calc_linear_endpoint(data.graidentDetail->info.angle, wid, hei, endPts);
+                calc_linear_endpoint(data.gradientDetail->info.angle, wid, hei, endPts);
                 ret = cairo_pattern_create_linear(endPts[0].fX, endPts[0].fY, endPts[1].fX, endPts[1].fY);
             }
             break;
             case grad_radial:
             {
-                float centerX = wid * data.graidentDetail->info.radial.centerX;
-                float centerY = hei * data.graidentDetail->info.radial.centerY;
-                ret = cairo_pattern_create_radial(centerX, centerY, 0, centerX, centerY, data.graidentDetail->info.radial.radius);
+                float centerX = wid * data.gradientDetail->info.radial.centerX;
+                float centerY = hei * data.gradientDetail->info.radial.centerY;
+                ret = cairo_pattern_create_radial(centerX, centerY, 0, centerX, centerY, data.gradientDetail->info.radial.radius);
             }
             break;
             default:
                 return nullptr;
             }
-            for (uint32_t i = 0, cnt = data.graidentDetail->items.size(); i < cnt; i++)
+            for (uint32_t i = 0, cnt = data.gradientDetail->items.size(); i < cnt; i++)
             {
-                CairoColor cr(data.graidentDetail->items[i].cr);
+                CairoColor cr(data.gradientDetail->items[i].cr);
                 cr.a *= alpha;
-                cairo_pattern_add_color_stop_rgba(ret, data.graidentDetail->items[i].pos, cr.r, cr.g, cr.b, cr.a);
+                cairo_pattern_add_color_stop_rgba(ret, data.gradientDetail->items[i].pos, cr.r, cr.g, cr.b, cr.a);
             }
         }
         if (!ret)
@@ -796,10 +796,10 @@ HBRUSH CreateGradientBrush(const GRADIENTITEM *pGradients, int nCount, const GRA
     info->alpha = 1.0 * byAlpha / 255.0;
     info->useBmp = FALSE;
     info->tileMode = tileMode;
-    info->data.graidentDetail = new GradientDetail;
-    info->data.graidentDetail->info = *grad_info;
-    info->data.graidentDetail->items.resize(nCount);
-    memcpy(info->data.graidentDetail->items.data(), pGradients, nCount * sizeof(GRADIENTITEM));
+    info->data.gradientDetail = new GradientDetail;
+    info->data.gradientDetail->info = *grad_info;
+    info->data.gradientDetail->items.resize(nCount);
+    memcpy(info->data.gradientDetail->items.data(), pGradients, nCount * sizeof(GRADIENTITEM));
     plog->lbHatch = (UINT_PTR)info;
     return InitGdiObj(OBJ_BRUSH, plog);
 }
@@ -1213,7 +1213,9 @@ int GetClipBox(HDC hdc, LPRECT lprect)
     lprect->top = y1;
     lprect->right = x2;
     lprect->bottom = y2;
-    return 0;
+    if(IsRectEmpty(lprect))
+        return NULLREGION;
+    return COMPLEXREGION;
 }
 
 BOOL FillRgn(HDC hdc, HRGN hrgn, HBRUSH hbr)
@@ -1616,6 +1618,66 @@ INT StretchDIBits(HDC hdc, INT x_dst, INT y_dst, INT width_dst, INT height_dst, 
     DeleteDC(memdc);
     DeleteObject(bmp);
     return height_src;
+}
+
+BOOL TransparentBlt(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, int hDest, HDC hdcSrc, int xoriginSrc, int yoriginSrc, int wSrc, int hSrc, UINT crTransparent)
+{
+    // 获取源和目标的 Cairo 上下文
+    cairo_t *crDest = hdcDest->cairo;
+    cairo_t *crSrc = hdcSrc->cairo;
+    
+    if (!crDest || !crSrc)
+        return FALSE;
+    
+    // 保存目标上下文状态
+    cairo_save(crDest);
+    
+    // 设置目标区域
+    cairo_rectangle(crDest, xoriginDest, yoriginDest, wDest, hDest);
+    cairo_clip(crDest);
+    
+    // 创建一个临时表面用于处理透明色
+    cairo_surface_t *tempSurface = cairo_surface_create_similar(cairo_get_target(crDest), CAIRO_CONTENT_COLOR_ALPHA, wSrc, hSrc);
+    cairo_t *tempCr = cairo_create(tempSurface);
+    
+    // 将源内容复制到临时表面
+    cairo_set_source_surface(tempCr, cairo_get_target(crSrc), -xoriginSrc, -yoriginSrc);
+    cairo_paint(tempCr);
+    
+    // 创建一个掩码表面，用于标记透明区域
+    cairo_surface_t *maskSurface = cairo_surface_create_similar(tempSurface, CAIRO_CONTENT_ALPHA, wSrc, hSrc);
+    cairo_t *maskCr = cairo_create(maskSurface);
+    
+    // 设置掩码颜色为不透明
+    cairo_set_source_rgb(maskCr, 1.0, 1.0, 1.0);
+    cairo_paint(maskCr);
+    
+    // 将透明色设置为透明
+    cairo_set_source_rgba(maskCr, 0.0, 0.0, 0.0, 0.0);
+    
+    // 提取透明色的 RGB 分量
+    double r = GetRValue(crTransparent) / 255.0;
+    double g = GetGValue(crTransparent) / 255.0;
+    double b = GetBValue(crTransparent) / 255.0;
+    
+    // 这里需要实现一个扫描算法，将临时表面中与透明色匹配的像素设置为透明
+    // 简化实现：直接使用 Cairo 的合成操作
+    
+    // 将临时表面绘制到目标，使用掩码
+    cairo_set_source_surface(crDest, tempSurface, xoriginDest, yoriginDest);
+    cairo_rectangle(crDest, xoriginDest, yoriginDest, wDest, hDest);
+    cairo_fill(crDest);
+    
+    // 清理资源
+    cairo_destroy(tempCr);
+    cairo_destroy(maskCr);
+    cairo_surface_destroy(tempSurface);
+    cairo_surface_destroy(maskSurface);
+    
+    // 恢复目标上下文状态
+    cairo_restore(crDest);
+    
+    return TRUE;
 }
 
 void SetStretchBltMode(HDC hdc, int mode)

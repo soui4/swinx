@@ -578,6 +578,8 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     BOOL WINAPI StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, int cx2, int cy2, DWORD rop);
 
     BOOL WINAPI PatBlt(_In_ HDC hdc, _In_ int x, _In_ int y, _In_ int w, _In_ int h, _In_ DWORD rop);
+    
+    BOOL WINAPI TransparentBlt(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, int hDest, HDC hdcSrc, int xoriginSrc, int yoriginSrc, int wSrc, int hSrc, UINT crTransparent);
 
     BOOL WINAPI DrawIcon(HDC hdc, INT x, INT y, HICON hIcon);
 

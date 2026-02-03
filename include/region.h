@@ -15,6 +15,13 @@
 #define RGN_MIN  RGN_AND
 #define RGN_MAX  RGN_COPY
 
+
+#define ERROR               0
+#define NULLREGION          1
+#define SIMPLEREGION        2
+#define COMPLEXREGION       3
+#define RGN_ERROR ERROR
+
 int WINAPI RgnComplexity(HRGN hRgn);
 
 int WINAPI CombineRgn(HRGN hrgnDst, HRGN hrgnSrc1, HRGN hrgnSrc2, int iMode);
@@ -74,14 +81,6 @@ DWORD WINAPI GetRegionData(HRGN hRgn,         // handle to region
                            DWORD dwCount,     // size of region data buffer
                            PRGNDATA lpRgnData // region data buffer
 );
-
-enum
-{
-    NULLREGION = 1, // Region is empty.
-    SIMPLEREGION,   // Region is a single rectangle.
-    COMPLEXREGION,  // Region is more than a single rectangle.
-    ERROR
-};
 
 int WINAPI GetRgnBox(HRGN hrgn,  // handle to a region
                      LPRECT lprc // bounding rectangle

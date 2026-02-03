@@ -105,6 +105,8 @@ typedef void *PVOID;
 typedef char CHAR;
 typedef uint8_t UCHAR;
 typedef DWORD_PTR *PDWORD_PTR;
+typedef BYTE  BOOLEAN;           
+typedef BOOLEAN *PBOOLEAN;    
 
 #ifdef __linux__
 typedef int BOOL;
@@ -224,6 +226,7 @@ typedef DWORD HKL;
 typedef struct _IconObj *HCURSOR;
 
 typedef struct _Handle *HANDLE;
+typedef HANDLE * PHANDLE;
 
 typedef HWND HMENU;
 
@@ -506,6 +509,26 @@ typedef union _ULARGE_INTEGER {
 #define DUMMYUNIONNAME5
 #endif
 #endif // DUMMYUNIONNAME
+
+#ifndef DUMMYSTRUCTNAME
+
+#if defined(NONAMELESSUNION)
+#define DUMMYSTRUCTNAME  s
+#define DUMMYSTRUCTNAME2 s2
+#define DUMMYSTRUCTNAME3 s3
+#define DUMMYSTRUCTNAME4 s4
+#define DUMMYSTRUCTNAME5 s5
+#define DUMMYSTRUCTNAME6 s6
+#else
+#define DUMMYSTRUCTNAME
+#define DUMMYSTRUCTNAME2
+#define DUMMYSTRUCTNAME3
+#define DUMMYSTRUCTNAME4
+#define DUMMYSTRUCTNAME5
+#define DUMMYSTRUCTNAME6
+#endif
+
+#endif // DUMMYSTRUCTNAME
 
 typedef enum tagDVASPECT
 {

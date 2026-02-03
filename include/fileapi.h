@@ -67,6 +67,17 @@ extern "C"
 #define GENERIC_EXECUTE (0x20000000L)
 #define GENERIC_ALL     (0x10000000L)
 
+
+//
+// Timer Specific Access Rights.
+//
+
+#define TIMER_QUERY_STATE       0x0001
+#define TIMER_MODIFY_STATE      0x0002
+
+#define TIMER_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED|SYNCHRONIZE|\
+                          TIMER_QUERY_STATE|TIMER_MODIFY_STATE)
+                          
 //
 // Constants
 //

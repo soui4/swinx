@@ -251,6 +251,20 @@ BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
     return TRUE;
 }
 
+
+BOOL GetUpdateRect(HWND hWnd, LPRECT lpRect, BOOL bErase)
+{
+    if (!lpRect)
+        return FALSE;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    GetRgnBox(wndObj->invalid.hRgn, lpRect);
+    if (bErase)
+    {
+        SetRectRgn(wndObj->invalid.hRgn,0,0,0,0);
+    }
+    return TRUE;
+}
+
 /***********************************************************************
  *           WIN_CreateWindowEx
  *
