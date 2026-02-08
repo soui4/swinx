@@ -44,6 +44,7 @@ private:
     LRESULT TrackStateChange(UINT uMsg,WPARAM wp,LPARAM lp);
     LRESULT OnXdndStatus(UINT uMsg, WPARAM wp, LPARAM lp);
     LRESULT OnXdndFinish(UINT uMsg, WPARAM wp, LPARAM lp);
+    LRESULT OnMapNotify(UINT uMsg, WPARAM wp, LPARAM lp);
 
     void drag_leave(HWND target);
 
@@ -64,7 +65,8 @@ private:
         MESSAGE_HANDLER_EX(WM_RBUTTONDOWN, TrackStateChange)
         MESSAGE_HANDLER_EX(UM_XDND_STATUS, OnXdndStatus)
         MESSAGE_HANDLER_EX(UM_XDND_FINISH, OnXdndFinish)
-        END_MSG_MAP()
+        MESSAGE_HANDLER_EX(UM_MAPNOTIFY, OnMapNotify)
+    END_MSG_MAP()
 private:
     IDataObject* dataObject;
     IDropSource* dropSource;

@@ -182,8 +182,9 @@ public:
 	BOOL openClipboard(HWND hWndNewOwner);
 	BOOL closeClipboard();
 	xcb_window_t getClipboardOwner() const;
-	BOOL emptyClipboard();
-	IDataObject* getDataObject(BOOL bSel = FALSE);
+	xcb_window_t getXdndSelOwner() const;
+    BOOL emptyClipboard();
+    IDataObject* getDataObject(BOOL bSel = FALSE);
 	BOOL isCurrentClipboard(IDataObject * pDo);
 	BOOL setDataObject(IDataObject* pDo,BOOL bSel);
     void flushClipboard();
@@ -198,7 +199,7 @@ public:
 	std::shared_ptr<std::vector<char>> getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom, int timeout);
 	std::shared_ptr<std::vector<char>> getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property,int timeout,  xcb_timestamp_t time);
 protected:
-	  
+    xcb_window_t getSelectionOwner(xcb_atom_t atom) const;	  
 	xcb_generic_event_t* waitForClipboardEvent(xcb_window_t win, int type, int timeout, xcb_atom_t selAtom,bool checkManager = false);
 	void clipboardReadIncrementalProperty(xcb_window_t win, xcb_atom_t property, xcb_atom_t selection, int nbytes, bool nullterm, std::shared_ptr<std::vector<char>> buf);
 	bool clipboardReadProperty(xcb_window_t win, xcb_atom_t property, bool deleteProperty, std::vector<char>* buffer, int* size, xcb_atom_t* type, int* format);

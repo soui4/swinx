@@ -4,6 +4,24 @@
 #include <shellapi.h>
 #include <unknwn.h>
 #include <guiddef.h>
+
+// {4657278A-411B-11d2-839A-00C04FD918D0}
+DEFINE_GUID(CLSID_DragDropHelper,   0x4657278a, 0x411b, 0x11d2, 0x83, 0x9a, 0x0, 0xc0, 0x4f, 0xd9, 0x18, 0xd0);
+
+//
+// format of CF_HDROP and CF_PRINTERS, in the HDROP case the data that follows
+// is a double null terinated list of file names, for printers they are printer
+// friendly names
+//
+typedef struct _DROPFILES {
+   DWORD pFiles;                       // offset of file list
+   POINT pt;                           // drop point (client coords)
+   BOOL fNC;                           // is it on NonClient area
+                                       // and pt is in screen coords
+   BOOL fWide;                         // WIDE character switch
+} DROPFILES, *LPDROPFILES;
+
+
 #ifndef __IDragSourceHelper_FWD_DEFINED__
 #define __IDragSourceHelper_FWD_DEFINED__
 typedef interface IDragSourceHelper IDragSourceHelper;

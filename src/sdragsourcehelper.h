@@ -14,8 +14,8 @@ public:
 
 public:
     // IDragSourceHelper
-    virtual HRESULT STDMETHODCALLTYPE InitializeFromBitmap(LPSHDRAGIMAGE pshdi, IDataObject *pDataObject) override;
-    virtual HRESULT STDMETHODCALLTYPE InitializeFromWindow(HWND hwnd, POINT *ppt, IDataObject *pDataObject) override;
+    STDMETHOD(InitializeFromBitmap)(LPSHDRAGIMAGE pshdi, IDataObject *pDataObject) override;
+    STDMETHOD(InitializeFromWindow)(HWND hwnd, POINT *ppt, IDataObject *pDataObject) override;
 
 public:
 	IUNKNOWN_BEGIN(IDragSourceHelper)

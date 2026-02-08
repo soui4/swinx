@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cstdio>
+#include <shlobj.h>
 #include "SConnection.h"
 #include "shellapi.h"
 #include "SUnkImpl.h"
@@ -130,27 +131,96 @@ class CDropFileMgr {
 
 } // namespace swinx
 
+static const wchar_t * getLineEnd(const wchar_t *p, int &nEndLen){
+    const wchar_t *end = wcsstr(p, L"\r\n");
+    nEndLen = 0;
+    if(!end){
+        end = wcsstr(p, L"\n");
+        if(end) 
+            nEndLen = 1;
+    }else{
+        nEndLen = 2;
+    }
+    return end;
+}
+
+static const char * getLineEnd(const char *p, int &nEndLen){
+    const char *end = strstr(p, "\r\n");
+    nEndLen = 0;
+    if(!end){
+        end = strstr(p, "\n");
+        if(end) 
+            nEndLen = 1;
+    }else{
+        nEndLen = 2;
+    }
+    return end;
+}
+
+// 从 DROPFILES 定位到指定索引的 Wide 字符串行，返回行起始指针和长度
+static const wchar_t* GetDragQueryLineAt(const wchar_t *buf, UINT iFile, UINT &outLen)
+{
+    outLen = 0;
+    UINT i = 0;
+    while (i < iFile)
+    {
+        int nEndLen = 0;
+        const wchar_t *end = getLineEnd(buf, nEndLen);
+        if (!end)
+            return NULL;
+        i++;
+        buf = end + nEndLen;
+    }
+    
+    int nEndLen = 0;
+    const wchar_t *end = getLineEnd(buf, nEndLen);
+    if (!end)
+        end = buf + wcslen(buf);
+    
+    outLen = end - buf;
+    return buf;
+}
+
+// 从 DROPFILES 定位到指定索引的 ANSI 字符串行，返回行起始指针和长度
+static const char* GetDragQueryLineAt(const char *buf, UINT iFile, UINT &outLen)
+{
+    outLen = 0;
+    UINT i = 0;
+    while (i < iFile)
+    {
+        int nEndLen = 0;
+        const char *end = getLineEnd(buf, nEndLen);
+        if (!end)
+            return NULL;
+        i++;
+        buf = end + nEndLen;
+    }
+    
+    int nEndLen = 0;
+    const char *end = getLineEnd(buf, nEndLen);
+    if (!end)
+        end = buf + strlen(buf);
+    
+    outLen = end - buf;
+    return buf;
+}
+
 static UINT DragQueryFileSize(HDROP hDrop)
 {
-    const char *buf = (const char *)hDrop;
-    if (!buf)
-        return 0;
-    UINT i = 0;
-    while (buf)
-    {
-        const char *end = strstr(buf, "\r\n");
-        if (end)
+    DROPFILES * pDropfiles = (DROPFILES *)hDrop;
+    if(pDropfiles->fWide){
+        const wchar_t *buf = (const wchar_t*)((char *)pDropfiles + pDropfiles->pFiles);
+        if (!buf)
+            return 0;
+        UINT i = 0;
+        while (buf && *buf)
         {
-            i++;
-            buf = end + 2;
-        }
-        else
-        {
-            end = strstr(buf, "\n");
+            int nEndLen = 0;
+            const wchar_t *end = getLineEnd(buf, nEndLen);
             if (end)
             {
                 i++;
-                buf = end + 1;
+                buf = end + nEndLen;
             }
             else
             {
@@ -159,8 +229,30 @@ static UINT DragQueryFileSize(HDROP hDrop)
                 break;
             }
         }
+        return i;
+    }else{
+        const char *buf = (const char *)hDrop+sizeof(DROPFILES);
+        if (!buf)
+            return 0;
+        UINT i = 0;
+        while (buf && *buf)
+        {
+            int nEndLen = 0;
+            const char *end = getLineEnd(buf, nEndLen);
+            if (end)
+            {
+                i++;
+                buf = end + nEndLen;
+            }
+            else
+            {
+                if (buf[0] != 0)
+                    i++;
+                break;
+            }
+        }
+        return i;
     }
-    return i;
 }
 
 UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(cch) LPSTR lpszFile, _In_ UINT cch)
@@ -169,48 +261,63 @@ UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
     {
         return DragQueryFileSize(hDrop);
     }
-    const char *buf = (const char *)hDrop;
-    UINT i = 0;
-    while (i < iFile)
-    {
-        const char *end = strstr(buf, "\r\n");
-        if (!end)
+    DROPFILES * pDropfiles = (DROPFILES *)hDrop;
+    if(pDropfiles->fWide){
+        // 处理 Wide 字符数据，需要转换为 ANSI
+        const wchar_t *buf = (const wchar_t*)((char *)pDropfiles + pDropfiles->pFiles);
+        UINT wideLen = 0;
+        const wchar_t *pLine = GetDragQueryLineAt(buf, iFile, wideLen);
+        if (!pLine)
+            return 0;
+        
+        if (!lpszFile)
+            return wideLen;
+        
+        // 计算转换后的 ANSI 长度
+        int ansiLen = WideCharToMultiByte(CP_UTF8, 0, pLine, wideLen, NULL, 0, NULL, NULL);
+        if (ansiLen <= 0)
+            return 0;
+        
+        if (ansiLen > (int)cch)
         {
-            end = strstr(buf, "\n");
-            if (!end)
-                return 0;
+            SetLastError(ERROR_BUFFER_OVERFLOW);
+            return 0;
         }
-        i++;
-        if (end[0] == 0x0d)
-            buf = end + 2;
-        else
-            buf = end + 1;
+        
+        // 缓冲区足够，执行转码
+        int convertedLen = WideCharToMultiByte(CP_UTF8, 0, pLine, wideLen, lpszFile, cch, NULL, NULL);
+        if (convertedLen > 0 && convertedLen < (int)cch)
+        {
+            lpszFile[convertedLen] = 0;
+        }
+        return convertedLen;
+    }else{
+        const char *buf = (char *)pDropfiles + pDropfiles->pFiles;
+        UINT lineLen = 0;
+        const char *pLine = GetDragQueryLineAt(buf, iFile, lineLen);
+        if (!pLine)
+            return 0;
+        
+        if (!lpszFile)
+            return lineLen;
+        if ((int)lineLen > (int)cch)
+        {
+            SetLastError(ERROR_BUFFER_OVERFLOW);
+            return 0;
+        }
+        if (lineLen > 8 && strncmp(pLine, "file:///", 8) == 0)
+        {
+            // remove file header
+            pLine += 7;
+            lineLen -= 7;
+        }
+        memcpy(lpszFile, pLine, lineLen);
+        if (lineLen + 1 <= cch)
+        {
+            lpszFile[lineLen] = 0;
+        }
+        return lineLen;
     }
-    const char *end = strstr(buf, "\r\n");
-    if (!end)
-    {
-        end = strstr(buf, "\n");
-        if (!end)
-            end = buf + strlen(buf);
-    }
-    if (!lpszFile)
-        return end - buf;
-    if (end - buf > cch)
-    {
-        SetLastError(ERROR_BUFFER_OVERFLOW);
-        return 0;
-    }
-    if (end - buf > 8 && strncmp(buf, "file:///", 8) == 0)
-    {
-        // remove file header
-        buf += 7;
-    }
-    memcpy(lpszFile, buf, end - buf);
-    if (end - buf + 1 <= cch)
-    {
-        lpszFile[end - buf] = 0;
-    }
-    return end - buf;
 }
 
 UINT WINAPI DragQueryFileW(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(cch) LPWSTR lpszFile, _In_ UINT cch)
@@ -219,24 +326,59 @@ UINT WINAPI DragQueryFileW(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
     {
         return DragQueryFileSize(hDrop);
     }
-    UINT len = DragQueryFileA(hDrop, iFile, NULL, 0);
-    if (len == 0)
-        return 0;
-    std::string str;
-    str.resize(len);
-    DragQueryFileA(hDrop, iFile, (char *)str.c_str(), len);
-    int required = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), len, NULL, 0);
-    if (!lpszFile)
-        return required;
-    if (cch < required)
-        return 0;
-    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), len, lpszFile, cch);
-    return required;
+    DROPFILES * pDropfiles = (DROPFILES *)hDrop;
+    if(pDropfiles->fWide){
+        // Wide input → Wide output
+        const wchar_t *buf = (const wchar_t*)((char *)pDropfiles + pDropfiles->pFiles);
+        UINT lineLen = 0;
+        const wchar_t *pLine = GetDragQueryLineAt(buf, iFile, lineLen);
+        if (!pLine) return 0;
+        if (!lpszFile) return lineLen;
+        
+        // Check buffer size
+        if (lineLen > cch) 
+        { 
+            SetLastError(ERROR_BUFFER_OVERFLOW);
+            return 0;
+        }
+        // Direct copy - no encoding needed
+        wmemcpy(lpszFile, pLine, lineLen);
+        if (lineLen + 1 <= cch)
+        {
+            lpszFile[lineLen] = 0;
+        }
+        return lineLen;
+    }else{
+        // ANSI input → Wide output
+        const char *buf = (char *)pDropfiles + pDropfiles->pFiles;
+        UINT lineLen = 0;
+        const char *pLine = GetDragQueryLineAt(buf, iFile, lineLen);
+        if (!pLine) return 0;
+        if (!lpszFile) return lineLen;
+        
+        // Query conversion size
+        int wideLen = MultiByteToWideChar(CP_UTF8, 0, pLine, lineLen, NULL, 0);
+        if (wideLen <= 0) return 0;
+        if (wideLen > (int)cch) 
+        { 
+            SetLastError(ERROR_BUFFER_OVERFLOW);
+            return 0;
+        }
+        
+        // Conversion is safe - execute
+        int convertedLen = MultiByteToWideChar(CP_UTF8, 0, pLine, lineLen, lpszFile, cch);
+        if (convertedLen > 0 && convertedLen < (int)cch) lpszFile[convertedLen] = 0;
+        return convertedLen;
+    }
 }
 
 BOOL WINAPI DragQueryPoint(_In_ HDROP hDrop, _Out_ POINT *ppt)
 {
-    return FALSE;
+    if(!ppt)
+        return FALSE;
+    DROPFILES * pDropfiles = (DROPFILES *)hDrop;
+    *ppt = pDropfiles->pt;
+    return TRUE;
 }
 
 void WINAPI DragFinish(_In_ HDROP hDrop)
@@ -363,10 +505,17 @@ BOOL WINAPI PathMatchSpecA(LPCSTR pszFile, LPCSTR pszSpec)
 char *WINAPI PathFindFileNameA(const char *path)
 {
     const char *last_slash = path;
-    while (path && *path)
+    if (!path)
+        return (char*)path;
+    
+    while (*path)
     {
-        if ((*path == '\\' || *path == '/' || *path == ':') && path[1] && path[1] != '\\' && path[1] != '/')
-            last_slash = path + 1;
+        if (*path == '\\' || *path == '/')
+        {
+            // 检查是否为路径分隔符，而不是协议中的 //
+            if (path[1] && path[1] != '\\' && path[1] != '/')
+                last_slash = path + 1;
+        }
         path = CharNextA(path);
     }
 
@@ -376,11 +525,17 @@ char *WINAPI PathFindFileNameA(const char *path)
 wchar_t *WINAPI PathFindFileNameW(const wchar_t *path)
 {
     const wchar_t *last_slash = path;
+    if (!path)
+        return (wchar_t*)path;
 
-    while (path && *path)
+    while (*path)
     {
-        if ((*path == '\\' || *path == '/' || *path == ':') && path[1] && path[1] != '\\' && path[1] != '/')
-            last_slash = path + 1;
+        if (*path == '\\' || *path == '/')
+        {
+            // 检查是否为路径分隔符，而不是协议中的 //
+            if (path[1] && path[1] != '\\' && path[1] != '/')
+                last_slash = path + 1;
+        }
         path++;
     }
 
@@ -395,7 +550,7 @@ char *WINAPI PathFindExtensionA(const char *path)
     {
         while (*path)
         {
-            if (*path == '\\' || *path == ' ')
+            if (*path == '\\' || *path == '/' || *path == ' ')
                 lastpoint = NULL;
             else if (*path == '.')
                 lastpoint = path;
@@ -414,7 +569,7 @@ wchar_t *WINAPI PathFindExtensionW(const wchar_t *path)
     {
         while (*path)
         {
-            if (*path == '\\' || *path == ' ')
+            if (*path == '\\' || *path == '/' || *path == ' ')
                 lastpoint = NULL;
             else if (*path == '.')
                 lastpoint = path;
@@ -427,10 +582,18 @@ wchar_t *WINAPI PathFindExtensionW(const wchar_t *path)
 
 BOOL WINAPI PathIsRelativeA(const char *path)
 {
-    if (!path || !*path || IsDBCSLeadByte(*path))
+    if (!path || !*path)
         return TRUE;
 
-    return !(*path == '/');
+    // 检查是否为绝对路径
+    if (*path == '/' || *path == '\\')
+        return FALSE;
+    
+    // 检查是否为 Drive:\... 格式 (Windows)
+    if (path[1] == ':')
+        return FALSE;
+
+    return TRUE;
 }
 
 BOOL WINAPI PathIsRelativeW(const wchar_t *path)
@@ -438,7 +601,15 @@ BOOL WINAPI PathIsRelativeW(const wchar_t *path)
     if (!path || !*path)
         return TRUE;
 
-    return !(*path == '/');
+    // 检查是否为绝对路径
+    if (*path == '/' || *path == '\\')
+        return FALSE;
+    
+    // 检查是否为 Drive:\... 格式 (Windows)
+    if (path[1] == ':')
+        return FALSE;
+
+    return TRUE;
 }
 
 BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
@@ -457,23 +628,27 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
 
     if (!*path)
     {
-        *buffer++ = '/';
+        *buffer++ = '\\';
         *buffer = '\0';
         return TRUE;
     }
 
     /* Copy path root */
-    if (*src == '/')
+    if (*src == '/' || *src == '\\')
     {
-        *dst++ = *src++;
+        *dst++ = '\\';
+        src++;
     }
     else if (*src && src[1] == ':')
     {
         /* X:\ */
         *dst++ = *src++;
         *dst++ = *src++;
-        if (*src == '/')
-            *dst++ = *src++;
+        if (*src == '/' || *src == '\\')
+        {
+            *dst++ = '\\';
+            src++;
+        }
     }
 
     /* Canonicalize the rest of the path */
@@ -481,11 +656,13 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
     {
         if (*src == '.')
         {
-            if (src[1] == '/' && (src == path || src[-1] == '/'))
+            if ((*src == '/' || *src == '\\') && (src == path || (*(src-1) == '/' || *(src-1) == '\\')))
             {
-                src += 2; /* Skip .\ */
+                src++; // Skip .\
+                if (*src == '/' || *src == '\\')
+                    src++;
             }
-            else if (src[1] == '.' && dst != buffer && dst[-1] == '/')
+            else if (src[1] == '.' && dst != buffer && (*(dst-1) == '/' || *(dst-1) == '\\'))
             {
                 /* \.. backs up a directory, over the root if it has no \ following X:.
                  * .. is ignored if it would remove a UNC server name or initial /
@@ -494,11 +671,11 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
                 if (dst != buffer)
                 {
                     *dst = '\0'; /* Allow PathIsUNCServerShareA test on lpszBuf */
-                    while (dst > buffer && *dst != '/')
+                    while (dst > buffer && (*(dst-1) != '/' && *(dst-1) != '\\'))
                         dst--;
                     if (dst == buffer)
                     {
-                        *dst++ = '/';
+                        *dst++ = '\\';
                         src++;
                     }
                 }
@@ -507,13 +684,19 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
             else
                 *dst++ = *src++;
         }
+        else if (*src == '/' || *src == '\\')
+        {
+            /* 规范化路径分隔符为 \\ */
+            *dst++ = '\\';
+            src++;
+        }
         else
             *dst++ = *src++;
     }
 
     /* Append \ to naked drive specs */
-    if (dst - buffer == 2 && dst[-1] == ':')
-        *dst++ = '/';
+    if (dst - buffer == 2 && *(dst-1) == ':')
+        *dst++ = '\\';
     *dst++ = '\0';
     return TRUE;
 }
@@ -545,32 +728,40 @@ BOOL WINAPI PathCanonicalizeA(char *buffer, const char *path)
 
 void WINAPI PathQuoteSpacesA(char *path)
 {
-    if (path && strchr(path, ' '))
+    if (path)
     {
-        size_t len = strlen(path) + 1;
-
-        if (len + 2 < MAX_PATH)
+        // 检查是否包含空格且还未被引号包围
+        if (strchr(path, ' ') && (path[0] != '\"'))
         {
-            memmove(path + 1, path, len);
-            path[0] = '"';
-            path[len] = '"';
-            path[len + 1] = '\0';
+            size_t len = strlen(path) + 1;
+
+            if (len + 2 < MAX_PATH)
+            {
+                memmove(path + 1, path, len);
+                path[0] = '\"';
+                path[len] = '\"';
+                path[len + 1] = '\0';
+            }
         }
     }
 }
 
 void WINAPI PathQuoteSpacesW(wchar_t *path)
 {
-    if (path && wcschr(path, ' '))
+    if (path)
     {
-        int len = lstrlenW(path) + 1;
-
-        if (len + 2 < MAX_PATH)
+        // 检查是否包含空格且还未被引号包围
+        if (wcschr(path, ' ') && (path[0] != L'\"'))
         {
-            memmove(path + 1, path, len * sizeof(wchar_t));
-            path[0] = '"';
-            path[len] = '"';
-            path[len + 1] = '\0';
+            int len = lstrlenW(path) + 1;
+
+            if (len + 2 < MAX_PATH)
+            {
+                memmove(path + 1, path, len * sizeof(wchar_t));
+                path[0] = L'\"';
+                path[len] = L'\"';
+                path[len + 1] = L'\0';
+            }
         }
     }
 }
@@ -686,12 +877,13 @@ int WINAPI PathCommonPrefixA(const char *file1, const char *file2, char *path)
 
     for (;;)
     {
-        /* Update len */
-        if ((!*iter1 || *iter1 == '/') && (!*iter2 || *iter2 == '/'))
-            len = iter1 - file1; /* Common to this point */
+        // 更新 len - 在路径分隔符处更新
+        if ((!*iter1 || *iter1 == '/' || *iter1 == '\\') && 
+            (!*iter2 || *iter2 == '/' || *iter2 == '\\'))
+            len = iter1 - file1; // Common to this point
 
         if (!*iter1 || *iter1 != *iter2)
-            break; /* Strings differ at this point */
+            break; // Strings differ at this point
 
         iter1++;
         iter2++;
@@ -720,12 +912,13 @@ int WINAPI PathCommonPrefixW(const wchar_t *file1, const wchar_t *file2, wchar_t
 
     for (;;)
     {
-        /* Update len */
-        if ((!*iter1 || *iter1 == '/') && (!*iter2 || *iter2 == '/'))
-            len = iter1 - file1; /* Common to this point */
+        // 更新 len - 在路径分隔符处更新
+        if ((!*iter1 || *iter1 == '/' || *iter1 == '\\') && 
+            (!*iter2 || *iter2 == '/' || *iter2 == '\\'))
+            len = iter1 - file1; // Common to this point
 
         if (!*iter1 || *iter1 != *iter2)
-            break; /* Strings differ at this point */
+            break; // Strings differ at this point
 
         iter1++;
         iter2++;
@@ -742,63 +935,113 @@ int WINAPI PathCommonPrefixW(const wchar_t *file1, const wchar_t *file2, wchar_t
 
 BOOL WINAPI PathIsPrefixA(const char *prefix, const char *path)
 {
-    return prefix && path && PathCommonPrefixA(path, prefix, NULL) == (int)strlen(prefix);
+    if (!prefix || !path)
+        return FALSE;
+    
+    size_t prefixLen = strlen(prefix);
+    return PathCommonPrefixA(path, prefix, NULL) == (int)prefixLen;
 }
 
 BOOL WINAPI PathIsPrefixW(const wchar_t *prefix, const wchar_t *path)
 {
-    return prefix && path && PathCommonPrefixW(path, prefix, NULL) == (int)lstrlenW(prefix);
+    if (!prefix || !path)
+        return FALSE;
+    
+    size_t prefixLen = lstrlenW(prefix);
+    return PathCommonPrefixW(path, prefix, NULL) == (int)prefixLen;
 }
 
 DWORD WINAPI GetFullPathNameW(LPCWSTR lpFileName, DWORD nBufferLength, LPWSTR lpBuffer, LPWSTR *lpFilePart)
 {
+    if (!lpFileName || !lpBuffer)
+        return 0;
+
     if (PathIsRelativeW(lpFileName))
     {
-        GetCurrentDirectoryW(nBufferLength, lpBuffer);
-        if (wcslen(lpBuffer) + wcslen(lpFileName) > nBufferLength - 2)
+        DWORD dwRet = GetCurrentDirectoryW(nBufferLength, lpBuffer);
+        if (dwRet == 0 || dwRet >= nBufferLength)
             return 0;
-        wcscat(lpBuffer, lpFileName);
+
+        // 确保目录以 \ 结尾
+        if (lpBuffer[dwRet - 1] != L'\\' && lpBuffer[dwRet - 1] != L'/')
+        {
+            if (dwRet + 1 >= nBufferLength)
+                return 0;
+            lpBuffer[dwRet] = L'\\';
+            lpBuffer[dwRet + 1] = L'\0';
+            dwRet++;
+        }
+
+        if (wcslen(lpBuffer) + wcslen(lpFileName) >= nBufferLength)
+            return 0;
+        wcscat_s(lpBuffer, nBufferLength, lpFileName);
     }
     else
     {
-        if (wcslen(lpFileName) > nBufferLength)
+        if (wcslen(lpFileName) >= nBufferLength)
             return 0;
-        wcscpy(lpBuffer, lpFileName);
+        wcscpy_s(lpBuffer, nBufferLength, lpFileName);
     }
-    wchar_t *tmp = wcsdup(lpBuffer);
-    PathCanonicalizeW(lpBuffer, tmp);
-    free(tmp);
+
+    // 规范化路径
+    wchar_t tmpBuffer[MAX_PATH];
+    if (!PathCanonicalizeW(tmpBuffer, lpBuffer))
+        return 0;
+    
+    wcscpy_s(lpBuffer, nBufferLength, tmpBuffer);
+
     if (lpFilePart)
     {
         *lpFilePart = PathFindFileNameW(lpBuffer);
     }
+
     return wcslen(lpBuffer);
 }
 
 DWORD WINAPI GetFullPathNameA(LPCSTR lpFileName, DWORD nBufferLength, LPSTR lpBuffer, LPSTR *lpFilePart)
 {
+    if (!lpFileName || !lpBuffer)
+        return 0;
+
     if (PathIsRelativeA(lpFileName))
     {
-        int len = GetCurrentDirectoryA(nBufferLength, lpBuffer);
-        if (len + strlen(lpFileName) > nBufferLength - 2)
+        DWORD dwRet = GetCurrentDirectoryA(nBufferLength, lpBuffer);
+        if (dwRet == 0 || dwRet >= nBufferLength)
             return 0;
-        LPSTR p = lpBuffer + len;
-        *p++ = '/';
-        strcpy(p, lpFileName);
+
+        // 确保目录以 \ 结尾
+        if (lpBuffer[dwRet - 1] != '\\' && lpBuffer[dwRet - 1] != '/')
+        {
+            if (dwRet + 1 >= nBufferLength)
+                return 0;
+            lpBuffer[dwRet] = '\\';
+            lpBuffer[dwRet + 1] = '\0';
+            dwRet++;
+        }
+
+        if (strlen(lpBuffer) + strlen(lpFileName) >= nBufferLength)
+            return 0;
+        strcat_s(lpBuffer, nBufferLength, lpFileName);
     }
     else
     {
-        if (strlen(lpFileName) > nBufferLength)
+        if (strlen(lpFileName) >= nBufferLength)
             return 0;
-        strcpy(lpBuffer, lpFileName);
+        strcpy_s(lpBuffer, nBufferLength, lpFileName);
     }
-    char *tmp = strdup(lpBuffer);
-    PathCanonicalizeA(lpBuffer, tmp);
-    free(tmp);
+
+    // 规范化路径
+    char tmpBuffer[MAX_PATH];
+    if (!PathCanonicalizeA(tmpBuffer, lpBuffer))
+        return 0;
+    
+    strcpy_s(lpBuffer, nBufferLength, tmpBuffer);
+
     if (lpFilePart)
     {
         *lpFilePart = PathFindFileNameA(lpBuffer);
     }
+
     return strlen(lpBuffer);
 }
 

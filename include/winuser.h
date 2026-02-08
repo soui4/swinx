@@ -1858,7 +1858,7 @@ extern "C"
 #define CF_UNICODETEXT  13
 #define CF_ENHMETAFILE  14
 #if (WINVER >= 0x0400)
-#define CF_HDROP  CF_TEXT
+#define CF_HDROP  15
 #define CF_LOCALE 16
 #endif /* WINVER >= 0x0400 */
 #if (WINVER >= 0x0500)

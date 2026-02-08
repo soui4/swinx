@@ -26,11 +26,6 @@
 
 using namespace swinx;
 
-enum
-{
-    kMapped = 1 << 0,
-};
-
 enum SbPart
 {
     SB_RAIL = 100
@@ -860,17 +855,6 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     BOOL bSkipMsg = FALSE;
     switch (msg)
     {
-    case UM_MAPNOTIFY:
-        if (wp)
-            wndObj->flags |= kMapped;
-        else
-            wndObj->flags &= ~kMapped;
-        if (wp && wndObj->byAlpha != 0xff)
-        {
-            Sleep(50); // todo: fix it later.
-            wndObj->mConnection->SetWindowOpacity(hWnd, wndObj->byAlpha);
-        }
-        return 0;
 #ifdef __linux__
     case UM_XDND_DRAG_ENTER:
     {
@@ -879,12 +863,12 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         assert(pDragEnterData->pData);
         if (!wndObj->dropTarget)
         {
-            SLOG_STMW() << "should not run into here!";
+            SLOG_STMW() << "!!!!!!UM_XDND_DRAG_ENTER, should not run into here!";
             return 1;
         }
         if (wndObj->dragData)
         {
-            SLOG_STMW() << "should not run into here!";
+            SLOG_STMW() << "!!!!!!UM_XDND_DRAG_ENTER, should not run into here!";
             return 1;
         }
         wndObj->dragData = pDragEnterData->pData;
@@ -900,7 +884,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
 
         if (!wndObj->dropTarget)
         {
-            SLOG_STMW() << "should not run into here!";
+            SLOG_STMW() << "!!!!!UM_XDND_DRAG_LEAVE should not run into here!";
             return 1;
         }
         HRESULT hr = wndObj->dropTarget->DragLeave();
@@ -917,7 +901,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         DragOverData *data = (DragOverData *)lp;
         if (!wndObj->dropTarget)
         {
-            SLOG_STMW() << "should not run into here!";
+            SLOG_STMW() << "!!!! UM_XDND_DRAG_OVER should not run into here!";
             return 1;
         }
         XDndDataObjectProxy *dragData = (XDndDataObjectProxy *)wndObj->dragData;
@@ -3014,6 +2998,18 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
             return MA_NOACTIVATE;
         return MA_ACTIVATE;
     }
+    case UM_MAPNOTIFY:
+        //SLOG_STMI() << "UM_MAPNOTIFY,wp=" << wp<<" hWnd=" << hWnd;
+        if (wp)
+            wndObj->flags |= kMapped;
+        else
+            wndObj->flags &= ~kMapped;
+        if (wp && wndObj->byAlpha != 0xff)
+        {
+            Sleep(50); // todo: fix it later.
+            wndObj->mConnection->SetWindowOpacity(hWnd, wndObj->byAlpha);
+        }
+        return 0;
     }
     return 0;
 }

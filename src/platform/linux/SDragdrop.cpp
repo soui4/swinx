@@ -70,15 +70,20 @@ LRESULT SDragDrop::TrackStateChange(UINT uMsg, WPARAM wp, LPARAM lp)
     inTrackCall = TRUE;
 
     /*
-     * Get the handle of the window under the mouse
-     */
-    pt.x = curMousePos.x;
-    pt.y = curMousePos.y;
-    hwndNewTarget = WindowFromPoint(pt);
-    if (!is_droptarget(hwndNewTarget))
-        hwndNewTarget = 0;
-    returnValue = dropSource->QueryContinueDrag(escPressed, dwKeyState);
-
+    * Get the handle of the window under the mouse
+    */
+   pt.x = curMousePos.x;
+   pt.y = curMousePos.y;
+   hwndNewTarget = WindowFromPoint(pt);
+   //SLOG_STMI() << "TrackStateChange, uMsg=" << uMsg << "pt.x="<<pt.x<<" pt.y="<<pt.y<< " hwndNewTarget=" << hwndNewTarget;
+   if (!is_droptarget(hwndNewTarget))
+   {
+       SLOG_STMI()<< hwndNewTarget << " is not a drop target";
+       hwndNewTarget = 0;
+   }     
+   returnValue = dropSource->QueryContinueDrag(escPressed, dwKeyState);
+   
+   //SLOG_STMI() << "TrackStateChange, uMsg=" << uMsg << ", wp=" << wp << ", lp=" << lp<<", returnValue=" << returnValue<<", curTargetHWND=" << curTargetHWND<< " hwndNewTarget=" << hwndNewTarget;
     if (curTargetHWND != hwndNewTarget && (returnValue == S_OK || returnValue == DRAGDROP_S_DROP))
     {
         if (curTargetHWND)
@@ -129,12 +134,23 @@ LRESULT SDragDrop::OnXdndFinish(UINT uMsg, WPARAM wp, LPARAM lp)
         *pdwEffect = DROPEFFECT_NONE, returnValue = DRAGDROP_S_CANCEL;
     else
         *pdwEffect = lp, returnValue = DRAGDROP_S_DROP;
-    //    SLOG_STMI() << "OnXdndFinish, returnValue=" << returnValue;
+    //SLOG_STMI() << "OnXdndFinish, returnValue=" << returnValue;
+    return 0;
+}
+
+LRESULT SDragDrop::OnMapNotify(UINT uMsg, WPARAM wp, LPARAM lp)
+{
+    //SLOG_STMI() << "OnMapNotify";
+    if(wp){
+        SetCapture();
+    }
+    SetMsgHandled(FALSE);
     return 0;
 }
 
 void SDragDrop::drag_leave(HWND target)
 {
+    //SLOG_STMI() << "drag_leave, target=" << target;
     xcb_client_message_event_t leave;
     leave.response_type = XCB_CLIENT_MESSAGE;
     leave.sequence = 0;
@@ -143,6 +159,7 @@ void SDragDrop::drag_leave(HWND target)
     leave.type = conn->atoms.XdndLeave;
     leave.data.data32[0] = m_hWnd;
     xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char *)&leave);
+    xcb_flush(conn->connection);
 }
 
 static uint32_t getXdndAction(DWORD dwEffect, SConnection *conn)
@@ -159,6 +176,8 @@ static uint32_t getXdndAction(DWORD dwEffect, SConnection *conn)
 
 void SDragDrop::drag_over(HWND target, int x, int y)
 {
+
+    //SLOG_STMI() << "drag_over, target=" << target << ", x=" << x << ", y=" << y;
     xcb_client_message_event_t position;
     position.response_type = XCB_CLIENT_MESSAGE;
     position.sequence = 0;
@@ -171,25 +190,33 @@ void SDragDrop::drag_over(HWND target, int x, int y)
     position.data.data32[3] = XCB_CURRENT_TIME;                // time
     position.data.data32[4] = getXdndAction(dwOKEffect, conn); // suggested action.
     xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char *)&position);
+    xcb_flush(conn->connection);
 }
 
 void SDragDrop::drag_enter(HWND target)
 {
+    //SLOG_STMI() << "drag_enter, target=" << target;
+
     assert(dataObject);
     std::vector<xcb_atom_t> types;
+    FORMATETC fmtEtc={CF_HDROP,NULL,0,0, TYMED_HGLOBAL};
+    if(dataObject->QueryGetData(&fmtEtc)==S_OK)
+    {
+        types.push_back(conn->clipFormat2Atom(CF_HDROP));
+    }
     IEnumFORMATETC *fmt = NULL;
     if (dataObject->EnumFormatEtc(1, &fmt) == S_OK)
     {
         FORMATETC fmtEtc;
         while (fmt->Next(1, &fmtEtc, NULL) == S_OK)
         {
-            types.push_back(conn->clipFormat2Atom(fmtEtc.cfFormat));
+            if(fmtEtc.cfFormat != CF_HDROP)
+                types.push_back(conn->clipFormat2Atom(fmtEtc.cfFormat));
         }
         fmt->Release();
         if (types.size() > xdnd_max_type)
             types.resize(xdnd_max_type);
     }
-
     xcb_client_message_event_t enter;
     enter.response_type = XCB_CLIENT_MESSAGE;
     enter.sequence = 0;
@@ -215,6 +242,7 @@ void SDragDrop::drag_enter(HWND target)
 
 void SDragDrop::drag_drop(HWND target, DWORD dwEffect)
 {
+    //SLOG_STMI() << "drag_drop, target=" << target << ", dwEffect=" << dwEffect;
     xcb_client_message_event_t drop;
     drop.response_type = XCB_CLIENT_MESSAGE;
     drop.sequence = 0;
@@ -292,12 +320,12 @@ HRESULT SDragDrop::DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource
     trackerInfo.dragEnded = FALSE;
     trackerInfo.curTargetHWND = 0;
     trackerInfo.conn = conn;
-    if (!trackerInfo.CreateWindowA(0, CLS_WINDOWA, "TrackerWindow", WS_POPUP, -1, -1, 0, 0, 0, 0, 0))
+    if (!trackerInfo.CreateWindowA(WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW, CLS_WINDOWA, "TrackerWindow", WS_POPUP|WS_VISIBLE, -1, -1, 1, 1, 0, 0, 0))
         return E_OUTOFMEMORY;
 
     {
         conn->getClipboard()->setDataObject(pDataObject, TRUE);
-        SLOG_STMI() << "DoDragDrop start";
+        SLOG_STMI() << "DoDragDrop start, hWnd="<<trackerInfo.m_hWnd;
 
         msg.message = 0;
 
@@ -335,6 +363,9 @@ HRESULT SDragDrop::DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource
                  */
                 DispatchMessage(&msg);
             }
+        }
+        if(trackerInfo.curTargetHWND){
+            trackerInfo.drag_leave(trackerInfo.curTargetHWND);
         }
         conn->getClipboard()->setDataObject(NULL, TRUE);
         /* re-post the quit message to outer message loop */
@@ -409,6 +440,7 @@ void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
             if (data32[i])
             {
                 uint32_t cf = m_conn->atom2ClipFormat(data32[i]);
+                SLOG_STMI() << "dragenter and receive avaiable format=" << cf;
                 if (cf)
                 {
                     char szAtomName[200];

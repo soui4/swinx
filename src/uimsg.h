@@ -299,6 +299,10 @@ enum {
     UM_XDND_FINISH,
     UM_XDND_STATUS,
 };
+enum
+{
+    kMapped = 1,
+};
 
 enum{
     SETTINGS_DPI=1,

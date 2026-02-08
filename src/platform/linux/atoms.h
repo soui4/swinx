@@ -14,6 +14,7 @@ class SAtoms {
     CLIPF_BITMAP, 
     CLIPF_UNICODETEXT, 
     CLIPF_WAVE,
+    CLIPF_HDROP,
 
     _NET_WM_PID,
     WM_CLASS,
@@ -109,6 +110,7 @@ class SAtoms {
             "image/ppm",                // CLIPF_BITMAP
             "CLIPF_UNICODETEXT",
             "CLIPF_WAVE",
+            "CLIPF_HDROP",
 
             "_NET_WM_PID",
             "WM_CLASS",

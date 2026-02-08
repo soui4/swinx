@@ -1,5 +1,7 @@
 #include "SConnection.h"
 #include "SClipboard.h"
+#include <shlobj.h>
+#include <algorithm>
 #include "debug.h"
 #define kLogTag "SClipboard"
 #include <vector>
@@ -232,6 +234,7 @@ SDataObjectProxy::~SDataObjectProxy()
 
 void SDataObjectProxy::fetchDataTypeList()
 {
+    SLOG_STMI()<<"fetchDataTypeList";
     m_lstTypes.clear();
     std::shared_ptr<std::vector<char>> data = m_conn->getClipboard()->getDataInFormat(m_conn->atoms.CLIPBOARD, m_conn->atoms.TARGETS,SClipboard::kReadFormatTimeout);
     if (data)
@@ -241,9 +244,9 @@ void SDataObjectProxy::fetchDataTypeList()
         for (size_t i = 0; i < len; i += sizeof(xcb_atom_t))
         {
             xcb_atom_t atom = *(xcb_atom_t *)buf;
-            // char buf2[200]={0};
-            // SAtoms::getAtomName(atom,buf2,200);
-            // SLOG_STMI()<<"clipboard atom="<<atom<<" name="<<buf2;
+            char buf2[200]={0};
+            SAtoms::getAtomName(atom,buf2,200);
+            SLOG_STMI()<<"clipboard atom="<<atom<<" name="<<buf2;
             m_lstTypes.push_back(m_conn->atom2ClipFormat(atom));
             buf += sizeof(xcb_atom_t);
         }
@@ -252,18 +255,35 @@ void SDataObjectProxy::fetchDataTypeList()
 
 HRESULT SDataObjectProxy::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
 {
-    if (QueryGetData(pformatetcIn) != S_OK)
+    FORMATETC fmtIn = *pformatetcIn;
+    BOOL bHDROP = FALSE;
+    if (QueryGetData(&fmtIn) != S_OK)
     {
-        return DV_E_FORMATETC;
+        if(fmtIn.cfFormat != CF_HDROP)
+            return DV_E_FORMATETC;
+        fmtIn.cfFormat = CF_TEXT;
+        if(QueryGetData(&fmtIn) != S_OK)
+            return DV_E_FORMATETC;
+        bHDROP = TRUE;
     }
-    std::shared_ptr<std::vector<char>> buf = m_conn->readSelection(isXdnd(), pformatetcIn->cfFormat);
+    std::shared_ptr<std::vector<char>> buf = m_conn->readSelection(isXdnd(), fmtIn.cfFormat);
     if (!buf)
         return DV_E_DVASPECT;
     size_t bufLen = buf->size();
-    pmedium->hGlobal = GlobalAlloc(0, bufLen+1);
+    pmedium->hGlobal = GlobalAlloc(0, bufLen+1 + (bHDROP?sizeof(DROPFILES):0));
     if (!pmedium->hGlobal)
         return STG_E_MEDIUMFULL;
     char *dst = (char*)GlobalLock(pmedium->hGlobal);
+    if(bHDROP)
+    {
+        DROPFILES *df = (DROPFILES *)dst;
+        df->pFiles = sizeof(DROPFILES);
+        df->fWide = FALSE;
+        df->fNC = FALSE;
+        df->pt.x = -1;
+        df->pt.y = -1;
+        dst += sizeof(DROPFILES); 
+    }
     memcpy(dst, buf->data(), bufLen);
     dst[bufLen]=0;//append a null
     GlobalUnlock(pmedium->hGlobal);
@@ -798,7 +818,16 @@ void SClipboard::incrTransactionPeeker(xcb_generic_event_t *ge, bool &accepted)
 
 xcb_window_t SClipboard::getClipboardOwner() const
 {
-    xcb_get_selection_owner_cookie_t owner_cookie = xcb_get_selection_owner(xcb_connection(), m_conn->atoms.CLIPBOARD);
+    return getSelectionOwner(m_conn->atoms.CLIPBOARD);
+}
+
+xcb_window_t SClipboard::getXdndSelOwner() const
+{
+    return getSelectionOwner(m_conn->atoms.XdndSelection);
+}
+xcb_window_t SClipboard::getSelectionOwner(xcb_atom_t atom) const
+{
+    xcb_get_selection_owner_cookie_t owner_cookie = xcb_get_selection_owner(xcb_connection(), atom);
     xcb_get_selection_owner_reply_t *owner_reply = xcb_get_selection_owner_reply(xcb_connection(), owner_cookie, NULL);
     xcb_window_t win = owner_reply->owner;
     free(owner_reply);
@@ -839,7 +868,7 @@ IDataObject *SClipboard::getDataObject(BOOL bSel)
         m_doSel->AddRef();
         return m_doSel;
     }
-    xcb_window_t owner = GetClipboardOwner();
+    xcb_window_t owner = getSelectionOwner(bSel?m_conn->atoms.XdndSelection:m_conn->atoms.CLIPBOARD);
     if (owner == m_owner)
     {
         std::unique_lock<std::recursive_mutex> lock(m_mutex);
@@ -931,23 +960,26 @@ void SClipboard::flushClipboard()
 
 bool SClipboard::hasFormat(UINT fmt)
 {
-    xcb_atom_t fmtAtom = m_conn->clipFormat2Atom(fmt);
     // fatch formats
     std::shared_ptr<std::vector<char>> data = getDataInFormat(m_conn->atoms.CLIPBOARD, m_conn->atoms.TARGETS,kReadFormatTimeout);
     if (data)
     {
-        const char *buf = data->data();
-        size_t len = data->size();
-        for (size_t i = 0; i < len; i += sizeof(xcb_atom_t))
-        {
-            xcb_atom_t atom = *(xcb_atom_t *)buf;
-            if (atom == fmtAtom)
-            {
-                return true;
-            }    
-            buf += sizeof(xcb_atom_t);
+        xcb_atom_t fmtAtom = m_conn->clipFormat2Atom(fmt);
+        const xcb_atom_t *buf = (const xcb_atom_t *)data->data();
+        size_t len = data->size()/sizeof(xcb_atom_t);
+        std::vector<xcb_atom_t> atoms(buf,buf+len);
+        if(std::find(atoms.begin(),atoms.end(),fmtAtom) != atoms.end())
+            return true;
+        if(fmt == CF_HDROP){
+            const std::vector<xcb_atom_t> & txtAtoms = m_conn->atoms.textAtoms();
+            for(auto & txtAtom : txtAtoms){
+                if(std::find(atoms.begin(),atoms.end(),txtAtom) != atoms.end()){
+                    return true;
+                }
+            }
         }
     }
+
     return false;
 }
 
@@ -958,11 +990,22 @@ HANDLE SClipboard::getClipboardData(UINT fmt)
     {
         fmt = CF_TEXT;
     }
+    BOOL bMockHdrop = FALSE;
     xcb_atom_t fmtAtom = m_conn->clipFormat2Atom(fmt);
     std::shared_ptr<std::vector<char>> buf = getDataInFormat(m_conn->atoms.CLIPBOARD, fmtAtom, kWaitTimeout);
-    if (!buf)
+    if (!buf || buf->empty())
     {
-        return nullptr;
+        if(fmt == CF_HDROP){
+            bMockHdrop = TRUE;
+            auto txtAtoms = m_conn->atoms.textAtoms();
+            for(auto & txtAtom : txtAtoms){
+                buf = getDataInFormat(m_conn->atoms.CLIPBOARD, txtAtom, kWaitTimeout);
+                if(buf && !buf->empty())
+                    break;
+            }
+        }
+        if(!buf || buf->empty()) 
+            return nullptr;
     }
     if (initFmt == CF_UNICODETEXT)
     {
@@ -976,8 +1019,15 @@ HANDLE SClipboard::getClipboardData(UINT fmt)
     }
     else
     {
-        HGLOBAL ret = GlobalAlloc(GMEM_MOVEABLE, buf->size());
-        void *dst = GlobalLock(ret);
+        HGLOBAL ret = GlobalAlloc(GMEM_MOVEABLE, buf->size() + bMockHdrop?sizeof(DROPFILES):0);
+        char * dst = (char*)GlobalLock(ret);
+        if(bMockHdrop){
+            DROPFILES * dropFiles = (DROPFILES *)dst;
+            dropFiles->pFiles = sizeof(DROPFILES);
+            dropFiles->fWide = FALSE;
+            dropFiles->pt.x = dropFiles->pt.y = 0;
+            dst += dropFiles->pFiles;
+        }
         memcpy(dst, buf->data(), buf->size());
         GlobalUnlock(ret);
         return ret;
@@ -1047,41 +1097,55 @@ std::shared_ptr<std::vector<char>> SClipboard::getDataInFormat(xcb_atom_t modeAt
     return getSelection(modeAtom, fmtAtom, m_conn->atoms.SO_SELECTION,timeout, 0);
 }
 
+static std::shared_ptr<std::vector<char>> _getSelectionFromThis(SConnection *pConn, IDataObject *pDo, xcb_atom_t fmtAtom){
+    std::shared_ptr<std::vector<char>> buf = std::make_shared<std::vector<char>>();
+    if (fmtAtom == pConn->atoms.TARGETS)
+    {
+        std::vector<xcb_atom_t> types;
+        IEnumFORMATETC *enumFmt;
+        if (pDo->EnumFormatEtc(DATADIR_GET, &enumFmt) == S_OK)
+        {
+            FORMATETC fmt;
+            while (enumFmt->Next(1, &fmt, NULL) == S_OK)
+            {
+                if (fmt.tymed == TYMED_HGLOBAL)
+                {
+                    types.push_back(pConn->clipFormat2Atom(fmt.cfFormat));
+                }
+            }
+            enumFmt->Release();
+        }
+        buf->assign((char *)types.data(), (char *)types.data() + types.size() * sizeof(xcb_atom_t));
+    }
+    else
+    {
+        // read data from this process
+        FORMATETC fmt = { (CLIPFORMAT)pConn->atom2ClipFormat(fmtAtom), nullptr, 0, 0, TYMED_HGLOBAL };
+        STGMEDIUM medium = { 0 };
+        if (S_OK == pDo->GetData(&fmt, &medium))
+        {
+            const char *src = (const char *)GlobalLock(medium.hGlobal);
+            buf->assign(src, src + GlobalSize(medium.hGlobal));
+            GlobalUnlock(medium.hGlobal);
+            ReleaseStgMedium(&medium);
+        }
+    }
+    return buf;
+}
+
 std::shared_ptr<std::vector<char>> SClipboard::getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property, int timeout, xcb_timestamp_t time)
 {
-    std::shared_ptr<std::vector<char>> buf = std::make_shared<std::vector<char>>();
     if(selection == m_conn->atoms.CLIPBOARD){
         xcb_window_t owner = getClipboardOwner();
         if(owner == m_owner)
         {
-            if(fmtAtom == m_conn->atoms.TARGETS){
-                std::vector<xcb_atom_t> types;
-                IEnumFORMATETC *enumFmt;
-                if (m_doClip->EnumFormatEtc(DATADIR_GET, &enumFmt) == S_OK)
-                {
-                    FORMATETC fmt;
-                    while (enumFmt->Next(1, &fmt, NULL) == S_OK)
-                    {
-                        if (fmt.tymed == TYMED_HGLOBAL)
-                        {
-                            types.push_back(m_conn->clipFormat2Atom(fmt.cfFormat));
-                        }
-                    }
-                    enumFmt->Release();
-                }
-                buf->assign((char *)types.data(), (char *)types.data() + types.size() * sizeof(xcb_atom_t));
-            }else{
-                //read data from this process
-                FORMATETC fmt = { (CLIPFORMAT)m_conn->atom2ClipFormat(fmtAtom), nullptr, 0, 0, TYMED_HGLOBAL };
-                STGMEDIUM medium = { 0 };
-                if(S_OK==m_doClip->GetData(&fmt, &medium)){
-                    const char * src = (const char *)GlobalLock(medium.hGlobal);
-                    buf->assign(src, src + GlobalSize(medium.hGlobal));
-                    GlobalUnlock(medium.hGlobal);
-                    ReleaseStgMedium(&medium);
-                }
-            }
-            return buf;
+            return _getSelectionFromThis(m_conn, m_doClip, fmtAtom);
+        }
+    }else{
+        xcb_window_t owner = getSelectionOwner(selection);
+        if(owner == m_owner)
+        {
+            return _getSelectionFromThis(m_conn, m_doSel, fmtAtom);
         }
     }
     xcb_delete_property(xcb_connection(), m_requestor, property);
@@ -1092,6 +1156,8 @@ std::shared_ptr<std::vector<char>> SClipboard::getSelection(xcb_atom_t selection
     xcb_generic_event_t *ge = waitForClipboardEvent(m_requestor, XCB_SELECTION_NOTIFY, timeout, selection);
     bool no_selection = !ge || ((xcb_selection_notify_event_t *)ge)->property == XCB_NONE;
     free(ge);
+
+    std::shared_ptr<std::vector<char>> buf = std::make_shared<std::vector<char>>();
 
     if (no_selection)
     {

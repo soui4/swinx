@@ -1140,6 +1140,8 @@ xcb_atom_t SConnection::clipFormat2Atom(UINT uFormat)
         return atoms.CLIPF_BITMAP;
     case CF_WAVE:
         return atoms.CLIPF_WAVE;
+    case CF_HDROP:
+        return atoms.CLIPF_HDROP;
     default:
         // for registered format
         if (uFormat > CF_MAX)
@@ -1158,6 +1160,8 @@ uint32_t SConnection::atom2ClipFormat(xcb_atom_t atom)
         return CF_BITMAP;
     else if (atom == atoms.CLIPF_WAVE)
         return CF_WAVE;
+    else if(atom == atoms.CLIPF_HDROP)
+        return CF_HDROP;
     else{
         auto txtAtoms = atoms.textAtoms();
         for(auto it : txtAtoms){
@@ -1411,10 +1415,6 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
         if (wndObj->dwStyle & WS_VISIBLE)
             return; // already visible.
         RECT rc= wndObj->rc;
-        if (0 == (wndObj->dwStyle & WS_CHILD))
-        { // show a popup window, auto release capture.
-            ReleaseCapture();
-        }
         BOOL bActive =  nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA;
         xcb_icccm_wm_hints_t hints = {0};
         xcb_icccm_wm_hints_set_input(&hints, bActive);
@@ -1854,7 +1854,7 @@ HWND SConnection::SetCapture(HWND hCapture)
         m_hWndCapture = hCapture;
     }
     xcb_flush(connection);
-    // SLOG_STMI() << "set capture:" << hCapture << " result="<<result;
+    //SLOG_STMI() << "set capture:" << hCapture << " result="<<result;
     return ret;
 }
 
@@ -1862,7 +1862,7 @@ BOOL SConnection::ReleaseCapture()
 {
     if (!m_hWndCapture)
         return FALSE;
-    // SLOG_STMI() << "release capture, oldCapture=" << m_hWndCapture;
+    //SLOG_STMI() << "release capture, oldCapture=" << m_hWndCapture;
     m_hWndCapture = 0;
     xcb_ungrab_pointer(connection, XCB_CURRENT_TIME);
     xcb_flush(connection);
