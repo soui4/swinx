@@ -164,6 +164,28 @@ HRESULT SMimeData::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
             GlobalUnlock(pmedium->hGlobal);
             pmedium->tymed = TYMED_HGLOBAL;
             return S_OK;
+        }else if(it->fmt == CF_HDROP && pformatetcIn->cfFormat == CF_TEXT && pformatetcIn->tymed == TYMED_HGLOBAL){
+            assert(it->data);
+            memset(pmedium, 0, sizeof(STGMEDIUM));
+            const void *src = GlobalLock(it->data);
+            DROPFILES *dropFiles = (DROPFILES *)src;
+            const char *strBuf = (const char *)src+dropFiles->pFiles;
+            int srcSize = GlobalSize(it->data) - dropFiles->pFiles;
+            std::string str;
+            if(dropFiles->fWide)
+            {
+                tostring_filter((const wchar_t*)strBuf, str);
+            }else if(pformatetcIn->cfFormat == CF_TEXT)
+            {
+                str.assign(strBuf, srcSize);
+            }
+            pmedium->hGlobal = GlobalAlloc(0, str.size());
+            void *dst = GlobalLock(pmedium->hGlobal);
+            memcpy(dst, str.c_str(), str.size());
+            GlobalUnlock(it->data);
+            GlobalUnlock(pmedium->hGlobal);
+            pmedium->tymed = TYMED_HGLOBAL;
+            SLOG_STMI() << "SMimeData::GetData,format=" << dropFiles->fWide << " format size=" << str.size();
         }
     }
     return DV_E_FORMATETC;
@@ -246,7 +268,6 @@ void SDataObjectProxy::fetchDataTypeList()
             xcb_atom_t atom = *(xcb_atom_t *)buf;
             char buf2[200]={0};
             SAtoms::getAtomName(atom,buf2,200);
-            SLOG_STMI()<<"clipboard atom="<<atom<<" name="<<buf2;
             m_lstTypes.push_back(m_conn->atom2ClipFormat(atom));
             buf += sizeof(xcb_atom_t);
         }
@@ -577,11 +598,15 @@ xcb_atom_t SClipboard::sendTargetsSelection(IDataObject *d, xcb_window_t window,
         {
             if (fmt.tymed == TYMED_HGLOBAL)
             {
-                types.push_back(m_conn->clipFormat2Atom(fmt.cfFormat));
+                if(fmt.cfFormat== CF_HDROP)
+                    types.push_back(m_conn->atoms.CLIPF_TEXT);
+                else
+                    types.push_back(m_conn->clipFormat2Atom(fmt.cfFormat));
             }
         }
         enumFmt->Release();
     }
+    //SLOG_STMI()<<"SClipboard: sendTargetsSelection types:"<<types.size();
     types.push_back(m_conn->atoms.TARGETS);
     types.push_back(m_conn->atoms.MULTIPLE);
     types.push_back(m_conn->atoms.TIMESTAMP);
@@ -609,6 +634,12 @@ xcb_atom_t SClipboard::sendSelection(IDataObject *d, xcb_atom_t target, xcb_wind
                 hData = medium.hGlobal;
                 dataFormat = fmt.cfFormat;
                 break;
+            }else if(fmt.tymed==TYMED_HGLOBAL && fmt.cfFormat==CF_HDROP && target==m_conn->atoms.CLIPF_TEXT){
+                STGMEDIUM medium = { 0 };
+                fmt.cfFormat = CF_TEXT;
+                d->GetData(&fmt, &medium);
+                hData = medium.hGlobal;
+                dataFormat = fmt.cfFormat;
             }
         }
         enumFmt->Release();
@@ -1110,7 +1141,10 @@ static std::shared_ptr<std::vector<char>> _getSelectionFromThis(SConnection *pCo
             {
                 if (fmt.tymed == TYMED_HGLOBAL)
                 {
-                    types.push_back(pConn->clipFormat2Atom(fmt.cfFormat));
+                    if(fmt.cfFormat != CF_HDROP)
+                        types.push_back(pConn->clipFormat2Atom(fmt.cfFormat));
+                    else
+                        types.push_back(pConn->atoms.CLIPF_TEXT);
                 }
             }
             enumFmt->Release();

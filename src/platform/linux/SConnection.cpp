@@ -3497,7 +3497,7 @@ HWND SConnection::OnGetAncestor(HWND hwnd, UINT gaFlags)
     case GA_PARENT:
         return _GetParent(connection, hwnd);
     case GA_ROOT:
-        _GetRoot(connection, hwnd);
+        return _GetRoot(connection, hwnd);
     case GA_ROOTOWNER:
     {
         HWND ret = _GetRoot(connection, hwnd);
