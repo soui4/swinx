@@ -849,8 +849,6 @@ defer:(BOOL)flag;
 }
 
 - (void)onStateChange:(int) nState{
-    //SLOG_STMI()<<"hjx onStateChange:"<<nState<<" hWnd="<<m_hWnd;
-
     m_pListener->OnNsEvent(m_hWnd,  UM_STATE, nState,0);
 }
 
@@ -865,7 +863,8 @@ defer:(BOOL)flag;
     float scale = [self.window backingScaleFactor];
     NSPoint nspt = [sender draggingLocation];
     POINTL pt = {float2int(nspt.x*scale),float2int(nspt.y*scale)};
-    _dwDragEffect = DROPEFFECT_NONE;
+    NSDragOperation allowedOps = sender.draggingSourceOperationMask;
+    _dwDragEffect = convertToDROPEFFECT(allowedOps);
     NSEventModifierFlags modifierFlags = [NSEvent modifierFlags];
     DWORD modifier = ConvertNSEventFlagsToWindowsFlags(modifierFlags);
     wndObj->dropTarget->DragEnter(_doDragging, modifier, pt, &_dwDragEffect);
@@ -880,17 +879,31 @@ defer:(BOOL)flag;
     nspt.y = [self.window.screen frame].size.height - nspt.y;//convert to ns coordinate.
     POINTL pt = {float2int(nspt.x*scale),float2int(nspt.y*scale)};
     WndObj wndObj = WndMgr::fromHwnd(m_hWnd);
+    NSDragOperation allowedOps = sender.draggingSourceOperationMask;
+    DWORD dwOKEffect = convertToDROPEFFECT(allowedOps);
+    _dwDragEffect = DROPEFFECT_NONE;
     if(wndObj->dropTarget){
         NSEventModifierFlags modifierFlags = [NSEvent modifierFlags];
         DWORD modifier = ConvertNSEventFlagsToWindowsFlags(modifierFlags);
+        _dwDragEffect = dwOKEffect;
         wndObj->dropTarget->DragOver(modifier, pt, &_dwDragEffect);
     }
+    LPCTSTR idCursor = IDC_ARROW;
+    if(_dwDragEffect & DROPEFFECT_MOVE)
+        idCursor = IDC_MOVE;
+    else if(_dwDragEffect & DROPEFFECT_LINK)
+        idCursor = IDC_LINK;
+    else if(_dwDragEffect & DROPEFFECT_COPY)
+        idCursor = IDC_COPY;
+    else
+        idCursor = IDC_NO;
+    SetCursor(LoadCursor(0, idCursor));
+    
     return convertToNSDragOperation(_dwDragEffect);
 }
 
 // 当拖动离开视图时调用
 - (void)draggingExited:(nullable id<NSDraggingInfo>)sender {
-    SLOG_STMI()<<"draggingExited";
     if(_doDragging){
         _doDragging->Release();
         _doDragging = nullptr;
@@ -906,7 +919,7 @@ defer:(BOOL)flag;
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
     if(!_doDragging)
         return NO;
-        SLOG_STMI()<<"performDragOperation";
+    SLOG_STMI()<<"performDragOperation";
     NSPasteboard *pboard = [sender draggingPasteboard];
     WndObj wndObj = WndMgr::fromHwnd(m_hWnd);
     if(!wndObj->dropTarget)
@@ -2511,7 +2524,9 @@ BOOL EnumDataOjbectCb(WORD fmt, HGLOBAL hMem, NSPasteboardItem *item){
             NSData *data = [NSData dataWithBytes:src length:len];
             GlobalUnlock(hMem);
             NSString *type = SNsDataObjectProxy::getPasteboardType(fmt);
-            [item setData:data forType:type];
+            BOOL ret = [item setData:data forType:NSPasteboardTypeURL];
+            if(!ret)
+                return FALSE;
         }
         return TRUE;
     }
@@ -2527,61 +2542,39 @@ BOOL EnumDataOjbectCb(WORD fmt, HGLOBAL hMem, NSPasteboardItem *item){
 @end
 
 @implementation NSDragSourceProxy
-- (NSDragOperation)draggingSession:(NSDraggingSession *)session sourceOperationMaskForDraggingContext:(NSDraggingContext)context {
-    NSDragOperation allowedOperations = NSDragOperationNone;
 
+- (BOOL)ignoreModifierKeysForDraggingSession:(NSDraggingSession *)session {
+    return NO; // 不忽略修饰键，这样可以根据修饰键改变拖拽操作
+}
+
+// 重要：添加这个方法来确保拖拽源能接收到所有拖拽事件
+- (NSDragOperation)draggingSession:(NSDraggingSession *)session
+                  sourceOperationMaskForDraggingContext:(NSDraggingContext)context {
+    NSDragOperation allowedOperations = NSDragOperationNone;
     if (self.dwOKEffect & DROPEFFECT_COPY)
         allowedOperations |= NSDragOperationCopy;
     if (self.dwOKEffect & DROPEFFECT_MOVE)
         allowedOperations |= NSDragOperationMove;
     if (self.dwOKEffect & DROPEFFECT_LINK)
         allowedOperations |= NSDragOperationLink;
-
-    // 如果有IDropSource，询问它允许的操作
-    if (self.dropSource) {
-        DWORD effect = self.dwOKEffect;
-        HRESULT hr = self.dropSource->GiveFeedback(effect);
-        if (hr == S_OK) {
-            // 使用IDropSource提供的效果
-            return  convertToNSDragOperation(effect);
-        }
-    }
-
     return allowedOperations;
 }
 
 - (void)draggingSession:(NSDraggingSession *)session willBeginAtPoint:(NSPoint)screenPoint {
-
+    if (self.dropSource) {
+        self.dropSource->GiveFeedback(DROPEFFECT_NONE);
+    }
 }
 
+// 添加这个方法来处理拖拽会话的移动
 - (void)draggingSession:(NSDraggingSession *)session movedToPoint:(NSPoint)screenPoint {
-     // 获取当前拖动操作
-    NSDragOperation operation = [session draggingSequenceNumber];
-    DWORD dwEffect = convertToDROPEFFECT(operation);
-    if(self.pdwEffect){
-        *self.pdwEffect = dwEffect;
-    }
     if (self.dropSource) {
-        HRESULT hr = self.dropSource->GiveFeedback(dwEffect);
-        if(hr == DRAGDROP_S_USEDEFAULTCURSORS){
-            LPCTSTR res = IDC_NODROP;
-            if (dwEffect & DROPEFFECT_MOVE)
-                res = IDC_MOVE;
-            else if (dwEffect & DROPEFFECT_LINK)
-                res = IDC_LINK;
-            else if (dwEffect & DROPEFFECT_COPY)
-                res = IDC_COPY;
-            else
-                res = IDC_NODROP;
-            SetCursor(LoadCursor(0, res));
-        }
+        self.dropSource->QueryContinueDrag(FALSE, DROPEFFECT_COPY);
     }
 }
 
 - (void)draggingSession:(NSDraggingSession *)session endedAtPoint:(NSPoint)screenPoint operation:(NSDragOperation)operation {
-    // 拖拽结束，设置结果
     self.dragCompleted = YES;
-
     // 转换操作类型
     DWORD effect =  convertToDROPEFFECT(operation);
 
@@ -2621,27 +2614,63 @@ HRESULT doNsDragDrop(IDataObject *pDataObject,
         // 创建NSDraggingItem
         NSDraggingItem *draggingItem = [[NSDraggingItem alloc] initWithPasteboardWriter:item];
 
-        HWND hActive = GetActiveWindow();
-        if(!hActive)
-            return E_FAIL;
-        SNsWindow * nswindow = getNsWindow(hActive);
-        if(!nswindow)
-            return E_FAIL;
-        // 获取当前鼠标位置作为拖拽起始点
+        // 获取当前鼠标位置
         NSPoint mouseLocation = [NSEvent mouseLocation];
-        // 将鼠标位置转换为窗口坐标
-        NSPoint windowPoint = [nswindow.window convertPointFromScreen:mouseLocation];
-        POINT ptOffset;
-        // 创建拖拽图像
-        NSImage *dragImage = CreateDragImageForDataObject(pDataObject, &ptOffset);
-        NSSize imageSize = dragImage.size;
-
-        // 计算拖拽图像的正确位置，确保图像直接显示在光标位置
+        
+        // 获取鼠标所在的屏幕
+        NSScreen *screen = nil;
+        for (NSScreen *currentScreen in [NSScreen screens]) {
+            if (NSPointInRect(mouseLocation, [currentScreen frame])) {
+                screen = currentScreen;
+                break;
+            }
+        }
+        if (screen == nil) {
+            screen = [NSScreen mainScreen];
+        }
+        
+        // 创建一个临时的透明窗口来启动拖动会话
+        NSRect windowFrame = NSMakeRect(mouseLocation.x, mouseLocation.y, 100, 100);
+        NSWindow *temporaryWindow = [[NSWindow alloc] initWithContentRect:windowFrame
+                                                                 styleMask:NSWindowStyleMaskBorderless
+                                                                   backing: NSBackingStoreBuffered
+                                                                     defer:NO
+                                                                    screen:screen];
+        [temporaryWindow setOpaque:NO];
+        [temporaryWindow setBackgroundColor:[NSColor clearColor]];
+        [temporaryWindow setIgnoresMouseEvents:YES];
+        [temporaryWindow setLevel:NSScreenSaverWindowLevel];
+        
+        // 创建临时的透明NSView作为内容视图
+        NSView *temporaryView = [[NSView alloc] initWithFrame:temporaryWindow.contentView.bounds];
+        [temporaryView setWantsLayer:YES];
+        [temporaryView.layer setOpacity:0.0];
+        [temporaryWindow setContentView:temporaryView];
+        
+        // 获取窗口坐标
+        NSPoint windowPoint = [temporaryWindow convertPointFromScreen:mouseLocation];
+        
+        NSImage *dragImage = nil;
         NSRect imageFrame;
-        imageFrame.origin.x = windowPoint.x + ptOffset.x;
-        imageFrame.origin.y = windowPoint.y + ptOffset.y;
-        imageFrame.size = imageSize;
+        
+        if (!pDropSource) {
+            // 创建真实的拖动图像
+            POINT ptOffset;
+            dragImage = CreateDragImageForDataObject(pDataObject, &ptOffset);
+            NSSize imageSize = dragImage.size;
+
+            // 计算拖拽图像的正确位置，确保图像直接显示在光标位置
+            imageFrame.origin.x = windowPoint.x + ptOffset.x;
+            imageFrame.origin.y = windowPoint.y + ptOffset.y;
+            imageFrame.size = imageSize;
+        } else {
+            // 创建空的拖动图像
+            dragImage = [[NSImage alloc] initWithSize:NSMakeSize(1, 1)];
+            imageFrame = NSMakeRect(windowPoint.x, windowPoint.y, 1, 1);
+        }
+        
         [draggingItem setDraggingFrame:imageFrame contents:dragImage];
+        
         // 创建拖拽源代理
         NSDragSourceProxy *proxy = [[NSDragSourceProxy alloc] init];
         proxy.dropSource = pDropSource;
@@ -2654,31 +2683,34 @@ HRESULT doNsDragDrop(IDataObject *pDataObject,
                                                   location:windowPoint
                                              modifierFlags:0
                                                  timestamp:currentTime
-                                              windowNumber:[nswindow.window windowNumber]
+                                              windowNumber:[temporaryWindow windowNumber]
                                                    context:nil
                                                eventNumber:0
                                                 clickCount:1
                                                   pressure:1.0];
 
-        // 开始拖拽操作，使用我们的代理作为拖拽源
-        NSDraggingSession *session = [nswindow beginDraggingSessionWithItems:@[draggingItem]
-                                                                        event:startEvent
-                                                                       source:proxy];
+        // 开始拖拽操作，使用临时视图作为拖拽源
+        SLOG_STMI()<<"Starting drag session from temporary view at point: ("<<windowPoint.x<<","<<windowPoint.y<<")";
+        NSDraggingSession *session = [temporaryView beginDraggingSessionWithItems:@[draggingItem]
+                                                                             event:startEvent
+                                                                            source:proxy];
 
-        if (!session)
+        if (!session) {
+            SLOG_STME()<<"Failed to create dragging session";
+            temporaryWindow = nil;
             return E_FAIL;
+        }
+        SLOG_STMI()<<"Drag session created successfully";
         session.draggingFormation = NSDraggingFormationNone;
         session.animatesToStartingPositionsOnCancelOrFail = NO; // 取消时不动画回到起始位置
 
-        MSG msg;
-        while (::PeekMessage(&msg, 0, 0, 0, PM_REMOVE)) {
-            ::TranslateMessage(&msg);
-            ::DispatchMessage(&msg);
-            if (msg.message == WM_QUIT)
-                break;
-            if(proxy.dragCompleted)
-                break;
+        // 运行事件循环直到拖动完成
+        while (!proxy.dragCompleted && [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode 
+                                             beforeDate:[NSDate distantFuture]]) {
         }
+        SLOG_STMI()<<"Drag session done, result="<<proxy.result;
+        
+        temporaryWindow = nil;
         return proxy.result;
     }
 }

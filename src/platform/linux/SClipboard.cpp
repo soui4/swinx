@@ -970,10 +970,11 @@ void SClipboard::flushClipboard()
         while (enum_fmt->Next(1, &fmt, NULL) == S_OK)
         {
             STGMEDIUM storage = { 0 };
-            hr = m_doExClip->GetData(&fmt, &storage);
+            hr = m_doExClip->GetData(&fmt, &storage);//GetData will copy data to storage.
             if (hr == S_OK)
             {
-                m_doClip->SetData(&fmt, &storage, FALSE);
+                //transfer data ownership to m_doClip, no ReleaseStgMedium will be called.
+                m_doClip->SetData(&fmt, &storage, TRUE);
             }
         }
         enum_fmt->Release();
