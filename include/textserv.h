@@ -431,19 +431,6 @@ interface IRicheditUiaOverrides : public IUnknown
 };
 
 //+-----------------------------------------------------------------------
-// 	Factories
-//------------------------------------------------------------------------
-
-// Text Services factory
-STDAPI CreateTextServices(IUnknown *punkOuter, ITextHost *pITextHost, IUnknown **ppUnk);
-
-typedef HRESULT(STDAPICALLTYPE *PCreateTextServices)(IUnknown *punkOuter, ITextHost *pITextHost, IUnknown **ppUnk);
-
-STDAPI ShutdownTextServices(IUnknown *pTextServices);
-
-typedef HRESULT(STDAPICALLTYPE *PShutdownTextServices)(IUnknown *pTextServices);
-
-//+-----------------------------------------------------------------------
 // 	Extended Windowless Interfaces
 //------------------------------------------------------------------------
 
@@ -515,5 +502,27 @@ class ITextServices2 : public ITextServices {
 
     virtual HRESULT TxDrawD2D(ID2D1RenderTarget *pRenderTarget, LPCRECTL lprcBounds, LPRECT lprcUpdate, LONG lViewId) = 0;
 };
+
+//+-----------------------------------------------------------------------
+// 	Factories
+//------------------------------------------------------------------------
+
+#ifdef __cplusplus
+extern "C"{
+#endif//__cplusplus
+// Text Services factory
+STDAPI CreateTextServices(
+	IUnknown *punkOuter,
+	ITextHost *pITextHost, 
+	IUnknown **ppUnk);
+
+typedef HRESULT (STDAPICALLTYPE * PCreateTextServices)(
+	IUnknown *punkOuter,
+	ITextHost *pITextHost, 
+	IUnknown **ppUnk);
+
+#ifdef __cplusplus
+}
+#endif//__cplusplus
 
 #endif // _TEXTSERV_H
