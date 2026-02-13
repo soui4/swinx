@@ -55,7 +55,7 @@ if (NOT SOUI_ENABLE_CORE_LIB)
         MACOSX_RPATH TRUE
     )
 else()
-    add_library(swinx STATIC ${SRCS} ${HEADERS} ${LIBS})
+    add_library(swinx STATIC ${SRCS} ${HEADERS})
 endif()
 target_link_libraries(swinx PRIVATE ${LIBS})
 # Add dependencies to ensure proper build order for all internal libraries
