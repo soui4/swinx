@@ -12,9 +12,16 @@ else()
 include(linux.cmake)
 endif()
 
+if(SOUI_ENABLE_CORE_LIB)
+target_compile_options(swinx PRIVATE -fPIC)
+endif()
 set_target_properties (swinx PROPERTIES
     FOLDER swinx
 )
+
+if(SOUI_ENABLE_CORE_LIB)
+    set(CORE_LIBS swinx ${CORE_LIBS}  CACHE INTERNAL "core_lib")
+endif()
 
 install(TARGETS swinx
     CONFIGURATIONS Release
@@ -23,23 +30,12 @@ install(TARGETS swinx
     ARCHIVE DESTINATION lib/Release
 )
 
-install(TARGETS swinx
-    CONFIGURATIONS Release
-    LIBRARY DESTINATION bin/Release
-    NAMELINK_SKIP
-)
 
 install(TARGETS swinx
     CONFIGURATIONS Debug
     RUNTIME DESTINATION bin/Debug
     LIBRARY DESTINATION lib/Debug
     ARCHIVE DESTINATION lib/Debug
-)
-
-install(TARGETS swinx
-    CONFIGURATIONS Debug
-    LIBRARY DESTINATION bin/Debug
-    NAMELINK_SKIP
 )
 
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include" DESTINATION include/swinx)

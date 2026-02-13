@@ -50,19 +50,6 @@ source_group("Source Files" FILES ${SRCS})
  
 if (NOT SOUI_ENABLE_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
-    target_link_libraries(swinx
-        dl
-        xcb                # System XCB library
-        cairo              # Our internal cairo target
-        xkbcommon          # Our internal xkbcommon target
-        xcb-imdkit         # Our internal xcb-imdkit target
-        uuid               # System UUID library
-        dbus-1             # Our internal D-Bus library
-        atomic
-        ${ALSA_LIBRARIES}  # ALSA library for audio playback (optional)
-    )
-    # Add dependencies to ensure proper build order for all internal libraries
-    add_dependencies(swinx cairo fontconfig freetype pixman-1 xcb-imdkit xkbcommon dbus-1)
 
     # 确保导出所有符号，包括fontconfig和freetype的符号
     set_target_properties(swinx PROPERTIES
@@ -73,9 +60,21 @@ if (NOT SOUI_ENABLE_CORE_LIB)
     )
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS})
-    target_link_libraries(swinx ${ALSA_LIBRARIES})
-    add_dependencies(swinx cairo fontconfig freetype pixman-1 xcb-imdkit xkbcommon dbus-1)
 endif()
+
+# Add dependencies to ensure proper build order for all internal libraries
+add_dependencies(swinx cairo fontconfig freetype pixman-1 xcb-imdkit xkbcommon dbus-1)
+target_link_libraries(swinx
+    dl
+    xcb                # System XCB library
+    cairo              # Our internal cairo target
+    xkbcommon          # Our internal xkbcommon target
+    xcb-imdkit         # Our internal xcb-imdkit target
+    uuid               # System UUID library
+    dbus-1             # Our internal D-Bus library
+    atomic
+    ${ALSA_LIBRARIES}  # ALSA library for audio playback (optional)
+)
 
 target_include_directories(swinx
 	PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}

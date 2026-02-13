@@ -658,3 +658,21 @@ get_filename_component(C_COMPILER ${CMAKE_C_COMPILER} NAME)
 get_filename_component(CXX_COMPILER ${CMAKE_CXX_COMPILER} NAME)
 
 message( STATUS "Using D-BUS ${DBUS_VERSION}")
+
+if(SOUI_ENABLE_CORE_LIB)
+    set(CORE_LIBS ${CORE_LIBS} dbus-1 CACHE INTERNAL "core_lib")
+endif()
+
+install(TARGETS dbus-1
+    CONFIGURATIONS Release
+    RUNTIME DESTINATION bin/Release
+    LIBRARY DESTINATION lib/Release
+    ARCHIVE DESTINATION lib/Release
+)
+
+install(TARGETS dbus-1
+    CONFIGURATIONS Debug
+    RUNTIME DESTINATION bin/Debug
+    LIBRARY DESTINATION lib/Debug
+    ARCHIVE DESTINATION lib/Debug
+)

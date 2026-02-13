@@ -640,7 +640,11 @@ endif()
 
 set(SOURCES ${enabled_cairo_sources})
 
-add_library(cairo SHARED ${SOURCES})
+if(SOUI_ENABLE_CORE_LIB)
+    add_library(cairo STATIC ${SOURCES})
+else()
+    add_library(cairo SHARED ${SOURCES})
+endif()
 target_link_libraries(cairo ${CAIRO_LIBS})
 
 # Add dependencies to ensure proper build order

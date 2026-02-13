@@ -12,6 +12,9 @@ file(GLOB_RECURSE SRCS
 
 add_library(xcb-imdkit STATIC ${SRCS} ${HEADEERS})
 target_compile_options(xcb-imdkit PRIVATE -fPIC)
+if(SOUI_ENABLE_CORE_LIB)
+    set(CORE_LIBS ${CORE_LIBS} xcb-imdkit CACHE INTERNAL "core_lib")
+endif()
 
 target_include_directories(xcb-imdkit
                            PUBLIC ..
@@ -19,6 +22,19 @@ target_include_directories(xcb-imdkit
                            uthash
                            )
 
+install(TARGETS xcb-imdkit
+    CONFIGURATIONS Release
+    RUNTIME DESTINATION bin/Release
+    LIBRARY DESTINATION lib/Release
+    ARCHIVE DESTINATION lib/Release
+)
+
+install(TARGETS xcb-imdkit
+    CONFIGURATIONS Debug
+    RUNTIME DESTINATION bin/Debug
+    LIBRARY DESTINATION lib/Debug
+    ARCHIVE DESTINATION lib/Debug
+)
 
 
 

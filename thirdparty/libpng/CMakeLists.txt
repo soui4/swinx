@@ -62,9 +62,26 @@ source_group("Source Files" FILES ${libpng_sources})
 
 add_library(png_static STATIC ${libpng_sources} ${libpng_headers})
 
-target_link_libraries(png_static swinx_zlibstatic m)
+target_link_libraries(png_static PUBLIC zlib_static m)
 target_compile_options(png_static PRIVATE -fPIC)
 target_include_directories(png_static
                              PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>")
 
 
+if(SOUI_ENABLE_CORE_LIB)
+  set(CORE_LIBS ${CORE_LIBS} png_static CACHE INTERNAL "core_lib")
+endif()
+
+install(TARGETS png_static
+    CONFIGURATIONS Release
+    RUNTIME DESTINATION bin/Release
+    LIBRARY DESTINATION lib/Release
+    ARCHIVE DESTINATION lib/Release
+)
+
+install(TARGETS png_static
+    CONFIGURATIONS Debug
+    RUNTIME DESTINATION bin/Debug
+    LIBRARY DESTINATION lib/Debug
+    ARCHIVE DESTINATION lib/Debug
+)

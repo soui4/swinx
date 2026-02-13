@@ -154,178 +154,37 @@ set(ZLIB_SRCS
     uncompr.c
     zutil.c)
 
-if(WIN32)
-    set(zlib_static_suffix "s")
-    set(CMAKE_DEBUG_POSTFIX "d")
-endif(WIN32)
-
-if(ZLIB_BUILD_SHARED)
-    add_library(
-        swinx_zlib SHARED ${ZLIB_SRCS} ${ZLIB_PUBLIC_HDRS} ${ZLIB_PRIVATE_HDRS}
-                    $<$<OR:$<BOOL:${WIN32}>,$<BOOL:${CYGWIN}>>:win32/zlib1.rc>)
-    add_library(swinx::zlib ALIAS swinx_zlib)
-    target_include_directories(
-        swinx_zlib
-        PUBLIC $<BUILD_INTERFACE:${zlib_BINARY_DIR}>
-               $<BUILD_INTERFACE:${zlib_SOURCE_DIR}>
-               $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-    target_compile_definitions(
-        swinx_zlib
-        PRIVATE ZLIB_BUILD
-                $<$<BOOL:NOT:${HAVE_FSEEKO}>:NO_FSEEKO>
-                $<$<BOOL:${HAVE___ATTR__VIS_HIDDEN}>:HAVE_HIDDEN>
-                $<$<BOOL:${MSVC}>:_CRT_SECURE_NO_DEPRECATE>
-                $<$<BOOL:${MSVC}>:_CRT_NONSTDC_NO_DEPRECATE>
-        PUBLIC $<$<BOOL:${HAVE_OFF64_T}>:_LARGEFILE64_SOURCE=1>)
-    set(INSTALL_VERSION ${zlib_VERSION})
-
-    if(NOT CYGWIN)
-        set_target_properties(swinx_zlib PROPERTIES SOVERSION ${zlib_VERSION_MAJOR}
-                                              VERSION ${INSTALL_VERSION})
-    endif(NOT CYGWIN)
-
-    set_target_properties(
-        swinx_zlib
-        PROPERTIES DEFINE_SYMBOL ZLIB_DLL
-                   EXPORT_NAME ZLIB
-                   OUTPUT_NAME swinx_z)
-    if(UNIX
-       AND NOT APPLE
-       AND NOT (CMAKE_SYSTEM_NAME STREQUAL AIX))
-        # On unix-like platforms the library is almost always called libz
-        set_target_properties(
-            swinx_zlib
-            PROPERTIES LINK_FLAGS
-                       "-Wl,--version-script,\"${zlib_SOURCE_DIR}/zlib.map\"")
-    endif(
-        UNIX
-        AND NOT APPLE
-        AND NOT (CMAKE_SYSTEM_NAME STREQUAL AIX))
-endif(ZLIB_BUILD_SHARED)
-
-if(ZLIB_BUILD_STATIC)
-    add_library(swinx_zlibstatic STATIC ${ZLIB_SRCS} ${ZLIB_PUBLIC_HDRS}
+    add_library(zlib_static STATIC ${ZLIB_SRCS} ${ZLIB_PUBLIC_HDRS}
                                   ${ZLIB_PRIVATE_HDRS})
-    add_library(swinx::zlibstatic ALIAS swinx_zlibstatic)
-    target_compile_options(swinx_zlibstatic PRIVATE -fPIC)
+    add_library(swinx::zlibstatic ALIAS zlib_static)
+    target_compile_options(zlib_static PRIVATE -fPIC)
     target_include_directories(
-        swinx_zlibstatic
+        zlib_static
         PUBLIC $<BUILD_INTERFACE:${zlib_BINARY_DIR}>
                $<BUILD_INTERFACE:${zlib_SOURCE_DIR}>
                $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
     target_compile_definitions(
-        swinx_zlibstatic
+        zlib_static
         PRIVATE ZLIB_BUILD
                 $<$<BOOL:NOT:${HAVE_FSEEKO}>:NO_FSEEKO>
                 $<$<BOOL:${HAVE___ATTR__VIS_HIDDEN}>:HAVE_HIDDEN>
                 $<$<BOOL:${MSVC}>:_CRT_SECURE_NO_DEPRECATE>
                 $<$<BOOL:${MSVC}>:_CRT_NONSTDC_NO_DEPRECATE>
         PUBLIC $<$<BOOL:${HAVE_OFF64_T}>:_LARGEFILE64_SOURCE=1>)
-    set_target_properties(
-        swinx_zlibstatic PROPERTIES EXPORT_NAME ZLIBSTATIC OUTPUT_NAME
-                                                     swinx_z${zlib_static_suffix})
-endif(ZLIB_BUILD_STATIC)
 
-if(ZLIB_INSTALL)
-    if(ZLIB_BUILD_SHARED)
-        install(
-            TARGETS swinx_zlib
-            COMPONENT Runtime
-            EXPORT zlibSharedExport
-            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
-        install(
-            EXPORT zlibSharedExport
-            FILE ZLIB-shared.cmake
-            NAMESPACE swinx::
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/zlib)
-        if(ZLIB_INSTALL_COMPAT_DLL)
-            install(
-                FILES $<TARGET_FILE:swinx_zlib>
-                COMPONENT Runtime
-                RENAME swinx_zlib1.dll
-                DESTINATION "${CMAKE_INSTALL_BINDIR}")
-        endif(ZLIB_INSTALL_COMPAT_DLL)
+if(SOUI_ENABLE_CORE_LIB)
+    set(CORE_LIBS ${CORE_LIBS} zlib_static CACHE INTERNAL "core_lib")
+endif()
+install(TARGETS zlib_static
+    CONFIGURATIONS Release
+    RUNTIME DESTINATION bin/Release
+    LIBRARY DESTINATION lib/Release
+    ARCHIVE DESTINATION lib/Release
+)
 
-        if(MSVC)
-            install(
-                FILES $<TARGET_PDB_FILE:swinx_zlib>
-                COMPONENT Runtime
-                DESTINATION ${CMAKE_INSTALL_BINDIR}
-                CONFIGURATIONS Debug OR RelWithDebInfo
-                OPTIONAL)
-        endif(MSVC)
-    endif(ZLIB_BUILD_SHARED)
-
-    if(ZLIB_BUILD_STATIC)
-        install(
-            TARGETS swinx_zlibstatic
-            COMPONENT Development
-            EXPORT zlibStaticExport
-            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
-            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
-        install(
-            EXPORT zlibStaticExport
-            FILE ZLIB-static.cmake
-            NAMESPACE swinx::
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/zlib)
-
-        if(ZLIB_INSTALL_COMPAT_DLL AND MINGW)
-            install(
-                FILES $<TARGET_FILE:swinx_zlibstatic>
-                COMPONENT Development
-                RENAME libswinx_z.dll.a
-                DESTINATION "${CMAKE_INSTALL_LIBDIR}")
-        endif(ZLIB_INSTALL_COMPAT_DLL AND MINGW)
-    endif(ZLIB_BUILD_STATIC)
-
-    configure_package_config_file(
-        ${zlib_SOURCE_DIR}/zlibConfig.cmake.in
-        ${zlib_BINARY_DIR}/ZLIBConfig.cmake
-        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/zlib)
-
-    write_basic_package_version_file(
-        "${zlib_BINARY_DIR}/ZLIBConfigVersion.cmake"
-        VERSION "${zlib_VERSION}"
-        COMPATIBILITY AnyNewerVersion)
-
-    install(FILES ${zlib_BINARY_DIR}/ZLIBConfig.cmake
-                  ${zlib_BINARY_DIR}/ZLIBConfigVersion.cmake
-            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/zlib)
-    install(
-        FILES ${ZLIB_PUBLIC_HDRS}
-        COMPONENT Development
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-    install(
-        FILES zlib.3
-        COMPONENT Docs
-        DESTINATION "${CMAKE_INSTALL_MANDIR}/man3")
-    install(
-        FILES LICENSE
-              doc/algorithm.txt
-              doc/crc-doc.1.0.pdf
-              doc/rfc1950.txt
-              doc/rfc1951.txt
-              doc/rfc1952.txt
-              doc/txtvsbin.txt
-        COMPONENT Docs
-        DESTINATION "${CMAKE_INSTALL_DOCDIR}/zlib")
-    install(
-        FILES ${ZLIB_PC}
-        COMPONENT Development
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
-endif(ZLIB_INSTALL)
-
-# ============================================================================
-# Tests
-# ============================================================================
-if(ZLIB_BUILD_TESTING)
-    enable_testing()
-    add_subdirectory(test)
-endif(ZLIB_BUILD_TESTING)
-
-if(ZLIB_BUILD_MINIZIP)
-    add_subdirectory(contrib/minizip/)
-endif(ZLIB_BUILD_MINIZIP)
+install(TARGETS zlib_static
+    CONFIGURATIONS Debug
+    RUNTIME DESTINATION bin/Debug
+    LIBRARY DESTINATION lib/Debug
+    ARCHIVE DESTINATION lib/Debug
+)

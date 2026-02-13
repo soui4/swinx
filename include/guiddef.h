@@ -3,6 +3,8 @@
 
 #include <memory.h>
 #include <stdint.h>
+#include <ctypes.h>
+
 typedef struct _GUID
 {
     uint32_t Data1;
@@ -64,8 +66,9 @@ inline bool operator==(const GUID &id1, const GUID &id2)
 #undef DEFINE_GUID
 #endif
 
-//#define SELECT_ANY __attribute__((select_any))
-#define SELECT_ANY
+#ifndef SELECT_ANY
+#define SELECT_ANY __attribute__((weak))
+#endif
 
 #ifdef INITGUID
 #define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) EXTERN_C const GUID SELECT_ANY name = { l, w1, w2, { b1, b2, b3, b4, b5, b6, b7, b8 } }

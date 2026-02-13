@@ -258,9 +258,9 @@ if (NOT FT_DISABLE_PNG)
 endif ()
 
 if (NOT FT_DISABLE_ZLIB)
-  if(TARGET swinx_zlibstatic)
+  if(TARGET zlib_static)
     set(ZLIB_FOUND ON)
-    set(ZLIB_ZLIB swinx_zlibstatic)
+    set(ZLIB_ZLIB zlib_static)
   else()
     find_package(ZLIB REQUIRED)
   endif()
@@ -646,6 +646,23 @@ if (NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
     VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}
     COMPATIBILITY SameMajorVersion)
 
+if(SOUI_ENABLE_CORE_LIB)
+  set(CORE_LIBS ${CORE_LIBS} freetype CACHE INTERNAL "core_lib")
+endif()
+
+install(TARGETS freetype
+    CONFIGURATIONS Release
+    RUNTIME DESTINATION bin/Release
+    LIBRARY DESTINATION lib/Release
+    ARCHIVE DESTINATION lib/Release
+)
+
+install(TARGETS freetype
+    CONFIGURATIONS Debug
+    RUNTIME DESTINATION bin/Debug
+    LIBRARY DESTINATION lib/Debug
+    ARCHIVE DESTINATION lib/Debug
+)
   # Disable installation and export to avoid conflicts with internal dependencies
   # install(
   #   TARGETS freetype freetype-interface

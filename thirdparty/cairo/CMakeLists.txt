@@ -29,8 +29,8 @@ if(NOT TARGET png_static)
     message(FATAL_ERROR "png_static target not found. Make sure libpng is built before cairo.")
 endif()
 
-if(NOT TARGET swinx_zlibstatic)
-    message(FATAL_ERROR "swinx_zlibstatic target not found. Make sure zlib is built before cairo.")
+if(NOT TARGET zlib_static)
+    message(FATAL_ERROR "zlib_static target not found. Make sure zlib is built before cairo.")
 endif()
 
 # Set PNG variables for cairo configuration
@@ -64,7 +64,7 @@ get_target_property(PIXMAN_INCLUDE_DIRS pixman-1 INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(FREETYPE_INCLUDE_DIRS freetype INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(FONTCONFIG_INCLUDE_DIRS fontconfig INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(PNG_INCLUDE_DIRS png_static INTERFACE_INCLUDE_DIRECTORIES)
-get_target_property(ZLIB_INCLUDE_DIRS swinx_zlibstatic INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(ZLIB_INCLUDE_DIRS zlib_static INTERFACE_INCLUDE_DIRECTORIES)
 
 # Include directories
 include_directories(${PIXMAN_INCLUDE_DIRS})
@@ -74,7 +74,7 @@ include_directories(${PNG_INCLUDE_DIRS})
 include_directories(${ZLIB_INCLUDE_DIRS})
 
 # Link libraries - use target names for internal dependencies
-list(APPEND CAIRO_LIBS pixman-1 freetype fontconfig png_static swinx_zlibstatic)
+list(APPEND CAIRO_LIBS pixman-1 freetype fontconfig png_static zlib_static)
 
 if (APPLE)
     find_library(CORE_FOUNDATION CoreFoundation)
@@ -85,3 +85,21 @@ if (APPLE)
 endif()
 include_directories(src)
 add_subdirectory(src)
+
+if(SOUI_ENABLE_CORE_LIB)
+    set(CORE_LIBS ${CORE_LIBS} cairo CACHE INTERNAL "core_lib")
+endif()
+
+install(TARGETS cairo
+    CONFIGURATIONS Release
+    RUNTIME DESTINATION bin/Release
+    LIBRARY DESTINATION lib/Release
+    ARCHIVE DESTINATION lib/Release
+)
+
+install(TARGETS cairo
+    CONFIGURATIONS Debug
+    RUNTIME DESTINATION bin/Debug
+    LIBRARY DESTINATION lib/Debug
+    ARCHIVE DESTINATION lib/Debug
+)

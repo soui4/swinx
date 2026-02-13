@@ -225,3 +225,21 @@ target_include_directories(pixman-1
 
 # Create an alias for internal use
 add_library(pixman::pixman-1 ALIAS pixman-1)
+
+if(SOUI_ENABLE_CORE_LIB)
+    set(CORE_LIBS ${CORE_LIBS} pixman-1 CACHE INTERNAL "core_lib")
+endif()
+
+install(TARGETS pixman-1
+    CONFIGURATIONS Release
+    RUNTIME DESTINATION bin/Release
+    LIBRARY DESTINATION lib/Release
+    ARCHIVE DESTINATION lib/Release
+)
+
+install(TARGETS pixman-1
+    CONFIGURATIONS Debug
+    RUNTIME DESTINATION bin/Debug
+    LIBRARY DESTINATION lib/Debug
+    ARCHIVE DESTINATION lib/Debug
+)

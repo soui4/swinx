@@ -49,8 +49,6 @@ set(LIBS
 )
 if (NOT SOUI_ENABLE_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
-    target_link_libraries(swinx PRIVATE ${LIBS})
-
     # 确保导出所有符号，包括fontconfig和freetype的符号
     set_target_properties(swinx PROPERTIES
         LINK_FLAGS "-Wl,-all_load"
@@ -59,6 +57,7 @@ if (NOT SOUI_ENABLE_CORE_LIB)
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS} ${LIBS})
 endif()
+target_link_libraries(swinx PRIVATE ${LIBS})
 # Add dependencies to ensure proper build order for all internal libraries
 add_dependencies(swinx cairo fontconfig freetype pixman-1)
 target_compile_options(swinx PRIVATE "-fobjc-arc")
