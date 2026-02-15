@@ -193,7 +193,8 @@ HRESULT WINAPI CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwCl
 {
     if (IsEqualGUID(rclsid, CLSID_DragDropHelper))
     {
-        if(IsEqualGUID(riid, IID_IDragSourceHelper)){
+        if (IsEqualGUID(riid, IID_IDragSourceHelper))
+        {
             SDragSourceHelper *pDragSourceHelper = new SDragSourceHelper();
             return pDragSourceHelper->QueryInterface(riid, ppv);
         }

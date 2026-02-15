@@ -647,7 +647,7 @@ HANDLE WINAPI CreateWaitableTimerA(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL
     if (lpTimerName && *lpTimerName)
     {
         NamedTimerObj *timer = new NamedTimerObj();
-        TimerData data = { bManualReset, FALSE, {0}, 0, NULL, NULL, NULL, FALSE };
+        TimerData data = { bManualReset, FALSE, { 0 }, 0, NULL, NULL, NULL, FALSE };
         if (!timer->init(lpTimerName, &data))
         {
             delete timer;
@@ -658,7 +658,7 @@ HANDLE WINAPI CreateWaitableTimerA(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL
     else
     {
         NoNameTimerObj *timer = new NoNameTimerObj();
-        TimerData data = { bManualReset, FALSE, {0}, 0, NULL, NULL, NULL, FALSE };
+        TimerData data = { bManualReset, FALSE, { 0 }, 0, NULL, NULL, NULL, FALSE };
         if (!timer->init(NULL, &data))
         {
             delete timer;
@@ -675,7 +675,7 @@ HANDLE WINAPI CreateWaitableTimerW(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL
         std::string strName;
         tostring(lpTimerName, -1, strName);
         NamedTimerObj *timer = new NamedTimerObj();
-        TimerData data = { bManualReset, FALSE, {0}, 0, NULL, NULL, NULL, FALSE };
+        TimerData data = { bManualReset, FALSE, { 0 }, 0, NULL, NULL, NULL, FALSE };
         if (!timer->init(strName.c_str(), &data))
         {
             delete timer;
@@ -686,7 +686,7 @@ HANDLE WINAPI CreateWaitableTimerW(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL
     else
     {
         NoNameTimerObj *timer = new NoNameTimerObj();
-        TimerData data = { bManualReset, FALSE, {0}, 0, NULL, NULL, NULL, FALSE };
+        TimerData data = { bManualReset, FALSE, { 0 }, 0, NULL, NULL, NULL, FALSE };
         if (!timer->init(NULL, &data))
         {
             delete timer;
@@ -737,19 +737,20 @@ BOOL WINAPI CancelWaitableTimer(HANDLE hTimer)
     data->lpArgToCompletionRoutine = NULL;
 
     // Clear any pending signals
-    while (synHandle->readSignal());
+    while (synHandle->readSignal())
+        ;
 
     return TRUE;
 }
 
 // Timer Queue implementation
-class TimerQueue
-{
-public:
-    TimerQueue() : m_nextTimerId(1)
+class TimerQueue {
+  public:
+    TimerQueue()
+        : m_nextTimerId(1)
     {
     }
-    
+
     ~TimerQueue()
     {
         // Clean up all timers
@@ -760,13 +761,13 @@ public:
         }
         m_timers.clear();
     }
-    
+
     BOOL CreateTimer(PHANDLE phNewTimer, WAITORTIMERCALLBACK Callback, PVOID Parameter, DWORD DueTime, DWORD Period, ULONG Flags)
     {
         HANDLE hTimer = CreateWaitableTimer(NULL, FALSE, NULL);
         if (!hTimer)
             return FALSE;
-        
+
         TimerInfo info;
         info.hTimer = hTimer;
         info.Callback = Callback;
@@ -774,47 +775,47 @@ public:
         info.DueTime = DueTime;
         info.Period = Period;
         info.Flags = Flags;
-        
+
         UINT timerId = m_nextTimerId++;
         m_timers[timerId] = info;
-        
+
         *phNewTimer = (HANDLE)(UINT_PTR)timerId;
-        
+
         LARGE_INTEGER liDueTime;
         liDueTime.QuadPart = -((LONGLONG)DueTime * 10000); // Convert to 100ns intervals
         return SetWaitableTimer(hTimer, &liDueTime, Period, NULL, NULL, FALSE);
     }
-    
+
     BOOL ChangeTimer(HANDLE hTimer, DWORD DueTime, DWORD Period)
     {
         UINT timerId = (UINT)(UINT_PTR)hTimer;
         auto it = m_timers.find(timerId);
         if (it == m_timers.end())
             return FALSE;
-        
+
         it->second.DueTime = DueTime;
         it->second.Period = Period;
-        
+
         LARGE_INTEGER liDueTime;
         liDueTime.QuadPart = -((LONGLONG)DueTime * 10000); // Convert to 100ns intervals
         return SetWaitableTimer(it->second.hTimer, &liDueTime, Period, NULL, NULL, FALSE);
     }
-    
+
     BOOL DeleteTimer(HANDLE hTimer, HANDLE hCompletionEvent)
     {
         UINT timerId = (UINT)(UINT_PTR)hTimer;
         auto it = m_timers.find(timerId);
         if (it == m_timers.end())
             return FALSE;
-        
+
         CancelWaitableTimer(it->second.hTimer);
         CloseHandle(it->second.hTimer);
         m_timers.erase(it);
-        
+
         return TRUE;
     }
-    
-private:
+
+  private:
     struct TimerInfo
     {
         HANDLE hTimer;
@@ -824,28 +825,27 @@ private:
         DWORD Period;
         ULONG Flags;
     };
-    
+
     std::map<UINT, TimerInfo> m_timers;
     UINT m_nextTimerId;
 };
 
-static std::map<HANDLE, TimerQueue*> s_timerQueues;
+static std::map<HANDLE, TimerQueue *> s_timerQueues;
 static std::mutex s_timerQueueMutex;
-
 
 BOOL WINAPI DeleteTimerQueue(HANDLE hTimerQueue)
 {
     if (!hTimerQueue || hTimerQueue == (HANDLE)1)
         return FALSE;
-    
+
     std::lock_guard<std::mutex> lock(s_timerQueueMutex);
     auto it = s_timerQueues.find(hTimerQueue);
     if (it == s_timerQueues.end())
         return FALSE;
-    
+
     delete it->second;
     s_timerQueues.erase(it);
-    
+
     return TRUE;
 }
 
@@ -853,36 +853,36 @@ BOOL WINAPI DeleteTimerQueueEx(HANDLE hTimerQueue, HANDLE hCompletionEvent)
 {
     if (!hTimerQueue || hTimerQueue == (HANDLE)1)
         return FALSE;
-    
+
     std::lock_guard<std::mutex> lock(s_timerQueueMutex);
     auto it = s_timerQueues.find(hTimerQueue);
     if (it == s_timerQueues.end())
         return FALSE;
-    
+
     delete it->second;
     s_timerQueues.erase(it);
-    
+
     // If completion event is provided, signal it
     if (hCompletionEvent && hCompletionEvent != INVALID_HANDLE_VALUE)
     {
         SetEvent(hCompletionEvent);
     }
-    
+
     return TRUE;
 }
 
 HANDLE WINAPI CreateTimerQueue(void)
 {
     static HANDLE nextQueueId = (HANDLE)2; // Start from 2 to avoid conflict with simplified implementation
-    
+
     TimerQueue *queue = new TimerQueue();
     if (!queue)
         return NULL;
-    
+
     std::lock_guard<std::mutex> lock(s_timerQueueMutex);
     HANDLE queueId = nextQueueId++;
     s_timerQueues[queueId] = queue;
-    
+
     return queueId;
 }
 
@@ -890,26 +890,26 @@ BOOL WINAPI CreateTimerQueueTimer(PHANDLE phNewTimer, HANDLE hTimerQueue, WAITOR
 {
     if (!phNewTimer)
         return FALSE;
-    
+
     // Handle simplified implementation case
     if (hTimerQueue == (HANDLE)1)
     {
         HANDLE hTimer = CreateWaitableTimer(NULL, FALSE, NULL);
         if (!hTimer)
             return FALSE;
-        
+
         *phNewTimer = hTimer;
-        
+
         LARGE_INTEGER liDueTime;
         liDueTime.QuadPart = -((LONGLONG)DueTime * 10000); // Convert to 100ns intervals
         return SetWaitableTimer(hTimer, &liDueTime, Period, NULL, NULL, FALSE);
     }
-    
+
     std::lock_guard<std::mutex> lock(s_timerQueueMutex);
     auto it = s_timerQueues.find(hTimerQueue);
     if (it == s_timerQueues.end())
         return FALSE;
-    
+
     return it->second->CreateTimer(phNewTimer, Callback, Parameter, DueTime, Period, Flags);
 }
 
@@ -922,12 +922,12 @@ BOOL WINAPI ChangeTimerQueueTimer(HANDLE hTimerQueue, HANDLE hTimer, DWORD DueTi
         liDueTime.QuadPart = -((LONGLONG)DueTime * 10000); // Convert to 100ns intervals
         return SetWaitableTimer(hTimer, &liDueTime, Period, NULL, NULL, FALSE);
     }
-    
+
     std::lock_guard<std::mutex> lock(s_timerQueueMutex);
     auto it = s_timerQueues.find(hTimerQueue);
     if (it == s_timerQueues.end())
         return FALSE;
-    
+
     return it->second->ChangeTimer(hTimer, DueTime, Period);
 }
 
@@ -943,12 +943,12 @@ BOOL WINAPI DeleteTimerQueueTimer(HANDLE hTimerQueue, HANDLE hTimer, HANDLE hCom
         }
         return result;
     }
-    
+
     std::lock_guard<std::mutex> lock(s_timerQueueMutex);
     auto it = s_timerQueues.find(hTimerQueue);
     if (it == s_timerQueues.end())
         return FALSE;
-    
+
     BOOL result = it->second->DeleteTimer(hTimer, hCompletionEvent);
     if (hCompletionEvent && hCompletionEvent != INVALID_HANDLE_VALUE)
     {
@@ -1814,7 +1814,6 @@ BOOL GetHandleName(HANDLE h, char szName[1001])
     s_globalHandleTable.getRwLock()->unlockShared();
     return TRUE;
 }
-
 
 HANDLE WINAPI OpenWaitableTimerA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpTimerName)
 {

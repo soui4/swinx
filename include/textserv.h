@@ -508,21 +508,16 @@ class ITextServices2 : public ITextServices {
 //------------------------------------------------------------------------
 
 #ifdef __cplusplus
-extern "C"{
-#endif//__cplusplus
-// Text Services factory
-STDAPI CreateTextServices(
-	IUnknown *punkOuter,
-	ITextHost *pITextHost, 
-	IUnknown **ppUnk);
+extern "C"
+{
+#endif //__cplusplus
+    // Text Services factory
+    STDAPI CreateTextServices(IUnknown *punkOuter, ITextHost *pITextHost, IUnknown **ppUnk);
 
-typedef HRESULT (STDAPICALLTYPE * PCreateTextServices)(
-	IUnknown *punkOuter,
-	ITextHost *pITextHost, 
-	IUnknown **ppUnk);
+    typedef HRESULT(STDAPICALLTYPE *PCreateTextServices)(IUnknown *punkOuter, ITextHost *pITextHost, IUnknown **ppUnk);
 
 #ifdef __cplusplus
 }
-#endif//__cplusplus
+#endif //__cplusplus
 
 #endif // _TEXTSERV_H

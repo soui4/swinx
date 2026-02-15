@@ -15,12 +15,11 @@
 #define RGN_MIN  RGN_AND
 #define RGN_MAX  RGN_COPY
 
-
-#define ERROR               0
-#define NULLREGION          1
-#define SIMPLEREGION        2
-#define COMPLEXREGION       3
-#define RGN_ERROR ERROR
+#define ERROR         0
+#define NULLREGION    1
+#define SIMPLEREGION  2
+#define COMPLEXREGION 3
+#define RGN_ERROR     ERROR
 
 int WINAPI RgnComplexity(HRGN hRgn);
 

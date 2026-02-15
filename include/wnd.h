@@ -242,7 +242,7 @@ extern "C"
     BOOL GetWindowRect(HWND hWnd, RECT *lpRect);
     BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase);
     BOOL GetUpdateRect(HWND hWnd, LPRECT lpRect, BOOL bErase);
-    
+
     BOOL ClientToScreen(HWND hWnd, LPPOINT ppt);
     BOOL ScreenToClient(HWND hWnd, LPPOINT ppt);
 

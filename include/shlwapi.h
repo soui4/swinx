@@ -1,5 +1,5 @@
 #ifndef _SHLWAPI_H_
-#define _SHLWAPI_H_ 
+#define _SHLWAPI_H_
 
 #include <shellapi.h>
 
@@ -10,12 +10,12 @@ extern "C"
 
     BOOL WINAPI PathIsDirectoryA(LPCSTR pszPath);
     BOOL WINAPI PathIsDirectoryW(LPCWSTR pszPath);
-    
+
 #ifdef UNICODE
-#define PathIsDirectory  PathIsDirectoryW
+#define PathIsDirectory PathIsDirectoryW
 #else
-#define PathIsDirectory  PathIsDirectoryA
-#endif//UNICODE
+#define PathIsDirectory PathIsDirectoryA
+#endif // UNICODE
 
     BOOL WINAPI PathFileExistsA(LPCSTR pszPath);
     BOOL WINAPI PathFileExistsW(LPCWSTR pszPath);
@@ -30,4 +30,4 @@ extern "C"
 }
 #endif //__cplusplus
 
-#endif//_SHLWAPI_H_
+#endif //_SHLWAPI_H_

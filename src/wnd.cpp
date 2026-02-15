@@ -246,7 +246,6 @@ BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
     return TRUE;
 }
 
-
 BOOL GetUpdateRect(HWND hWnd, LPRECT lpRect, BOOL bErase)
 {
     if (!lpRect)
@@ -255,7 +254,7 @@ BOOL GetUpdateRect(HWND hWnd, LPRECT lpRect, BOOL bErase)
     GetRgnBox(wndObj->invalid.hRgn, lpRect);
     if (bErase)
     {
-        SetRectRgn(wndObj->invalid.hRgn,0,0,0,0);
+        SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0);
     }
     return TRUE;
 }
@@ -2999,7 +2998,7 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         return MA_ACTIVATE;
     }
     case UM_MAPNOTIFY:
-        //SLOG_STMI() << "UM_MAPNOTIFY,wp=" << wp<<" hWnd=" << hWnd;
+        // SLOG_STMI() << "UM_MAPNOTIFY,wp=" << wp<<" hWnd=" << hWnd;
         if (wp)
             wndObj->flags |= kMapped;
         else

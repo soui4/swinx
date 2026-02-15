@@ -1304,38 +1304,46 @@ int WINAPI DelDirW(const wchar_t *src_dir, BOOL bAllowUndo)
     return DelDirA(str.c_str(), bAllowUndo);
 }
 
-BOOL WINAPI MoveFileA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName){
-    if (!lpExistingFileName || !lpNewFileName) {
+BOOL WINAPI MoveFileA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName)
+{
+    if (!lpExistingFileName || !lpNewFileName)
+    {
         return FALSE;
     }
 
     // 使用posix的rename函数
-    if (rename(lpExistingFileName, lpNewFileName) == 0) {
+    if (rename(lpExistingFileName, lpNewFileName) == 0)
+    {
         return TRUE;
     }
 
     return FALSE;
 }
-BOOL WINAPI MoveFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName){
+BOOL WINAPI MoveFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName)
+{
     std::string nameExisting, nameNew;
     tostring(lpExistingFileName, -1, nameExisting);
     tostring(lpNewFileName, -1, nameNew);
     return MoveFileA(nameExisting.c_str(), nameNew.c_str());
 }
 
-BOOL WINAPI RemoveDirectoryA(LPCSTR lpPathName){
-    if (!lpPathName) {
+BOOL WINAPI RemoveDirectoryA(LPCSTR lpPathName)
+{
+    if (!lpPathName)
+    {
         return FALSE;
     }
 
     // 使用posix的rmdir函数
-    if (rmdir(lpPathName) == 0) {
+    if (rmdir(lpPathName) == 0)
+    {
         return TRUE;
     }
 
     return FALSE;
 }
-BOOL WINAPI RemoveDirectoryW(LPCWSTR lpPathName){
+BOOL WINAPI RemoveDirectoryW(LPCWSTR lpPathName)
+{
     std::string name;
     tostring(lpPathName, -1, name);
     return RemoveDirectoryA(name.c_str());

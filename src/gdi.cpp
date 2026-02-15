@@ -1213,7 +1213,7 @@ int GetClipBox(HDC hdc, LPRECT lprect)
     lprect->top = y1;
     lprect->right = x2;
     lprect->bottom = y2;
-    if(IsRectEmpty(lprect))
+    if (IsRectEmpty(lprect))
         return NULLREGION;
     return COMPLEXREGION;
 }
@@ -1625,58 +1625,58 @@ BOOL TransparentBlt(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, in
     // 获取源和目标的 Cairo 上下文
     cairo_t *crDest = hdcDest->cairo;
     cairo_t *crSrc = hdcSrc->cairo;
-    
+
     if (!crDest || !crSrc)
         return FALSE;
-    
+
     // 保存目标上下文状态
     cairo_save(crDest);
-    
+
     // 设置目标区域
     cairo_rectangle(crDest, xoriginDest, yoriginDest, wDest, hDest);
     cairo_clip(crDest);
-    
+
     // 创建一个临时表面用于处理透明色
     cairo_surface_t *tempSurface = cairo_surface_create_similar(cairo_get_target(crDest), CAIRO_CONTENT_COLOR_ALPHA, wSrc, hSrc);
     cairo_t *tempCr = cairo_create(tempSurface);
-    
+
     // 将源内容复制到临时表面
     cairo_set_source_surface(tempCr, cairo_get_target(crSrc), -xoriginSrc, -yoriginSrc);
     cairo_paint(tempCr);
-    
+
     // 创建一个掩码表面，用于标记透明区域
     cairo_surface_t *maskSurface = cairo_surface_create_similar(tempSurface, CAIRO_CONTENT_ALPHA, wSrc, hSrc);
     cairo_t *maskCr = cairo_create(maskSurface);
-    
+
     // 设置掩码颜色为不透明
     cairo_set_source_rgb(maskCr, 1.0, 1.0, 1.0);
     cairo_paint(maskCr);
-    
+
     // 将透明色设置为透明
     cairo_set_source_rgba(maskCr, 0.0, 0.0, 0.0, 0.0);
-    
+
     // 提取透明色的 RGB 分量
     double r = GetRValue(crTransparent) / 255.0;
     double g = GetGValue(crTransparent) / 255.0;
     double b = GetBValue(crTransparent) / 255.0;
-    
+
     // 这里需要实现一个扫描算法，将临时表面中与透明色匹配的像素设置为透明
     // 简化实现：直接使用 Cairo 的合成操作
-    
+
     // 将临时表面绘制到目标，使用掩码
     cairo_set_source_surface(crDest, tempSurface, xoriginDest, yoriginDest);
     cairo_rectangle(crDest, xoriginDest, yoriginDest, wDest, hDest);
     cairo_fill(crDest);
-    
+
     // 清理资源
     cairo_destroy(tempCr);
     cairo_destroy(maskCr);
     cairo_surface_destroy(tempSurface);
     cairo_surface_destroy(maskSurface);
-    
+
     // 恢复目标上下文状态
     cairo_restore(crDest);
-    
+
     return TRUE;
 }
 

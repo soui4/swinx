@@ -105,8 +105,8 @@ typedef void *PVOID;
 typedef char CHAR;
 typedef uint8_t UCHAR;
 typedef DWORD_PTR *PDWORD_PTR;
-typedef BYTE  BOOLEAN;           
-typedef BOOLEAN *PBOOLEAN;    
+typedef BYTE BOOLEAN;
+typedef BOOLEAN *PBOOLEAN;
 
 #ifdef __linux__
 typedef int BOOL;
@@ -226,7 +226,7 @@ typedef DWORD HKL;
 typedef struct _IconObj *HCURSOR;
 
 typedef struct _Handle *HANDLE;
-typedef HANDLE * PHANDLE;
+typedef HANDLE *PHANDLE;
 
 typedef HWND HMENU;
 

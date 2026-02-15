@@ -131,34 +131,42 @@ class CDropFileMgr {
 
 } // namespace swinx
 
-static const wchar_t * getLineEnd(const wchar_t *p, int &nEndLen){
+static const wchar_t *getLineEnd(const wchar_t *p, int &nEndLen)
+{
     const wchar_t *end = wcsstr(p, L"\r\n");
     nEndLen = 0;
-    if(!end){
+    if (!end)
+    {
         end = wcsstr(p, L"\n");
-        if(end) 
+        if (end)
             nEndLen = 1;
-    }else{
+    }
+    else
+    {
         nEndLen = 2;
     }
     return end;
 }
 
-static const char * getLineEnd(const char *p, int &nEndLen){
+static const char *getLineEnd(const char *p, int &nEndLen)
+{
     const char *end = strstr(p, "\r\n");
     nEndLen = 0;
-    if(!end){
+    if (!end)
+    {
         end = strstr(p, "\n");
-        if(end) 
+        if (end)
             nEndLen = 1;
-    }else{
+    }
+    else
+    {
         nEndLen = 2;
     }
     return end;
 }
 
 // 从 DROPFILES 定位到指定索引的 Wide 字符串行，返回行起始指针和长度
-static const wchar_t* GetDragQueryLineAt(const wchar_t *buf, UINT iFile, UINT &outLen)
+static const wchar_t *GetDragQueryLineAt(const wchar_t *buf, UINT iFile, UINT &outLen)
 {
     outLen = 0;
     UINT i = 0;
@@ -171,18 +179,18 @@ static const wchar_t* GetDragQueryLineAt(const wchar_t *buf, UINT iFile, UINT &o
         i++;
         buf = end + nEndLen;
     }
-    
+
     int nEndLen = 0;
     const wchar_t *end = getLineEnd(buf, nEndLen);
     if (!end)
         end = buf + wcslen(buf);
-    
+
     outLen = end - buf;
     return buf;
 }
 
 // 从 DROPFILES 定位到指定索引的 ANSI 字符串行，返回行起始指针和长度
-static const char* GetDragQueryLineAt(const char *buf, UINT iFile, UINT &outLen)
+static const char *GetDragQueryLineAt(const char *buf, UINT iFile, UINT &outLen)
 {
     outLen = 0;
     UINT i = 0;
@@ -195,21 +203,22 @@ static const char* GetDragQueryLineAt(const char *buf, UINT iFile, UINT &outLen)
         i++;
         buf = end + nEndLen;
     }
-    
+
     int nEndLen = 0;
     const char *end = getLineEnd(buf, nEndLen);
     if (!end)
         end = buf + strlen(buf);
-    
+
     outLen = end - buf;
     return buf;
 }
 
 static UINT DragQueryFileSize(HDROP hDrop)
 {
-    DROPFILES * pDropfiles = (DROPFILES *)hDrop;
-    if(pDropfiles->fWide){
-        const wchar_t *buf = (const wchar_t*)((char *)pDropfiles + pDropfiles->pFiles);
+    DROPFILES *pDropfiles = (DROPFILES *)hDrop;
+    if (pDropfiles->fWide)
+    {
+        const wchar_t *buf = (const wchar_t *)((char *)pDropfiles + pDropfiles->pFiles);
         if (!buf)
             return 0;
         UINT i = 0;
@@ -230,8 +239,10 @@ static UINT DragQueryFileSize(HDROP hDrop)
             }
         }
         return i;
-    }else{
-        const char *buf = (const char *)hDrop+sizeof(DROPFILES);
+    }
+    else
+    {
+        const char *buf = (const char *)hDrop + sizeof(DROPFILES);
         if (!buf)
             return 0;
         UINT i = 0;
@@ -261,29 +272,30 @@ UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
     {
         return DragQueryFileSize(hDrop);
     }
-    DROPFILES * pDropfiles = (DROPFILES *)hDrop;
-    if(pDropfiles->fWide){
+    DROPFILES *pDropfiles = (DROPFILES *)hDrop;
+    if (pDropfiles->fWide)
+    {
         // 处理 Wide 字符数据，需要转换为 ANSI
-        const wchar_t *buf = (const wchar_t*)((char *)pDropfiles + pDropfiles->pFiles);
+        const wchar_t *buf = (const wchar_t *)((char *)pDropfiles + pDropfiles->pFiles);
         UINT wideLen = 0;
         const wchar_t *pLine = GetDragQueryLineAt(buf, iFile, wideLen);
         if (!pLine)
             return 0;
-        
+
         if (!lpszFile)
             return wideLen;
-        
+
         // 计算转换后的 ANSI 长度
         int ansiLen = WideCharToMultiByte(CP_UTF8, 0, pLine, wideLen, NULL, 0, NULL, NULL);
         if (ansiLen <= 0)
             return 0;
-        
+
         if (ansiLen > (int)cch)
         {
             SetLastError(ERROR_BUFFER_OVERFLOW);
             return 0;
         }
-        
+
         // 缓冲区足够，执行转码
         int convertedLen = WideCharToMultiByte(CP_UTF8, 0, pLine, wideLen, lpszFile, cch, NULL, NULL);
         if (convertedLen > 0 && convertedLen < (int)cch)
@@ -291,13 +303,15 @@ UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
             lpszFile[convertedLen] = 0;
         }
         return convertedLen;
-    }else{
+    }
+    else
+    {
         const char *buf = (char *)pDropfiles + pDropfiles->pFiles;
         UINT lineLen = 0;
         const char *pLine = GetDragQueryLineAt(buf, iFile, lineLen);
         if (!pLine)
             return 0;
-        
+
         if (!lpszFile)
             return lineLen;
         if ((int)lineLen > (int)cch)
@@ -326,18 +340,21 @@ UINT WINAPI DragQueryFileW(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
     {
         return DragQueryFileSize(hDrop);
     }
-    DROPFILES * pDropfiles = (DROPFILES *)hDrop;
-    if(pDropfiles->fWide){
+    DROPFILES *pDropfiles = (DROPFILES *)hDrop;
+    if (pDropfiles->fWide)
+    {
         // Wide input → Wide output
-        const wchar_t *buf = (const wchar_t*)((char *)pDropfiles + pDropfiles->pFiles);
+        const wchar_t *buf = (const wchar_t *)((char *)pDropfiles + pDropfiles->pFiles);
         UINT lineLen = 0;
         const wchar_t *pLine = GetDragQueryLineAt(buf, iFile, lineLen);
-        if (!pLine) return 0;
-        if (!lpszFile) return lineLen;
-        
+        if (!pLine)
+            return 0;
+        if (!lpszFile)
+            return lineLen;
+
         // Check buffer size
-        if (lineLen > cch) 
-        { 
+        if (lineLen > cch)
+        {
             SetLastError(ERROR_BUFFER_OVERFLOW);
             return 0;
         }
@@ -348,35 +365,41 @@ UINT WINAPI DragQueryFileW(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
             lpszFile[lineLen] = 0;
         }
         return lineLen;
-    }else{
+    }
+    else
+    {
         // ANSI input → Wide output
         const char *buf = (char *)pDropfiles + pDropfiles->pFiles;
         UINT lineLen = 0;
         const char *pLine = GetDragQueryLineAt(buf, iFile, lineLen);
-        if (!pLine) return 0;
-        if (!lpszFile) return lineLen;
-        
+        if (!pLine)
+            return 0;
+        if (!lpszFile)
+            return lineLen;
+
         // Query conversion size
         int wideLen = MultiByteToWideChar(CP_UTF8, 0, pLine, lineLen, NULL, 0);
-        if (wideLen <= 0) return 0;
-        if (wideLen > (int)cch) 
-        { 
+        if (wideLen <= 0)
+            return 0;
+        if (wideLen > (int)cch)
+        {
             SetLastError(ERROR_BUFFER_OVERFLOW);
             return 0;
         }
-        
+
         // Conversion is safe - execute
         int convertedLen = MultiByteToWideChar(CP_UTF8, 0, pLine, lineLen, lpszFile, cch);
-        if (convertedLen > 0 && convertedLen < (int)cch) lpszFile[convertedLen] = 0;
+        if (convertedLen > 0 && convertedLen < (int)cch)
+            lpszFile[convertedLen] = 0;
         return convertedLen;
     }
 }
 
 BOOL WINAPI DragQueryPoint(_In_ HDROP hDrop, _Out_ POINT *ppt)
 {
-    if(!ppt)
+    if (!ppt)
         return FALSE;
-    DROPFILES * pDropfiles = (DROPFILES *)hDrop;
+    DROPFILES *pDropfiles = (DROPFILES *)hDrop;
     *ppt = pDropfiles->pt;
     return TRUE;
 }
@@ -506,8 +529,8 @@ char *WINAPI PathFindFileNameA(const char *path)
 {
     const char *last_slash = path;
     if (!path)
-        return (char*)path;
-    
+        return (char *)path;
+
     while (*path)
     {
         if (*path == '\\' || *path == '/')
@@ -526,7 +549,7 @@ wchar_t *WINAPI PathFindFileNameW(const wchar_t *path)
 {
     const wchar_t *last_slash = path;
     if (!path)
-        return (wchar_t*)path;
+        return (wchar_t *)path;
 
     while (*path)
     {
@@ -588,7 +611,7 @@ BOOL WINAPI PathIsRelativeA(const char *path)
     // 检查是否为绝对路径
     if (*path == '/' || *path == '\\')
         return FALSE;
-    
+
     // 检查是否为 Drive:\... 格式 (Windows)
     if (path[1] == ':')
         return FALSE;
@@ -604,7 +627,7 @@ BOOL WINAPI PathIsRelativeW(const wchar_t *path)
     // 检查是否为绝对路径
     if (*path == '/' || *path == '\\')
         return FALSE;
-    
+
     // 检查是否为 Drive:\... 格式 (Windows)
     if (path[1] == ':')
         return FALSE;
@@ -656,13 +679,13 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
     {
         if (*src == '.')
         {
-            if ((*src == '/' || *src == '\\') && (src == path || (*(src-1) == '/' || *(src-1) == '\\')))
+            if ((*src == '/' || *src == '\\') && (src == path || (*(src - 1) == '/' || *(src - 1) == '\\')))
             {
                 src++; // Skip .\
                 if (*src == '/' || *src == '\\')
-                    src++;
+                src++;
             }
-            else if (src[1] == '.' && dst != buffer && (*(dst-1) == '/' || *(dst-1) == '\\'))
+            else if (src[1] == '.' && dst != buffer && (*(dst - 1) == '/' || *(dst - 1) == '\\'))
             {
                 /* \.. backs up a directory, over the root if it has no \ following X:.
                  * .. is ignored if it would remove a UNC server name or initial /
@@ -671,7 +694,7 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
                 if (dst != buffer)
                 {
                     *dst = '\0'; /* Allow PathIsUNCServerShareA test on lpszBuf */
-                    while (dst > buffer && (*(dst-1) != '/' && *(dst-1) != '\\'))
+                    while (dst > buffer && (*(dst - 1) != '/' && *(dst - 1) != '\\'))
                         dst--;
                     if (dst == buffer)
                     {
@@ -695,7 +718,7 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
     }
 
     /* Append \ to naked drive specs */
-    if (dst - buffer == 2 && *(dst-1) == ':')
+    if (dst - buffer == 2 && *(dst - 1) == ':')
         *dst++ = '\\';
     *dst++ = '\0';
     return TRUE;
@@ -878,8 +901,7 @@ int WINAPI PathCommonPrefixA(const char *file1, const char *file2, char *path)
     for (;;)
     {
         // 更新 len - 在路径分隔符处更新
-        if ((!*iter1 || *iter1 == '/' || *iter1 == '\\') && 
-            (!*iter2 || *iter2 == '/' || *iter2 == '\\'))
+        if ((!*iter1 || *iter1 == '/' || *iter1 == '\\') && (!*iter2 || *iter2 == '/' || *iter2 == '\\'))
             len = iter1 - file1; // Common to this point
 
         if (!*iter1 || *iter1 != *iter2)
@@ -913,8 +935,7 @@ int WINAPI PathCommonPrefixW(const wchar_t *file1, const wchar_t *file2, wchar_t
     for (;;)
     {
         // 更新 len - 在路径分隔符处更新
-        if ((!*iter1 || *iter1 == '/' || *iter1 == '\\') && 
-            (!*iter2 || *iter2 == '/' || *iter2 == '\\'))
+        if ((!*iter1 || *iter1 == '/' || *iter1 == '\\') && (!*iter2 || *iter2 == '/' || *iter2 == '\\'))
             len = iter1 - file1; // Common to this point
 
         if (!*iter1 || *iter1 != *iter2)
@@ -937,7 +958,7 @@ BOOL WINAPI PathIsPrefixA(const char *prefix, const char *path)
 {
     if (!prefix || !path)
         return FALSE;
-    
+
     size_t prefixLen = strlen(prefix);
     return PathCommonPrefixA(path, prefix, NULL) == (int)prefixLen;
 }
@@ -946,7 +967,7 @@ BOOL WINAPI PathIsPrefixW(const wchar_t *prefix, const wchar_t *path)
 {
     if (!prefix || !path)
         return FALSE;
-    
+
     size_t prefixLen = lstrlenW(prefix);
     return PathCommonPrefixW(path, prefix, NULL) == (int)prefixLen;
 }
@@ -987,7 +1008,7 @@ DWORD WINAPI GetFullPathNameW(LPCWSTR lpFileName, DWORD nBufferLength, LPWSTR lp
     wchar_t tmpBuffer[MAX_PATH];
     if (!PathCanonicalizeW(tmpBuffer, lpBuffer))
         return 0;
-    
+
     wcscpy_s(lpBuffer, nBufferLength, tmpBuffer);
 
     if (lpFilePart)
@@ -1034,7 +1055,7 @@ DWORD WINAPI GetFullPathNameA(LPCSTR lpFileName, DWORD nBufferLength, LPSTR lpBu
     char tmpBuffer[MAX_PATH];
     if (!PathCanonicalizeA(tmpBuffer, lpBuffer))
         return 0;
-    
+
     strcpy_s(lpBuffer, nBufferLength, tmpBuffer);
 
     if (lpFilePart)
@@ -1113,7 +1134,7 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
 {
     if (!lpOperation || stricmp(lpOperation, "open") != 0)
         return FALSE;
-    
+
     // 处理资源管理器选中文件/文件夹功能
     if (lpFile && stricmp(lpFile, "explorer.exe") == 0 && lpParameters)
     {
@@ -1124,7 +1145,7 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
         {
             // 提取要选中的文件路径
             const char *filePath = lpParameters + prefixLen;
-            
+
 #ifdef __linux__
             // Linux: 使用 xdg-open 打开文件所在目录
             std::string dirPath = filePath;
@@ -1152,7 +1173,7 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
 #endif
         }
     }
-    
+
     // 原有逻辑
     int exe = is_executable(lpFile);
     if (exe <= 0)
@@ -1581,8 +1602,10 @@ HRESULT SHCreateStreamOnFileExA(LPCSTR pszFile, DWORD grfMode, DWORD dwAttribute
     return S_OK;
 }
 
-int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp){
-    if (!lpFileOp) {
+int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp)
+{
+    if (!lpFileOp)
+    {
         return ERROR_INVALID_PARAMETER;
     }
 
@@ -1591,9 +1614,11 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp){
 
     // 解析源路径
     std::vector<std::string> fromPaths;
-    if (lpFileOp->pFrom) {
-        const char* p = lpFileOp->pFrom;
-        while (*p) {
+    if (lpFileOp->pFrom)
+    {
+        const char *p = lpFileOp->pFrom;
+        while (*p)
+        {
             fromPaths.push_back(p);
             p += strlen(p) + 1;
         }
@@ -1601,57 +1626,155 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp){
 
     // 解析目标路径
     std::vector<std::string> toPaths;
-    if (lpFileOp->pTo) {
-        const char* p = lpFileOp->pTo;
-        while (*p) {
+    if (lpFileOp->pTo)
+    {
+        const char *p = lpFileOp->pTo;
+        while (*p)
+        {
             toPaths.push_back(p);
             p += strlen(p) + 1;
         }
     }
 
-    switch (lpFileOp->wFunc) {
+    switch (lpFileOp->wFunc)
+    {
     case FO_COPY:
+    {
+        if (fromPaths.empty())
         {
-            if (fromPaths.empty()) {
-                return ERROR_INVALID_PARAMETER;
+            return ERROR_INVALID_PARAMETER;
+        }
+
+        for (size_t i = 0; i < fromPaths.size(); ++i)
+        {
+            const std::string &from = fromPaths[i];
+            std::string to;
+            if (i < toPaths.size())
+            {
+                to = toPaths[i];
+            }
+            else if (!toPaths.empty())
+            {
+                to = toPaths[0];
+            }
+            else
+            {
+                anyAborted = true;
+                continue;
             }
 
-            for (size_t i = 0; i < fromPaths.size(); ++i) {
-                const std::string& from = fromPaths[i];
-                std::string to;
-                if (i < toPaths.size()) {
-                    to = toPaths[i];
-                } else if (!toPaths.empty()) {
-                    to = toPaths[0];
-                } else {
+            // 检查目标是否为目录
+            struct stat statbuf;
+            if (stat(to.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
+            {
+                // 目标是目录，在目录中创建同名文件
+                size_t lastSlash = from.find_last_of('/');
+                if (lastSlash == std::string::npos)
+                {
+                    lastSlash = from.find_last_of('\\');
+                }
+                if (lastSlash != std::string::npos)
+                {
+                    to += '/' + from.substr(lastSlash + 1);
+                }
+                else
+                {
+                    to += '/' + from;
+                }
+            }
+
+            // 使用posix的copyfile或cp命令
+            FILE *src = fopen(from.c_str(), "rb");
+            if (!src)
+            {
+                anyAborted = true;
+                continue;
+            }
+
+            FILE *dest = fopen(to.c_str(), "wb");
+            if (!dest)
+            {
+                fclose(src);
+                anyAborted = true;
+                continue;
+            }
+
+            char buffer[4096];
+            size_t bytesRead;
+            while ((bytesRead = fread(buffer, 1, sizeof(buffer), src)) > 0)
+            {
+                if (fwrite(buffer, 1, bytesRead, dest) != bytesRead)
+                {
+                    anyAborted = true;
+                    break;
+                }
+            }
+
+            fclose(src);
+            fclose(dest);
+        }
+    }
+    break;
+
+    case FO_MOVE:
+    {
+        if (fromPaths.empty())
+        {
+            return ERROR_INVALID_PARAMETER;
+        }
+
+        for (size_t i = 0; i < fromPaths.size(); ++i)
+        {
+            const std::string &from = fromPaths[i];
+            std::string to;
+            if (i < toPaths.size())
+            {
+                to = toPaths[i];
+            }
+            else if (!toPaths.empty())
+            {
+                to = toPaths[0];
+            }
+            else
+            {
+                anyAborted = true;
+                continue;
+            }
+
+            // 检查目标是否为目录
+            struct stat statbuf;
+            if (stat(to.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
+            {
+                // 目标是目录，在目录中创建同名文件
+                size_t lastSlash = from.find_last_of('/');
+                if (lastSlash == std::string::npos)
+                {
+                    lastSlash = from.find_last_of('\\');
+                }
+                if (lastSlash != std::string::npos)
+                {
+                    to += '/' + from.substr(lastSlash + 1);
+                }
+                else
+                {
+                    to += '/' + from;
+                }
+            }
+
+            // 使用posix的rename
+            if (rename(from.c_str(), to.c_str()) != 0)
+            {
+                // 如果rename失败，尝试复制然后删除
+                FILE *src = fopen(from.c_str(), "rb");
+                if (!src)
+                {
                     anyAborted = true;
                     continue;
                 }
 
-                // 检查目标是否为目录
-                struct stat statbuf;
-                if (stat(to.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
-                    // 目标是目录，在目录中创建同名文件
-                    size_t lastSlash = from.find_last_of('/');
-                    if (lastSlash == std::string::npos) {
-                        lastSlash = from.find_last_of('\\');
-                    }
-                    if (lastSlash != std::string::npos) {
-                        to += '/' + from.substr(lastSlash + 1);
-                    } else {
-                        to += '/' + from;
-                    }
-                }
-
-                // 使用posix的copyfile或cp命令
-                FILE* src = fopen(from.c_str(), "rb");
-                if (!src) {
-                    anyAborted = true;
-                    continue;
-                }
-
-                FILE* dest = fopen(to.c_str(), "wb");
-                if (!dest) {
+                FILE *dest = fopen(to.c_str(), "wb");
+                if (!dest)
+                {
                     fclose(src);
                     anyAborted = true;
                     continue;
@@ -1659,8 +1782,10 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp){
 
                 char buffer[4096];
                 size_t bytesRead;
-                while ((bytesRead = fread(buffer, 1, sizeof(buffer), src)) > 0) {
-                    if (fwrite(buffer, 1, bytesRead, dest) != bytesRead) {
+                while ((bytesRead = fread(buffer, 1, sizeof(buffer), src)) > 0)
+                {
+                    if (fwrite(buffer, 1, bytesRead, dest) != bytesRead)
+                    {
                         anyAborted = true;
                         break;
                     }
@@ -1668,121 +1793,68 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp){
 
                 fclose(src);
                 fclose(dest);
-            }
-        }
-        break;
 
-    case FO_MOVE:
-        {
-            if (fromPaths.empty()) {
-                return ERROR_INVALID_PARAMETER;
-            }
-
-            for (size_t i = 0; i < fromPaths.size(); ++i) {
-                const std::string& from = fromPaths[i];
-                std::string to;
-                if (i < toPaths.size()) {
-                    to = toPaths[i];
-                } else if (!toPaths.empty()) {
-                    to = toPaths[0];
-                } else {
-                    anyAborted = true;
-                    continue;
-                }
-
-                // 检查目标是否为目录
-                struct stat statbuf;
-                if (stat(to.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
-                    // 目标是目录，在目录中创建同名文件
-                    size_t lastSlash = from.find_last_of('/');
-                    if (lastSlash == std::string::npos) {
-                        lastSlash = from.find_last_of('\\');
-                    }
-                    if (lastSlash != std::string::npos) {
-                        to += '/' + from.substr(lastSlash + 1);
-                    } else {
-                        to += '/' + from;
-                    }
-                }
-
-                // 使用posix的rename
-                if (rename(from.c_str(), to.c_str()) != 0) {
-                    // 如果rename失败，尝试复制然后删除
-                    FILE* src = fopen(from.c_str(), "rb");
-                    if (!src) {
-                        anyAborted = true;
-                        continue;
-                    }
-
-                    FILE* dest = fopen(to.c_str(), "wb");
-                    if (!dest) {
-                        fclose(src);
-                        anyAborted = true;
-                        continue;
-                    }
-
-                    char buffer[4096];
-                    size_t bytesRead;
-                    while ((bytesRead = fread(buffer, 1, sizeof(buffer), src)) > 0) {
-                        if (fwrite(buffer, 1, bytesRead, dest) != bytesRead) {
-                            anyAborted = true;
-                            break;
-                        }
-                    }
-
-                    fclose(src);
-                    fclose(dest);
-
-                    if (!anyAborted) {
-                        unlink(from.c_str());
-                    }
+                if (!anyAborted)
+                {
+                    unlink(from.c_str());
                 }
             }
         }
-        break;
+    }
+    break;
 
     case FO_DELETE:
+    {
+        if (fromPaths.empty())
         {
-            if (fromPaths.empty()) {
-                return ERROR_INVALID_PARAMETER;
-            }
+            return ERROR_INVALID_PARAMETER;
+        }
 
-            for (const std::string& path : fromPaths) {
-                // 检查是否为目录
-                struct stat statbuf;
-                if (stat(path.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode)) {
-                    // 使用posix的rmdir或递归删除
-                    // 这里简化实现，只删除空目录
-                    if (rmdir(path.c_str()) != 0) {
-                        anyAborted = true;
-                    }
-                } else {
-                    // 使用posix的unlink
-                    if (unlink(path.c_str()) != 0) {
-                        anyAborted = true;
-                    }
+        for (const std::string &path : fromPaths)
+        {
+            // 检查是否为目录
+            struct stat statbuf;
+            if (stat(path.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
+            {
+                // 使用posix的rmdir或递归删除
+                // 这里简化实现，只删除空目录
+                if (rmdir(path.c_str()) != 0)
+                {
+                    anyAborted = true;
                 }
             }
-        }
-        break;
-
-    case FO_RENAME:
-        {
-            if (fromPaths.empty() || toPaths.empty()) {
-                return ERROR_INVALID_PARAMETER;
-            }
-
-            for (size_t i = 0; i < fromPaths.size() && i < toPaths.size(); ++i) {
-                const std::string& from = fromPaths[i];
-                const std::string& to = toPaths[i];
-
-                // 使用posix的rename
-                if (rename(from.c_str(), to.c_str()) != 0) {
+            else
+            {
+                // 使用posix的unlink
+                if (unlink(path.c_str()) != 0)
+                {
                     anyAborted = true;
                 }
             }
         }
-        break;
+    }
+    break;
+
+    case FO_RENAME:
+    {
+        if (fromPaths.empty() || toPaths.empty())
+        {
+            return ERROR_INVALID_PARAMETER;
+        }
+
+        for (size_t i = 0; i < fromPaths.size() && i < toPaths.size(); ++i)
+        {
+            const std::string &from = fromPaths[i];
+            const std::string &to = toPaths[i];
+
+            // 使用posix的rename
+            if (rename(from.c_str(), to.c_str()) != 0)
+            {
+                anyAborted = true;
+            }
+        }
+    }
+    break;
 
     default:
         return ERROR_INVALID_PARAMETER;
@@ -1791,7 +1863,8 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp){
     lpFileOp->fAnyOperationsAborted = anyAborted;
     return result;
 }
-int WINAPI SHFileOperationW(LPSHFILEOPSTRUCTW lpFileOp){
+int WINAPI SHFileOperationW(LPSHFILEOPSTRUCTW lpFileOp)
+{
     SHFILEOPSTRUCTA op;
     op.hwnd = lpFileOp->hwnd;
     op.wFunc = lpFileOp->wFunc;
@@ -1804,6 +1877,7 @@ int WINAPI SHFileOperationW(LPSHFILEOPSTRUCTW lpFileOp){
     op.fFlags = lpFileOp->fFlags;
     op.fAnyOperationsAborted = lpFileOp->fAnyOperationsAborted;
     op.hNameMappings = lpFileOp->hNameMappings;
-    op.lpszProgressTitle = strTitle.c_str();;
+    op.lpszProgressTitle = strTitle.c_str();
+    ;
     return SHFileOperationA(&op);
 }

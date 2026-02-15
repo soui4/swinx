@@ -39,7 +39,7 @@
 
 #ifndef WCHAR_SIZE
 #define WCHAR_SIZE 4
-#endif//WCHAR_SIZE
+#endif // WCHAR_SIZE
 
 using namespace swinx;
 /*
@@ -1025,15 +1025,18 @@ LONG InterlockedCompareExchange(LONG volatile *v, LONG Exchange, LONG Comparand)
     return __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 }
 
-int64_t InterlockedDecrement64(int64_t volatile *v){
+int64_t InterlockedDecrement64(int64_t volatile *v)
+{
     return __atomic_fetch_sub(v, 1, __ATOMIC_SEQ_CST) - 1;
 }
 
-int64_t InterlockedIncrement64(int64_t volatile *v){
+int64_t InterlockedIncrement64(int64_t volatile *v)
+{
     return __atomic_fetch_add(v, 1, __ATOMIC_SEQ_CST) + 1;
 }
 
-int64_t InterlockedCompareExchange64(int64_t volatile *v, int64_t Exchange, int64_t Comparand){
+int64_t InterlockedCompareExchange64(int64_t volatile *v, int64_t Exchange, int64_t Comparand)
+{
     return __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
 }
 
@@ -2306,10 +2309,10 @@ VOID WINAPI GetSystemInfo(LPSYSTEM_INFO lpSystemInfo)
 {
     if (!lpSystemInfo)
         return;
-    
+
     // 初始化系统信息结构
     memset(lpSystemInfo, 0, sizeof(SYSTEM_INFO));
-    
+
     // 设置处理器架构
 #ifdef __x86_64__
     lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_AMD64;
@@ -2322,10 +2325,10 @@ VOID WINAPI GetSystemInfo(LPSYSTEM_INFO lpSystemInfo)
 #else
     lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_UNKNOWN;
 #endif
-    
+
     // 设置页面大小
     lpSystemInfo->dwPageSize = sysconf(_SC_PAGESIZE);
-    
+
     // 设置处理器数量
 #ifdef __linux__
     lpSystemInfo->dwNumberOfProcessors = sysconf(_SC_NPROCESSORS_CONF);
@@ -2337,16 +2340,16 @@ VOID WINAPI GetSystemInfo(LPSYSTEM_INFO lpSystemInfo)
 #else
     lpSystemInfo->dwNumberOfProcessors = 1;
 #endif
-    
+
     // 设置处理器类型
-    //lpSystemInfo->dwProcessorType = PROCESSOR_INTEL_PENTIUM;
-    
+    // lpSystemInfo->dwProcessorType = PROCESSOR_INTEL_PENTIUM;
+
     // 设置分配粒度
     lpSystemInfo->dwAllocationGranularity = 65536; // 默认值
-    
+
     // 设置处理器级别
     lpSystemInfo->wProcessorLevel = 6;
-    
+
     // 设置处理器版本
     lpSystemInfo->wProcessorRevision = 0;
 }
@@ -2355,24 +2358,24 @@ BOOL WINAPI GetVersionExA(LPOSVERSIONINFOA lpVersionInfo)
 {
     if (!lpVersionInfo)
         return FALSE;
-    
+
     // 验证结构大小
     if (lpVersionInfo->dwOSVersionInfoSize < sizeof(OSVERSIONINFOA))
         return FALSE;
-    
+
     // 初始化版本信息
     memset(lpVersionInfo, 0, lpVersionInfo->dwOSVersionInfoSize);
     lpVersionInfo->dwOSVersionInfoSize = sizeof(OSVERSIONINFOA);
-    
+
     // 设置版本号（模拟 Windows 10）
     lpVersionInfo->dwMajorVersion = 10;
     lpVersionInfo->dwMinorVersion = 0;
     lpVersionInfo->dwBuildNumber = 19041;
     lpVersionInfo->dwPlatformId = VER_PLATFORM_WIN32_NT;
-    
+
     // 设置版本字符串
     strcpy(lpVersionInfo->szCSDVersion, "");
-    
+
     return TRUE;
 }
 
@@ -2380,24 +2383,24 @@ BOOL WINAPI GetVersionExW(LPOSVERSIONINFOW lpVersionInfo)
 {
     if (!lpVersionInfo)
         return FALSE;
-    
+
     // 验证结构大小
     if (lpVersionInfo->dwOSVersionInfoSize < sizeof(OSVERSIONINFOW))
         return FALSE;
-    
+
     // 初始化版本信息
     memset(lpVersionInfo, 0, lpVersionInfo->dwOSVersionInfoSize);
     lpVersionInfo->dwOSVersionInfoSize = sizeof(OSVERSIONINFOW);
-    
+
     // 设置版本号（模拟 Windows 10）
     lpVersionInfo->dwMajorVersion = 10;
     lpVersionInfo->dwMinorVersion = 0;
     lpVersionInfo->dwBuildNumber = 19041;
     lpVersionInfo->dwPlatformId = VER_PLATFORM_WIN32_NT;
-    
+
     // 设置版本字符串
     wcscpy(lpVersionInfo->szCSDVersion, L"");
-    
+
     return TRUE;
 }
 
@@ -2405,21 +2408,21 @@ BOOL WINAPI GetComputerNameA(LPSTR lpBuffer, LPDWORD nSize)
 {
     if (!lpBuffer || !nSize)
         return FALSE;
-    
+
     char hostname[256];
     if (gethostname(hostname, sizeof(hostname)) != 0)
         return FALSE;
-    
+
     size_t len = strlen(hostname);
     if (len >= *nSize)
     {
         *nSize = len + 1;
         return FALSE;
     }
-    
+
     strcpy(lpBuffer, hostname);
     *nSize = len + 1;
-    
+
     return TRUE;
 }
 
@@ -2427,24 +2430,24 @@ BOOL WINAPI GetComputerNameW(LPWSTR lpBuffer, LPDWORD nSize)
 {
     if (!lpBuffer || !nSize)
         return FALSE;
-    
+
     char hostname[256];
     if (gethostname(hostname, sizeof(hostname)) != 0)
         return FALSE;
-    
+
     std::wstring wHostname;
     towstring(hostname, -1, wHostname);
-    
+
     size_t len = wHostname.length();
     if (len >= *nSize)
     {
         *nSize = len + 1;
         return FALSE;
     }
-    
+
     wcscpy(lpBuffer, wHostname.c_str());
     *nSize = len + 1;
-    
+
     return TRUE;
 }
 
@@ -2452,23 +2455,23 @@ BOOL WINAPI GetUserNameA(LPSTR lpBuffer, LPDWORD nSize)
 {
     if (!lpBuffer || !nSize)
         return FALSE;
-    
+
     const char *username = getenv("USER");
     if (!username)
         username = getenv("LOGNAME");
     if (!username)
         return FALSE;
-    
+
     size_t len = strlen(username);
     if (len >= *nSize)
     {
         *nSize = len + 1;
         return FALSE;
     }
-    
+
     strcpy(lpBuffer, username);
     *nSize = len + 1;
-    
+
     return TRUE;
 }
 
@@ -2476,26 +2479,26 @@ BOOL WINAPI GetUserNameW(LPWSTR lpBuffer, LPDWORD nSize)
 {
     if (!lpBuffer || !nSize)
         return FALSE;
-    
+
     const char *username = getenv("USER");
     if (!username)
         username = getenv("LOGNAME");
     if (!username)
         return FALSE;
-    
+
     std::wstring wUsername;
     towstring(username, -1, wUsername);
-    
+
     size_t len = wUsername.length();
     if (len >= *nSize)
     {
         *nSize = len + 1;
         return FALSE;
     }
-    
+
     wcscpy(lpBuffer, wUsername.c_str());
     *nSize = len + 1;
-    
+
     return TRUE;
 }
 
@@ -2506,21 +2509,21 @@ LPVOID WINAPI VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationTy
 {
     if (dwSize == 0)
         return NULL;
-    
+
     int prot = PROT_NONE;
     if (flProtect & PAGE_EXECUTE)
         prot |= PROT_EXEC;
     if (flProtect & PAGE_READONLY)
         prot |= PROT_READ;
     if (flProtect & PAGE_READWRITE)
-        prot |= PROT_WRITE|PROT_READ;
-    
+        prot |= PROT_WRITE | PROT_READ;
+
     int flags = MAP_PRIVATE | MAP_ANONYMOUS;
-    
+
     void *addr = mmap(lpAddress, dwSize, prot, flags, -1, 0);
     if (addr == MAP_FAILED)
         return NULL;
-    
+
     return addr;
 }
 
@@ -2528,11 +2531,11 @@ BOOL WINAPI VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType)
 {
     if (!lpAddress)
         return FALSE;
-    
+
     int flags = 0;
     if (dwFreeType == MEM_RELEASE)
         flags = MAP_FIXED;
-    
+
     return munmap(lpAddress, dwSize) == 0;
 }
 
@@ -2667,7 +2670,6 @@ UINT WINAPI GetACP(void)
 {
     return CP_UTF8;
 }
-
 
 BOOL WINAPI IsDBCSLeadByte(BYTE c)
 {
@@ -2993,10 +2995,10 @@ HANDLE WINAPI FindFirstChangeNotificationW(LPCWSTR lpPathName, BOOL bWatchSubtre
 #ifdef __linux__
 struct NotifyHandle : FdHandle
 {
-    std::map<int, std::string> mapWdPath;  // watch descriptor -> path mapping
-    std::map<std::string, int> mapPathWd;  // path -> watch descriptor mapping
-    BOOL bWatchSubtree;                     // 是否监控子目录
-    uint32_t mask;                          // inotify mask
+    std::map<int, std::string> mapWdPath; // watch descriptor -> path mapping
+    std::map<std::string, int> mapPathWd; // path -> watch descriptor mapping
+    BOOL bWatchSubtree;                   // 是否监控子目录
+    uint32_t mask;                        // inotify mask
 
     NotifyHandle(int _fd)
         : FdHandle(_fd)
@@ -3099,7 +3101,7 @@ static void remove_path_watch_recursive(NotifyHandle *pHandle, const std::string
     std::vector<std::string> toRemove;
     for (auto &it : pHandle->mapPathWd)
     {
-        if (it.first.find(path) == 0)  // 路径以path开头
+        if (it.first.find(path) == 0) // 路径以path开头
         {
             toRemove.push_back(it.first);
         }
@@ -3241,11 +3243,11 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
 #elif defined(__APPLE__) && defined(__MACH__)
 struct NotifyHandle : FdHandle
 {
-    std::map<int, std::string> mapFdPath;  // fd -> path mapping
-    std::map<std::string, int> mapPathFd;  // path -> fd mapping
-    std::string rootPath;                   // 根路径
-    BOOL watchSubtree;                      // 是否监控子目录
-    DWORD notifyFilter;                     // 通知过滤器
+    std::map<int, std::string> mapFdPath; // fd -> path mapping
+    std::map<std::string, int> mapPathFd; // path -> fd mapping
+    std::string rootPath;                 // 根路径
+    BOOL watchSubtree;                    // 是否监控子目录
+    DWORD notifyFilter;                   // 通知过滤器
 
     NotifyHandle(int kq)
         : FdHandle(kq)
@@ -3305,11 +3307,11 @@ static bool add_path_to_kqueue(NotifyHandle *handle, const char *path)
     // 根据通知过滤器设置kqueue事件标志
     if (handle->notifyFilter & FILE_NOTIFY_CHANGE_FILE_NAME)
     {
-        fflags |= NOTE_DELETE | NOTE_RENAME | NOTE_WRITE;  // NOTE_WRITE用于检测新文件
+        fflags |= NOTE_DELETE | NOTE_RENAME | NOTE_WRITE; // NOTE_WRITE用于检测新文件
     }
     if (handle->notifyFilter & FILE_NOTIFY_CHANGE_DIR_NAME)
     {
-        fflags |= NOTE_DELETE | NOTE_RENAME | NOTE_WRITE;  // NOTE_WRITE用于检测新目录
+        fflags |= NOTE_DELETE | NOTE_RENAME | NOTE_WRITE; // NOTE_WRITE用于检测新目录
     }
     if (handle->notifyFilter & FILE_NOTIFY_CHANGE_ATTRIBUTES)
     {

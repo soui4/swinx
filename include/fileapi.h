@@ -67,17 +67,15 @@ extern "C"
 #define GENERIC_EXECUTE (0x20000000L)
 #define GENERIC_ALL     (0x10000000L)
 
+    //
+    // Timer Specific Access Rights.
+    //
 
-//
-// Timer Specific Access Rights.
-//
+#define TIMER_QUERY_STATE  0x0001
+#define TIMER_MODIFY_STATE 0x0002
 
-#define TIMER_QUERY_STATE       0x0001
-#define TIMER_MODIFY_STATE      0x0002
+#define TIMER_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | TIMER_QUERY_STATE | TIMER_MODIFY_STATE)
 
-#define TIMER_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED|SYNCHRONIZE|\
-                          TIMER_QUERY_STATE|TIMER_MODIFY_STATE)
-                          
 //
 // Constants
 //
@@ -360,18 +358,18 @@ typedef LPWIN32_FIND_DATAA LPWIN32_FIND_DATA;
     BOOL WINAPI RemoveDirectoryA(LPCSTR lpPathName);
     BOOL WINAPI RemoveDirectoryW(LPCWSTR lpPathName);
 #ifdef UNICODE
-#define CopyFile   CopyFileW
-#define CopyDir    CopyDirW
-#define DeleteFile DeleteFileW
-#define DelDir     DelDirW
-#define MoveFile   MoveFileW
+#define CopyFile        CopyFileW
+#define CopyDir         CopyDirW
+#define DeleteFile      DeleteFileW
+#define DelDir          DelDirW
+#define MoveFile        MoveFileW
 #define RemoveDirectory RemoveDirectoryW
 #else
-#define CopyFile   CopyFileA
-#define CopyDir    CopyDirA
-#define DeleteFile DeleteFileA
-#define DelDir     DelDirA
-#define MoveFile   MoveFileA
+#define CopyFile        CopyFileA
+#define CopyDir         CopyDirA
+#define DeleteFile      DeleteFileA
+#define DelDir          DelDirA
+#define MoveFile        MoveFileA
 #define RemoveDirectory RemoveDirectoryA
 #endif // !UNICODE
 
