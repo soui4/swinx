@@ -135,6 +135,12 @@ extern "C"
     WINUSERAPI
     BOOL WINAPI ModifyMenuW(HMENU hMnu, UINT uPosition, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR lpNewItem);
 
+    WINUSERAPI
+    BOOL WINAPI GetMenuStringA(HMENU hMenu, UINT uItem, LPSTR lpString, int cchMax, UINT wFlags);
+
+    WINUSERAPI
+    BOOL WINAPI GetMenuStringW(HMENU hMenu, UINT uItem, LPWSTR lpString, int cchMax, UINT wFlags);
+
 #ifdef UNICODE
 #define InsertMenuItem  InsertMenuItemW
 #define SetMenuItemInfo SetMenuItemInfoW
@@ -142,6 +148,7 @@ extern "C"
 #define InsertMenu      InsertMenuW
 #define AppendMenu      AppendMenuW
 #define ModifyMenu      ModifyMenuW
+#define GetMenuString   GetMenuStringW
 #else
 #define InsertMenuItem  InsertMenuItemA
 #define SetMenuItemInfo SetMenuItemInfoA
@@ -149,6 +156,7 @@ extern "C"
 #define InsertMenu      InsertMenuA
 #define AppendMenu      AppendMenuA
 #define ModifyMenu      ModifyMenuA
+#define GetMenuString   GetMenuStringA
 #endif // UNICDOE
 
     WINUSERAPI
