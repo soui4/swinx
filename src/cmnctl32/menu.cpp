@@ -1527,7 +1527,7 @@ void CMenu::SendInitPopupMenu2Owner(int idx)
 
     if (::IsWindow(s_MenuData->GetOwner()))
     {
-        ::SendMessage(s_MenuData->GetOwner(), WM_INITMENUPOPUP, (WPARAM)this, (LPARAM)idx);
+        ::SendMessage(s_MenuData->GetOwner(), WM_INITMENUPOPUP, (WPARAM)m_hWnd, (LPARAM)idx);
     }
     m_bMenuInitialized = TRUE;
 }
