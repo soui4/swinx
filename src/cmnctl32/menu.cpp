@@ -48,6 +48,8 @@ class SMenuItem {
 
     void SetSelect(bool bSel);
 
+    void SetCheck(bool bCheck);
+
     void SetHotItem(bool bHot);
 
     UINT GetDrawState() const;
@@ -191,6 +193,8 @@ class CMenu : public CNativeWnd {
     SMenuItem *FindItem(UINT id);
 
     SMenuItem *FindItem(UINT uPos, UINT uFlag);
+
+    void OnMenuEnd();
 
     int OnMouseActivate(HWND wndTopLevel, UINT nHitTest, UINT message);
 
@@ -432,6 +436,11 @@ bool SMenuItem::IsEnable() const
 void SMenuItem::SetSelect(bool bSel)
 {
     m_uMenuFlag = bSel ? (m_uMenuFlag | MF_HILITE) : (m_uMenuFlag & (~MF_HILITE));
+}
+
+void SMenuItem::SetCheck(bool bCheck)
+{
+    m_uMenuFlag = bCheck ? (m_uMenuFlag | MF_CHECKED) : (m_uMenuFlag & (~MF_CHECKED));
 }
 
 void SMenuItem::SetHotItem(bool bHot)
@@ -906,7 +915,7 @@ UINT CMenu::TrackPopupMenu(UINT flag, int x, int y, HWND hOwner, LPTPMPARAMS prc
     ShowMenu(flag, x, y);
     RunMenu(hRoot);
     HideMenu(FALSE);
-
+    OnMenuEnd();
     if (hActive)
     {
         POINT pt;
@@ -1046,10 +1055,16 @@ void CMenu::ShowMenu(UINT uFlag, int x, int y)
 
 void CMenu::HideMenu(BOOL bUncheckParentItem)
 {
-    if (!IsWindowVisible(m_hWnd))
-        return;
-    HideSubMenu();
-    ShowWindow(m_hWnd, SW_HIDE);
+    if (IsWindowVisible(m_hWnd))
+    {
+        HideSubMenu();
+        ShowWindow(m_hWnd, SW_HIDE);
+        s_MenuData->PopMenu();
+        if (m_pParent)
+        {
+            m_pParent->OnSubMenuHided(bUncheckParentItem);
+        }
+    }
     if (m_iSelItem != -1)
     {
         SMenuItem *pItem = GetMenuItem(m_iSelItem);
@@ -1063,11 +1078,6 @@ void CMenu::HideMenu(BOOL bUncheckParentItem)
         if (pItem)
             pItem->SetHotItem(false);
         m_iHoverItem = -1;
-    }
-    s_MenuData->PopMenu();
-    if (m_pParent)
-    {
-        m_pParent->OnSubMenuHided(bUncheckParentItem);
     }
 }
 
@@ -1083,6 +1093,15 @@ void CMenu::HideSubMenu()
 int CMenu::OnMouseActivate(HWND wndTopLevel, UINT nHitTest, UINT message)
 {
     return MA_NOACTIVATE;
+}
+
+void CMenu::OnMenuEnd(){
+    m_bMenuInitialized = FALSE;
+    for(auto &item: m_lsMenuItem){
+        if(item.GetSubMenu()){
+            item.GetSubMenu()->OnMenuEnd();
+        }
+    }
 }
 
 void CMenu::RunMenu(HWND hRoot)
@@ -1240,10 +1259,7 @@ void CMenu::PopupSubMenu(int iItem, BOOL bCheckFirstItem)
         return;
     if (IsWindowVisible(pSubMenu->m_hWnd))
         return;
-    if (!pSubMenu->m_bMenuInitialized)
-    {
-        pSubMenu->SendInitPopupMenu2Owner(0);
-    }
+    pSubMenu->SendInitPopupMenu2Owner(0);
 
     RECT rcWnd;
     GetWindowRect(m_hWnd, &rcWnd);
@@ -1497,7 +1513,7 @@ BOOL CMenu::CheckMenuItem(UINT uPos, UINT uFlag)
     SMenuItem *pItemRef = FindItem(uPos, uFlag);
     if (!pItemRef)
         return FALSE;
-    pItemRef->SetSelect(uFlag & MF_CHECKED);
+    pItemRef->SetCheck(uFlag & MF_CHECKED);
     return TRUE;
 }
 
@@ -1514,7 +1530,7 @@ BOOL CMenu::CheckMenuRadioItem(UINT idFirst, UINT idLast, UINT idCheck, UINT uFl
         SMenuItem *pItem = FindItem(id, uFlags);
         if (pItem)
         {
-            pItem->SetSelect(pItem == pItemRefCheck);
+            pItem->SetCheck(pItem == pItemRefCheck);
         }
     }
     return TRUE;
