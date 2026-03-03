@@ -651,7 +651,7 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
 
     if (!*path)
     {
-        *buffer++ = '\\';
+        *buffer++ = '/';
         *buffer = '\0';
         return TRUE;
     }
@@ -659,7 +659,7 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
     /* Copy path root */
     if (*src == '/' || *src == '\\')
     {
-        *dst++ = '\\';
+        *dst++ = '/';
         src++;
     }
     else if (*src && src[1] == ':')
@@ -669,7 +669,7 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
         *dst++ = *src++;
         if (*src == '/' || *src == '\\')
         {
-            *dst++ = '\\';
+            *dst++ = '/';
             src++;
         }
     }
@@ -679,11 +679,10 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
     {
         if (*src == '.')
         {
-            if ((*src == '/' || *src == '\\') && (src == path || (*(src - 1) == '/' || *(src - 1) == '\\')))
+            if (src[1] == '/' || src[1] == '\\')
             {
-                src++; // Skip .\
-                if (*src == '/' || *src == '\\')
-                src++;
+                //skip ./
+                src+=2;
             }
             else if (src[1] == '.' && dst != buffer && (*(dst - 1) == '/' || *(dst - 1) == '\\'))
             {
@@ -698,7 +697,7 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
                         dst--;
                     if (dst == buffer)
                     {
-                        *dst++ = '\\';
+                        *dst++ = '/';
                         src++;
                     }
                 }
@@ -710,7 +709,7 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
         else if (*src == '/' || *src == '\\')
         {
             /* 规范化路径分隔符为 \\ */
-            *dst++ = '\\';
+            *dst++ = '/';
             src++;
         }
         else
@@ -719,7 +718,7 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
 
     /* Append \ to naked drive specs */
     if (dst - buffer == 2 && *(dst - 1) == ':')
-        *dst++ = '\\';
+        *dst++ = '/';
     *dst++ = '\0';
     return TRUE;
 }
@@ -1035,7 +1034,7 @@ DWORD WINAPI GetFullPathNameA(LPCSTR lpFileName, DWORD nBufferLength, LPSTR lpBu
         {
             if (dwRet + 1 >= nBufferLength)
                 return 0;
-            lpBuffer[dwRet] = '\\';
+            lpBuffer[dwRet] = '/';
             lpBuffer[dwRet + 1] = '\0';
             dwRet++;
         }
