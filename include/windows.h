@@ -35,7 +35,9 @@
 #include <richedit.h>
 #include <multimon.h>
 #include <shellapi.h>
+#ifndef __OBJC__
 #include <winres.h>
+#endif//__OBJC__
 
 #undef NULL
 #define NULL 0
