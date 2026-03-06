@@ -93,8 +93,10 @@ extern "C"
 #define CP_THREAD_ACP 3  // current thread's ANSI code page
 #define CP_SYMBOL     42 // SYMBOL translations
 
-#define CP_UTF7 65000 // UTF-7 translation
-#define CP_UTF8 65001 // UTF-8 translation
+#define CP_UTF7     65000 // UTF-7 translation
+#define CP_UTF8     65001 // UTF-8 translation
+#define CP_UTF16_LE 1200  // UTF-16 little endian translation
+#define CP_UTF16_BE 1201  // UTF-16 big endian translation
 
 #define MB_PRECOMPOSED       0x00000001 // DEPRECATED: use single precomposed characters when possible.
 #define MB_COMPOSITE         0x00000002 // DEPRECATED: use multiple discrete characters when possible.

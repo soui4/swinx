@@ -1072,7 +1072,7 @@ done:
     return ret;
 }
 
-static HICON create_cursoricon_object(struct cursoricon_desc *desc, BOOL is_icon, HINSTANCE module, const WCHAR *resname, HRSRC rsrc)
+static HICON create_cursoricon_object(struct cursoricon_desc *desc, BOOL is_icon, HINSTANCE module, const char *resname, HRSRC rsrc)
 {
     if (desc->num_frames == 0)
         return NULL;
@@ -1090,7 +1090,7 @@ static HICON create_cursoricon_object(struct cursoricon_desc *desc, BOOL is_icon
  *
  * Create an icon from its BITMAPINFO.
  */
-static HICON create_icon_from_bmi(const BITMAPINFO *bmi, DWORD maxsize, HMODULE module, LPCWSTR resname, HRSRC rsrc, POINT hotspot, BOOL bIcon, INT width, INT height, UINT flags)
+static HICON create_icon_from_bmi(const BITMAPINFO *bmi, DWORD maxsize, HMODULE module, LPCSTR resname, HRSRC rsrc, POINT hotspot, BOOL bIcon, INT width, INT height, UINT flags)
 {
     struct cursoricon_frame frame;
     struct cursoricon_desc desc;
@@ -1453,6 +1453,84 @@ static HICON CURSORICON_LoadFromFile(LPCSTR filename, INT width, INT height, INT
  *
  * Load a cursor or icon from resource or file.
  */
+static HICON CURSORICON_Load(HINSTANCE hInstance, LPCSTR name, INT width, INT height, INT depth, BOOL fCursor, UINT loadflags)
+{
+    HANDLE handle = 0;
+    HICON hIcon = 0;
+    HRSRC hRsrc;
+    DWORD size;
+    const CURSORICONDIR *dir;
+    const CURSORICONDIRENTRY *dirEntry;
+    const BYTE *bits;
+    WORD wResId;
+    POINT hotspot;
+
+    if (loadflags & LR_LOADFROMFILE) /* Load from file */
+        return CURSORICON_LoadFromFile(name, width, height, depth, fCursor, loadflags);
+
+    if (!hInstance)
+        hInstance = GetModuleHandle(NULL);
+
+    /* don't cache 16-bit instances (FIXME: should never get 16-bit instances in the first place) */
+    if ((ULONG_PTR)hInstance >> 16 == 0)
+        loadflags &= ~LR_SHARED;
+
+    /* Get directory resource ID */
+
+    if (!(hRsrc = FindResourceA(hInstance, name, (LPSTR)(fCursor ? RT_GROUP_CURSOR : RT_GROUP_ICON))))
+    {
+        /* try animated resource */
+        if (!(hRsrc = FindResourceA(hInstance, name, (LPSTR)(fCursor ? RT_ANICURSOR : RT_ANIICON))))
+            return 0;
+        if (!(handle = LoadResource(hInstance, hRsrc)))
+            return 0;
+        bits = (const BYTE *)LockResource(handle);
+        return CURSORICON_CreateIconFromANI(bits, SizeofResource(hInstance, handle), width, height, depth, !fCursor, loadflags);
+    }
+
+    /* Find the best entry in the directory */
+
+    if (!(handle = LoadResource(hInstance, hRsrc)))
+        return 0;
+    if (!(dir = (const CURSORICONDIR *)LockResource(handle)))
+        return 0;
+    size = SizeofResource(hInstance, hRsrc);
+    if (fCursor)
+        dirEntry = CURSORICON_FindBestCursorRes(dir, size, width, height, depth, loadflags);
+    else
+        dirEntry = CURSORICON_FindBestIconRes(dir, size, width, height, depth, loadflags);
+    if (!dirEntry)
+        return 0;
+    wResId = dirEntry->wResId;
+    FreeResource(handle);
+
+    /* Load the resource */
+
+    if (!(hRsrc = FindResourceA(hInstance, MAKEINTRESOURCEA(wResId), (LPSTR)(fCursor ? RT_CURSOR : RT_ICON))))
+        return 0;
+
+    if (!(handle = LoadResource(hInstance, hRsrc)))
+        return 0;
+    size = SizeofResource(hInstance, hRsrc);
+    bits = (const BYTE *)LockResource(handle);
+
+    if (!fCursor)
+    {
+        hotspot.x = width / 2;
+        hotspot.y = height / 2;
+    }
+    else /* get the hotspot */
+    {
+        const SHORT *pt = (const SHORT *)bits;
+        hotspot.x = pt[0];
+        hotspot.y = pt[1];
+        bits += 2 * sizeof(SHORT);
+        size -= 2 * sizeof(SHORT);
+    }
+    hIcon = create_icon_from_bmi((const BITMAPINFO *)bits, size, hInstance, name, hRsrc, hotspot, !fCursor, width, height, loadflags);
+    FreeResource(handle);
+    return hIcon;
+}
 
 static HBITMAP create_masked_bitmap(int width, int height, const void *and_, const void *xor_)
 {
@@ -1947,7 +2025,7 @@ HANDLE WINAPI LoadImageA(HINSTANCE hinst, LPCSTR name, UINT type, INT desiredx, 
         depth = 1;
         if (!(loadflags & LR_MONOCHROME))
             depth = get_display_bpp();
-        return (HANDLE)CURSORICON_LoadFromFile(name, desiredx, desiredy, depth, (type == IMAGE_CURSOR), loadflags);
+        return (HANDLE)CURSORICON_Load(hinst, name, desiredx, desiredy, depth, (type == IMAGE_CURSOR), loadflags);
     }
     return 0;
 }

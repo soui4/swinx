@@ -1349,6 +1349,16 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #define LPCHOOSEFONT LPCHOOSEFONTA
 #endif // !UNICODE
 
+    HICON WINAPI CreateIconFromResource(LPBYTE bits, UINT cbSize, BOOL bIcon, DWORD dwVersion);
+    HBITMAP WINAPI LoadBitmapA(_In_opt_ HINSTANCE hInstance, _In_ LPCSTR lpBitmapName);
+    HBITMAP WINAPI LoadBitmapW(_In_opt_ HINSTANCE hInstance, _In_ LPCWSTR lpBitmapName);
+
+#ifdef UNICODE
+#define LoadBitmap LoadBitmapW
+#else
+#define LoadBitmap LoadBitmapA
+#endif // !UNICODE
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus

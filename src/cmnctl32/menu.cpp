@@ -1095,10 +1095,13 @@ int CMenu::OnMouseActivate(HWND wndTopLevel, UINT nHitTest, UINT message)
     return MA_NOACTIVATE;
 }
 
-void CMenu::OnMenuEnd(){
+void CMenu::OnMenuEnd()
+{
     m_bMenuInitialized = FALSE;
-    for(auto &item: m_lsMenuItem){
-        if(item.GetSubMenu()){
+    for (auto &item : m_lsMenuItem)
+    {
+        if (item.GetSubMenu())
+        {
             item.GetSubMenu()->OnMenuEnd();
         }
     }
@@ -1958,21 +1961,23 @@ BOOL WINAPI AppendMenuW(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR l
     }
 }
 
-BOOL WINAPI GetMenuStringA(HMENU hMenu, UINT uIDItem, LPSTR lpString, int cchMax, UINT uFlag){
-    MENUITEMINFOA mmi={sizeof(MENUITEMINFOA), MIIM_STRING, 0};
+BOOL WINAPI GetMenuStringA(HMENU hMenu, UINT uIDItem, LPSTR lpString, int cchMax, UINT uFlag)
+{
+    MENUITEMINFOA mmi = { sizeof(MENUITEMINFOA), MIIM_STRING, 0 };
     mmi.cch = cchMax;
     mmi.dwTypeData = lpString;
-    return GetMenuItemInfoA(hMenu,uIDItem,(uFlag&MF_BYCOMMAND)?FALSE:TRUE,&mmi);
+    return GetMenuItemInfoA(hMenu, uIDItem, (uFlag & MF_BYCOMMAND) ? FALSE : TRUE, &mmi);
 }
 
-BOOL WINAPI GetMenuStringW(HMENU hMenu, UINT uIDItem, LPWSTR lpString, int cchMax, UINT uFlag){
+BOOL WINAPI GetMenuStringW(HMENU hMenu, UINT uIDItem, LPWSTR lpString, int cchMax, UINT uFlag)
+{
     char buf[1024];
-    if(!GetMenuStringA(hMenu, uIDItem, buf, sizeof(buf), uFlag))
+    if (!GetMenuStringA(hMenu, uIDItem, buf, sizeof(buf), uFlag))
     {
         return FALSE;
     }
     int len = MultiByteToWideChar(CP_ACP, 0, buf, -1, lpString, cchMax);
-    return len>0;
+    return len > 0;
 }
 
 BOOL WINAPI EndMenu()

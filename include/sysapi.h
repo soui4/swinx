@@ -437,15 +437,9 @@ typedef int(WINAPI *PROC)();
 #define SetDllDirectory SetDllDirectoryA
 #endif
 
-    static inline BOOL WINAPI FreeLibrary(HMODULE hModule)
-    {
-        return dlclose(hModule);
-    }
+    BOOL WINAPI FreeLibrary(HMODULE hModule);
 
-    static inline FARPROC WINAPI GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
-    {
-        return (FARPROC)dlsym(hModule, lpProcName);
-    }
+    FARPROC WINAPI GetProcAddress(HMODULE hModule, LPCSTR lpProcName);
 
     HANDLE WINAPI CreateSemaphoreA(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCSTR name);
 

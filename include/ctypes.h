@@ -220,7 +220,10 @@ typedef struct _IconObj *HICON;
 
 typedef UINT_PTR tid_t;
 typedef struct _SDC *HDC;
-typedef int HRSRC;
+#ifndef HRSRC_DEFINED
+#define HRSRC_DEFINED
+typedef void *HRSRC;
+#endif
 typedef DWORD HKL;
 
 typedef struct _IconObj *HCURSOR;
@@ -389,8 +392,14 @@ typedef struct _BLENDFUNCTION
 #define AD_COUNTERCLOCKWISE 1
 #define AD_CLOCKWISE        2
 
+#ifndef HGLOBAL_DEFINED
+#define HGLOBAL_DEFINED
 typedef HANDLE HGLOBAL;
+#endif
+#ifndef HLOCAL_DEFINED
+#define HLOCAL_DEFINED
 typedef HANDLE HLOCAL;
+#endif
 typedef HANDLE HDROP;
 
 typedef struct _FILETIME

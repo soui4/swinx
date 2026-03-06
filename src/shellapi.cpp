@@ -681,8 +681,8 @@ BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path)
         {
             if (src[1] == '/' || src[1] == '\\')
             {
-                //skip ./
-                src+=2;
+                // skip ./
+                src += 2;
             }
             else if (src[1] == '.' && dst != buffer && (*(dst - 1) == '/' || *(dst - 1) == '\\'))
             {

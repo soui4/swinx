@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -35,6 +35,10 @@
 #include "debug.h"
 #include "sysapi.h"
 #include "cursormgr.h"
+
+// 声明外部函数
+extern void UnloadModuleResources(HMODULE hModule);
+
 #define kLogTag "sysapi"
 
 #ifndef WCHAR_SIZE
@@ -188,9 +192,11 @@ RISCOS-LATIN1
 #ifdef __APPLE__
 #define ICONV_UTF32LE "UTF-32LE"
 #define ICONV_UTF16LE "UTF-16LE"
+#define ICONV_UTF16BE "UTF-16BE"
 #else
 #define ICONV_UTF32LE "UTF32LE"
 #define ICONV_UTF16LE "UTF16LE"
+#define ICONV_UTF16BE "UTF16BE"
 #endif //__APPLE__
 #define ICONV_WINDOWS_936  "WINDOWS-936"
 #define ICONV_WINDOWS_1250 "WINDOWS-1250"
@@ -207,6 +213,10 @@ const char *Cp2IConvCode(int codePage)
 {
     switch (codePage)
     {
+    case CP_UTF16_LE:
+        return ICONV_UTF16LE;
+    case CP_UTF16_BE:
+        return ICONV_UTF16BE;
     case 936:
         return ICONV_WINDOWS_936;
     case 1250:
@@ -259,7 +269,6 @@ int to_mb(const wchar_t *input, size_t input_len, int codePage, std::string &out
     if (ret != -1)
     {
         out.resize(output_len - outbytesleft);
-        // out = out.substr(0,output_len-outbytesleft);
     }
     else
     {
@@ -686,6 +695,21 @@ HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName)
     if (0 == WideCharToMultiByte(CP_UTF8, 0, lpFileName, -1, szName, MAX_PATH, NULL, NULL))
         return 0;
     return LoadLibraryA(szName);
+}
+
+FARPROC WINAPI GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
+{
+    if (!hModule || hModule == GetModuleHandle(nullptr))
+        return (FARPROC)dlsym(RTLD_DEFAULT, lpProcName);
+    else
+        return (FARPROC)dlsym(hModule, lpProcName);
+}
+
+BOOL WINAPI FreeLibrary(HMODULE hModule)
+{
+    // 卸载模块资源
+    UnloadModuleResources(hModule);
+    return dlclose(hModule);
 }
 
 DWORD WINAPI GetDllDirectoryA(DWORD nBufferLength, LPSTR lpBuffer)

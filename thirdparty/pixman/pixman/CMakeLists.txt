@@ -195,7 +195,6 @@ add_library(pixman-1
 set_target_properties(pixman-1 PROPERTIES
     VERSION ${PROJECT_VERSION}
     SOVERSION 0
-    PUBLIC_HEADER "pixman.h"
 )
 
 # Link with SIMD libraries
