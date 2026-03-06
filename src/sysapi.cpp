@@ -1,4 +1,4 @@
-#include <windows.h>
+﻿#include <windows.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -2340,11 +2340,11 @@ VOID WINAPI GetSystemInfo(LPSYSTEM_INFO lpSystemInfo)
     // 设置处理器架构
 #ifdef __x86_64__
     lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_AMD64;
-#elif __i386__
+#elif defined(__i386__)
     lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_INTEL;
-#elif __arm64__
+#elif defined(__arm64__)
     lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_ARM64;
-#elif __arm__
+#elif defined(__arm__)
     lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_ARM;
 #else
     lpSystemInfo->wProcessorArchitecture = PROCESSOR_ARCHITECTURE_UNKNOWN;
