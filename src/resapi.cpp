@@ -61,7 +61,8 @@ static std::wstring MakeResourceString(LPCSTR lpRes)
 void LoadModuleResources(HMODULE hModule)
 {
     std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
-
+    if(hModule == NULL)
+        hModule = GetModuleHandle(NULL);
     if (g_resourceModules.find(hModule) != g_resourceModules.end())
     {
         return; // Already loaded
@@ -69,7 +70,7 @@ void LoadModuleResources(HMODULE hModule)
 
     void *startSym = NULL;
     void *endSym = NULL;
-    if (hModule == NULL || hModule == GetModuleHandle(NULL))
+    if (hModule == GetModuleHandle(NULL))
     {
         startSym = dlsym(RTLD_DEFAULT, kCoof_o_start);
         endSym = dlsym(RTLD_DEFAULT, kCoof_o_end);
