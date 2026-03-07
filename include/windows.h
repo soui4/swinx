@@ -36,7 +36,7 @@
 #include <multimon.h>
 #include <shellapi.h>
 #ifndef __OBJC__
-#include <winres.h>
+#include <resapi.h>
 #endif//__OBJC__
 
 #undef NULL

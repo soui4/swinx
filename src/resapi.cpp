@@ -6,7 +6,7 @@
  */
 
 #include <windows.h>
-#include <winres.h>
+#include <resapi.h>
 #include <memory>
 #include <mutex>
 #include "coffparser.h"
