@@ -67,10 +67,6 @@ void LoadModuleResources(HMODULE hModule)
         return; // Already loaded
     }
 
-    ResourceModule mod;
-    mod.hModule = hModule;
-    mod.loaded = false;
-
     void *startSym = NULL;
     void *endSym = NULL;
     if (hModule == NULL || hModule == GetModuleHandle(NULL))
@@ -83,6 +79,10 @@ void LoadModuleResources(HMODULE hModule)
         startSym = dlsym((void *)hModule, kCoof_o_start);
         endSym = dlsym((void *)hModule, kCoof_o_end);
     }
+    ResourceModule mod;
+    mod.hModule = hModule;
+    mod.loaded = false;
+
     if (startSym && endSym && startSym < endSym)
     {
         size_t blobSize = (uintptr_t)endSym - (uintptr_t)startSym;
