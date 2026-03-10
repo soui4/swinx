@@ -213,8 +213,10 @@ BOOL WindResResourceParser::Parse()
     std::vector<ResourceInfo> resources;
     ParseResourceDirectory(resourceBase, 0, std::vector<std::wstring>(), resources);
 
-    SLOG_STMD() << "parse done, found " << resources.size() << " resources";
+    SLOG_STMI() << "parse done, found " << resources.size() << " resources";
+    #ifdef _DEBUG
     DumpResources();
+    #endif//_DEBUG
     m_isValid = true;
     return TRUE;
 }

@@ -14,6 +14,19 @@ mkdir build & cd build
 cmake ..
 make
 
+# uos/deepin 系统
+Failed to call method: The name org.freedesktop.portal.Desktop was not provided by any .service files
+## 安装xdg-desktop-portal核心服务
+在deepin系统中，首先安装基础portal服务：
+
+bash
+sudo apt install xdg-desktop-portal
+
+## 为了让portal与deepin桌面环境完美集成，还需要安装deepin特有的后端实现：
+
+bash
+sudo apt install xdg-desktop-portal-dde
+
 # debug
 ##  **使用vs远程调试linux** 
 linux机器上安装
