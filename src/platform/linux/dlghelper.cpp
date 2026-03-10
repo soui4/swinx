@@ -121,6 +121,72 @@ auto process_filter_patterns(FilePatternList const &patterns) -> FilePatternList
 
 
 
+// Context structure for deepin portal dialog (used by filter callback)
+struct DeepinDialogContext {
+    std::vector<std::string> uris;
+    bool done = false;
+    std::string request_path;
+};
+
+// Filter callback for deepin portal Response signal (mirrors main.cpp approach)
+static DBusHandlerResult deepin_dialog_filter(DBusConnection* /*conn*/, DBusMessage* msg, void* user_data) {
+    if (!dbus_message_is_signal(msg, "org.freedesktop.portal.Request", "Response")) {
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
+
+    auto* ctx = static_cast<DeepinDialogContext*>(user_data);
+    const char* path = dbus_message_get_path(msg);
+    if (!path || ctx->request_path != path) {
+        return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+    }
+
+    DBusMessageIter args;
+    dbus_message_iter_init(msg, &args);
+
+    // First arg: response code (uint32), 0 = success
+    uint32_t response_code = 1;
+    dbus_message_iter_get_basic(&args, &response_code);
+    dbus_message_iter_next(&args);
+
+    if (response_code == 0) {
+        // Second arg: results dictionary (a{sv}), look for "uris"
+        DBusMessageIter results_dict;
+        dbus_message_iter_recurse(&args, &results_dict);
+
+        while (dbus_message_iter_get_arg_type(&results_dict) == DBUS_TYPE_DICT_ENTRY) {
+            DBusMessageIter entry_iter;
+            dbus_message_iter_recurse(&results_dict, &entry_iter);
+
+            char* key = nullptr;
+            dbus_message_iter_get_basic(&entry_iter, &key);
+            dbus_message_iter_next(&entry_iter);
+
+            if (key && strcmp(key, "uris") == 0 &&
+                dbus_message_iter_get_arg_type(&entry_iter) == DBUS_TYPE_VARIANT) {
+                DBusMessageIter variant_iter;
+                dbus_message_iter_recurse(&entry_iter, &variant_iter);
+
+                if (dbus_message_iter_get_arg_type(&variant_iter) == DBUS_TYPE_ARRAY) {
+                    DBusMessageIter array_iter;
+                    dbus_message_iter_recurse(&variant_iter, &array_iter);
+
+                    while (dbus_message_iter_get_arg_type(&array_iter) == DBUS_TYPE_STRING) {
+                        char* uri = nullptr;
+                        dbus_message_iter_get_basic(&array_iter, &uri);
+                        if (uri && *uri) {
+                            ctx->uris.push_back(uri);
+                        }
+                        dbus_message_iter_next(&array_iter);
+                    }
+                }
+            }
+            dbus_message_iter_next(&results_dict);
+        }
+    }
+
+    ctx->done = true;
+    return DBUS_HANDLER_RESULT_HANDLED;
+}
 
 
 // Unified D-Bus helper class for all dialogs (file, color, font)
@@ -174,6 +240,15 @@ public:
 
         // Detect desktop environment to avoid opening multiple dialogs
         std::string desktop_env = get_desktop_environment();
+
+        // Use deepin/UOS portal dialog when running on deepin or UOS
+        if (desktop_env == "DEEPIN") {
+            auto result = try_deepin_dialog(filters, allow_multiple, directory, save_dialog, title, initial_path);
+            if (result.dialog_shown) {
+                return result.files;
+            }
+            return fallback_to_zenity_file(filters, allow_multiple, directory, save_dialog, title, initial_path);
+        }
 
         // Try KDE's file dialog first if we're in KDE environment
         if (desktop_env == "KDE" || desktop_env == "UNKNOWN") {
@@ -313,6 +388,11 @@ private:
             if (desktop_str.find("GNOME") != std::string::npos) {
                 return "GNOME";
             }
+            if (desktop_str.find("DDE") != std::string::npos ||
+                desktop_str.find("Deepin") != std::string::npos ||
+                desktop_str.find("deepin") != std::string::npos) {
+                return "DEEPIN";
+            }
         }
 
         // Check KDE_SESSION_VERSION
@@ -337,6 +417,24 @@ private:
             }
             if (session_str.find("gnome") != std::string::npos) {
                 return "GNOME";
+            }
+            if (session_str.find("deepin") != std::string::npos ||
+                session_str.find("dde") != std::string::npos) {
+                return "DEEPIN";
+            }
+        }
+
+        // Check /etc/os-release for deepin/UOS
+        std::ifstream os_release("/etc/os-release");
+        if (os_release.is_open()) {
+            std::string line;
+            while (std::getline(os_release, line)) {
+                if (line.find("ID=deepin") != std::string::npos ||
+                    line.find("ID=\"deepin\"") != std::string::npos ||
+                    line.find("ID=uos") != std::string::npos ||
+                    line.find("ID=\"uos\"") != std::string::npos) {
+                    return "DEEPIN";
+                }
             }
         }
 
@@ -1188,6 +1286,149 @@ private:
         return uri;
     }
 
+    // Deepin/UOS portal file dialog using filter-based signal handling (mirrors main.cpp)
+    DialogResult try_deepin_dialog(const std::vector<FilePickerFilter>& filters,
+                                   bool allow_multiple, bool directory, bool save_dialog,
+                                   const std::string& title, const std::string& initial_path) {
+        SLOG_STMI() << "try_deepin_dialog: title=" << title.c_str();
+
+        if (!connection) {
+            return DialogResult({}, false);
+        }
+
+        static const char* kMatchRule =
+            "type='signal',interface='org.freedesktop.portal.Request',"
+            "member='Response',sender='org.freedesktop.portal.Desktop'";
+
+        // Add match rule for Response signal (as in main.cpp)
+        dbus_error_free(&error);
+        dbus_error_init(&error);
+        dbus_bus_add_match(connection, kMatchRule, &error);
+        if (dbus_error_is_set(&error)) {
+            SLOG_STME() << "Deepin portal: failed to add match rule: " << error.message;
+            dbus_error_free(&error);
+            return DialogResult({}, false);
+        }
+
+        // Register filter callback (as in main.cpp)
+        DeepinDialogContext ctx;
+        if (!dbus_connection_add_filter(connection, deepin_dialog_filter, &ctx, nullptr)) {
+            SLOG_STME() << "Deepin portal: failed to add filter";
+            dbus_bus_remove_match(connection, kMatchRule, nullptr);
+            return DialogResult({}, false);
+        }
+
+        // Generate unique handle token
+        static int request_counter = 0;
+        char request_token[64];
+        snprintf(request_token, sizeof(request_token), "dlghelper_dde_%d_%ld", ++request_counter, (long)time(nullptr));
+
+        // Create OpenFile/SaveFile method call (as in main.cpp)
+        const char* method_name = save_dialog ? "SaveFile" : "OpenFile";
+        DBusMessage* msg = dbus_message_new_method_call(
+            "org.freedesktop.portal.Desktop",
+            "/org/freedesktop/portal/desktop",
+            "org.freedesktop.portal.FileChooser",
+            method_name);
+
+        if (!msg) {
+            SLOG_STME() << "Deepin portal: failed to create message";
+            dbus_connection_remove_filter(connection, deepin_dialog_filter, &ctx);
+            dbus_bus_remove_match(connection, kMatchRule, nullptr);
+            return DialogResult({}, false);
+        }
+
+        // Build arguments: parent_window, title, options{sv}
+        DBusMessageIter iter, dict_iter;
+        dbus_message_iter_init_append(msg, &iter);
+
+        std::string parent_handle = get_parent_window_handle();
+        const char* parent_cstr = parent_handle.c_str();
+        dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &parent_cstr);
+
+        const char* title_cstr = title.c_str();
+        dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &title_cstr);
+
+        dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &dict_iter);
+
+        const char* token_ptr = request_token;
+        add_dict_entry(&dict_iter, "handle_token", DBUS_TYPE_STRING, &token_ptr);
+
+        if (allow_multiple && !save_dialog) {
+            dbus_bool_t multiple_val = TRUE;
+            add_dict_entry(&dict_iter, "multiple", DBUS_TYPE_BOOLEAN, &multiple_val);
+        }
+
+        if (directory) {
+            dbus_bool_t dir_val = TRUE;
+            add_dict_entry(&dict_iter, "directory", DBUS_TYPE_BOOLEAN, &dir_val);
+        }
+
+        if (!filters.empty() && !directory) {
+            add_portal_filters(&dict_iter, filters);
+        }
+
+        dbus_message_iter_close_container(&iter, &dict_iter);
+
+        // Send message and confirm the method call succeeded (as in main.cpp)
+        dbus_error_free(&error);
+        dbus_error_init(&error);
+        DBusMessage* reply = dbus_connection_send_with_reply_and_block(connection, msg, 5000, &error);
+        dbus_message_unref(msg);
+
+        if (!reply || dbus_error_is_set(&error)) {
+            SLOG_STME() << "Deepin portal: failed to call method: "
+                        << (dbus_error_is_set(&error) ? error.message : "no reply");
+            if (reply) dbus_message_unref(reply);
+            dbus_error_free(&error);
+            dbus_connection_remove_filter(connection, deepin_dialog_filter, &ctx);
+            dbus_bus_remove_match(connection, kMatchRule, nullptr);
+            return DialogResult({}, false);
+        }
+
+        // Extract the request object path so the filter can match it precisely
+        char* request_path = nullptr;
+        if (!dbus_message_get_args(reply, &error, DBUS_TYPE_OBJECT_PATH, &request_path, DBUS_TYPE_INVALID)) {
+            dbus_message_unref(reply);
+            dbus_error_free(&error);
+            dbus_connection_remove_filter(connection, deepin_dialog_filter, &ctx);
+            dbus_bus_remove_match(connection, kMatchRule, nullptr);
+            return DialogResult({}, false);
+        }
+        ctx.request_path = request_path;
+        dbus_message_unref(reply);
+
+        SLOG_STMI() << "Deepin portal: dialog open, waiting for response on " << ctx.request_path.c_str();
+
+        // Enter dispatch loop waiting for the Response signal (as in main.cpp)
+        const int timeout_ms = 300000; // 5 minutes
+        int elapsed_ms = 0;
+        while (elapsed_ms < timeout_ms && !ctx.done) {
+            dbus_connection_read_write_dispatch(connection, 100);
+            elapsed_ms += 100;
+        }
+
+        // Cleanup
+        dbus_connection_remove_filter(connection, deepin_dialog_filter, &ctx);
+        dbus_bus_remove_match(connection, kMatchRule, nullptr);
+
+        if (!ctx.done) {
+            SLOG_STME() << "Deepin portal: timeout waiting for response";
+            return DialogResult({}, false);
+        }
+
+        // Convert file:// URIs to local paths
+        std::vector<std::string> result;
+        for (const auto& uri : ctx.uris) {
+            std::string path = uri_to_local_path(uri);
+            if (!path.empty()) {
+                result.push_back(path);
+            }
+        }
+
+        SLOG_STMI() << "Deepin portal: done, " << result.size() << " file(s) selected";
+        return DialogResult(result, true);
+    }
 
 };
 
