@@ -3485,6 +3485,10 @@ static xcb_window_t _GetRoot(xcb_connection_t *connection, xcb_window_t hwnd)
         xcb_window_t hParent = _GetParent(connection, ret);
         if (!hParent)
             break;
+        /**todo: make sure if use swinx hwnd*/
+        // WndObj wndObj = WndMgr::fromHwnd(hParent);
+        // if (!wndObj)
+        //     break;
         ret = hParent;
     }
     return ret;

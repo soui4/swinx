@@ -553,12 +553,13 @@ HWND SetCapture(HWND hWnd)
         return 0;
     HWND oldCapture = wndObj->mConnection->SetCapture(hWnd);
     SendMessage(hWnd, WM_CAPTURECHANGED, 0, hWnd);
-    // SLOG_FMTD("SetCapture hWnd=%d",(int)hWnd);
+    // SLOG_FMTI("SetCapture hWnd=%d",(int)hWnd);
     return oldCapture;
 }
 
 BOOL ReleaseCapture()
 {
+    //SLOG_FMTI("ReleaseCapture hWnd=%d",(int)GetCapture());
     SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->ReleaseCapture();
 }
@@ -1261,6 +1262,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     }
     if (0 == --wndObj->msgRecusiveCount && wndObj->bDestroyed)
     {
+        //SLOG_FMTI("window destroy: %d",(int)hWnd);
         wndObj->mConnection->OnWindowDestroy(hWnd, wndObj.data());
         WndMgr::freeWindow(hWnd);
     }
@@ -2415,6 +2417,7 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
     InvalidateRect(hWnd, &rcPart, TRUE);
     if (iPart != SB_THUMBTRACK)
     {
+        InvalidateRect(hWnd, &rcRail, TRUE);
         SendMessageA(hWnd, bVert ? WM_VSCROLL : WM_HSCROLL, iPart, 0);
         SetTimer(hWnd, TIMER_STARTAUTOSCROLL, SPAN_STARTAUTOSCROLL, NULL);
     }
@@ -2458,7 +2461,11 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
                 ScreenToClient(hWnd, &pt);
                 RECT rcPart = GetScrollBarPartRect(bVert, sb, iPart, pRcAll);
                 if (PtInRect(&rcPart, pt))
+                {
                     SendMessageA(hWnd, bVert ? WM_VSCROLL : WM_HSCROLL, iPart, 0);
+                    RECT rcRail=GetScrollBarPartRect(bVert,sb,SB_RAIL,pRcAll);
+                    InvalidateRect(hWnd,&rcRail,TRUE);
+                }    
             }
         }
         else if (msg.hwnd == hWnd && msg.message == WM_MOUSEMOVE)
