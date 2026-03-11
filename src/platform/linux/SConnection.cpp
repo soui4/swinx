@@ -2360,8 +2360,6 @@ BOOL SConnection::SetFocus(HWND hWnd)
     }
     else
     {
-        //SLOG_STMI() << "SetFocus, oldFocus=" << hRet << " newFocus=" << hWnd;
-        OnFocusChanged(hWnd);
         return TRUE;
     }
 }
