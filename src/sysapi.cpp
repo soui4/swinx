@@ -2187,6 +2187,7 @@ DWORD WINAPI GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize)
 void WINAPI OutputDebugStringA(LPCSTR lpOutputString)
 {
     printf("%s", lpOutputString);
+    fflush(stdout);
 }
 
 void WINAPI OutputDebugStringW(LPCWSTR lpOutputString)

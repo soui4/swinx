@@ -2324,6 +2324,7 @@ void SConnection::OnFocusChanged(HWND hFocus)
     }
     HWND hOldFocus = m_hFocus;
     m_hFocus = hFocus;
+    //SLOG_STMI() << "OnFocusChanged hFocus=" << hFocus;
     if (hFocus)
     {
         HIMC hIMC = ImmGetContext(hFocus);
@@ -2347,7 +2348,7 @@ BOOL SConnection::SetFocus(HWND hWnd)
     {
         return TRUE;
     }
-
+    //SLOG_STMI() << "SetFocus hwnd=" << hWnd;
     HWND hRet = m_hFocus;
     xcb_void_cookie_t cookie = xcb_set_input_focus_checked(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd ? hWnd : screen->root, XCB_CURRENT_TIME);
     xcb_generic_error_t *error = xcb_request_check(connection, cookie);
