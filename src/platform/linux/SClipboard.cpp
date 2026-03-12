@@ -152,10 +152,14 @@ HRESULT SMimeData::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
             int srcSize = GlobalSize(it->data);
             if(pformatetcIn->cfFormat == CF_UNICODETEXT)
             {
-                srcSize = wcslen((const wchar_t *)src) * sizeof(wchar_t) + sizeof(wchar_t);
+                const wchar_t *wstr = (const wchar_t*)src;
+                if(wstr[srcSize/sizeof(wchar_t)-1] == L'\0')
+                    srcSize = wcslen((const wchar_t *)src) * sizeof(wchar_t) + sizeof(wchar_t);
             }else if(pformatetcIn->cfFormat == CF_TEXT)
             {
-                srcSize = strlen((const char *)src)+1;
+                const char *str = (const char*)src;
+                if(str[srcSize-1] == '\0')
+                    srcSize = strlen(str)+1;
             }
             pmedium->hGlobal = GlobalAlloc(0, srcSize);
             void *dst = GlobalLock(pmedium->hGlobal);
@@ -1081,9 +1085,9 @@ HANDLE SClipboard::setClipboardData(UINT uFormat, HANDLE hMem)
         std::string str;
         tostring(src, len, str);
         GlobalUnlock(hMem);
-        hMem = GlobalReAlloc(hMem, str.length(), 0);
+        hMem = GlobalReAlloc(hMem, str.length()+1, 0);
         void *buf = GlobalLock(hMem);
-        memcpy(buf, str.c_str(), str.length());
+        memcpy(buf, str.c_str(), str.length()+1);
         GlobalUnlock(hMem);
         uFormat = CF_TEXT;
     }
