@@ -2827,6 +2827,8 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         {
             pMsg = new Msg;
             pMsg->hwnd = e2->event;
+            WndObj wndObj = WndMgr::fromHwnd(e2->event);
+            BOOL bAutoDblClick = wndObj ? wndObj->bAutoDblClick : TRUE;
             pMsg->pt.x = e2->event_x;
             pMsg->pt.y = e2->event_y;
             if (m_hWndCapture != 0 && e2->event != m_hWndCapture)
@@ -2838,15 +2840,15 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             switch (e2->detail)
             {
             case XCB_BUTTON_INDEX_1: // left button
-                pMsg->message = TsSpan(e2->time, m_tsPrevPress[0]) > m_tsDoubleSpan ? WM_LBUTTONDOWN : WM_LBUTTONDBLCLK;
+                pMsg->message = (!bAutoDblClick || TsSpan(e2->time, m_tsPrevPress[0]) > m_tsDoubleSpan) ? WM_LBUTTONDOWN : WM_LBUTTONDBLCLK;
                 m_tsPrevPress[0] = e2->time;
                 break;
             case XCB_BUTTON_INDEX_2:
-                pMsg->message = TsSpan(e2->time, m_tsPrevPress[1]) > m_tsDoubleSpan ? WM_MBUTTONDOWN : WM_MBUTTONDBLCLK;
+                pMsg->message = (!bAutoDblClick ||  TsSpan(e2->time, m_tsPrevPress[1]) > m_tsDoubleSpan) ? WM_MBUTTONDOWN : WM_MBUTTONDBLCLK;
                 m_tsPrevPress[1] = e2->time;
                 break;
             case XCB_BUTTON_INDEX_3:
-                pMsg->message = TsSpan(e2->time, m_tsPrevPress[2]) > m_tsDoubleSpan ? WM_RBUTTONDOWN : WM_RBUTTONDBLCLK;
+                pMsg->message = (!bAutoDblClick || TsSpan(e2->time, m_tsPrevPress[2]) > m_tsDoubleSpan) ? WM_RBUTTONDOWN : WM_RBUTTONDBLCLK;
                 m_tsPrevPress[2] = e2->time;
                 break;
             }

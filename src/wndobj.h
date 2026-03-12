@@ -59,6 +59,7 @@ public:
     RECT rc;
     WndState state;
     ATOM clsAtom;
+    BOOL bAutoDblClick;
     HICON iconBig;
     HICON iconSmall;
     int nPainting;

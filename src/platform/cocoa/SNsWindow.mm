@@ -370,7 +370,7 @@ defer:(BOOL)flag;
     NSRect m_rcPos;
     HWND   m_hWnd;
 }
-- (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent;
+- (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent withDblClick:(BOOL)bAutoDblClick;
 - (void)destroy;
 - (BOOL)startCapture;
 - (BOOL)stopCapture;
@@ -389,6 +389,7 @@ defer:(BOOL)flag;
     SConnBase *m_pListener;
     BYTE m_byAlpha;
     BOOL m_bMsgTransparent;
+    BOOL m_bAutoDblClick;
     NSEventModifierFlags m_modifierFlags;
 
     BOOL  m_bIsImeEnabled;
@@ -401,7 +402,7 @@ defer:(BOOL)flag;
     DWORD _dwDragEffect;
 }
 
-- (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent{
+- (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent withDblClick:(BOOL)bAutoDblClick{
     m_rcPos = frameRect;
     NSScreen * screen = [NSScreen mainScreen];//todo, get screen from position.
     float scale = [screen backingScaleFactor];
@@ -418,6 +419,7 @@ defer:(BOOL)flag;
 
     SLOG_STMI()<<"hjx SNsWindow initWithFrame, m_hWnd="<<m_hWnd;
     m_pListener = listener;
+    m_bAutoDblClick = bAutoDblClick;
     m_byAlpha = 255;
     m_bMsgTransparent = FALSE;
     m_modifierFlags = 0;
@@ -611,7 +613,7 @@ defer:(BOOL)flag;
 }
 
 - (void) mouseDown: (NSEvent *) theEvent {
-    if ([theEvent clickCount] == 2) {
+    if ([theEvent clickCount] == 2 && m_bAutoDblClick) {
         [self onMouseEvent:theEvent withMsgId:WM_LBUTTONDBLCLK];
     } else {
         [self onMouseEvent:theEvent withMsgId:WM_LBUTTONDOWN];
@@ -623,7 +625,7 @@ defer:(BOOL)flag;
 }
 
 - (void)rightMouseDown:(NSEvent *)theEvent{
-    if([theEvent clickCount] == 2)
+    if([theEvent clickCount] == 2 && m_bAutoDblClick)
         [self onMouseEvent:theEvent withMsgId:WM_RBUTTONDBLCLK];
     else
         [self onMouseEvent:theEvent withMsgId:WM_RBUTTONDOWN];
@@ -676,12 +678,12 @@ defer:(BOOL)flag;
 - (void)otherMouseDown:(NSEvent *)theEvent{
 
     if(theEvent.buttonNumber == 2){
-        if([theEvent clickCount] == 2)
+        if([theEvent clickCount] == 2 && m_bAutoDblClick)
             [self onMouseEvent:theEvent withMsgId:WM_MBUTTONDBLCLK];
         else
             [self onMouseEvent:theEvent withMsgId:WM_MBUTTONDOWN];
     }else if(theEvent.buttonNumber<=4){
-        if([theEvent clickCount] == 2)
+        if([theEvent clickCount] == 2 && m_bAutoDblClick)
             [self onXbuttonEvent:theEvent withMsgId:WM_XBUTTONDBLCLK];
         else
             [self onXbuttonEvent:theEvent withMsgId:WM_XBUTTONDOWN];
@@ -1827,13 +1829,13 @@ static NSScreen * getNsScreen(HWND hWnd){
     }
 }
 
-HWND createNsWindow(HWND hParent, DWORD dwStyle,DWORD dwExStyle, LPCSTR pszTitle, int x,int y,int cx,int cy, SConnBase *pListener)
+HWND createNsWindow(HWND hParent, DWORD dwStyle,DWORD dwExStyle, BOOL bAutoDblClick, LPCSTR pszTitle, int x,int y,int cx,int cy, SConnBase *pListener)
 {
     @autoreleasepool {
 	NSRect rect = NSMakeRect(x, y, cx, cy);
     if(!(dwStyle&WS_CHILD))
         hParent=0;
-    SNsWindow * nswindow = [[SNsWindow alloc] initWithFrame:rect withListener:pListener withParent:hParent];
+    SNsWindow * nswindow = [[SNsWindow alloc] initWithFrame:rect withListener:pListener withParent:hParent withDblClick:bAutoDblClick];
     return nswindow->m_hWnd;
     }
 }

@@ -5,7 +5,7 @@
 #include <string>
 #include "SConnBase.h"
 
-HWND createNsWindow(HWND hParent,DWORD dwStyle,DWORD dwExStyle, LPCSTR pszTitle, int x,int y,int cx,int cy, SConnBase *pListener);
+HWND createNsWindow(HWND hParent,DWORD dwStyle,DWORD dwExStyle, BOOL bAutoDbkClick, LPCSTR pszTitle, int x,int y,int cx,int cy, SConnBase *pListener);
 void closeNsWindow(HWND hWnd);
 BOOL IsNsWindow(HWND hWnd);
 BOOL showNsWindow(HWND hWnd,int nCmdShow);

@@ -298,6 +298,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     pWnd->dwExStyle = cs->dwExStyle;
     pWnd->hInstance = module;
     pWnd->clsAtom = clsAtom;
+    pWnd->bAutoDblClick = clsInfo.style & CS_DBLCLKS;
     pWnd->iconSmall = pWnd->iconBig = nullptr;
     pWnd->parent = hParent;
     pWnd->winproc = clsInfo.lpfnWndProc;

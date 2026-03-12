@@ -1574,7 +1574,7 @@ HRESULT SConnection::DoDragDrop(IDataObject *pDataObject,
                           }
 
 HWND SConnection::OnWindowCreate(_Window *wnd, CREATESTRUCT *cs, int depth) {
-    return createNsWindow(cs->hwndParent, cs->style, cs->dwExStyle, cs->lpszName, cs->x, cs->y, cs->cx, cs->cy,this);
+    return createNsWindow(cs->hwndParent, cs->style, cs->dwExStyle, wnd->bAutoDblClick, cs->lpszName, cs->x, cs->y, cs->cx, cs->cy,this);
 }
 
 void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd) {
