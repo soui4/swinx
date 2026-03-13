@@ -508,6 +508,7 @@ int CMenu::GetNextMenuItem(int iItem, BOOL bForword)
 #define RGB_MENU_CHECKBOX    RGB(0, 120, 215) //menu checkbox color
 #define RGB_MENU_CHECKBOX2   RGB(0, 90, 165) //menu checkbox2 color
 #define RGB_MENU_POPUP       RGB(240, 240, 240) //menu popup color
+#define RGB_MENU_SEPARATOR   RGB(200, 200, 200) //menu separator color
 
 void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
 {
@@ -531,8 +532,9 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
             const char *txt = ite.m_strTitle.c_str();
             if (ite.IsSeparator())
             {
-                MoveToEx(memdc, rc.left, rc.top, nullptr);
-                LineTo(memdc, rc.right, rc.top);
+                HBRUSH hbr = CreateSolidBrush(RGB_MENU_SEPARATOR);
+                FillRect(memdc, &rc, hbr);
+                DeleteObject(hbr);
                 drawY += size.cy;
                 continue;
             }
