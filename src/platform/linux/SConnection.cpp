@@ -3415,14 +3415,7 @@ HWND SConnection::OnFindWindowEx(HWND hParent, HWND hChildAfter, LPCSTR lpClassN
 
 BOOL SConnection::OnEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEnumFunc, LPARAM lParam){
     BOOL bContinue=TRUE;
-    BOOL bRet = _onEnumWindows(hParent, hChildAfter, lpEnumFunc, lParam,FALSE,bContinue);
-    if(!bRet)
-        return FALSE;
-    if(!bContinue || hParent)
-        return TRUE;
-    //enum descendant windows for openkylin or uos
-    bRet = _onEnumWindows(hParent, hChildAfter, lpEnumFunc, lParam,TRUE,bContinue);
-    return bRet;
+    return _onEnumWindows(hParent, hChildAfter, lpEnumFunc, lParam,FALSE,bContinue);
 }
 
 BOOL SConnection::_onEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEnumFunc, LPARAM lParam,BOOL bIncludeDescendants,BOOL &bContinue)
@@ -3452,6 +3445,24 @@ BOOL SConnection::_onEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpE
     for (; bContinue && i < child_count; i++)
     {
         HWND current_child = children[i];
+        
+        // If this is a decoration window, skip it and use its child (app window) instead
+        bool isDeco = IsDecorationWindow(current_child);
+        if(isDeco){
+            xcb_query_tree_cookie_t child_tree_cookie = xcb_query_tree(connection, current_child);
+            xcb_query_tree_reply_t *child_tree_reply = xcb_query_tree_reply(connection, child_tree_cookie, NULL);
+            if (child_tree_reply && child_tree_reply->children_len > 0)
+            {
+                xcb_window_t *deco_children = xcb_query_tree_children(child_tree_reply);
+                current_child = deco_children[0];  // Use the first (typically only) child
+                free(child_tree_reply);
+            }
+            else
+            {
+                free(child_tree_reply);
+                continue;  // Skip if decoration window has no children
+            }
+        }
         bContinue = lpEnumFunc(current_child, lParam);
         if (!bContinue)
             break;
@@ -3487,35 +3498,86 @@ void SConnection::OnActiveChange(HWND hWnd, BOOL bActivate)
 //    SLOG_STMI()<<"OnActiveChange hWnd="<<hWnd<<" bActivate="<<bActivate<<" m_hWndActive="<<m_hWndActive;
 }
 
-static xcb_window_t _GetParent(xcb_connection_t *connection, xcb_window_t hwnd)
+// Check if window is application-level (not a WM decoration window)
+// Simplified: Check WndMgr first (fast path), then use _NET_WM_PID property (cross-process)
+bool SConnection::IsApplicationWindow(xcb_window_t window)
 {
-    xcb_window_t ret = XCB_NONE;
-    xcb_query_tree_cookie_t cookie = xcb_query_tree(connection, hwnd);
-    xcb_query_tree_reply_t *reply = xcb_query_tree_reply(connection, cookie, NULL);
-    if (!reply)
+    if (!window)
+        return false;
+    
+    // Fast path: Check if it's a SWINX-managed window (same process)
+    if (WndMgr::fromHwnd(window))
+        return true;
+    
+    // Cross-process fallback: Check _NET_WM_PID property
+    // Decoration windows typically don't have this, application windows do
+    xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, window, atoms._NET_WM_PID, XCB_ATOM_CARDINAL, 0, 1);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+    
+    bool bIsApp = false;
+    if (reply && reply->type == XCB_ATOM_CARDINAL && reply->value_len > 0)
     {
-        return ret;
-    }
-    if (reply->parent != reply->root)
-    {
-        ret = reply->parent;
+        // Has _NET_WM_PID - definitely an application window
+        bIsApp = true;
     }
     free(reply);
-    return ret;
+    
+    // If _NET_WM_PID not found, assume it's an app (conservative, safer to include)
+    // Decoration windows without PID are rare with modern WMs
+    return bIsApp || true;
 }
 
-static xcb_window_t _GetRoot(xcb_connection_t *connection, xcb_window_t hwnd)
+bool SConnection::IsDecorationWindow(xcb_window_t window)
+{
+    if (!window)
+        return false;
+    
+    if(IsApplicationWindow(window))
+        return false;
+
+    // Check for typical decoration properties
+    // Decoration windows usually have _MOTIF_WM_HINTS but no _NET_WM_PID
+    bool bHasMotifHints = false;
+    xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, window, atoms._MOTIF_WM_HINTS, XCB_ATOM_CARDINAL, 0, 1);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+    if (reply && reply->type != XCB_NONE)
+    {
+        bHasMotifHints = true;
+    }
+    free(reply);
+
+    return bHasMotifHints;
+}
+
+xcb_window_t SConnection::_GetParent(xcb_window_t hwnd)
+{
+    WndObj wndObj = WndMgr::fromHwnd(hwnd);
+    if(wndObj)
+    {
+        if(wndObj->dwStyle & WS_CHILD)
+            return GetParent(hwnd);
+        else
+            return XCB_NONE;
+    }else{
+        xcb_window_t ret = XCB_NONE;
+        xcb_query_tree_cookie_t cookie = xcb_query_tree(connection, hwnd);
+        xcb_query_tree_reply_t *reply = xcb_query_tree_reply(connection, cookie, NULL);
+        if(reply && IsApplicationWindow(reply->parent)){
+            ret = reply->parent;
+        }
+        free(reply);
+        return ret;
+    }
+}
+
+xcb_window_t SConnection::_GetRoot(xcb_window_t hwnd)
 {
     xcb_window_t ret = hwnd;
-    for (;;)
+    for(;;)
     {
-        xcb_window_t hParent = _GetParent(connection, ret);
+        xcb_window_t hParent = _GetParent(ret);
         if (!hParent)
-            break;
-        /**todo: make sure if use swinx hwnd*/
-        // WndObj wndObj = WndMgr::fromHwnd(hParent);
-        // if (!wndObj)
-        //     break;
+            break;  // No more parents found
         ret = hParent;
     }
     return ret;
@@ -3526,12 +3588,12 @@ HWND SConnection::OnGetAncestor(HWND hwnd, UINT gaFlags)
     switch (gaFlags)
     {
     case GA_PARENT:
-        return _GetParent(connection, hwnd);
+        return _GetParent(hwnd);
     case GA_ROOT:
-        return _GetRoot(connection, hwnd);
+        return _GetRoot(hwnd);
     case GA_ROOTOWNER:
     {
-        HWND ret = _GetRoot(connection, hwnd);
+        HWND ret = _GetRoot(hwnd);
         HWND hOwner = GetParent(ret);
         if (hOwner)
             ret = hOwner;
@@ -3771,32 +3833,47 @@ BOOL SConnection::IsWindowVisible(HWND hWnd)
 }
 
 
-static HWND GetWndSibling(xcb_connection_t *conn, HWND hParent, HWND hWnd, BOOL bNext)
+HWND SConnection::GetWndSibling(HWND hParent, HWND hWnd, BOOL bNext)
 {
-    xcb_query_tree_cookie_t cookie = xcb_query_tree(conn, hParent);
-    xcb_query_tree_reply_t *reply = xcb_query_tree_reply(conn, cookie, NULL);
+    xcb_query_tree_cookie_t cookie = xcb_query_tree(connection, hParent);
+    xcb_query_tree_reply_t *reply = xcb_query_tree_reply(connection, cookie, NULL);
     if (!reply)
     {
         SetLastError(ERROR_INVALID_HANDLE);
         return 0;
     }
     xcb_window_t *children = xcb_query_tree_children(reply);
-    int idx_self = -1;
+    
+    // Filter to only application windows (skip decoration windows)
+    std::vector<int> app_indices;
     for (int i = 0; i < reply->children_len; i++)
     {
-        if (children[i] == hWnd)
+        // Fallback to IsApplicationWindow (cross-process support)
+        if (IsApplicationWindow(children[i]))
         {
-            idx_self = i;
+            app_indices.push_back(i);
+        }
+    }
+    
+    int self_pos_in_app_list = -1;
+    
+    // Find hWnd in the filtered app children list
+    for (int i = 0; i < app_indices.size(); i++)
+    {
+        if (children[app_indices[i]] == hWnd)
+        {
+            self_pos_in_app_list = i;
             break;
         }
     }
+    
     HWND hRet = 0;
-    if (idx_self != -1)
+    if (self_pos_in_app_list != -1)
     {
-        if (bNext && idx_self < reply->children_len - 1)
-            hRet = children[idx_self + 1];
-        if (!bNext && idx_self > 0)
-            hRet = children[idx_self - 1];
+        if (bNext && self_pos_in_app_list < app_indices.size() - 1)
+            hRet = children[app_indices[self_pos_in_app_list + 1]];
+        else if (!bNext && self_pos_in_app_list > 0)
+            hRet = children[app_indices[self_pos_in_app_list - 1]];
     }
     free(reply);
     return hRet;
@@ -3828,11 +3905,32 @@ HWND SConnection::GetWindow(HWND hWnd, _Window *wndObj, UINT uCmd)
     {
     case GW_CHILDFIRST:
         if (reply->children_len > 0)
-            hRet = children[0];
+        {
+            // Find first application window using hybrid approach
+            for (int i = 0; i < reply->children_len; i++)
+            {
+                if (IsApplicationWindow(children[i]))
+                {
+                    hRet = children[i];
+                    break;
+                }
+            }
+        }
         break;
     case GW_CHILDLAST:
         if (reply->children_len > 0)
-            hRet = children[reply->children_len - 1];
+        {
+            // Find last application window using hybrid approach
+            for (int i = reply->children_len - 1; i >= 0; i--)
+            {
+                // Fallback to system-level check (cross-process)
+                if (IsApplicationWindow(children[i]))
+                {
+                    hRet = children[i];
+                    break;
+                }
+            }
+        }
         break;
     case GW_HWNDFIRST:
         hRet = GetWindow(hParent, wndObj,GW_CHILDFIRST);
@@ -3841,10 +3939,10 @@ HWND SConnection::GetWindow(HWND hWnd, _Window *wndObj, UINT uCmd)
         hRet = GetWindow(hParent, wndObj, GW_CHILDLAST);
         break;
     case GW_HWNDPREV:
-        hRet = GetWndSibling(connection, hParent, hWnd, FALSE);
+        hRet = GetWndSibling(hParent, hWnd, FALSE);
         break;
     case GW_HWNDNEXT:
-        hRet = GetWndSibling(connection, hParent, hWnd, TRUE);
+        hRet = GetWndSibling(hParent, hWnd, TRUE);
         break;
     }
     free(reply);

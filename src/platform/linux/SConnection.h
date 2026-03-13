@@ -289,6 +289,14 @@ public:
             return m_bComposited;
         }
   private:
+      
+    // Check if window is application-level (not a decoration window)
+    // Works across processes using system-level API checks
+    bool IsApplicationWindow(xcb_window_t window);
+    bool IsDecorationWindow(xcb_window_t window);
+    HWND GetWndSibling(HWND hParent, HWND hWnd, BOOL bNext);
+    xcb_window_t _GetParent(xcb_window_t hwnd);
+    xcb_window_t _GetRoot(xcb_window_t hwnd);
     int _waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, DWORD dwWaitMask);
     BOOL _onEnumWindows(HWND hParent, HWND hChildAfter,WNDENUMPROC lpEnumFunc, LPARAM lParam,BOOL bIncludeDescendants,BOOL &bContinue);
     void readXResources();

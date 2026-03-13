@@ -5,13 +5,11 @@
 #include <vector>
 #include <memory>
 #include <list>
-#include "../tostring.hpp"
 #include "builtin_classname.h"
-#include <src/log.h>
+#include "../tostring.hpp"
+#include "../log.h"
 
-#ifndef kLogTag
-#define kLogTag "Menu test"
-#endif // !kLogTag
+#define kLogTag "Menu"
 
 #define DEFAULT_ITEM_HEIGHT    30
 #define DEFAULT_MIN_ITEM_WIDTH 100
