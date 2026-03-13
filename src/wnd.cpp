@@ -3017,6 +3017,22 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
             wndObj->mConnection->SetWindowOpacity(hWnd, wndObj->byAlpha);
         }
         return 0;
+    case WM_RBUTTONUP:
+        {
+            POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
+            ClientToScreen(hWnd, &pt);
+            LPARAM lp2 = MAKELPARAM(pt.x, pt.y);
+            SendMessageA(hWnd, WM_CONTEXTMENU, 0, lp2);
+        }
+        break;
+    case WM_CONTEXTMENU:
+        { 
+            HWND hParent = GetParent(hWnd);
+            if (hParent){
+                SendMessageA(hParent, WM_CONTEXTMENU, (WPARAM)hWnd, lp);
+            }
+        }
+        break;
     }
     return 0;
 }

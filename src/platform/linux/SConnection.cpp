@@ -2226,25 +2226,51 @@ void SConnection::KillWindowTimer(HWND hWnd)
 
 HWND SConnection::GetForegroundWindow()
 {
-    xcb_get_input_focus_reply_t *focusReply = nullptr;
-    xcb_query_tree_cookie_t treeCookie;
-
-    focusReply = xcb_get_input_focus_reply(connection, xcb_get_input_focus(connection), nullptr);
-
     xcb_window_t window = screen->root;
-    if (focusReply)
+    if(atoms._NET_ACTIVE_WINDOW != XCB_ATOM_NONE){
+        xcb_get_property_cookie_t prop_cookie = xcb_get_property(connection, 0, screen->root,
+                                                                 atoms._NET_ACTIVE_WINDOW, XCB_ATOM_WINDOW, 0, 1);
+        xcb_get_property_reply_t *prop_reply = xcb_get_property_reply(connection, prop_cookie, NULL);
+        if (prop_reply && prop_reply->type == XCB_ATOM_WINDOW && prop_reply->value_len > 0)
+        {
+            window = *(xcb_window_t *)xcb_get_property_value(prop_reply);
+        }
+        free(prop_reply);
+    }else
     {
-        window = focusReply->focus;
-        free(focusReply);
+        xcb_get_input_focus_reply_t *focusReply = nullptr;
+        xcb_query_tree_cookie_t treeCookie;
+        focusReply = xcb_get_input_focus_reply(connection, xcb_get_input_focus(connection), nullptr);
+        if (focusReply)
+        {
+            window = focusReply->focus;
+            free(focusReply);
+        }
     }
-
     return window;
 }
 
 BOOL SConnection::SetForegroundWindow(HWND hWnd)
 {
-    uint32_t values[] = { XCB_STACK_MODE_TOP_IF };
+    uint32_t values[] = { XCB_STACK_MODE_ABOVE };
     xcb_configure_window(connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
+    if (atoms._NET_ACTIVE_WINDOW != XCB_ATOM_NONE)
+    {
+        xcb_client_message_event_t ev;
+        memset(&ev, 0, sizeof(ev));
+        ev.response_type = XCB_CLIENT_MESSAGE;
+        ev.window = hWnd;
+        ev.type = atoms._NET_ACTIVE_WINDOW;
+        ev.format = 32;
+        ev.data.data32[0] = 1; // 来源类型：1=应用程序
+        ev.data.data32[1] = XCB_CURRENT_TIME;
+        ev.data.data32[2] = 0; // 请求的窗口（0表示当前窗口）
+        ev.data.data32[3] = 0;
+        ev.data.data32[4] = 0;
+        xcb_send_event(connection, 0, screen->root, XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, (const char *)&ev);
+    }else{
+        xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd, XCB_CURRENT_TIME);
+    }
     xcb_flush(connection);
     return TRUE;
 }

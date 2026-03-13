@@ -500,14 +500,14 @@ int CMenu::GetNextMenuItem(int iItem, BOOL bForword)
     return next;
 }
 
-#define RGB_MENU_SEL_BK      RGB(48, 110, 200)
-#define RGB_MENU_BK          RGB(74, 137, 220)
-#define RGB_MENU_HOTLIGHT_BK RGB(62, 130, 218)
-#define RGB_MENU_LIGHT_TEXT  RGB(255, 255, 255)
-#define RGB_MENU_GRAY_TEXT   RGB(188, 188, 188)
-#define RGB_MENU_CHECKBOX    RGB(98, 210, 162)
-#define RGB_MENU_CHECKBOX2   RGB(31, 171, 137)
-#define RGB_MENU_POPUP       RGB(0, 0, 0)
+#define RGB_MENU_BK          RGB(240, 240, 240) //menu background color
+#define RGB_MENU_SEL_BK      RGB(0, 120, 215) //menu selected background color
+#define RGB_MENU_HOTLIGHT_BK RGB(220, 220, 220) //menu hotlight background color
+#define RGB_MENU_LIGHT_TEXT  RGB(0, 0, 0) //menu text color
+#define RGB_MENU_GRAY_TEXT   RGB(128, 128, 128) //menu gray text color
+#define RGB_MENU_CHECKBOX    RGB(0, 120, 215) //menu checkbox color
+#define RGB_MENU_CHECKBOX2   RGB(0, 90, 165) //menu checkbox2 color
+#define RGB_MENU_POPUP       RGB(240, 240, 240) //menu popup color
 
 void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
 {
