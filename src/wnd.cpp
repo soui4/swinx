@@ -834,6 +834,22 @@ static int CALLBACK Enum4DestroyOwned(HWND hwnd, LPARAM lParam)
     return TRUE;
 }
 
+static int CALLBACK Enum4DestroyChildren(HWND hwnd, LPARAM lParam)
+{
+    WndObj child = WndMgr::fromHwnd(hwnd);
+    if (child)
+    {
+        DestroyWindow(hwnd);
+    }
+    else
+    {
+        SConnection *conn = (SConnection *)lParam;
+        // other process window, set it's parent to screen root
+        conn->SetParent(hwnd, nullptr, 0);
+    }
+    return TRUE;
+}
+
 static LRESULT CallWindowObjProc(WndObj &wndObj, WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
 {
     assert(wndObj);
@@ -1243,21 +1259,8 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         // auto destroy all popup that owned by this
         EnumWindows(Enum4DestroyOwned, hWnd);
         // auto destory all children
-        HWND hChild = GetWindow(hWnd, GW_CHILDLAST);
-        while (hChild)
-        {
-            WndObj child = WndMgr::fromHwnd(hChild);
-            if (child)
-            {
-                DestroyWindow(hChild);
-            }
-            else
-            {
-                // other process window, set it's parent to screen root
-                wndObj->mConnection->SetParent(hChild, nullptr, 0);
-            }
-            hChild = GetWindow(hWnd, GW_CHILDLAST);
-        }
+        EnumChildWindows(hWnd, Enum4DestroyChildren, (LPARAM)wndObj->mConnection);
+        // destroy self
         CallWindowObjProc(wndObj, proc, hWnd, WM_NCDESTROY, 0, 0);
         wndObj->bDestroyed = TRUE;
     }
@@ -2287,97 +2290,7 @@ static void OnNcPaint(HWND hWnd, WPARAM wp, LPARAM lp)
     }
     {
         HDC hdc = GetDCEx(hWnd, hrgn, DCX_WINDOW | DCX_INTERSECTRGN);
-        if (wndObj->dwStyle & WS_BORDER)
-        {
-            int nSave = SaveDC(hdc);
-            ExcludeClipRect(hdc, rcWnd.left, rcWnd.top, rcWnd.right, rcWnd.bottom);
-            HBRUSH hbr = GetSysColorBrush(COLOR_WINDOWFRAME);
-            RECT rcAll = rcWnd;
-            InflateRect(&rcAll, cxEdge, cyEdge);
-            FillRect(hdc, &rcAll, hbr);
-            RestoreDC(hdc, nSave);
-        }
-        BuiltinImage *imgs = BuiltinImage::instance();
-        {
-            RECT rcSb;
-            if (GetScrollBarRect(hWnd, SB_VERT, &rcSb) && RectInRegion(hrgn, &rcSb))
-            {
-                ScrollBar &sb = wndObj->sbVert;
-                HDC memdc = CreateCompatibleDC(hdc);
-                HBITMAP bmp = CreateCompatibleBitmap(memdc, rcSb.right - rcSb.left, rcSb.bottom - rcSb.top);
-                HGDIOBJ oldBmp = SelectObject(memdc, bmp);
-                SetViewportOrgEx(memdc, -rcSb.left, -rcSb.top, NULL);
-                FillRect(memdc, &rcSb, GetStockObject(WHITE_BRUSH)); // init alpha channel to 255
-                {
-                    RECT rc = GetScrollBarPartRect(TRUE, &sb, SB_LINELEFT, &rcSb);
-                    int st = GetScrollBarPartState(&sb, SB_LINELEFT);
-                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_LINELEFT);
-                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Line_Up, TRUE, st, &rc, byAlpha);
-                }
-                {
-                    RECT rc = GetScrollBarPartRect(TRUE, &sb, SB_RAIL, &rcSb);
-                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Rail, TRUE, BuiltinImage::St_Normal, &rc, 0xFF);
-                }
-                {
-                    RECT rc = GetScrollBarPartRect(TRUE, &sb, SB_THUMBTRACK, &rcSb);
-                    int st = GetScrollBarPartState(&sb, SB_THUMBTRACK);
-                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_THUMBTRACK);
-                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Thumb, TRUE, st, &rc, byAlpha);
-                }
-                {
-                    RECT rc = GetScrollBarPartRect(TRUE, &sb, SB_LINEDOWN, &rcSb);
-                    int st = GetScrollBarPartState(&sb, SB_LINEDOWN);
-                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_LINEDOWN);
-                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Line_Down, TRUE, st, &rc, byAlpha);
-                }
-                BitBlt(hdc, rcSb.left, rcSb.top, rcSb.right - rcSb.left, rcSb.bottom - rcSb.top, memdc, rcSb.left, rcSb.top, SRCCOPY);
-                SelectObject(memdc, oldBmp);
-                DeleteDC(memdc);
-                DeleteObject(bmp);
-            }
-            if (GetScrollBarRect(hWnd, SB_HORZ, &rcSb) && RectInRegion(hrgn, &rcSb))
-            {
-                ScrollBar &sb = wndObj->sbHorz;
-                HDC memdc = CreateCompatibleDC(hdc);
-                HBITMAP bmp = CreateCompatibleBitmap(memdc, rcSb.right - rcSb.left, rcSb.bottom - rcSb.top);
-                HGDIOBJ oldBmp = SelectObject(memdc, bmp);
-                SetViewportOrgEx(memdc, -rcSb.left, -rcSb.top, NULL);
-                FillRect(memdc, &rcSb, GetStockObject(BLACK_BRUSH)); // init alpha channel to 255
-                {
-                    RECT rc = GetScrollBarPartRect(FALSE, &sb, SB_LINELEFT, &rcSb);
-                    int st = GetScrollBarPartState(&sb, SB_LINELEFT);
-                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_LINELEFT);
-                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Line_Up, FALSE, st, &rc, byAlpha);
-                }
-                {
-                    RECT rc = GetScrollBarPartRect(FALSE, &sb, SB_RAIL, &rcSb);
-                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Rail, FALSE, BuiltinImage::St_Normal, &rc, 0xFF);
-                }
-                {
-                    RECT rc = GetScrollBarPartRect(FALSE, &sb, SB_THUMBTRACK, &rcSb);
-                    int st = GetScrollBarPartState(&sb, SB_THUMBTRACK);
-                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_THUMBTRACK);
-                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Thumb, FALSE, st, &rc, byAlpha);
-                }
-                {
-                    RECT rc = GetScrollBarPartRect(FALSE, &sb, SB_LINEDOWN, &rcSb);
-                    int st = GetScrollBarPartState(&sb, SB_LINEDOWN);
-                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_LINEDOWN);
-                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Line_Down, FALSE, st, &rc, byAlpha);
-                }
-                BitBlt(hdc, rcSb.left, rcSb.top, rcSb.right - rcSb.left, rcSb.bottom - rcSb.top, memdc, rcSb.left, rcSb.top, SRCCOPY);
-                SelectObject(memdc, oldBmp);
-                DeleteDC(memdc);
-                DeleteObject(bmp);
-            }
-            if ((wndObj->showSbFlags & SB_BOTH) == SB_BOTH)
-            {
-                rcWnd.left = rcWnd.right - GetSystemMetrics(SM_CXVSCROLL);
-                rcWnd.top = rcWnd.bottom - GetSystemMetrics(SM_CYHSCROLL);
-                imgs->drawScrollbarState(hdc, (wndObj->dwStyle & WS_CHILD) ? (BuiltinImage::Sb_Triangle + 3) : BuiltinImage::Sb_Triangle, FALSE, BuiltinImage::St_Normal, &rcWnd, 0xff);
-            }
-        }
-
+        SendMessageA(hWnd,WM_PRINT,(WPARAM)hdc,PRF_NONCLIENT);
         ReleaseDC(hWnd, hdc);
     }
     if ((int)wp <= 1)
@@ -2538,41 +2451,135 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
     return 0;
 }
 
+static LRESULT handlePrintClient(HWND hWnd, WPARAM wp,LPARAM lp){
+    if (lp & PRF_CHECKVISIBLE && !IsWindowVisible(hWnd))
+        return 0;
+    HDC hdc = (HDC)wp;
+    if (lp & PRF_CLIENT)
+    {
+        WndObj wndObj = WndMgr::fromHwnd(hWnd);
+        RECT rcClient;
+        GetClientRect(hWnd,&rcClient);
+        DrawTextA(hdc, wndObj->title.c_str(), wndObj->title.length(), &rcClient, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
+    }
+    return 1;
+}
+
 static LRESULT handlePrint(HWND hWnd, WPARAM wp, LPARAM lp)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     assert(wndObj);
     if (lp & PRF_CHECKVISIBLE && !IsWindowVisible(hWnd))
         return 0;
-    HDC hdc = wndObj->hdc;
-    wndObj->hdc = (HDC)wp;
-    HRGN hRgn = wndObj->invalid.hRgn;
-    BOOL bErase = wndObj->invalid.bErase;
+    HDC hdc = (HDC)wp;
 
-    if ((lp & (PRF_CLIENT | PRF_NONCLIENT)) == (PRF_CLIENT | PRF_NONCLIENT))
+    if (lp & PRF_CLIENT)
     {
-        RECT rc = wndObj->rc;
-        OffsetRect(&rc, -rc.left, -rc.top);
-        wndObj->invalid.hRgn = CreateRectRgnIndirect(&rc);
+        SendMessageA(hWnd,WM_PRINTCLIENT,wp,PRF_CLIENT);
     }
-    else if (lp & PRF_CLIENT)
+    if (lp & PRF_NONCLIENT)
     {
-        RECT rc;
-        GetClientRect(hWnd, &rc);
-        wndObj->invalid.hRgn = CreateRectRgnIndirect(&rc);
+        int cxEdge = GetSystemMetrics(SM_CXBORDER);
+        int cyEdge = GetSystemMetrics(SM_CYBORDER);
+
+        RECT rcWnd;
+        GetWindowRect(hWnd,&rcWnd);
+        BuiltinImage *imgs = BuiltinImage::instance();
+        {
+            //draw scrollbar
+            HRGN hrgn=CreateRectRgn(0,0,0,0);
+            GetClipRgn(hdc,hrgn);
+            RECT rcSb;
+            if (GetScrollBarRect(hWnd, SB_VERT, &rcSb) && RectInRegion(hrgn, &rcSb))
+            {
+                ScrollBar &sb = wndObj->sbVert;
+                HDC memdc = CreateCompatibleDC(hdc);
+                HBITMAP bmp = CreateCompatibleBitmap(memdc, rcSb.right - rcSb.left, rcSb.bottom - rcSb.top);
+                HGDIOBJ oldBmp = SelectObject(memdc, bmp);
+                SetViewportOrgEx(memdc, -rcSb.left, -rcSb.top, NULL);
+                FillRect(memdc, &rcSb, GetStockObject(WHITE_BRUSH)); // init alpha channel to 255
+                {
+                    RECT rc = GetScrollBarPartRect(TRUE, &sb, SB_LINELEFT, &rcSb);
+                    int st = GetScrollBarPartState(&sb, SB_LINELEFT);
+                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_LINELEFT);
+                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Line_Up, TRUE, st, &rc, byAlpha);
+                }
+                {
+                    RECT rc = GetScrollBarPartRect(TRUE, &sb, SB_RAIL, &rcSb);
+                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Rail, TRUE, BuiltinImage::St_Normal, &rc, 0xFF);
+                }
+                {
+                    RECT rc = GetScrollBarPartRect(TRUE, &sb, SB_THUMBTRACK, &rcSb);
+                    int st = GetScrollBarPartState(&sb, SB_THUMBTRACK);
+                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_THUMBTRACK);
+                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Thumb, TRUE, st, &rc, byAlpha);
+                }
+                {
+                    RECT rc = GetScrollBarPartRect(TRUE, &sb, SB_LINEDOWN, &rcSb);
+                    int st = GetScrollBarPartState(&sb, SB_LINEDOWN);
+                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_LINEDOWN);
+                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Line_Down, TRUE, st, &rc, byAlpha);
+                }
+                BitBlt(hdc, rcSb.left, rcSb.top, rcSb.right - rcSb.left, rcSb.bottom - rcSb.top, memdc, rcSb.left, rcSb.top, SRCCOPY);
+                SelectObject(memdc, oldBmp);
+                DeleteDC(memdc);
+                DeleteObject(bmp);
+            }
+            if (GetScrollBarRect(hWnd, SB_HORZ, &rcSb) && RectInRegion(hrgn, &rcSb))
+            {
+                ScrollBar &sb = wndObj->sbHorz;
+                HDC memdc = CreateCompatibleDC(hdc);
+                HBITMAP bmp = CreateCompatibleBitmap(memdc, rcSb.right - rcSb.left, rcSb.bottom - rcSb.top);
+                HGDIOBJ oldBmp = SelectObject(memdc, bmp);
+                SetViewportOrgEx(memdc, -rcSb.left, -rcSb.top, NULL);
+                FillRect(memdc, &rcSb, GetStockObject(BLACK_BRUSH)); // init alpha channel to 255
+                {
+                    RECT rc = GetScrollBarPartRect(FALSE, &sb, SB_LINELEFT, &rcSb);
+                    int st = GetScrollBarPartState(&sb, SB_LINELEFT);
+                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_LINELEFT);
+                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Line_Up, FALSE, st, &rc, byAlpha);
+                }
+                {
+                    RECT rc = GetScrollBarPartRect(FALSE, &sb, SB_RAIL, &rcSb);
+                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Rail, FALSE, BuiltinImage::St_Normal, &rc, 0xFF);
+                }
+                {
+                    RECT rc = GetScrollBarPartRect(FALSE, &sb, SB_THUMBTRACK, &rcSb);
+                    int st = GetScrollBarPartState(&sb, SB_THUMBTRACK);
+                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_THUMBTRACK);
+                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Thumb, FALSE, st, &rc, byAlpha);
+                }
+                {
+                    RECT rc = GetScrollBarPartRect(FALSE, &sb, SB_LINEDOWN, &rcSb);
+                    int st = GetScrollBarPartState(&sb, SB_LINEDOWN);
+                    BYTE byAlpha = GetScrollBarPartAlpha(&sb, SB_LINEDOWN);
+                    imgs->drawScrollbarState(memdc, BuiltinImage::Sb_Line_Down, FALSE, st, &rc, byAlpha);
+                }
+                BitBlt(hdc, rcSb.left, rcSb.top, rcSb.right - rcSb.left, rcSb.bottom - rcSb.top, memdc, rcSb.left, rcSb.top, SRCCOPY);
+                SelectObject(memdc, oldBmp);
+                DeleteDC(memdc);
+                DeleteObject(bmp);
+            }
+            if ((wndObj->showSbFlags & SB_BOTH) == SB_BOTH)
+            {
+                rcWnd.left = rcWnd.right - GetSystemMetrics(SM_CXVSCROLL);
+                rcWnd.top = rcWnd.bottom - GetSystemMetrics(SM_CYHSCROLL);
+                imgs->drawScrollbarState(hdc, (wndObj->dwStyle & WS_CHILD) ? (BuiltinImage::Sb_Triangle + 3) : BuiltinImage::Sb_Triangle, FALSE, BuiltinImage::St_Normal, &rcWnd, 0xff);
+            }
+            DeleteObject(hrgn);
+        }
+        if (wndObj->dwStyle & WS_BORDER)
+        {
+            //draw border
+            int nSave = SaveDC(hdc);
+            RECT rcNoBorder = rcWnd;
+            InflateRect(&rcNoBorder, -cxEdge, -cyEdge);
+            ExcludeClipRect(hdc, rcNoBorder.left, rcNoBorder.top, rcNoBorder.right, rcNoBorder.bottom);
+            HBRUSH hbr = GetSysColorBrush(COLOR_WINDOWFRAME);
+            FillRect(hdc, &rcWnd, hbr);
+            RestoreDC(hdc, nSave);
+        }
     }
-    else if (lp & PRF_NONCLIENT)
-    {
-        RECT rc = wndObj->rc;
-        OffsetRect(&rc, -rc.left, -rc.top);
-        wndObj->invalid.hRgn = CreateRectRgnIndirect(&rc);
-        GetClientRect(hWnd, &rc);
-        HRGN rgnClient = CreateRectRgnIndirect(&rc);
-        CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, rgnClient, RGN_DIFF);
-        DeleteObject(rgnClient);
-    }
-    wndObj->invalid.bErase = lp & PRF_ERASEBKGND;
-    SendMessageA(hWnd, WM_PAINT, 0, 0);
     if (lp & PRF_CHILDREN)
     {
         HWND hChild = GetWindow(hWnd, GW_CHILD);
@@ -2587,10 +2594,7 @@ static LRESULT handlePrint(HWND hWnd, WPARAM wp, LPARAM lp)
             hChild = GetWindow(hChild, GW_HWNDNEXT);
         }
     }
-    wndObj->invalid.hRgn = hRgn;
-    wndObj->invalid.bErase = bErase;
-    wndObj->hdc = hdc;
-    return 1;
+    return lp;
 }
 
 static LRESULT handleSetFont(HWND hWnd, WPARAM wp, LPARAM lp)
@@ -2873,13 +2877,12 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
-        RECT rcClient;
-        GetClientRect(hWnd, &rcClient);
-        FillRect(hdc, &rcClient, GetStockObject(WHITE_BRUSH));
-        DrawTextA(hdc, wndObj->title.c_str(), wndObj->title.length(), &rcClient, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
+        handlePrintClient(hWnd,(WPARAM)hdc,PRF_CLIENT);
         EndPaint(hWnd, &ps);
     }
     break;
+    case WM_PRINTCLIENT:
+        return handlePrintClient(hWnd,wp,lp);
     case WM_ERASEBKGND:
     {
         WNDCLASSEXA info = { 0 };
@@ -2928,6 +2931,8 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         if (!(lpWndPos->flags & (SWP_NOSIZE | SWP_NOMOVE)))
         {
             MINMAXINFO info = { 0 };
+            info.ptMaxPosition.x = 10000;
+            info.ptMaxPosition.y = 10000;
             if (0 == SendMessage(hWnd, WM_GETMINMAXINFO, 0, (LPARAM)&info))
             {
                 if (lpWndPos->cx > info.ptMaxTrackSize.x)
@@ -3665,6 +3670,12 @@ BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam)
 {
     SConnection *pConn = SConnMgr::instance()->getConnection();
     return pConn->OnEnumWindows(0, 0, lpEnumFunc, lParam);
+}
+
+BOOL WINAPI EnumChildWindows(HWND hWndParent, WNDENUMPROC lpEnumFunc, LPARAM lParam)
+{
+    SConnection *pConn = SConnMgr::instance()->getConnection();
+    return pConn->OnEnumWindows(hWndParent, 0, lpEnumFunc, lParam);
 }
 
 BOOL WINAPI FlashWindowEx(PFLASHWINFO pfwi)

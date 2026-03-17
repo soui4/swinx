@@ -355,7 +355,8 @@ extern "C"
     typedef int(CALLBACK *WNDENUMPROC)(HWND hwnd, LPARAM lParam);
 
     BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam);
-
+    
+    BOOL WINAPI EnumChildWindows(HWND hWndParent, WNDENUMPROC lpEnumFunc, LPARAM lParam);
     typedef struct
     {
         UINT cbSize;

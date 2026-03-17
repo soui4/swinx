@@ -512,7 +512,7 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
 {
     HPEN Pen = CreatePen(PS_SOLID, 2, RGB_MENU_CHECKBOX);
     HBRUSH Brush = CreateSolidBrush(RGB_MENU_POPUP);
-
+    SetBkMode(memdc, TRANSPARENT);
     SelectObject(memdc, Pen);
     SelectObject(memdc, Brush);
 

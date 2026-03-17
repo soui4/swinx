@@ -296,6 +296,10 @@ DWORD SConnection::GetMsgPos() const {
 
 DWORD SConnection::GetQueueStatus(UINT flags) {
     std::unique_lock<CountMutex> lock(m_mutex);
+    if((flags & QS_ALLINPUT) == QS_ALLINPUT)
+    {
+        return MAKELONG(m_msgQueue.size(), 0);
+    }
     DWORD ret = 0;
     for (auto it : m_msgQueue)
     {
@@ -317,6 +321,8 @@ DWORD SConnection::GetQueueStatus(UINT flags) {
             }
             break;
         case WM_MOUSEMOVE:
+        case WM_MOUSEHOVER:
+        case WM_MOUSELEAVE:
             if (flags & QS_MOUSEMOVE)
             {
                 ret = MAKELONG(0, it->message);
@@ -357,8 +363,7 @@ DWORD SConnection::GetQueueStatus(UINT flags) {
 }
 
 
-bool SConnection::waitMsg() {
-    UINT timeOut = INFINITE;
+bool SConnection::waitMsg(UINT timeOut) {
     if (!m_bBlockTimer)
     {
         std::unique_lock<CountMutex> lock(m_mutex);
@@ -502,6 +507,10 @@ static NSEvent *nextEvent(NSDate *timeoutDate, SConnection *connection) {
 }
 
 int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD to, bool fWaitAll, DWORD dwWaitMask) {
+    if(nCount == 0 && (dwWaitMask&QS_ALLINPUT)== QS_ALLINPUT)
+    {
+        return waitMsg(to) ? WAIT_OBJECT_0 : WAIT_TIMEOUT;
+    }
     HANDLE tmpHandles[MAXIMUM_WAIT_OBJECTS] = { 0 };
     int fds[MAXIMUM_WAIT_OBJECTS] = { 0 };
     bool states[MAXIMUM_WAIT_OBJECTS] = { false };

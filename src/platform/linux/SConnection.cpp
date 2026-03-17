@@ -327,6 +327,7 @@ SConnection::SConnection(int screenNum)
         xcb_change_window_attributes(connection,m_setting_owner,event,event_mask);
     }while(0);
 
+
     m_tsDoubleSpan = GetDoubleClickSpan();
 
     m_bQuit = false;
@@ -577,9 +578,8 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
     return bRet;
 }
 
-bool SConnection::waitMsg()
+bool SConnection::waitMsg(UINT timeOut )
 {
-    UINT timeOut = -1;
     if (!m_bBlockTimer)
     {
         std::unique_lock<CountMutex> lock(m_mutex4Msg);
@@ -617,12 +617,17 @@ LONG SConnection::GetMsgTime() const
 DWORD SConnection::GetQueueStatus(UINT flags)
 {
     std::unique_lock<CountMutex> lock(m_mutex4Msg);
+    if((flags & QS_ALLINPUT) == QS_ALLINPUT)
+    {
+        return MAKELONG(m_msgQueue.size(), 0);
+    }
     DWORD ret = 0;
     for (auto it : m_msgQueue)
     {
         switch (it->message)
         {
         case WM_PAINT:
+        case UM_MAPNOTIFY:
             if (flags & QS_PAINT)
             {
                 ret = MAKELONG(0, it->message);
@@ -638,6 +643,14 @@ DWORD SConnection::GetQueueStatus(UINT flags)
             }
             break;
         case WM_MOUSEMOVE:
+        case WM_MOUSEHOVER:
+        case WM_MOUSELEAVE:
+        case UM_XDND_DRAG_ENTER:
+        case UM_XDND_DRAG_OVER:
+        case UM_XDND_DRAG_LEAVE:
+        case UM_XDND_DRAG_DROP:
+        case UM_XDND_FINISH:
+        case UM_XDND_STATUS:
             if (flags & QS_MOUSEMOVE)
             {
                 ret = MAKELONG(0, it->message);
@@ -665,7 +678,7 @@ DWORD SConnection::GetQueueStatus(UINT flags)
                     ret = MAKELONG(0, it->message);
                 }
             }
-            if (flags & QS_ALLPOSTMESSAGE)
+            if (flags & (QS_ALLPOSTMESSAGE))
             {
                 ret = MAKELONG(0, it->message);
             }
@@ -737,7 +750,8 @@ int SConnection::_waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD
             event2Msg(ret == WAIT_TIMEOUT, elapse, ts2);
             if (dwWaitMask != 0)
             {
-                if (GetQueueStatus(dwWaitMask))
+
+                if (GetQueueStatus(dwWaitMask)!=0)
                     return WAIT_OBJECT_0 + nCount - 1;
             }
             if (to != INFINITE)
@@ -756,6 +770,10 @@ int SConnection::_waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD
 
 int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD to, BOOL fWaitAll, DWORD dwWaitMask)
 {
+    if(nCount == 0 && (dwWaitMask&QS_ALLINPUT) == QS_ALLINPUT)
+    {
+        return waitMsg(to) ? WAIT_OBJECT_0 : WAIT_TIMEOUT;
+    }
     if (nCount >= MAXIMUM_WAIT_OBJECTS)
         return -1;
     HANDLE hs[MAXIMUM_WAIT_OBJECTS] = { 0 };
@@ -1293,24 +1311,30 @@ static void setMotifWindowFlags(SConnection *c, HWND hWnd, DWORD dwStyle, DWORD 
         {
             mwmhints.decorations |= MWM_DECOR_MENU;
         }
-    }
-
-    if (dwStyle & WS_SIZEBOX)
-    {
-        mwmhints.decorations |= MWM_DECOR_RESIZEH;
+        if (dwStyle & WS_SIZEBOX)
+        {
+            mwmhints.decorations |= MWM_DECOR_RESIZEH;
+        }
     }
     setMotifWmHints(c, hWnd, mwmhints);
+}
+
+HWND SConnection::_QueryActiveWindow()
+{
+    xcb_get_input_focus_cookie_t cookie = xcb_get_input_focus(connection);
+    xcb_get_input_focus_reply_t *reply = xcb_get_input_focus_reply(connection, cookie, nullptr);
+    HWND hFocus = reply ? reply->focus : 0;
+    free(reply);
+    return hFocus;
 }
 
 HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
 {
     HWND hWnd = xcb_generate_id(connection);
-
     xcb_colormap_t cmap = xcb_generate_id(connection);
     xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE, cmap, screen->root, pWnd->visualId);
 
-    const uint32_t evt_mask = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
-
+    const uint32_t evt_mask = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE  | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW |XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
     const uint32_t mask = XCB_CW_BACK_PIXMAP | XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_SAVE_UNDER | XCB_CW_EVENT_MASK | XCB_CW_COLORMAP;
 
     const uint32_t values[] = {
@@ -1342,7 +1366,8 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
     }
     pWnd->cmap = cmap;
     xcb_change_window_attributes(connection, hWnd, mask, values);
-    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_PROTOCOLS, XCB_ATOM_ATOM, 32, 1, &atoms.WM_DELETE_WINDOW);
+    xcb_atom_t protocols[] = { atoms.WM_DELETE_WINDOW};
+    xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_PROTOCOLS, XCB_ATOM_ATOM, 32, ARRAYSIZE(protocols), protocols);
 
     // set the PID to let the WM kill the application if unresponsive
     uint32_t pid = getpid();
@@ -1384,14 +1409,17 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
     {
         DestroyCaret();
     }
-    if (hWnd == m_hFocus)
+    if (m_hFocus == hWnd)
     {
-        SetFocus(0);
+        m_mapFocus.erase(m_hWndActive);
+        m_hFocus = 0;
     }
     if (m_hWndActive == hWnd)
     {
+        m_mapFocus.erase(m_hWndActive);
         m_hWndActive = 0;
     }
+
     if (wnd->hIMC)
     {
         ImmDestroyContext(wnd->hIMC);
@@ -1415,7 +1443,7 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
         if (wndObj->dwStyle & WS_VISIBLE)
             return; // already visible.
         RECT rc= wndObj->rc;
-        BOOL bActive =  nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA;
+        BOOL bActive = nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA;
         xcb_icccm_wm_hints_t hints = {0};
         xcb_icccm_wm_hints_set_input(&hints, bActive);
         xcb_icccm_set_wm_hints(connection, hWnd, &hints);
@@ -1423,10 +1451,13 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
         xcb_map_window(connection, hWnd);
         wndObj->dwStyle |= WS_VISIBLE;
         InvalidateRect(hWnd, nullptr, TRUE);
-        if (nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA && !(wndObj->dwStyle & WS_CHILD) && wndObj->mConnection->GetActiveWnd() == 0)
+        if (bActive && !(wndObj->dwStyle & WS_CHILD) && wndObj->mConnection->GetActiveWnd() == 0)
+        {
+            //auto active top level window.
             SetActiveWindow(hWnd);
+        }    
         sync();
-        if (0 == (wndObj->dwStyle & WS_CHILD)){
+        if (!(wndObj->dwStyle & WS_CHILD)){
             //to avoid the position might been changed by linux window manage, reset window pos again.
             SetWindowPos(hWnd,rc.left,rc.top);
         }
@@ -1444,14 +1475,6 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
             event.window = hWnd;
             event.from_configure = false;
             xcb_send_event(connection, false, event.event, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
-            if (m_hWndActive == hWnd)
-            {
-                SetActiveWindow(0);
-            }
-        }
-        if (hWnd == m_hFocus)
-        {
-            SetFocus(0); // kill focus.
         }
     }
     xcb_flush(connection);
@@ -2067,34 +2090,27 @@ HWND SConnection::GetActiveWnd() const
     return m_hWndActive;
 }
 
-BOOL SConnection::SetActiveWindow(HWND hWnd)
-{
-    if (m_hWndActive == hWnd)
-        return FALSE;
-    if (hWnd)
-    {
+BOOL SConnection::SetActiveWindow(HWND hWnd){
+    if(hWnd == m_hWndActive)
+        return TRUE;
+    if(hWnd){
         WndObj wndObj = WndMgr::fromHwnd(hWnd);
         if (!wndObj)
             return FALSE;
-        if (wndObj->dwStyle & (WS_CHILD | WS_DISABLED))
+        if(wndObj->dwStyle & (WS_CHILD|WS_DISABLED))
             return FALSE;
         if (!(wndObj->dwStyle & WS_VISIBLE))
             return FALSE;
-        if (wndObj->dwExStyle & (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW))
+        if(wndObj->dwExStyle & (WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE))
             return FALSE;
-        m_hWndActive = hWnd;
     }
-    else
-    {
-        if (m_hFocus && (IsChild(m_hWndActive, m_hFocus) || m_hFocus == m_hWndActive))
-        {
-            SetFocus(0);
-        }
-        m_hWndActive = 0;
-    }
-//    SLOG_STMI()<<"SetActiveWindow hwnd="<<hWnd;
+    xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd ? hWnd : screen->root, XCB_CURRENT_TIME);
+    xcb_flush(connection);
+    if (_QueryActiveWindow() == hWnd)
+        OnActiveChange(hWnd);
     return TRUE;
 }
+
 
 BOOL SConnection::IsWindow(HWND hWnd) const
 {
@@ -2224,53 +2240,54 @@ void SConnection::KillWindowTimer(HWND hWnd)
     }
 }
 
+static int CALLBACK _FindForeground(HWND hwnd, LPARAM lParam){
+    WndObj wndObj = WndMgr::fromHwnd(hwnd);
+    if(!wndObj)
+        return 1;
+    if((wndObj->dwStyle & WS_VISIBLE) && !(wndObj->dwStyle &(WS_CHILD|WS_DISABLED)) && !(wndObj->dwExStyle&(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE))){
+        xcb_window_t *pret = (xcb_window_t*)lParam;
+        *pret = hwnd;
+    }
+    return 1;
+}
+
 HWND SConnection::GetForegroundWindow()
 {
-    xcb_window_t window = screen->root;
-    if(atoms._NET_ACTIVE_WINDOW != XCB_ATOM_NONE){
-        xcb_get_property_cookie_t prop_cookie = xcb_get_property(connection, 0, screen->root,
-                                                                 atoms._NET_ACTIVE_WINDOW, XCB_ATOM_WINDOW, 0, 1);
-        xcb_get_property_reply_t *prop_reply = xcb_get_property_reply(connection, prop_cookie, NULL);
-        if (prop_reply && prop_reply->type == XCB_ATOM_WINDOW && prop_reply->value_len > 0)
-        {
-            window = *(xcb_window_t *)xcb_get_property_value(prop_reply);
-        }
-        free(prop_reply);
-    }else
+    xcb_query_tree_cookie_t tree_cookie = xcb_query_tree(connection, screen->root);
+    xcb_query_tree_reply_t *tree_reply = xcb_query_tree_reply(connection, tree_cookie, NULL);
+    if (!tree_reply)
+        return FALSE;
+    xcb_window_t hwnd = XCB_WINDOW_NONE;
+    xcb_window_t *children = xcb_query_tree_children(tree_reply);
+    int child_count = tree_reply->children_len;
+    for (int i =  child_count-1; i >= 0; i--)
     {
-        xcb_get_input_focus_reply_t *focusReply = nullptr;
-        xcb_query_tree_cookie_t treeCookie;
-        focusReply = xcb_get_input_focus_reply(connection, xcb_get_input_focus(connection), nullptr);
-        if (focusReply)
-        {
-            window = focusReply->focus;
-            free(focusReply);
+        xcb_window_t current_child = children[i];
+        // If this is a decoration window, skip it and use its child (app window) instead
+        bool isDeco = IsDecorationWindow(current_child);
+        if(isDeco){
+            current_child = _findAppChild(current_child);
+            if(!current_child){
+                continue;
+            }
+        }
+        WndObj wndObj = WndMgr::fromHwnd(current_child);
+        if(!wndObj)
+            continue;
+    
+        if((wndObj->dwStyle & WS_VISIBLE) && !(wndObj->dwStyle &(WS_CHILD|WS_DISABLED)) && !(wndObj->dwExStyle&(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE))){
+            hwnd = current_child;
+            break;
         }
     }
-    return window;
+    free(tree_reply);
+    return hwnd;
 }
 
 BOOL SConnection::SetForegroundWindow(HWND hWnd)
 {
     uint32_t values[] = { XCB_STACK_MODE_ABOVE };
     xcb_configure_window(connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
-    if (atoms._NET_ACTIVE_WINDOW != XCB_ATOM_NONE)
-    {
-        xcb_client_message_event_t ev;
-        memset(&ev, 0, sizeof(ev));
-        ev.response_type = XCB_CLIENT_MESSAGE;
-        ev.window = hWnd;
-        ev.type = atoms._NET_ACTIVE_WINDOW;
-        ev.format = 32;
-        ev.data.data32[0] = 1; // 来源类型：1=应用程序
-        ev.data.data32[1] = XCB_CURRENT_TIME;
-        ev.data.data32[2] = 0; // 请求的窗口（0表示当前窗口）
-        ev.data.data32[3] = 0;
-        ev.data.data32[4] = 0;
-        xcb_send_event(connection, 0, screen->root, XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY, (const char *)&ev);
-    }else{
-        xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd, XCB_CURRENT_TIME);
-    }
     xcb_flush(connection);
     return TRUE;
 }
@@ -2350,7 +2367,6 @@ void SConnection::OnFocusChanged(HWND hFocus)
     }
     HWND hOldFocus = m_hFocus;
     m_hFocus = hFocus;
-    //SLOG_STMI() << "OnFocusChanged hFocus=" << hFocus;
     if (hFocus)
     {
         HIMC hIMC = ImmGetContext(hFocus);
@@ -2370,25 +2386,12 @@ void SConnection::OnFocusChanged(HWND hFocus)
 
 BOOL SConnection::SetFocus(HWND hWnd)
 {
-    if (hWnd == m_hFocus)
-    {
+    if(m_hFocus == hWnd)
         return TRUE;
-    }
-    //SLOG_STMI() << "SetFocus hwnd=" << hWnd;
-    HWND hRet = m_hFocus;
-    xcb_void_cookie_t cookie = xcb_set_input_focus_checked(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd ? hWnd : screen->root, XCB_CURRENT_TIME);
-    xcb_generic_error_t *error = xcb_request_check(connection, cookie);
-    xcb_flush(connection);
-    if (error)
-    {
-        SLOG_STMI() << "SetFocus error, code=" << (int)error->error_code << " hWnd=" << hWnd;
-        free(error);
+    if(_GetRoot(hWnd) != m_hWndActive)
         return FALSE;
-    }
-    else
-    {
-        return TRUE;
-    }
+    OnFocusChanged(hWnd);
+    return TRUE;
 }
 
 uint32_t SConnection::netWmStates(HWND hWnd)
@@ -2551,7 +2554,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         uint32_t tst = (scanCode << 16);
         int cn = m_keyboard->getRepeatCount();
         pMsg->lParam = (scanCode << 16) | m_keyboard->getRepeatCount();
-        //SLOG_FMTI("onkeydown, detail=%d,vk=%d, repeat=%d", e2->detail, vk, (int)m_keyboard->getRepeatCount());
+        SLOG_FMTI("onkeydown, hfocus=%u, detail=%d,vk=%d, repeat=%d", (uint32_t)m_hFocus, e2->detail, vk, (int)m_keyboard->getRepeatCount());
         break;
     }
     case XCB_KEY_RELEASE:
@@ -2649,14 +2652,6 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                 else if ((state & (NetWmStateMaximizedHorz | NetWmStateMaximizedVert)) == 0)
                 {
                     newState = SIZE_RESTORED;
-                }
-                if ((state & NetWMStateFocus) && m_hWndActive != e2->window)
-                {
-                    OnActiveChange(e2->window, TRUE);
-                }
-                if ((state & NetWMStateFocus) == 0 && m_hWndActive == e2->window)
-                {
-                    OnActiveChange(e2->window, FALSE);
                 }
             }
             if (newState != -1)
@@ -3005,22 +3000,15 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         // different from other mouse message, dispatch mousemove dispite whether the target window is disable or not. we need it to generate WM_SETCURSOR
         break;
     }
-    case XCB_FOCUS_OUT:
-        //SLOG_STMI()<<"!!!focus out, old focus:"<<m_hFocus;
-        OnFocusChanged(0);
-        break;
     case XCB_FOCUS_IN:
-    {
-        xcb_get_input_focus_cookie_t cookie = xcb_get_input_focus(connection);
-        xcb_get_input_focus_reply_t *reply = xcb_get_input_focus_reply(connection, cookie, nullptr);
-        if (reply)
+    case XCB_FOCUS_OUT:
         {
-            //SLOG_STMI()<<"focus in, hFocus="<<reply->focus;
-            OnFocusChanged(reply->focus);
-            free(reply);
+            xcb_focus_out_event_t *e2 = (xcb_focus_out_event_t *)event;
+            SLOG_STMI()<<"focus changed: detail="<<e2->detail<<" window="<<e2->event<<" type="<< (event_code==XCB_FOCUS_IN?"FOCUS IN":"FOCUS OUT");
+            //swinx use the focus window to indicate the active window, it's focus window is managered by swinx itself, so when focus in/out event received, just query active window and update active window.
+            OnActiveChange(_QueryActiveWindow());
         }
         break;
-    }
     case XCB_MAP_NOTIFY:
     {
         xcb_map_notify_event_t *e2 = (xcb_map_notify_event_t *)event;
@@ -3418,6 +3406,25 @@ BOOL SConnection::OnEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEn
     return _onEnumWindows(hParent, hChildAfter, lpEnumFunc, lParam,FALSE,bContinue);
 }
 
+xcb_window_t SConnection::_findAppChild(xcb_window_t deco_wnd){
+    xcb_query_tree_cookie_t child_tree_cookie = xcb_query_tree(connection, deco_wnd);
+    xcb_query_tree_reply_t *child_tree_reply = xcb_query_tree_reply(connection, child_tree_cookie, NULL);
+    if (child_tree_reply && child_tree_reply->children_len > 0)
+    {
+        xcb_window_t *deco_children = xcb_query_tree_children(child_tree_reply);
+        xcb_window_t ret = deco_children[0]; // Use the first (typically only) child
+        free(child_tree_reply);
+        if(IsDecorationWindow(ret)){
+            ret = _findAppChild(ret);
+        }
+        return ret;
+    }
+    else
+    {
+        return XCB_WINDOW_NONE;
+    }
+}
+
 BOOL SConnection::_onEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEnumFunc, LPARAM lParam,BOOL bIncludeDescendants,BOOL &bContinue)
 {
     if (!hParent)
@@ -3445,22 +3452,12 @@ BOOL SConnection::_onEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpE
     for (; bContinue && i < child_count; i++)
     {
         HWND current_child = children[i];
-        
         // If this is a decoration window, skip it and use its child (app window) instead
         bool isDeco = IsDecorationWindow(current_child);
         if(isDeco){
-            xcb_query_tree_cookie_t child_tree_cookie = xcb_query_tree(connection, current_child);
-            xcb_query_tree_reply_t *child_tree_reply = xcb_query_tree_reply(connection, child_tree_cookie, NULL);
-            if (child_tree_reply && child_tree_reply->children_len > 0)
-            {
-                xcb_window_t *deco_children = xcb_query_tree_children(child_tree_reply);
-                current_child = deco_children[0];  // Use the first (typically only) child
-                free(child_tree_reply);
-            }
-            else
-            {
-                free(child_tree_reply);
-                continue;  // Skip if decoration window has no children
+            current_child = _findAppChild(current_child);
+            if(!current_child){
+                continue;
             }
         }
         bContinue = lpEnumFunc(current_child, lParam);
@@ -3477,25 +3474,35 @@ BOOL SConnection::_onEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpE
 }
 
 
-void SConnection::OnActiveChange(HWND hWnd, BOOL bActivate)
+void SConnection::OnActiveChange(HWND hWnd)
 {
-    if (bActivate)
-    {
-        HWND oldActive = m_hWndActive;
-        m_hWndActive = hWnd;
-        if (hWnd)
-            SendMessageA(hWnd, WM_ACTIVATE, WA_ACTIVE, m_hWndActive);
-        if (oldActive)
-            SendMessageA(oldActive, WM_ACTIVATE, WA_INACTIVE, hWnd);
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(!wndObj){
+        hWnd = 0;
     }
-    else
+    if(hWnd == m_hWndActive)
+        return;
+    SLOG_STMI()<<"OnActiveChange, active="<<hWnd<<" focus="<<m_hFocus;
+    HWND oldActive = m_hWndActive;
+    WndObj oldActiveWnd = WndMgr::fromHwnd(oldActive);
+    m_hWndActive = hWnd;
+    if (oldActiveWnd)
     {
-        HWND oldActive = m_hWndActive;
-        if(hWnd == m_hWndActive)
-            m_hWndActive = 0;
-        SendMessageA(oldActive, WM_ACTIVATE, WA_INACTIVE, 0);
+        //save focus before deactivate, some app (like vscode) will change focus in WM_ACTIVATE handler, we need restore it after activate new active window
+        m_mapFocus[oldActive] = m_hFocus;
+        OnFocusChanged(0);
+        SendMessageA(oldActive, WM_ACTIVATE, WA_INACTIVE, hWnd);
+    }    
+    if (hWnd)
+    {
+        SendMessageA(hWnd, WM_ACTIVATE, WA_ACTIVE, oldActive);
+        HWND hFocus = 0;
+        auto it = m_mapFocus.find(hWnd);
+        if (it != m_mapFocus.end()) {
+            hFocus = it->second;
+        }
+        OnFocusChanged(hFocus);
     }
-//    SLOG_STMI()<<"OnActiveChange hWnd="<<hWnd<<" bActivate="<<bActivate<<" m_hWndActive="<<m_hWndActive;
 }
 
 // Check if window is application-level (not a WM decoration window)
@@ -3522,9 +3529,7 @@ bool SConnection::IsApplicationWindow(xcb_window_t window)
     }
     free(reply);
     
-    // If _NET_WM_PID not found, assume it's an app (conservative, safer to include)
-    // Decoration windows without PID are rare with modern WMs
-    return bIsApp || true;
+    return bIsApp;
 }
 
 bool SConnection::IsDecorationWindow(xcb_window_t window)
@@ -3534,19 +3539,32 @@ bool SConnection::IsDecorationWindow(xcb_window_t window)
     
     if(IsApplicationWindow(window))
         return false;
-
+    return true;
     // Check for typical decoration properties
     // Decoration windows usually have _MOTIF_WM_HINTS but no _NET_WM_PID
-    bool bHasMotifHints = false;
-    xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, window, atoms._MOTIF_WM_HINTS, XCB_ATOM_CARDINAL, 0, 1);
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
-    if (reply && reply->type != XCB_NONE)
+    // bool bHasMotifHints = false;
+    // xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, window, atoms._MOTIF_WM_HINTS, XCB_ATOM_CARDINAL, 0, 1);
+    // xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+    // if (reply && reply->type != XCB_NONE)
+    // {
+    //     bHasMotifHints = true;
+    // }
+    // free(reply);
+
+    // return bHasMotifHints;
+}
+
+HWND get_parent(HWND hwnd){
+    SConnection *conn = SConnMgr::instance()->getConnection();
+    xcb_window_t ret = XCB_NONE;
+    xcb_query_tree_cookie_t cookie = xcb_query_tree(conn->connection, hwnd);
+    xcb_query_tree_reply_t *reply = xcb_query_tree_reply(conn->connection, cookie, NULL);
+    if (reply)
     {
-        bHasMotifHints = true;
+        ret = reply->parent;
     }
     free(reply);
-
-    return bHasMotifHints;
+    return ret;
 }
 
 xcb_window_t SConnection::_GetParent(xcb_window_t hwnd)
@@ -3794,8 +3812,14 @@ void SConnection::UpdateWindowIcon(HWND hWnd, _Window * wndObj)
             const uint32_t mask = XCB_CW_OVERRIDE_REDIRECT;
             uint32_t values[] = {(newStyle & WS_EX_TOOLWINDOW) ? 1u : 0};
             xcb_change_window_attributes(connection, hWnd, mask, values);
-            xcb_flush(connection);  
         }
+        if ((oldStyle & WS_EX_NOACTIVATE) != (newStyle & WS_EX_NOACTIVATE))
+        {
+            xcb_icccm_wm_hints_t hints = {0};
+            xcb_icccm_wm_hints_set_input(&hints, (newStyle & WS_EX_NOACTIVATE) == 0);
+            xcb_icccm_set_wm_hints(connection, hWnd, &hints);
+        }
+        xcb_flush(connection);
     }
 
     void SConnection::SendClientMessage(HWND hWnd, uint32_t type, uint32_t *data, int len)

@@ -96,7 +96,7 @@ class SConnection {
       DWORD GetMsgPos() const;
 
     DWORD GetQueueStatus(UINT flags);
-    bool waitMsg();
+    bool waitMsg(UINT timout=INFINITE);
     int waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, BOOL fWaitAll, DWORD dwWaitMask);
 
     BOOL TranslateMessage(const MSG *pMsg);
@@ -124,7 +124,6 @@ class SConnection {
     }
 
     HWND GetActiveWnd() const;
-
     BOOL SetActiveWindow(HWND hWnd);
 
     HWND WindowFromPoint(POINT pt, HWND hWnd) const;
@@ -289,9 +288,8 @@ public:
             return m_bComposited;
         }
   private:
-      
-    // Check if window is application-level (not a decoration window)
-    // Works across processes using system-level API checks
+    HWND _QueryActiveWindow();
+    xcb_window_t _findAppChild(xcb_window_t deco_wnd);
     bool IsApplicationWindow(xcb_window_t window);
     bool IsDecorationWindow(xcb_window_t window);
     HWND GetWndSibling(HWND hParent, HWND hWnd, BOOL bNext);
@@ -304,7 +302,7 @@ public:
     void clearSystemCursor();
     bool event2Msg(bool bTimeout, int elapse, uint64_t ts);
     void OnFocusChanged(HWND hFocus);
-    void OnActiveChange(HWND hWnd,BOOL bActive);
+    void OnActiveChange(HWND hWnd);
     bool existTimer(HWND hWnd, UINT_PTR id) const;
     xcb_cursor_t createXcbCursor(HCURSOR cursor);
     uint32_t netWmStates(HWND hWnd);
@@ -359,9 +357,11 @@ public:
     HWND m_hWndLastMouseMove;
     HWND m_hWndActive;
     HWND m_hFocus;
+
     xcb_window_t m_setting_owner=0;
     std::map<HCURSOR, xcb_cursor_t> m_sysCursor;
     std::map<HWND,HCURSOR>          m_wndCursor;
+    std::map<HWND,HWND>  m_mapFocus;  //map of focus window, key is the active window, value is the window that receive key input, used for restore focus when active window changed
     SKeyboard *m_keyboard;
     SClipboard* m_clipboard;
     STrayIconMgr* m_trayIconMgr;

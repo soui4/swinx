@@ -59,6 +59,8 @@ extern "C"
 
     void WINAPI ReleaseStgMedium(STGMEDIUM *pmedium);
 
+    HANDLE WINAPI OleDuplicateData(HANDLE hSrc, CLIPFORMAT cfFormat, UINT uiFlags);
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus

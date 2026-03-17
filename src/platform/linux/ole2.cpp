@@ -149,3 +149,21 @@ void WINAPI ReleaseStgMedium(STGMEDIUM *pmedium)
         pmedium->pUnkForRelease = 0;
     }
 }
+
+HANDLE WINAPI OleDuplicateData(HANDLE hSrc, CLIPFORMAT cfFormat, UINT uiFlags){
+    if(cfFormat == CF_BITMAP){
+        return RefGdiObj(hSrc);
+    }else if(cfFormat == CF_HDROP || cfFormat == CF_LOCALE){
+        HGLOBAL hSrc2=(HGLOBAL)hSrc;
+        int szSrc = GlobalSize(hSrc2);
+        HGLOBAL ret = GlobalAlloc(uiFlags,szSrc);
+        const void* psrc = GlobalLock(hSrc2);
+        void * pdst = GlobalLock(ret);
+        memcpy(pdst,psrc,szSrc);
+        GlobalUnlock(ret);
+        GlobalUnlock(hSrc2);
+        return ret;
+    }else{
+        return nullptr;
+    }
+}

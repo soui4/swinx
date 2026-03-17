@@ -66,7 +66,7 @@ class SConnection : public SConnBase{
       DWORD GetMsgPos() const;
 
     DWORD GetQueueStatus(UINT flags);
-    bool waitMsg();
+    bool waitMsg(UINT timeOut=INFINITE);
     int waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, bool fWaitAll, DWORD dwWaitMask);
 
     bool TranslateMessage(const MSG *pMsg);
