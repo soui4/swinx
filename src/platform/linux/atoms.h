@@ -96,7 +96,8 @@ class SAtoms {
 
     SO_ATOM_COUNT; //mark as the last atom.
 
-
+    xcb_atom_t _NET_CLIENT_LIST_STACKING;
+    
     const char **AtomNames(int &atoms)
     {
         static const char *kAtomNames[] = {

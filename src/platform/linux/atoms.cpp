@@ -19,7 +19,7 @@ xcb_atom_t SAtoms::internAtom(xcb_connection_t *connection, uint8_t onlyIfExist,
 void SAtoms::Init(xcb_connection_t *conn, int nScrNo)
 {
     const int kAtomCount = (FIELD_OFFSET(SAtoms,SO_ATOM_COUNT) - FIELD_OFFSET(SAtoms,TEXT) ) / sizeof(xcb_atom_t);
-    xcb_intern_atom_cookie_t cookies[kAtomCount];
+    xcb_intern_atom_cookie_t cookies[kAtomCount+1];
     int kAtomCount2 = 0;
     const char **kAtomNames = AtomNames(kAtomCount2);
     assert(kAtomCount == kAtomCount2);
@@ -36,7 +36,8 @@ void SAtoms::Init(xcb_connection_t *conn, int nScrNo)
             cookies[i] = xcb_intern_atom(conn, false, strlen(kAtomNames[i]), kAtomNames[i]);
         }
     }
-
+    static const char *kAtomListStacking = "_NET_CLIENT_LIST_STACKING";
+    cookies[kAtomCount] = xcb_intern_atom(conn, true, strlen(kAtomListStacking), kAtomListStacking);
     xcb_atom_t *atom = (xcb_atom_t *)this;
     for (int i = 0; i < kAtomCount; i++)
     {
@@ -45,7 +46,11 @@ void SAtoms::Init(xcb_connection_t *conn, int nScrNo)
         free(reply);
         atom++;
     }
-
+    {
+        xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(conn, cookies[kAtomCount], 0);
+        _NET_CLIENT_LIST_STACKING = reply->atom;
+        free(reply);
+    }
     //used as text atom.
     m_textAtoms.push_back(CLIPF_UTF8);
     m_textAtoms.push_back(UTF8_STRING);

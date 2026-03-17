@@ -2253,34 +2253,54 @@ static int CALLBACK _FindForeground(HWND hwnd, LPARAM lParam){
 
 HWND SConnection::GetForegroundWindow()
 {
-    xcb_query_tree_cookie_t tree_cookie = xcb_query_tree(connection, screen->root);
-    xcb_query_tree_reply_t *tree_reply = xcb_query_tree_reply(connection, tree_cookie, NULL);
-    if (!tree_reply)
-        return FALSE;
     xcb_window_t hwnd = XCB_WINDOW_NONE;
-    xcb_window_t *children = xcb_query_tree_children(tree_reply);
-    int child_count = tree_reply->children_len;
-    for (int i =  child_count-1; i >= 0; i--)
-    {
-        xcb_window_t current_child = children[i];
-        // If this is a decoration window, skip it and use its child (app window) instead
-        bool isDeco = IsDecorationWindow(current_child);
-        if(isDeco){
-            current_child = _findAppChild(current_child);
-            if(!current_child){
-                continue;
+    if(atoms._NET_CLIENT_LIST_STACKING!=0){
+        xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, screen->root, atoms._NET_CLIENT_LIST_STACKING, XCB_ATOM_WINDOW, 0, -1);
+        xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+        if(reply && reply->format == 32 && reply->type == XCB_ATOM_WINDOW && reply->value_len > 0){
+            const xcb_window_t *children = (const xcb_window_t*)xcb_get_property_value(reply);
+            int child_count = xcb_get_property_value_length(reply);
+            for(int i=child_count-1;i>=0;i--){
+                if(children[i]){
+                    WndObj wndObj = WndMgr::fromHwnd(children[i]);
+                    if(wndObj && (wndObj->dwStyle&WS_VISIBLE) && (wndObj->dwExStyle & (WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE))==0 && (wndObj->dwStyle&WS_CHILD)==0){
+                        hwnd = children[i];
+                        break;
+                    }
+                }
             }
         }
-        WndObj wndObj = WndMgr::fromHwnd(current_child);
-        if(!wndObj)
-            continue;
-    
-        if((wndObj->dwStyle & WS_VISIBLE) && !(wndObj->dwStyle &(WS_CHILD|WS_DISABLED)) && !(wndObj->dwExStyle&(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE))){
-            hwnd = current_child;
-            break;
-        }
+        free(reply);
     }
-    free(tree_reply);
+    if(hwnd==XCB_WINDOW_NONE){
+        xcb_query_tree_cookie_t tree_cookie = xcb_query_tree(connection, screen->root);
+        xcb_query_tree_reply_t *tree_reply = xcb_query_tree_reply(connection, tree_cookie, NULL);
+        if (!tree_reply)
+            return hwnd;
+        xcb_window_t *children = xcb_query_tree_children(tree_reply);
+        int child_count = tree_reply->children_len;
+        for (int i =  child_count-1; i >= 0; i--)
+        {
+            xcb_window_t current_child = children[i];
+            // If this is a decoration window, skip it and use its child (app window) instead
+            bool isDeco = IsDecorationWindow(current_child);
+            if(isDeco){
+                current_child = _findAppChild(current_child);
+                if(!current_child){
+                    continue;
+                }
+            }
+            WndObj wndObj = WndMgr::fromHwnd(current_child);
+            if(!wndObj)
+                continue;
+        
+            if((wndObj->dwStyle & WS_VISIBLE) && !(wndObj->dwStyle &WS_CHILD) && !(wndObj->dwExStyle&(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE))){
+                hwnd = current_child;
+                break;
+            }
+        }
+        free(tree_reply);
+    }
     return hwnd;
 }
 
