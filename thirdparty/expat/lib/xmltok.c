@@ -50,7 +50,7 @@
 
 #include <stddef.h>
 #include <string.h> /* memcpy */
-#include <stdbool.h>
+#include "expat_bool.h"
 
 #ifdef _WIN32
 #  include "winconfig.h"

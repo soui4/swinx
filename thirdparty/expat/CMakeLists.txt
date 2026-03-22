@@ -195,26 +195,6 @@ if(EXPAT_WITH_LIBBSD)
     endif()
 endif()
 
-if(MSVC)
-    # For the three types of MSVC version values, please see:
-    # - https://cmake.org/cmake/help/latest/variable/MSVC_VERSION.html
-    # - https://sourceforge.net/p/predef/wiki/Compilers/
-    # - https://en.wikipedia.org/wiki/Microsoft_Visual_Studio#History
-    set(_EXPAT_MSVC_REQUIRED_INT 1800)  # i.e. 12.0/2013/1800; see PR #426
-    set(_EXPAT_MSVC_SUPPORTED_INT 1920)
-    set(_EXPAT_MSVC_SUPPORTED_DISPLAY "Visual Studio 16.0/2019/${_EXPAT_MSVC_SUPPORTED_INT}")
-
-    if(MSVC_VERSION VERSION_LESS ${_EXPAT_MSVC_SUPPORTED_INT})
-        if(MSVC_VERSION VERSION_LESS ${_EXPAT_MSVC_REQUIRED_INT})
-            message(SEND_ERROR "MSVC_VERSION ${MSVC_VERSION} is TOO OLD to compile Expat without errors.")
-            message(SEND_ERROR "Please use officially supported ${_EXPAT_MSVC_SUPPORTED_DISPLAY} or later.  Thank you!")
-        else()
-            message(WARNING "MSVC_VERSION ${MSVC_VERSION} is NOT OFFICIALLY SUPPORTED by Expat.")
-            message(WARNING "Please use ${_EXPAT_MSVC_SUPPORTED_DISPLAY} or later.  Thank you!")
-        endif()
-    endif()
-endif()
-
 macro(_expat_copy_bool_int source_ref dest_ref)
     if(${source_ref})
         set(${dest_ref} 1)
@@ -286,6 +266,8 @@ if(NOT WIN32)
     evaluate_detection_results(EXPAT_WITH_SYS_GETRANDOM HAVE_SYSCALL_GETRANDOM "syscall SYS_getrandom" "Syscall SYS_getrandom")
 endif()
 
+set(EXPAT_STATIC ON)
+_expat_copy_bool_int(EXPAT_STATIC           XML_STATIC)
 _expat_copy_bool_int(EXPAT_ATTR_INFO        XML_ATTR_INFO)
 _expat_copy_bool_int(EXPAT_DTD              XML_DTD)
 _expat_copy_bool_int(EXPAT_GE               XML_GE)
@@ -301,7 +283,7 @@ endif()
 set(XML_CONTEXT_BYTES ${EXPAT_CONTEXT_BYTES})
 
 configure_file(expat_config.h.cmake "${CMAKE_CURRENT_BINARY_DIR}/expat_config.h")
-
+configure_file(expat_def.h.cmake "${CMAKE_CURRENT_BINARY_DIR}/expat_def.h")
 
 set(EXTRA_COMPILE_FLAGS)
 if(FLAG_NO_STRICT_ALIASING)
@@ -377,7 +359,7 @@ endif()
 # C library
 #
 set(_EXPAT_C_SOURCES
-    lib/xmlparse.c
+    lib/xmlparse.cc
     lib/xmlrole.c
     lib/xmltok.c
 # NOTE: ISO C forbids an empty translation unit
@@ -385,41 +367,11 @@ set(_EXPAT_C_SOURCES
 #   lib/xmltok_ns.c
 )
 
-if(EXPAT_SHARED_LIBS)
-    set(_SHARED SHARED)
-    if(WIN32)
-        macro(_expat_def_file_toggle source_var target_var)
-            if(${source_var})
-                set(${target_var} " ")  # i.e. not commented out, a single space
-            else()
-                set(${target_var} ";")  # i.e. commented out
-            endif()
-        endmacro()
-
-        if(EXPAT_DTD OR EXPAT_GE)
-            set(_EXPAT_DTD_OR_GE TRUE)
-        else()
-            set(_EXPAT_DTD_OR_GE FALSE)
-        endif()
-
-        _expat_def_file_toggle(_EXPAT_DTD_OR_GE _EXPAT_COMMENT_DTD_OR_GE)
-        _expat_def_file_toggle(EXPAT_ATTR_INFO _EXPAT_COMMENT_ATTR_INFO)
-
-        configure_file("${CMAKE_CURRENT_SOURCE_DIR}/lib/libexpat.def.cmake" "${CMAKE_CURRENT_BINARY_DIR}/lib/libexpat.def")
-        set(_EXPAT_EXTRA_SOURCES ${_EXPAT_EXTRA_SOURCES} "${CMAKE_CURRENT_BINARY_DIR}/lib/libexpat.def")
-
-        # Add DLL version
-        string(REPLACE "." "," _EXPAT_DLL_VERSION ${PROJECT_VERSION}.0)
-        configure_file("${CMAKE_CURRENT_SOURCE_DIR}/win32/version.rc.cmake" "${CMAKE_CURRENT_BINARY_DIR}/win32/version.rc")
-        set(_EXPAT_EXTRA_SOURCES ${_EXPAT_EXTRA_SOURCES} "${CMAKE_CURRENT_BINARY_DIR}/win32/version.rc")
-    endif()
-else()
-    set(_SHARED STATIC)
-endif()
-
 add_library(expat STATIC ${_EXPAT_C_SOURCES} ${_EXPAT_EXTRA_SOURCES})
 add_library(expat::expat ALIAS expat)
-target_compile_options(expat PRIVATE -fPIC)
+if(NOT CMAKE_SYSTEM_NAME MATCHES Windows)
+    target_compile_options(expat PRIVATE -fPIC)
+endif()
 
 target_include_directories(expat
     INTERFACE
@@ -431,6 +383,10 @@ target_include_directories(expat
 if(SOUI_ENABLE_CORE_LIB)
     set(CORE_LIBS ${CORE_LIBS} expat CACHE INTERNAL "core_lib")
 endif()
+
+set_target_properties (expat PROPERTIES
+    FOLDER third-part
+)
 
 install(TARGETS expat
     CONFIGURATIONS Release

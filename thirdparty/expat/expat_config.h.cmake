@@ -119,4 +119,7 @@
 /* Define to `long' if <sys/types.h> does not define. */
 #cmakedefine off_t @off_t@
 
+/* Define to static linkage if available. */
+#cmakedefine XML_STATIC @XML_STATIC@
+
 #endif // ndef EXPAT_CONFIG_H
