@@ -94,7 +94,7 @@ void WindResResourceParser::ParseResourceDirectory(const uint8_t *dirBase, uint3
     }
 
     const uint8_t *dirAddr = dirBase + dirOffset;
-    
+
     // 检查指针范围
     if (dirAddr < dirBase || dirAddr >= m_baseAddr + m_totalSize)
     {
@@ -214,9 +214,9 @@ BOOL WindResResourceParser::Parse()
     ParseResourceDirectory(resourceBase, 0, std::vector<std::wstring>(), resources);
 
     SLOG_STMI() << "parse done, found " << resources.size() << " resources";
-    #ifdef _DEBUG
+#ifdef _DEBUG
     DumpResources();
-    #endif//_DEBUG
+#endif //_DEBUG
     m_isValid = true;
     return TRUE;
 }
@@ -585,7 +585,7 @@ int WindResResourceParser::LoadStringW(UINT uID, LPWSTR lpBuffer, int cchBufferM
     // 读取目标字符串
     uint16_t len = *reinterpret_cast<const uint16_t *>(data + offset);
     offset += 2;
-    
+
     // 检查显示字符串数据是否是有效
     if (offset + (len * sizeof(uint16_t)) > info.dataSize)
     {

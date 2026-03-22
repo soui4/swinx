@@ -37,7 +37,7 @@
 #include <shellapi.h>
 #ifndef __OBJC__
 #include <resapi.h>
-#endif//__OBJC__
+#endif //__OBJC__
 
 #undef NULL
 #define NULL 0

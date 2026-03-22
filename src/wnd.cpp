@@ -560,7 +560,7 @@ HWND SetCapture(HWND hWnd)
 
 BOOL ReleaseCapture()
 {
-    //SLOG_FMTI("ReleaseCapture hWnd=%d",(int)GetCapture());
+    // SLOG_FMTI("ReleaseCapture hWnd=%d",(int)GetCapture());
     SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->ReleaseCapture();
 }
@@ -1266,7 +1266,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     }
     if (0 == --wndObj->msgRecusiveCount && wndObj->bDestroyed)
     {
-        //SLOG_FMTI("window destroy: %d",(int)hWnd);
+        // SLOG_FMTI("window destroy: %d",(int)hWnd);
         wndObj->mConnection->OnWindowDestroy(hWnd, wndObj.data());
         WndMgr::freeWindow(hWnd);
     }
@@ -2290,7 +2290,7 @@ static void OnNcPaint(HWND hWnd, WPARAM wp, LPARAM lp)
     }
     {
         HDC hdc = GetDCEx(hWnd, hrgn, DCX_WINDOW | DCX_INTERSECTRGN);
-        SendMessageA(hWnd,WM_PRINT,(WPARAM)hdc,PRF_NONCLIENT);
+        SendMessageA(hWnd, WM_PRINT, (WPARAM)hdc, PRF_NONCLIENT);
         ReleaseDC(hWnd, hdc);
     }
     if ((int)wp <= 1)
@@ -2377,9 +2377,9 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
                 if (PtInRect(&rcPart, pt))
                 {
                     SendMessageA(hWnd, bVert ? WM_VSCROLL : WM_HSCROLL, iPart, 0);
-                    RECT rcRail=GetScrollBarPartRect(bVert,sb,SB_RAIL,pRcAll);
-                    InvalidateRect(hWnd,&rcRail,TRUE);
-                }    
+                    RECT rcRail = GetScrollBarPartRect(bVert, sb, SB_RAIL, pRcAll);
+                    InvalidateRect(hWnd, &rcRail, TRUE);
+                }
             }
         }
         else if (msg.hwnd == hWnd && msg.message == WM_MOUSEMOVE)
@@ -2451,7 +2451,8 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
     return 0;
 }
 
-static LRESULT handlePrintClient(HWND hWnd, WPARAM wp,LPARAM lp){
+static LRESULT handlePrintClient(HWND hWnd, WPARAM wp, LPARAM lp)
+{
     if (lp & PRF_CHECKVISIBLE && !IsWindowVisible(hWnd))
         return 0;
     HDC hdc = (HDC)wp;
@@ -2459,7 +2460,7 @@ static LRESULT handlePrintClient(HWND hWnd, WPARAM wp,LPARAM lp){
     {
         WndObj wndObj = WndMgr::fromHwnd(hWnd);
         RECT rcClient;
-        GetClientRect(hWnd,&rcClient);
+        GetClientRect(hWnd, &rcClient);
         DrawTextA(hdc, wndObj->title.c_str(), wndObj->title.length(), &rcClient, DT_SINGLELINE | DT_VCENTER | DT_CENTER);
     }
     return 1;
@@ -2475,7 +2476,7 @@ static LRESULT handlePrint(HWND hWnd, WPARAM wp, LPARAM lp)
 
     if (lp & PRF_CLIENT)
     {
-        SendMessageA(hWnd,WM_PRINTCLIENT,wp,PRF_CLIENT);
+        SendMessageA(hWnd, WM_PRINTCLIENT, wp, PRF_CLIENT);
     }
     if (lp & PRF_NONCLIENT)
     {
@@ -2483,12 +2484,12 @@ static LRESULT handlePrint(HWND hWnd, WPARAM wp, LPARAM lp)
         int cyEdge = GetSystemMetrics(SM_CYBORDER);
 
         RECT rcWnd;
-        GetWindowRect(hWnd,&rcWnd);
+        GetWindowRect(hWnd, &rcWnd);
         BuiltinImage *imgs = BuiltinImage::instance();
         {
-            //draw scrollbar
-            HRGN hrgn=CreateRectRgn(0,0,0,0);
-            GetClipRgn(hdc,hrgn);
+            // draw scrollbar
+            HRGN hrgn = CreateRectRgn(0, 0, 0, 0);
+            GetClipRgn(hdc, hrgn);
             RECT rcSb;
             if (GetScrollBarRect(hWnd, SB_VERT, &rcSb) && RectInRegion(hrgn, &rcSb))
             {
@@ -2570,7 +2571,7 @@ static LRESULT handlePrint(HWND hWnd, WPARAM wp, LPARAM lp)
         }
         if (wndObj->dwStyle & WS_BORDER)
         {
-            //draw border
+            // draw border
             int nSave = SaveDC(hdc);
             RECT rcNoBorder = rcWnd;
             InflateRect(&rcNoBorder, -cxEdge, -cyEdge);
@@ -2877,12 +2878,12 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hWnd, &ps);
-        handlePrintClient(hWnd,(WPARAM)hdc,PRF_CLIENT);
+        handlePrintClient(hWnd, (WPARAM)hdc, PRF_CLIENT);
         EndPaint(hWnd, &ps);
     }
     break;
     case WM_PRINTCLIENT:
-        return handlePrintClient(hWnd,wp,lp);
+        return handlePrintClient(hWnd, wp, lp);
     case WM_ERASEBKGND:
     {
         WNDCLASSEXA info = { 0 };
@@ -3023,21 +3024,22 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         }
         return 0;
     case WM_RBUTTONUP:
-        {
-            POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
-            ClientToScreen(hWnd, &pt);
-            LPARAM lp2 = MAKELPARAM(pt.x, pt.y);
-            SendMessageA(hWnd, WM_CONTEXTMENU, 0, lp2);
-        }
-        break;
+    {
+        POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
+        ClientToScreen(hWnd, &pt);
+        LPARAM lp2 = MAKELPARAM(pt.x, pt.y);
+        SendMessageA(hWnd, WM_CONTEXTMENU, 0, lp2);
+    }
+    break;
     case WM_CONTEXTMENU:
-        { 
-            HWND hParent = GetParent(hWnd);
-            if (hParent){
-                SendMessageA(hParent, WM_CONTEXTMENU, (WPARAM)hWnd, lp);
-            }
+    {
+        HWND hParent = GetParent(hWnd);
+        if (hParent)
+        {
+            SendMessageA(hParent, WM_CONTEXTMENU, (WPARAM)hWnd, lp);
         }
-        break;
+    }
+    break;
     }
     return 0;
 }

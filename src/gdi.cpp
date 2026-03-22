@@ -445,7 +445,7 @@ static void ApplyRop2(cairo_t *cr, int rop2)
 
 static bool IsNullBrush(HBRUSH hbr)
 {
-    if(IS_INTRESOURCE(hbr))
+    if (IS_INTRESOURCE(hbr))
         return false;
     LOGBRUSH *br = (LOGBRUSH *)GetGdiObjPtr(hbr);
     return br->lbStyle == BS_NULL;
@@ -453,7 +453,7 @@ static bool IsNullBrush(HBRUSH hbr)
 
 static bool IsPatternBrush(HBRUSH hbr)
 {
-    if(IS_INTRESOURCE(hbr))
+    if (IS_INTRESOURCE(hbr))
         return false;
     LOGBRUSH *br = (LOGBRUSH *)GetGdiObjPtr(hbr);
     return br->lbStyle == BS_PATTERN;
@@ -461,11 +461,12 @@ static bool IsPatternBrush(HBRUSH hbr)
 
 static bool ApplyBrush(cairo_t *ctx, HBRUSH hbr, double wid, double hei)
 {
-    if(hbr == 0)
+    if (hbr == 0)
         return false;
-    if(IS_INTRESOURCE(hbr)){
-        hbr = GetSysColorBrush((int)(UINT_PTR)hbr-1);
-        if(!hbr)
+    if (IS_INTRESOURCE(hbr))
+    {
+        hbr = GetSysColorBrush((int)(UINT_PTR)hbr - 1);
+        if (!hbr)
             return false;
     }
     if (hbr->type != OBJ_BRUSH)
@@ -2533,7 +2534,7 @@ class SysColorBrush {
 HBRUSH GetSysColorBrush(int i)
 {
     static SysColorBrush sysColorBrs;
-    if(i<0 || i> COLOR_MENUBAR)
+    if (i < 0 || i > COLOR_MENUBAR)
         return nullptr;
     return sysColorBrs.hSysColorBr[i];
 }

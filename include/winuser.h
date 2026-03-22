@@ -2176,9 +2176,9 @@ extern "C"
 /*
  * The "real" ancestor window
  */
-#define GA_PARENT    1      // GetParent
-#define GA_ROOT      2      // GetAncestor (top level window)
-#define GA_ROOTOWNER 3      // root owner window (top level window) 
+#define GA_PARENT    1 // GetParent
+#define GA_ROOT      2 // GetAncestor (top level window)
+#define GA_ROOTOWNER 3 // root owner window (top level window)
 
 #ifdef __cplusplus
 }
