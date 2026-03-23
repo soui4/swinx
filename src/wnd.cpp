@@ -1259,7 +1259,21 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         // auto destroy all popup that owned by this
         EnumWindows(Enum4DestroyOwned, hWnd);
         // auto destory all children
-        EnumChildWindows(hWnd, Enum4DestroyChildren, (LPARAM)wndObj->mConnection);
+        HWND hChild = GetWindow(hWnd, GW_CHILDLAST);
+        while (hChild)
+        {
+            WndObj child = WndMgr::fromHwnd(hChild);
+            if (child)
+            {
+                DestroyWindow(hChild);
+            }
+            else
+            {
+                // other process window, set it's parent to screen root
+                wndObj->mConnection->SetParent(hChild, nullptr, 0);
+            }
+            hChild = GetWindow(hWnd, GW_CHILDLAST);
+        }
         // destroy self
         CallWindowObjProc(wndObj, proc, hWnd, WM_NCDESTROY, 0, 0);
         wndObj->bDestroyed = TRUE;
