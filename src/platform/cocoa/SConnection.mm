@@ -1736,12 +1736,7 @@ void SConnection::onTerminate() {
 }
 
 void SConnection::OnNsEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-    Msg *pMsg = new Msg;
-    pMsg->hwnd = hWnd;
-    pMsg->message = message;
-    pMsg->wParam = wParam;
-    pMsg->lParam = lParam;
-    postMsg(pMsg);
+    SendMessageA(hWnd,message,wParam,lParam);
 }
 
 void SConnection::OnNsActive(HWND hWnd, BOOL bActive) {
