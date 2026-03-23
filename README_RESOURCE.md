@@ -1,4 +1,4 @@
-# Windows Resource API for Linux (swinx)
+# Windows Resource API for Linux and macos (swinx)
 
 This module provides Windows resource management API compatibility for Linux/Unix platforms using MinGW's `windres` tool to compile `.rc` resource files.
 
@@ -40,13 +40,10 @@ Install MinGW resource compiler:
 
 ```bash
 # Ubuntu/Debian
-sudo apt-get install mingw-w64-tools
+sudo apt-get install mingw-w64
 
-# Fedora/RHEL
-sudo dnf install mingw32-binutils mingw64-binutils
-
-# Arch Linux
-sudo pacman -S mingw-w64-binutils
+# macOS
+brew install mingw-w64
 ```
 
 ## Usage
