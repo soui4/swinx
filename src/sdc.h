@@ -3,7 +3,10 @@
 #include <windows.h>
 #include <region.h>
 #include <cairo.h>
+#include <vector>
+#include <memory>
 
+struct DCState;
 typedef struct _SDC
 {
     HWND hwnd;
@@ -27,9 +30,12 @@ typedef struct _SDC
     BOOL pathRecording;     // TRUE if path recording is active
     cairo_path_t *currentPath;  // Current path being recorded
 
-    _SDC(HWND _hwnd);
+    // State stack for SaveDC/RestoreDC
+    std::vector<std::shared_ptr<DCState>> stateStack;
 
+    _SDC(HWND _hwnd);
     ~_SDC();
+    
     int SaveState();
     BOOL RestoreState(int nState);
 } * HDC;

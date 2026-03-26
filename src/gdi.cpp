@@ -3320,6 +3320,30 @@ BOOL SetWorldTransform(HDC hdc, const XFORM *lpxf)
     return TRUE;
 }
 
+BOOL ModifyWorldTransform(HDC hdc,              // handle to device context
+                          const XFORM *lpXform, // transformation data
+                          DWORD iMode           // modification mode
+){
+    cairo_matrix_t mtx;
+    convert_xform_to_cairo_matrix(lpXform, mtx); // 传递指针
+    switch (iMode)
+    {
+    case MWT_IDENTITY:
+        cairo_matrix_init_identity(&hdc->mtx);
+        break;
+    case MWT_LEFTMULTIPLY:
+        cairo_matrix_multiply(&hdc->mtx, &mtx, &hdc->mtx);
+        break;
+    case MWT_RIGHTMULTIPLY:
+        cairo_matrix_multiply(&hdc->mtx, &hdc->mtx, &mtx);
+        break;
+    default:
+        return FALSE;
+    }
+    update_transform(hdc);
+    return TRUE;
+}
+
 int SetROP2(HDC hdc, int rop2)
 {
     int ret = hdc->rop2;
@@ -4349,6 +4373,54 @@ int GetPath(HDC hdc, LPPOINT lpPoints, LPBYTE lpTypes, int nSize)
     }
 
     return pointIndex;
+}
+
+BOOL PolyDraw(HDC hdc, LPPOINT lppt, LPBYTE lpbTypes, int cpt)
+{
+    if (!hdc || !lppt || !lpbTypes || cpt <= 0)
+        return FALSE;
+
+    for (int i = 0; i < cpt; i++)
+    {
+        BYTE type = lpbTypes[i];
+        POINT pt = lppt[i];
+
+        if (type & PT_MOVETO)
+        {
+            cairo_move_to(hdc->cairo, pt.x, pt.y);
+        }
+        else if (type & PT_LINETO)
+        {
+            cairo_line_to(hdc->cairo, pt.x, pt.y);
+        }
+        else if (type & PT_BEZIERTO)
+        {
+            // For Bezier curves, we need 3 control points
+            if (i + 2 < cpt && 
+                (lpbTypes[i+1] & PT_BEZIERTO) && 
+                (lpbTypes[i+2] & PT_BEZIERTO))
+            {
+                POINT pt1 = lppt[i+1];
+                POINT pt2 = lppt[i+2];
+                cairo_curve_to(hdc->cairo, pt.x, pt.y, pt1.x, pt1.y, pt2.x, pt2.y);
+                i += 2; // Skip next two points as they are control points
+            }
+        }
+
+        // Check for close figure
+        if (type & PT_CLOSEFIGURE)
+        {
+            cairo_close_path(hdc->cairo);
+        }
+    }
+
+    // Stroke the path if a pen is selected
+    if (ApplyPen(hdc->cairo,hdc->pen))
+    {
+        cairo_stroke(hdc->cairo);
+    }
+
+    return TRUE;
 }
 
 BOOL SetMiterLimit(HDC hdc, FLOAT eNewLimit, PFLOAT peOldLimit)

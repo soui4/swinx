@@ -1,4 +1,4 @@
-﻿#ifndef _LINUX_GDI_H_
+#ifndef _LINUX_GDI_H_
 #define _LINUX_GDI_H_
 #include <ctypes.h>
 #include <winuser.h>
@@ -642,6 +642,7 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     BOOL WINAPI RoundRect(HDC hdc, int left, int top, int right, int bottom, int width, int height);
 
     BOOL WINAPI Polyline(HDC hdc, CONST POINT *apt, int cpt);
+    BOOL WINAPI PolyDraw(HDC hdc, LPPOINT lppt, LPBYTE lpbTypes, int cpt);
 
     BOOL WINAPI PolyBezier(HDC hdc, const POINT *apt, DWORD cpt);
 
@@ -743,6 +744,18 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     BOOL WINAPI GetWorldTransform(HDC hdc, LPXFORM lpxf);
     BOOL WINAPI SetWorldTransform(HDC hdc, CONST XFORM *lpxf);
+    /* xform stuff */
+    #define MWT_IDENTITY        1
+    #define MWT_LEFTMULTIPLY    2
+    #define MWT_RIGHTMULTIPLY   3
+
+    #define MWT_MIN             MWT_IDENTITY
+    #define MWT_MAX             MWT_RIGHTMULTIPLY
+
+    BOOL WINAPI ModifyWorldTransform(HDC hdc,              // handle to device context
+                                     CONST XFORM *lpXform, // transformation data
+                                     DWORD iMode           // modification mode
+    );
 
     enum
     {
