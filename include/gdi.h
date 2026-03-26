@@ -1,4 +1,4 @@
-#ifndef _LINUX_GDI_H_
+﻿#ifndef _LINUX_GDI_H_
 #define _LINUX_GDI_H_
 #include <ctypes.h>
 #include <winuser.h>
@@ -436,8 +436,8 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     typedef enum tagGRADIENTTYPE
     {
-        grad_linear = 0, /*<���Խ���*/
-        grad_radial,     /*<���佥��*/
+        grad_linear = 0, /*<linear gradient*/
+        grad_radial,     /*<radial gradient*/
     } GRADIENTTYPE;
 
     typedef struct tagGRADIENTINFO
