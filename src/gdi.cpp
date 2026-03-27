@@ -72,10 +72,13 @@ struct PatternInfo
     cairo_pattern_t *pattern;
 
     double width, height;
+    double x, y;
     PatternInfo()
         : pattern(nullptr)
         , width(0)
         , height(0)
+        , x(0)
+        , y(0)
     {
     }
 
@@ -163,11 +166,11 @@ struct PatternInfo
         }
     }
 
-    cairo_pattern_t *create(double wid, double hei)
+    cairo_pattern_t *create(double wid, double hei, double x, double y)
     {
         if (pattern)
         {
-            if (wid == this->width && hei == this->height)
+            if (wid == this->width && hei == this->height && x == this->x && y== this->y)
                 return pattern;
             cairo_pattern_destroy(pattern);
             pattern = nullptr;
@@ -176,6 +179,10 @@ struct PatternInfo
         if (useBmp)
         {
             ret = cairo_pattern_create_for_surface((cairo_surface_t *)GetGdiObjPtr(data.bmp));
+            // Set pattern matrix to adjust position
+            cairo_matrix_t matrix;
+            cairo_matrix_init_translate(&matrix, x, y);
+            cairo_pattern_set_matrix(ret, &matrix);
         }
         else
         {
@@ -186,13 +193,18 @@ struct PatternInfo
             {
                 fPoint endPts[2];
                 calc_linear_endpoint(data.gradientDetail->info.angle, wid, hei, endPts);
+                // Add offset to gradient points
+                endPts[0].fX += x;
+                endPts[0].fY += y;
+                endPts[1].fX += x;
+                endPts[1].fY += y;
                 ret = cairo_pattern_create_linear(endPts[0].fX, endPts[0].fY, endPts[1].fX, endPts[1].fY);
             }
             break;
             case grad_radial:
             {
-                float centerX = wid * data.gradientDetail->info.radial.centerX;
-                float centerY = hei * data.gradientDetail->info.radial.centerY;
+                float centerX = wid * data.gradientDetail->info.radial.centerX + x;
+                float centerY = hei * data.gradientDetail->info.radial.centerY + y;
                 ret = cairo_pattern_create_radial(centerX, centerY, 0, centerX, centerY, data.gradientDetail->info.radial.radius);
             }
             break;
@@ -225,6 +237,8 @@ struct PatternInfo
         pattern = ret;
         this->width = wid;
         this->height = hei;
+        this->x = x;
+        this->y = y;
         return ret;
     }
 };
@@ -459,7 +473,7 @@ static bool IsPatternBrush(HBRUSH hbr)
     return br->lbStyle == BS_PATTERN;
 }
 
-static bool ApplyBrush(cairo_t *ctx, HBRUSH hbr, double wid, double hei)
+static bool ApplyBrush(cairo_t *ctx, HBRUSH hbr, double wid, double hei, double x, double y)
 {
     if (hbr == 0)
         return false;
@@ -486,7 +500,7 @@ static bool ApplyBrush(cairo_t *ctx, HBRUSH hbr, double wid, double hei)
     case BS_PATTERN:
     {
         PatternInfo *info = (PatternInfo *)br->lbHatch;
-        cairo_pattern_t *pattern = info->create(wid, hei);
+        cairo_pattern_t *pattern = info->create(wid, hei, x, y);
         cairo_set_source(ctx, pattern);
 #ifdef MOCOS_PATTERN_TEST
         // todo: quartz surface on macos has device scale, I'not sure how to set it.
@@ -1242,8 +1256,9 @@ BOOL FillRgn(HDC hdc, HRGN hrgn, HBRUSH hbr)
     GetRgnBox(hrgn, &rc);
     cairo_translate(ctx, rc.left, rc.top);
     double wid = rc.right - rc.left, hei = rc.bottom - rc.top;
-    if (ApplyBrush(ctx, hbr, wid, hei))
+    if (ApplyBrush(ctx, hbr, wid, hei, 0, 0))
     {
+        ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_rectangle(ctx, 0, 0, wid, hei);
         cairo_fill(ctx);
         ret = TRUE;
@@ -1702,7 +1717,7 @@ BOOL PatBlt(_In_ HDC hdc, _In_ int x, _In_ int y, _In_ int w, _In_ int h, _In_ D
     BOOL ret = FALSE;
     cairo_t *cr = hdc->cairo;
     cairo_save(cr);
-    if (ApplyBrush(cr, hdc->brush, w, h))
+    if (ApplyBrush(cr, hdc->brush, w, h, x, y))
     {
         switch (rop)
         {
@@ -2667,7 +2682,7 @@ BOOL Rectangle(HDC hdc, int left, int top, int right, int bottom)
     cairo_save(ctx);
     cairo_translate(ctx, left, top);
     double wid = right - left, hei = bottom - top;
-    if (ApplyBrush(hdc->cairo, hdc->brush, wid, hei))
+    if (ApplyBrush(hdc->cairo, hdc->brush, wid, hei, 0, 0))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_rectangle(ctx, 0, 0, wid, hei);
@@ -2737,7 +2752,7 @@ BOOL RoundRect(HDC hdc, int left, int top, int right, int bottom, int width, int
     // Otherwise, draw rounded rectangle immediately
     cairo_save(ctx);
     cairo_translate(ctx, left, top);
-    if (ApplyBrush(ctx, hdc->brush, wid, hei))
+    if (ApplyBrush(ctx, hdc->brush, wid, hei, 0, 0))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
         drawRoundRect(ctx, 0, 0, wid, hei, width / 2, height / 2);
@@ -2908,8 +2923,9 @@ int FillRect(HDC hdc, const RECT *lprc, HBRUSH hbr)
     cairo_save(hdc->cairo);
     cairo_translate(hdc->cairo, lprc->left, lprc->top);
     double wid = lprc->right - lprc->left, hei = lprc->bottom - lprc->top;
-    if (ApplyBrush(hdc->cairo, hbr, wid, hei))
+    if (ApplyBrush(hdc->cairo, hbr, wid, hei, 0, 0))
     {
+        ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_rectangle(hdc->cairo, 0, 0, wid, hei);
         cairo_fill(hdc->cairo);
         ret = 1;
@@ -3018,34 +3034,26 @@ BOOL Ellipse(HDC hdc, int left, int top, int right, int bottom)
         return TRUE;
     }
 
+    cairo_save(ctx);
+    cairo_translate(ctx, x, y);
     // Otherwise, draw ellipse immediately
-    if (ApplyBrush(ctx, hdc->brush, wid, hei))
+    if (ApplyBrush(ctx, hdc->brush, wid, hei, 0, 0))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_save(ctx);
-        cairo_translate(ctx, x, y);
         cairo_scale(ctx, scale_x, scale_y);
         cairo_move_to(ctx, 1, 0);
         cairo_arc(ctx, 0, 0, 1, 0, 2 * M_PI);
-        cairo_restore(ctx);
-        cairo_save(ctx);
-        cairo_translate(ctx, left, top);
         cairo_fill(ctx);
-        cairo_restore(ctx);
     }
     if (ApplyPen(ctx, hdc->pen))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_save(ctx);
-        cairo_translate(ctx, x, y);
         cairo_scale(ctx, scale_x, scale_y);
         cairo_move_to(ctx, 1, 0);
         cairo_arc(ctx, 0, 0, 1, 0, 2 * M_PI);
-        cairo_restore(ctx);
-        cairo_save(ctx);
         cairo_stroke(ctx);
-        cairo_restore(ctx);
     }
+    cairo_restore(ctx);
 
     return TRUE;
 }
@@ -3087,23 +3095,19 @@ BOOL Pie(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4
     }
 
     // Otherwise, draw pie immediately
-    if (!IsNullBrush(hdc->brush))
+    cairo_save(ctx);
+    cairo_translate(ctx, x1, y1);
+    if (ApplyBrush(ctx, hdc->brush,wid, hei, 0, 0))
     {
-        cairo_save(ctx);
-        cairo_translate(ctx, x1, y1);
-        ApplyBrush(ctx, hdc->brush, wid, hei);
         ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_fill_preserve(ctx); // Preserve path for stroke
-        cairo_restore(ctx);
     }
-    if (!IsNullPen(hdc->pen))
+    if (ApplyPen(ctx,hdc->pen))
     {
-        cairo_save(ctx);
-        ApplyPen(ctx, hdc->pen);
         ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_stroke(ctx);
-        cairo_restore(ctx);
     }
+    cairo_restore(ctx);
     return TRUE;
 }
 
@@ -3188,24 +3192,20 @@ BOOL Chord(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int 
         return TRUE;
     }
 
+    cairo_save(ctx);
+    cairo_translate(ctx, x1, y1);
     // Otherwise, draw chord immediately
-    if (!IsNullBrush(hdc->brush))
+    if (ApplyBrush(ctx, hdc->brush, wid, hei, 0, 0))
     {
-        cairo_save(ctx);
-        cairo_translate(ctx, x1, y1);
-        ApplyBrush(ctx, hdc->brush, wid, hei);
         ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_fill_preserve(ctx); // Preserve path for stroke
-        cairo_restore(ctx);
     }
-    if (!IsNullPen(hdc->pen))
+    if (ApplyPen(ctx, hdc->pen))
     {
-        cairo_save(ctx);
-        ApplyPen(ctx, hdc->pen);
         ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_stroke(ctx);
-        cairo_restore(ctx);
     }
+    cairo_restore(ctx);
     return TRUE;
 }
 
@@ -3679,7 +3679,7 @@ BOOL Polygon_Priv(HDC hdc, const POINT *apt, int cpt)
     {
         cairo_save(ctx);
 
-        if (ApplyBrush(ctx, hdc->brush, 0, 0))
+        if (ApplyBrush(ctx, hdc->brush, 0, 0, 0, 0))
         {
             cairo_fill_rule_t mode = hdc->polyFillMode == ALTERNATE ? CAIRO_FILL_RULE_EVEN_ODD : CAIRO_FILL_RULE_WINDING;
             cairo_set_fill_rule(ctx, mode);
@@ -4155,7 +4155,7 @@ BOOL FillPath(HDC hdc)
     double height = y2 - y1;
 
     // Apply brush settings and fill
-    if (ApplyBrush(hdc->cairo, hdc->brush, width, height))
+    if (ApplyBrush(hdc->cairo, hdc->brush, width, height, x1, y1))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_fill(hdc->cairo);
@@ -4188,7 +4188,7 @@ BOOL StrokeAndFillPath(HDC hdc)
     double height = y2 - y1;
 
     // Fill first
-    if (ApplyBrush(hdc->cairo, hdc->brush, width, height))
+    if (ApplyBrush(hdc->cairo, hdc->brush, width, height, x1, y1))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_fill_preserve(hdc->cairo); // Preserve path for stroke
