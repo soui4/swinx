@@ -677,6 +677,9 @@ HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
         {
             strcpy(szPath, lpFileName);
         }
+        ret = s_dllLoader.LoadDll(szPath, RTLD_NOW);
+        if(ret)
+            return ret;
         if (strchr(szPath, '/') == NULL && strncmp(szPath, "lib", 3) != 0)
         {
             // add lib prefix to szPath;
