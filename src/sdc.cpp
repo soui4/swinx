@@ -3,20 +3,23 @@
 #include "log.h"
 #define kLogTag "sdc"
 
-//todo:hjx, disable gdi object state tracking now. it will cause crash.
+//todo:hjx, SDC don't add reference for gdi objects for now. 
 struct DCState
 {
-    DCState()//:pen(0),brush(0),hfont(0)
+    DCState(HPEN _hpen,HBRUSH _hbr, HFONT _hfont)
     {
+        pen = RefGdiObj(_hpen);
+        brush = RefGdiObj(_hbr);
+        hfont = RefGdiObj(_hfont);
     }
     ~DCState(){
-        //if(pen) DeleteObject(pen);
-        //if(brush) DeleteObject(brush);
-        //if(hfont) DeleteObject(brush);
+        if(pen) DeleteObject(pen);
+        if(brush) DeleteObject(brush);
+        if(hfont) DeleteObject(hfont);
     }
-    // HPEN pen;
-    // HBRUSH brush;
-    // HFONT hfont;
+    HPEN pen;
+    HBRUSH brush;
+    HFONT hfont;
     cairo_matrix_t mtx;
     POINT ptOrigin;
     COLORREF crText;
@@ -64,10 +67,7 @@ int _SDC::SaveState()
     if (!cairo)
         return 0;
     
-    auto state = std::make_shared<DCState>();
-    //state->pen = RefGdiObj(pen);
-    //state->brush = RefGdiObj(brush);
-    //state->hfont = RefGdiObj(hfont);
+    auto state = std::make_shared<DCState>(pen, brush, hfont);
     state->ptOrigin = ptOrigin;
     state->mtx = mtx;
     state->crText = crText;
@@ -85,18 +85,9 @@ int _SDC::SaveState()
 static void _RestoreState(_SDC *dc, const std::shared_ptr<DCState> &state){
     dc->crText = state->crText;
     dc->crBk = state->crBk;
-    // if(dc->pen){
-    //     DeleteObject(dc->pen);
-    // }
-    // dc->pen = RefGdiObj(state->pen);
-    // if(dc->brush){
-    //     DeleteObject(dc->brush);
-    // }
-    // dc->brush = RefGdiObj(state->brush);
-    // if(dc->hfont){
-    //     DeleteObject(dc->hfont);
-    // }
-    // dc->hfont = RefGdiObj(state->hfont);
+    dc->pen = state->pen;
+    dc->brush = state->brush;
+    dc->hfont = state->hfont;
     dc->bkMode = state->bkMode;
     dc->textAlign = state->textAlign;
     dc->rop2 = state->rop2;
