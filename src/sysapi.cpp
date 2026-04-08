@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -209,7 +209,7 @@ RISCOS-LATIN1
 #define ICONV_WINDOWS_1257 "WINDOWS-1257"
 #define ICONV_WINDOWS_1258 "WINDOWS-1258"
 
-const char *Cp2IConvCode(int codePage)
+static const char *Cp2IConvCode(int codePage)
 {
     switch (codePage)
     {
@@ -242,7 +242,7 @@ const char *Cp2IConvCode(int codePage)
     }
 }
 
-int to_mb(const wchar_t *input, size_t input_len, int codePage, std::string &out)
+static int to_mb(const wchar_t *input, size_t input_len, int codePage, std::string &out)
 {
     const char *toCode = Cp2IConvCode(codePage);
     if (!toCode)
@@ -279,7 +279,7 @@ int to_mb(const wchar_t *input, size_t input_len, int codePage, std::string &out
     return out.length();
 }
 
-int to_unicode(const char *input, size_t input_len, int codePage, std::wstring &out)
+int to_unicode(const char *input, size_t input_len, int codePage, std::wstring &out, int &unConvertedChars)
 {
     const char *fromCode = Cp2IConvCode(codePage);
     if (!fromCode)
@@ -312,7 +312,7 @@ int to_unicode(const char *input, size_t input_len, int codePage, std::wstring &
     {
         out.clear();
     }
-
+    unConvertedChars = inbytesleft;
     iconv_close(cd);
     return out.length();
 }
@@ -362,7 +362,14 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
     if (cp != CP_ACP && cp != CP_UTF8)
     {
         std::wstring str;
-        int ret = to_unicode(src, len, cp, str); // using iconv to support 936
+        int unConvertedChars = 0;
+        int ret = to_unicode(src, len, cp, str, unConvertedChars); // using iconv to support 936
+        if(unConvertedChars){
+            if(flags & MB_ERR_INVALID_CHARS)
+                return 0;
+            else
+                SetLastError(ERROR_NO_UNICODE_TRANSLATION);
+        }
         if (!dst)
             return str.length();
         else if (dstLen < ret)
@@ -382,7 +389,14 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
 #if (WCHAR_SIZE == 2)
     assert(sizeof(wchar_t) == 2);
     // handle for utf16
-    int bufRequire = UTF16Length(src, len);
+    size_t unconvertedCharacters=0;
+    int bufRequire = UTF16Length(src, len, unconvertedCharacters);
+    if(unconvertedCharacters){
+        if(flags & MB_ERR_INVALID_CHARS)
+            return 0;
+        else
+            SetLastError(ERROR_NO_UNICODE_TRANSLATION);
+    }
     if (!dst)
     {
         return bufRequire;
@@ -400,7 +414,14 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
 #else
     assert(sizeof(wchar_t) == 4);
     // handle for utf32
-    int bufRequire = UTF32Length(src, len);
+    size_t unconvertedCharacters=0;
+    int bufRequire = UTF32Length(src, len,unconvertedCharacters);
+    if(unconvertedCharacters){
+        if(flags & MB_ERR_INVALID_CHARS)
+            return 0;
+        else
+            SetLastError(ERROR_NO_UNICODE_TRANSLATION);
+    }
     if (!dst)
     {
         return bufRequire;

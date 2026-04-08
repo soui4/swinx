@@ -3,7 +3,7 @@
 #include "log.h"
 #define kLogTag "coffparser"
 
-int to_unicode(const char *input, size_t input_len, int codePage, std::wstring &out);
+int to_unicode(const char *input, size_t input_len, int codePage, std::wstring &out, int &unConvertedChars);
 
 static void strtoup(std::wstring &str)
 {
@@ -45,7 +45,8 @@ std::wstring WindResResourceParser::ParseUnicodeString(const uint8_t *data) cons
     const IMAGE_RESOURCE_DIR_STRING_U *str = reinterpret_cast<const IMAGE_RESOURCE_DIR_STRING_U *>(data);
 
     std::wstring result;
-    to_unicode(reinterpret_cast<const char *>(str->NameString), str->Length * sizeof(uint16_t), CP_UTF16_LE, result);
+    int unConvertedChars = 0;
+    to_unicode(reinterpret_cast<const char *>(str->NameString), str->Length * sizeof(uint16_t), CP_UTF16_LE, result, unConvertedChars);
     return result;
 }
 
@@ -595,7 +596,8 @@ int WindResResourceParser::LoadStringW(UINT uID, LPWSTR lpBuffer, int cchBufferM
     }
 
     std::wstring stringData;
-    to_unicode(reinterpret_cast<const char *>(data + offset), len * sizeof(uint16_t), CP_UTF16_LE, stringData);
+    int unConvertedChars = 0;
+    to_unicode(reinterpret_cast<const char *>(data + offset), len * sizeof(uint16_t), CP_UTF16_LE, stringData, unConvertedChars);
     int copyLen = stringData.length();
     if (cchBufferMax > 0)
     {

@@ -21,7 +21,7 @@ namespace swinx {
 
 	size_t UTF16toUTF8Length(const uint16_t* uptr, unsigned int tlen);
 	size_t UTF8FromUTF16(const uint16_t* uptr, unsigned int tlen, char* putf, unsigned int len);
-	size_t UTF16Length(const char* s, size_t len);
+	size_t UTF16Length(const char* s, size_t len, size_t &unconvertedCharacters);
 	size_t UTF16FromUTF8(const char* s, size_t len, uint16_t* tbuf, size_t tlen);
 
 	size_t UTF32FromUTF8(const char *s, unsigned int len, uint32_t *tbuf, unsigned int tlen);
@@ -29,7 +29,7 @@ namespace swinx {
 		return 1;
 	}
 	size_t UTF8FromUTF32(const uint32_t *uptr, unsigned int tlen, char *putf, unsigned int len);
-	size_t UTF32Length(const char* s, size_t len) ;
+	size_t UTF32Length(const char* s, size_t len,size_t &unconvertedCharacters) ;
 	size_t UTF32toUTF8Length(const uint32_t* uptr, unsigned int tlen);
 
 	inline size_t WideCharLength(wchar_t ch) {
