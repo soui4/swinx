@@ -4214,31 +4214,15 @@ HRGN PathToRegion(HDC hdc)
 {
     if (!hdc || !hdc->cairo || !hdc->currentPath)
         return nullptr;
-
     cairo_save(hdc->cairo);
-
-    // Create a temporary surface to render the path
-    cairo_surface_t *temp_surface = cairo_image_surface_create(CAIRO_FORMAT_A8, 1, 1);
-    cairo_t *temp_cr = cairo_create(temp_surface);
-
-    // Copy path to temporary context
-    cairo_new_path(temp_cr);
-    cairo_append_path(temp_cr, hdc->currentPath);
-
-    // Get path extents
-    double x1, y1, x2, y2;
-    cairo_path_extents(temp_cr, &x1, &y1, &x2, &y2);
-
-    cairo_destroy(temp_cr);
-    cairo_surface_destroy(temp_surface);
-
+    cairo_append_path(hdc->cairo, hdc->currentPath);
+    cairo_clip(hdc->cairo);
+    HRGN hrgn = CreateRectRgn(0, 0, 0, 0);
+    GetClipRgn(hdc, hrgn);
     cairo_restore(hdc->cairo);
-
-    // Create a region from the path bounds
-    // Note: This is a simplified implementation. A full implementation would
-    // need to convert the actual path geometry to region rectangles.
-    RECT rc = { (LONG)x1, (LONG)y1, (LONG)x2, (LONG)y2 };
-    return CreateRectRgnIndirect(&rc);
+    cairo_path_destroy(hdc->currentPath);
+    hdc->currentPath = nullptr;
+    return hrgn;
 }
 
 BOOL SelectClipPath(HDC hdc, int mode)
@@ -4246,49 +4230,82 @@ BOOL SelectClipPath(HDC hdc, int mode)
     if (!hdc || !hdc->cairo || !hdc->currentPath)
         return FALSE;
 
-    cairo_save(hdc->cairo);
+    // Save the current path to work with it
+    cairo_path_t *saved_path = hdc->currentPath;
+    hdc->currentPath = nullptr;
 
     switch (mode)
     {
     case RGN_AND:
         // Intersect with current clip
-        cairo_append_path(hdc->cairo, hdc->currentPath);
+        cairo_append_path(hdc->cairo, saved_path);
         cairo_clip(hdc->cairo);
         break;
 
     case RGN_OR:
-        // Union with current clip - not directly supported by cairo
-        // This is a simplified implementation
-        cairo_reset_clip(hdc->cairo);
-        cairo_append_path(hdc->cairo, hdc->currentPath);
-        cairo_clip(hdc->cairo);
-        break;
-
+        {
+            // Union: new clip = current clip union new path
+            // Use cairo rectangle list approach for better performance
+            cairo_rectangle_list_t *clip_rects = cairo_copy_clip_rectangle_list(hdc->cairo);
+            cairo_reset_clip(hdc->cairo);
+            
+            // Add current clip rectangles to path
+            cairo_rectangle_t *prect = clip_rects->rectangles;
+            for (int i = 0; i < clip_rects->num_rectangles; i++, prect++)
+            {
+                cairo_rectangle(hdc->cairo, prect->x, prect->y, prect->width, prect->height);
+            }
+            cairo_rectangle_list_destroy(clip_rects);
+            // Add the new path
+            cairo_append_path(hdc->cairo, saved_path);
+            
+            // Apply combined clip (winding fill rule includes all sub-paths)
+            cairo_clip(hdc->cairo);
+            break;
+        }
     case RGN_XOR:
-        // XOR with current clip - not directly supported by cairo
-        // This is a simplified implementation
-        cairo_reset_clip(hdc->cairo);
-        cairo_append_path(hdc->cairo, hdc->currentPath);
-        cairo_clip(hdc->cairo);
-        break;
+        {
+            HRGN hrgn1 = CreateRectRgn(0,0,0,0);
+            GetClipRgn(hdc, hrgn1);
+            cairo_reset_clip(hdc->cairo);
+            cairo_append_path(hdc->cairo, saved_path);
+            cairo_clip(hdc->cairo);
+            HRGN hrgn2 = CreateRectRgn(0,0,0,0);
+            GetClipRgn(hdc, hrgn2);
+            CombineRgn(hrgn1, hrgn1, hrgn2, RGN_XOR);
+            SelectClipRgn(hdc, hrgn1);
+            DeleteObject(hrgn1);
+            DeleteObject(hrgn2);
+            break;
+        }
 
     case RGN_DIFF:
-        // Difference with current clip - not directly supported by cairo
-        // This is a simplified implementation
-        cairo_reset_clip(hdc->cairo);
-        break;
+        {
+            HRGN hrgn1 = CreateRectRgn(0,0,0,0);
+            GetClipRgn(hdc, hrgn1);
+            cairo_reset_clip(hdc->cairo);
+            cairo_append_path(hdc->cairo, saved_path);
+            cairo_clip(hdc->cairo);
+            HRGN hrgn2 = CreateRectRgn(0,0,0,0);
+            GetClipRgn(hdc, hrgn2);
+            CombineRgn(hrgn1, hrgn1, hrgn2, RGN_DIFF);
+            SelectClipRgn(hdc, hrgn1);
+            DeleteObject(hrgn1);
+            DeleteObject(hrgn2);
+            break;
+        }
 
     case RGN_COPY:
     default:
-        // Replace current clip
-        cairo_reset_clip(hdc->cairo);
-        cairo_append_path(hdc->cairo, hdc->currentPath);
-        cairo_clip(hdc->cairo);
-        break;
+        {
+            // Replace current clip with new path
+            cairo_reset_clip(hdc->cairo);
+            cairo_append_path(hdc->cairo, saved_path);
+            cairo_clip(hdc->cairo);
+            break;
+        }
     }
-
-    cairo_restore(hdc->cairo);
-
+    cairo_path_destroy(saved_path);
     return TRUE;
 }
 
@@ -4359,9 +4376,7 @@ int GetPath(HDC hdc, LPPOINT lpPoints, LPBYTE lpTypes, int nSize)
             {
                 lpPoints[pointIndex].x = (LONG)data[j].point.x;
                 lpPoints[pointIndex].y = (LONG)data[j].point.y;
-                lpTypes[pointIndex] = (j == 3) ? PT_BEZIERTO : PT_BEZIERTO;
-                if (j == 3)
-                    lpTypes[pointIndex] |= PT_BEZIERTO;
+                lpTypes[pointIndex] = PT_BEZIERTO;
             }
             break;
         case CAIRO_PATH_CLOSE_PATH:
