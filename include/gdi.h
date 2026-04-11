@@ -744,13 +744,13 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     BOOL WINAPI GetWorldTransform(HDC hdc, LPXFORM lpxf);
     BOOL WINAPI SetWorldTransform(HDC hdc, CONST XFORM *lpxf);
-    /* xform stuff */
-    #define MWT_IDENTITY        1
-    #define MWT_LEFTMULTIPLY    2
-    #define MWT_RIGHTMULTIPLY   3
+/* xform stuff */
+#define MWT_IDENTITY      1
+#define MWT_LEFTMULTIPLY  2
+#define MWT_RIGHTMULTIPLY 3
 
-    #define MWT_MIN             MWT_IDENTITY
-    #define MWT_MAX             MWT_RIGHTMULTIPLY
+#define MWT_MIN MWT_IDENTITY
+#define MWT_MAX MWT_RIGHTMULTIPLY
 
     BOOL WINAPI ModifyWorldTransform(HDC hdc,              // handle to device context
                                      CONST XFORM *lpXform, // transformation data

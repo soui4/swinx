@@ -117,8 +117,9 @@ size_t UTF16Length(const char *s, size_t len, size_t &unconvertedCharacters)
             charLen = 4;
             ulen++;
         }
-        if(len-i < charLen){
-            unconvertedCharacters = len-i;
+        if (len - i < charLen)
+        {
+            unconvertedCharacters = len - i;
             break;
         }
         i += charLen;
@@ -262,7 +263,7 @@ size_t UTF8FromUTF32(const uint32_t *uptr, unsigned int tlen, char *putf, unsign
     return k;
 }
 
-//convert utf8 to utf32
+// convert utf8 to utf32
 size_t UTF32Length(const char *s, size_t len, size_t &unconvertedCharacters)
 {
     size_t ulen = 0;
@@ -286,9 +287,9 @@ size_t UTF32Length(const char *s, size_t len, size_t &unconvertedCharacters)
         {
             charLen = 4;
         }
-        if(len-i<charLen)
+        if (len - i < charLen)
         {
-            unconvertedCharacters = len-i;
+            unconvertedCharacters = len - i;
             break;
         }
         i += charLen;

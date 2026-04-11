@@ -3,19 +3,23 @@
 #include "log.h"
 #define kLogTag "sdc"
 
-//todo:hjx, SDC don't add reference for gdi objects for now. 
+// todo:hjx, SDC don't add reference for gdi objects for now.
 struct DCState
 {
-    DCState(HPEN _hpen,HBRUSH _hbr, HFONT _hfont)
+    DCState(HPEN _hpen, HBRUSH _hbr, HFONT _hfont)
     {
         pen = RefGdiObj(_hpen);
         brush = RefGdiObj(_hbr);
         hfont = RefGdiObj(_hfont);
     }
-    ~DCState(){
-        if(pen) DeleteObject(pen);
-        if(brush) DeleteObject(brush);
-        if(hfont) DeleteObject(hfont);
+    ~DCState()
+    {
+        if (pen)
+            DeleteObject(pen);
+        if (brush)
+            DeleteObject(brush);
+        if (hfont)
+            DeleteObject(hfont);
     }
     HPEN pen;
     HBRUSH brush;
@@ -66,7 +70,7 @@ int _SDC::SaveState()
 {
     if (!cairo)
         return 0;
-    
+
     auto state = std::make_shared<DCState>(pen, brush, hfont);
     state->ptOrigin = ptOrigin;
     state->mtx = mtx;
@@ -76,13 +80,14 @@ int _SDC::SaveState()
     state->textAlign = textAlign;
     state->rop2 = rop2;
     state->polyFillMode = polyFillMode;
-    
+
     stateStack.push_back(state);
     cairo_save(cairo);
     return nSave++;
 }
 
-static void _RestoreState(_SDC *dc, const std::shared_ptr<DCState> &state){
+static void _RestoreState(_SDC *dc, const std::shared_ptr<DCState> &state)
+{
     dc->crText = state->crText;
     dc->crBk = state->crBk;
     dc->pen = state->pen;
@@ -103,7 +108,7 @@ BOOL _SDC::RestoreState(int nState)
         return FALSE;
     if (nState >= nSave)
         return FALSE;
-    
+
     if (nState < 0)
     {
         if (stateStack.empty())
@@ -119,7 +124,7 @@ BOOL _SDC::RestoreState(int nState)
         {
             if (stateStack.empty())
                 return FALSE;
-            
+
             auto state = stateStack.back();
             stateStack.pop_back();
             _RestoreState(this, state);

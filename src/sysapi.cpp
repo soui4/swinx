@@ -364,8 +364,9 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
         std::wstring str;
         int unConvertedChars = 0;
         int ret = to_unicode(src, len, cp, str, unConvertedChars); // using iconv to support 936
-        if(unConvertedChars){
-            if(flags & MB_ERR_INVALID_CHARS)
+        if (unConvertedChars)
+        {
+            if (flags & MB_ERR_INVALID_CHARS)
                 return 0;
             else
                 SetLastError(ERROR_NO_UNICODE_TRANSLATION);
@@ -389,10 +390,11 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
 #if (WCHAR_SIZE == 2)
     assert(sizeof(wchar_t) == 2);
     // handle for utf16
-    size_t unconvertedCharacters=0;
+    size_t unconvertedCharacters = 0;
     int bufRequire = UTF16Length(src, len, unconvertedCharacters);
-    if(unconvertedCharacters){
-        if(flags & MB_ERR_INVALID_CHARS)
+    if (unconvertedCharacters)
+    {
+        if (flags & MB_ERR_INVALID_CHARS)
             return 0;
         else
             SetLastError(ERROR_NO_UNICODE_TRANSLATION);
@@ -414,10 +416,11 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
 #else
     assert(sizeof(wchar_t) == 4);
     // handle for utf32
-    size_t unconvertedCharacters=0;
-    int bufRequire = UTF32Length(src, len,unconvertedCharacters);
-    if(unconvertedCharacters){
-        if(flags & MB_ERR_INVALID_CHARS)
+    size_t unconvertedCharacters = 0;
+    int bufRequire = UTF32Length(src, len, unconvertedCharacters);
+    if (unconvertedCharacters)
+    {
+        if (flags & MB_ERR_INVALID_CHARS)
             return 0;
         else
             SetLastError(ERROR_NO_UNICODE_TRANSLATION);
@@ -699,7 +702,7 @@ HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
             strcpy(szPath, lpFileName);
         }
         ret = s_dllLoader.LoadDll(szPath, RTLD_NOW);
-        if(ret)
+        if (ret)
             return ret;
         if (strchr(szPath, '/') == NULL && strncmp(szPath, "lib", 3) != 0)
         {

@@ -170,7 +170,7 @@ struct PatternInfo
     {
         if (pattern)
         {
-            if (wid == this->width && hei == this->height && x == this->x && y== this->y)
+            if (wid == this->width && hei == this->height && x == this->x && y == this->y)
                 return pattern;
             cairo_pattern_destroy(pattern);
             pattern = nullptr;
@@ -3097,12 +3097,12 @@ BOOL Pie(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4
     // Otherwise, draw pie immediately
     cairo_save(ctx);
     cairo_translate(ctx, x1, y1);
-    if (ApplyBrush(ctx, hdc->brush,wid, hei, 0, 0))
+    if (ApplyBrush(ctx, hdc->brush, wid, hei, 0, 0))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_fill_preserve(ctx); // Preserve path for stroke
     }
-    if (ApplyPen(ctx,hdc->pen))
+    if (ApplyPen(ctx, hdc->pen))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_stroke(ctx);
@@ -3323,7 +3323,8 @@ BOOL SetWorldTransform(HDC hdc, const XFORM *lpxf)
 BOOL ModifyWorldTransform(HDC hdc,              // handle to device context
                           const XFORM *lpXform, // transformation data
                           DWORD iMode           // modification mode
-){
+)
+{
     cairo_matrix_t mtx;
     convert_xform_to_cairo_matrix(lpXform, mtx); // 传递指针
     switch (iMode)
@@ -4243,67 +4244,67 @@ BOOL SelectClipPath(HDC hdc, int mode)
         break;
 
     case RGN_OR:
+    {
+        // Union: new clip = current clip union new path
+        // Use cairo rectangle list approach for better performance
+        cairo_rectangle_list_t *clip_rects = cairo_copy_clip_rectangle_list(hdc->cairo);
+        cairo_reset_clip(hdc->cairo);
+
+        // Add current clip rectangles to path
+        cairo_rectangle_t *prect = clip_rects->rectangles;
+        for (int i = 0; i < clip_rects->num_rectangles; i++, prect++)
         {
-            // Union: new clip = current clip union new path
-            // Use cairo rectangle list approach for better performance
-            cairo_rectangle_list_t *clip_rects = cairo_copy_clip_rectangle_list(hdc->cairo);
-            cairo_reset_clip(hdc->cairo);
-            
-            // Add current clip rectangles to path
-            cairo_rectangle_t *prect = clip_rects->rectangles;
-            for (int i = 0; i < clip_rects->num_rectangles; i++, prect++)
-            {
-                cairo_rectangle(hdc->cairo, prect->x, prect->y, prect->width, prect->height);
-            }
-            cairo_rectangle_list_destroy(clip_rects);
-            // Add the new path
-            cairo_append_path(hdc->cairo, saved_path);
-            
-            // Apply combined clip (winding fill rule includes all sub-paths)
-            cairo_clip(hdc->cairo);
-            break;
+            cairo_rectangle(hdc->cairo, prect->x, prect->y, prect->width, prect->height);
         }
+        cairo_rectangle_list_destroy(clip_rects);
+        // Add the new path
+        cairo_append_path(hdc->cairo, saved_path);
+
+        // Apply combined clip (winding fill rule includes all sub-paths)
+        cairo_clip(hdc->cairo);
+        break;
+    }
     case RGN_XOR:
-        {
-            HRGN hrgn1 = CreateRectRgn(0,0,0,0);
-            GetClipRgn(hdc, hrgn1);
-            cairo_reset_clip(hdc->cairo);
-            cairo_append_path(hdc->cairo, saved_path);
-            cairo_clip(hdc->cairo);
-            HRGN hrgn2 = CreateRectRgn(0,0,0,0);
-            GetClipRgn(hdc, hrgn2);
-            CombineRgn(hrgn1, hrgn1, hrgn2, RGN_XOR);
-            SelectClipRgn(hdc, hrgn1);
-            DeleteObject(hrgn1);
-            DeleteObject(hrgn2);
-            break;
-        }
+    {
+        HRGN hrgn1 = CreateRectRgn(0, 0, 0, 0);
+        GetClipRgn(hdc, hrgn1);
+        cairo_reset_clip(hdc->cairo);
+        cairo_append_path(hdc->cairo, saved_path);
+        cairo_clip(hdc->cairo);
+        HRGN hrgn2 = CreateRectRgn(0, 0, 0, 0);
+        GetClipRgn(hdc, hrgn2);
+        CombineRgn(hrgn1, hrgn1, hrgn2, RGN_XOR);
+        SelectClipRgn(hdc, hrgn1);
+        DeleteObject(hrgn1);
+        DeleteObject(hrgn2);
+        break;
+    }
 
     case RGN_DIFF:
-        {
-            HRGN hrgn1 = CreateRectRgn(0,0,0,0);
-            GetClipRgn(hdc, hrgn1);
-            cairo_reset_clip(hdc->cairo);
-            cairo_append_path(hdc->cairo, saved_path);
-            cairo_clip(hdc->cairo);
-            HRGN hrgn2 = CreateRectRgn(0,0,0,0);
-            GetClipRgn(hdc, hrgn2);
-            CombineRgn(hrgn1, hrgn1, hrgn2, RGN_DIFF);
-            SelectClipRgn(hdc, hrgn1);
-            DeleteObject(hrgn1);
-            DeleteObject(hrgn2);
-            break;
-        }
+    {
+        HRGN hrgn1 = CreateRectRgn(0, 0, 0, 0);
+        GetClipRgn(hdc, hrgn1);
+        cairo_reset_clip(hdc->cairo);
+        cairo_append_path(hdc->cairo, saved_path);
+        cairo_clip(hdc->cairo);
+        HRGN hrgn2 = CreateRectRgn(0, 0, 0, 0);
+        GetClipRgn(hdc, hrgn2);
+        CombineRgn(hrgn1, hrgn1, hrgn2, RGN_DIFF);
+        SelectClipRgn(hdc, hrgn1);
+        DeleteObject(hrgn1);
+        DeleteObject(hrgn2);
+        break;
+    }
 
     case RGN_COPY:
     default:
-        {
-            // Replace current clip with new path
-            cairo_reset_clip(hdc->cairo);
-            cairo_append_path(hdc->cairo, saved_path);
-            cairo_clip(hdc->cairo);
-            break;
-        }
+    {
+        // Replace current clip with new path
+        cairo_reset_clip(hdc->cairo);
+        cairo_append_path(hdc->cairo, saved_path);
+        cairo_clip(hdc->cairo);
+        break;
+    }
     }
     cairo_path_destroy(saved_path);
     return TRUE;
@@ -4411,12 +4412,10 @@ BOOL PolyDraw(HDC hdc, LPPOINT lppt, LPBYTE lpbTypes, int cpt)
         else if (type & PT_BEZIERTO)
         {
             // For Bezier curves, we need 3 control points
-            if (i + 2 < cpt && 
-                (lpbTypes[i+1] & PT_BEZIERTO) && 
-                (lpbTypes[i+2] & PT_BEZIERTO))
+            if (i + 2 < cpt && (lpbTypes[i + 1] & PT_BEZIERTO) && (lpbTypes[i + 2] & PT_BEZIERTO))
             {
-                POINT pt1 = lppt[i+1];
-                POINT pt2 = lppt[i+2];
+                POINT pt1 = lppt[i + 1];
+                POINT pt2 = lppt[i + 2];
                 cairo_curve_to(hdc->cairo, pt.x, pt.y, pt1.x, pt1.y, pt2.x, pt2.y);
                 i += 2; // Skip next two points as they are control points
             }
@@ -4430,7 +4429,7 @@ BOOL PolyDraw(HDC hdc, LPPOINT lppt, LPBYTE lpbTypes, int cpt)
     }
 
     // Stroke the path if a pen is selected
-    if (ApplyPen(hdc->cairo,hdc->pen))
+    if (ApplyPen(hdc->cairo, hdc->pen))
     {
         cairo_stroke(hdc->cairo);
     }
