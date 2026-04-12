@@ -236,7 +236,7 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #define BS_PATTERN8X8    7
 #define BS_DIBPATTERN8X8 8
 #define BS_MONOPATTERN   9
-#define BS_GRADIENT      10
+#define BS_BRUSH         10
 
     HPEN WINAPI ExtCreatePen(DWORD iPenStyle, DWORD cWidth, CONST LOGBRUSH *plbrush, DWORD cStyle, CONST DWORD *pstyle);
 
