@@ -138,47 +138,84 @@ struct PatternInfo
     {
         double halfWid = wid / 2;
         double halfHei = hei / 2;
-        if (fequal(angle, 90.0f) || fequal(angle, 270.0f))
-        { // 90度
-            skPts[0].set(halfWid, 0.0f);
-            skPts[1].set(halfWid, hei);
+
+        // 1. 归一化角度到 [0, 360)
+        float a = fmodf(angle, 360.0f);
+        if (a < 0) a += 360.0f;
+
+        // 2. 处理轴对齐的特殊情况（0°, 90°, 180°, 270°）
+        if (fequal(a, 90.0f) || fequal(a, 270.0f))
+        {
+            skPts[0].set((float)halfWid, 0.0f);
+            skPts[1].set((float)halfWid, (float)hei);
+            return;
         }
-        else if (fequal(angle, 0.0f) || fequal(angle, 180.0f))
-        { //水平方向
-            skPts[0].set(0.f, halfHei);
-            skPts[1].set(wid, halfHei);
+        if (fequal(a, 0.0f) || fequal(a, 180.0f))
+        {
+            skPts[0].set(0.0f, (float)halfHei);
+            skPts[1].set((float)wid, (float)halfHei);
+            return;
+        }
+
+        // 3. 确定象限，并计算参考角度（第一象限 0~90°）
+        int quadrant = (int)(a / 90.0f);
+        float ref_angle = a - quadrant * 90.0f;   // 0~90°
+        float rad = ref_angle * M_PI / 180.0f;
+        float tan_angle = tan(rad);
+        float cot_angle = 1.0f / tan_angle;      // 避免除零（ref_angle不会是0或90）
+
+        // 4. 计算第一象限下的两个交点（相对于矩形中心，中心为(0,0)）
+        fPoint p1, p2;
+        // 与左右边（x = -halfWid 和 x = halfWid）的交点 y 坐标
+        float y_left  = -halfWid * tan_angle;
+        float y_right =  halfWid * tan_angle;
+
+        // 与上下边（y = -halfHei 和 y = halfHei）的交点 x 坐标
+        float x_top    = -halfHei * cot_angle;
+        float x_bottom =  halfHei * cot_angle;
+
+        // 根据 y_right 是否在 [-halfHei, halfHei] 内选择使用哪一组交点
+        if (fabs(y_right) <= halfHei + 1e-9f)
+        {
+            // 直线与左右边相交
+            p1.set((float)-halfWid, (float)y_left);
+            p2.set((float) halfWid, (float)y_right);
         }
         else
-        { //其它角度
-
-            float angleInRadians = M_PI * angle / 180;
-            double tanAngle = tan(angleInRadians);
-
-            fPoint pt1a, pt2a; //与左右两条边相交的位置
-            fPoint pt1b, pt2b; //与上下两条边相关的位置
-
-            pt1a.fX = -halfWid, pt2a.fX = halfWid;
-            pt1b.fY = -halfHei, pt2b.fY = halfHei;
-
-            pt1a.fY = (-halfWid * tanAngle);
-            pt2a.fY = -pt1a.fY;
-
-            pt1b.fX = (-halfHei / tanAngle);
-            pt2b.fX = -pt1b.fX;
-
-            if (pt2a.fY > halfHei)
-            { // using pt1a,pt2a
-                skPts[0] = pt1a;
-                skPts[1] = pt2a;
-            }
-            else
-            { // using pt1b,pt2b
-                skPts[0] = pt1b;
-                skPts[1] = pt2b;
-            }
-            skPts[0].offset(halfWid, halfHei);
-            skPts[1].offset(halfWid, halfHei);
+        {
+            // 直线与上下边相交
+            p1.set((float)x_top,    (float)-halfHei);
+            p2.set((float)x_bottom, (float) halfHei);
         }
+
+        // 5. 根据实际象限对交点坐标进行镜像变换
+        fPoint transformed[2];
+        switch (quadrant)
+        {
+        case 0: // 0° ~ 90°
+            transformed[0] = p1;
+            transformed[1] = p2;
+            break;
+        case 1: // 90° ~ 180°
+            transformed[0].set(-p1.fX,  p1.fY);
+            transformed[1].set(-p2.fX,  p2.fY);
+            break;
+        case 2: // 180° ~ 270°
+            transformed[0].set(-p1.fX, -p1.fY);
+            transformed[1].set(-p2.fX, -p2.fY);
+            break;
+        case 3: // 270° ~ 360°
+        default:
+            transformed[0].set( p1.fX, -p1.fY);
+            transformed[1].set( p2.fX, -p2.fY);
+            break;
+        }
+
+        // 6. 将交点平移到实际矩形坐标系（左上角为原点）
+        skPts[0].set((float)(transformed[0].fX + halfWid),
+            (float)(transformed[0].fY + halfHei));
+        skPts[1].set((float)(transformed[1].fX + halfWid),
+            (float)(transformed[1].fY + halfHei));
     }
 
     cairo_pattern_t *create(double wid, double hei, double x, double y)
