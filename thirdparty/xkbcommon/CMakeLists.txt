@@ -61,3 +61,18 @@ set_target_properties(xkbcommon PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties (xkbcommon PROPERTIES
     FOLDER swinx
 )
+
+# Install rules for static library
+install(TARGETS xkbcommon
+    CONFIGURATIONS Release
+    ARCHIVE DESTINATION lib/Release
+    LIBRARY DESTINATION lib/Release
+    RUNTIME DESTINATION bin/Release
+)
+
+install(TARGETS xkbcommon
+    CONFIGURATIONS Debug
+    ARCHIVE DESTINATION lib/Debug
+    LIBRARY DESTINATION lib/Debug
+    RUNTIME DESTINATION bin/Debug
+)

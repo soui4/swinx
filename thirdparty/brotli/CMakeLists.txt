@@ -265,3 +265,18 @@ if(NOT BROTLI_DISABLE_TESTS AND BROTLI_BUILD_TOOLS)
   endforeach()
 endif()  # BROTLI_DISABLE_TESTS
 
+# Install rules for static libraries
+install(TARGETS brotlicommon brotlidec brotlienc
+    CONFIGURATIONS Release
+    ARCHIVE DESTINATION lib/Release
+    LIBRARY DESTINATION lib/Release
+    RUNTIME DESTINATION bin/Release
+)
+
+install(TARGETS brotlicommon brotlidec brotlienc
+    CONFIGURATIONS Debug
+    ARCHIVE DESTINATION lib/Debug
+    LIBRARY DESTINATION lib/Debug
+    RUNTIME DESTINATION bin/Debug
+)
+
