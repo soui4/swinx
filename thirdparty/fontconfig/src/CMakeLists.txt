@@ -309,7 +309,7 @@ if(WIN32)
 endif()
 
 if(SOUI_ENABLE_CORE_LIB)
-    set(CORE_LIBS ${CORE_LIBS} fontconfig_internal CACHE INTERNAL "core_lib")
+    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} fontconfig_internal CACHE INTERNAL "swinx_dep_libs")
 endif()
 
 install(TARGETS fontconfig_internal

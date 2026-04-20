@@ -11,7 +11,7 @@ source_group("Source Files" FILES ${xcb_sources})
 add_library(libxcb STATIC ${xcb_sources} )
 
 if(SOUI_ENABLE_CORE_LIB)
-    set(CORE_LIBS ${CORE_LIBS} libxcb CACHE INTERNAL "core_lib")
+    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} libxcb CACHE INTERNAL "swinx_dep_libs")
 endif()
 target_include_directories(libxcb PRIVATE .)
 target_include_directories(libxcb PRIVATE ..)

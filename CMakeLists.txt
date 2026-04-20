@@ -19,9 +19,7 @@ set_target_properties (swinx PROPERTIES
     FOLDER swinx
 )
 
-if(SOUI_ENABLE_CORE_LIB)
-    set(CORE_LIBS swinx ${CORE_LIBS}  CACHE INTERNAL "core_lib")
-endif()
+set(SOUI_SWINX swinx CACHE INTERNAL "swinx_lib")
 
 install(TARGETS swinx
     CONFIGURATIONS Release

@@ -660,7 +660,7 @@ get_filename_component(CXX_COMPILER ${CMAKE_CXX_COMPILER} NAME)
 message( STATUS "Using D-BUS ${DBUS_VERSION}")
 
 if(SOUI_ENABLE_CORE_LIB)
-    set(CORE_LIBS ${CORE_LIBS} dbus-1 CACHE INTERNAL "core_lib")
+    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} dbus-1 CACHE INTERNAL "swinx_dep_libs")
 endif()
 
 install(TARGETS dbus-1

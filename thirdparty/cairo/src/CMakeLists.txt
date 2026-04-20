@@ -675,15 +675,6 @@ install(TARGETS cairo
     ARCHIVE DESTINATION lib/Debug
 )
 
-
-install(TARGETS cairo
-    CONFIGURATIONS Release
-    LIBRARY DESTINATION bin/Release
-    NAMELINK_SKIP
-)
-
-install(TARGETS cairo
-    CONFIGURATIONS Debug
-    LIBRARY DESTINATION bin/Debug
-    NAMELINK_SKIP
-)
+if(SOUI_ENABLE_CORE_LIB)
+    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} cairo CACHE INTERNAL "swinx_dep_libs")
+endif()

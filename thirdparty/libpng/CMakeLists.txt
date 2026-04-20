@@ -69,7 +69,7 @@ target_include_directories(png_static
 
 
 if(SOUI_ENABLE_CORE_LIB)
-  set(CORE_LIBS ${CORE_LIBS} png_static CACHE INTERNAL "core_lib")
+    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} png_static CACHE INTERNAL "swinx_dep_libs")
 endif()
 
 install(TARGETS png_static

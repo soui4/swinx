@@ -38,15 +38,15 @@ find_library(IOKit_LIBRARY IOKit)
 find_library(Carbon_LIBRARY Carbon)
 find_library(Audio_LIBRARY AudioToolbox)
 # Use internal compiled libraries
-set(LIBS
-    cairo              # Our internal cairo target
+set(SWINX_LIBS 
     Iconv::Iconv       # System Iconv library
     ${COCOA_LIBRARY}
     ${QUARTZ_LIBRARY}
     ${IOKit_LIBRARY}
     ${Carbon_LIBRARY}
     ${Audio_LIBRARY}
-)
+    )
+
 if (NOT SOUI_ENABLE_CORE_LIB)
     add_library(swinx SHARED ${SRCS} ${HEADERS})
     # 确保导出所有符号，包括fontconfig和freetype的符号
@@ -57,9 +57,15 @@ if (NOT SOUI_ENABLE_CORE_LIB)
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS})
 endif()
-target_link_libraries(swinx PRIVATE ${LIBS})
+target_link_libraries(swinx PRIVATE ${SWINX_LIBS})
 # Add dependencies to ensure proper build order for all internal libraries
 add_dependencies(swinx cairo fontconfig freetype pixman-1)
+
+if(SOUI_ENABLE_CORE_LIB)
+    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} ${SWINX_LIBS} CACHE INTERNAL "swinx_dep_libs")
+endif()
+
+
 target_compile_options(swinx PRIVATE "-fobjc-arc")
 
 target_include_directories(swinx

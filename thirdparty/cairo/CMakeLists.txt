@@ -86,20 +86,4 @@ endif()
 include_directories(src)
 add_subdirectory(src)
 
-if(SOUI_ENABLE_CORE_LIB)
-    set(CORE_LIBS ${CORE_LIBS} cairo CACHE INTERNAL "core_lib")
-endif()
 
-install(TARGETS cairo
-    CONFIGURATIONS Release
-    RUNTIME DESTINATION bin/Release
-    LIBRARY DESTINATION lib/Release
-    ARCHIVE DESTINATION lib/Release
-)
-
-install(TARGETS cairo
-    CONFIGURATIONS Debug
-    RUNTIME DESTINATION bin/Debug
-    LIBRARY DESTINATION lib/Debug
-    ARCHIVE DESTINATION lib/Debug
-)

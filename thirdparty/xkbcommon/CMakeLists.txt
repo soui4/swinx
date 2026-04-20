@@ -51,7 +51,10 @@ source_group("Header Files" FILES ${xkbcommon_headers})
 source_group("Source Files" FILES ${xkbcommon_sources})
 
 add_library(xkbcommon STATIC ${xkbcommon_sources} ${xkbcommon_headers})
-set(COM_LIBS ${COM_LIBS} xkbcommon CACHE INTERNAL "com_lib")
+if(SOUI_ENABLE_CORE_LIB)
+set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} xkbcommon CACHE INTERNAL "swinx_dep_libs")
+endif()
+
 target_include_directories(xkbcommon PRIVATE .)
 target_include_directories(xkbcommon PRIVATE ..)
 target_include_directories(xkbcommon PRIVATE ../xcb)

@@ -113,6 +113,10 @@ add_library(brotlidec ${BROTLI_DEC_SOURCES})
 file(GLOB_RECURSE BROTLI_ENC_SOURCES RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} c/enc/*.c)
 add_library(brotlienc ${BROTLI_ENC_SOURCES})
 
+if(SOUI_ENABLE_CORE_LIB)
+set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} brotlicommon brotlidec brotlienc CACHE INTERNAL "swinx_dep_libs")
+endif()
+
 # Older CMake versions does not understand INCLUDE_DIRECTORIES property.
 include_directories(${BROTLI_INCLUDE_DIRS})
 

@@ -173,7 +173,7 @@ set(ZLIB_SRCS
         PUBLIC $<$<BOOL:${HAVE_OFF64_T}>:_LARGEFILE64_SOURCE=1>)
 
 if(SOUI_ENABLE_CORE_LIB)
-    set(CORE_LIBS ${CORE_LIBS} zlib_static CACHE INTERNAL "core_lib")
+    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} zlib_static CACHE INTERNAL "swinx_dep_libs")
 endif()
 install(TARGETS zlib_static
     CONFIGURATIONS Release

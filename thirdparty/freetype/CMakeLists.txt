@@ -449,11 +449,6 @@ if (BUILD_FRAMEWORK)
 endif ()
 
 
-if (NOT DISABLE_FORCE_DEBUG_POSTFIX)
-  set(CMAKE_DEBUG_POSTFIX d)
-endif ()
-
-
 add_library(freetype
   ${PUBLIC_HEADERS}
   ${PUBLIC_CONFIG_HEADERS}
@@ -592,62 +587,9 @@ if (NOT SKIP_INSTALL_HEADERS AND NOT SKIP_INSTALL_ALL)
       COMPONENT headers)
 endif ()
 
-if (NOT SKIP_INSTALL_LIBRARIES AND NOT SKIP_INSTALL_ALL)
-  # Generate the pkg-config file
-  file(READ "${PROJECT_SOURCE_DIR}/builds/unix/freetype2.in" FREETYPE2_PC_IN)
-
-  string(REPLACE ";" ", " PKGCONFIG_REQUIRES_PRIVATE "${PKGCONFIG_REQUIRES_PRIVATE}")
-
-  string(REPLACE "%prefix%" ${CMAKE_INSTALL_PREFIX}
-          FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-  string(REPLACE "%exec_prefix%" "\${prefix}"
-          FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-  string(REPLACE "%libdir%" "\${prefix}/${CMAKE_INSTALL_LIBDIR}"
-          FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-  string(REPLACE "%includedir%" "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}"
-          FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-  string(REPLACE "%ft_version%" "${LIBTOOL_CURRENT}.${LIBTOOL_REVISION}.${LIBTOOL_AGE}"
-          FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-
-  if (BUILD_SHARED_LIBS)
-    string(REPLACE "%PKGCONFIG_REQUIRES%" "${PKGCONFIG_REQUIRES}"
-            FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-    string(REPLACE "%PKGCONFIG_REQUIRES_PRIVATE%" "${PKGCONFIG_REQUIRES_PRIVATE}"
-            FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-    string(REPLACE "%PKGCONFIG_LIBS%" "${PKGCONFIG_LIBS}"
-            FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-    string(REPLACE "%PKGCONFIG_LIBS_PRIVATE%" "${PKGCONFIG_LIBS_PRIVATE}"
-            FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-  else ()
-    string(REPLACE "%PKGCONFIG_REQUIRES%" "${PKGCONFIG_REQUIRES} ${PKGCONFIG_REQUIRES_PRIVATE}"
-            FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-    string(REPLACE "%PKGCONFIG_REQUIRES_PRIVATE%" ""
-            FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-    string(REPLACE "%PKGCONFIG_LIBS%" "${PKGCONFIG_LIBS} ${PKGCONFIG_LIBS_PRIVATE}"
-            FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-    string(REPLACE "%PKGCONFIG_LIBS_PRIVATE%" ""
-            FREETYPE2_PC_IN ${FREETYPE2_PC_IN})
-  endif ()
-
-  set(FREETYPE2_PC_IN_NAME "${PROJECT_BINARY_DIR}/freetype2.pc")
-  if (EXISTS "${FREETYPE2_PC_IN_NAME}")
-    file(READ "${FREETYPE2_PC_IN_NAME}" ORIGINAL_FREETYPE2_PC_IN)
-  else ()
-    set(ORIGINAL_FREETYPE2_PC_IN "")
-  endif ()
-  if (NOT (ORIGINAL_FREETYPE2_PC_IN STREQUAL FREETYPE2_PC_IN))
-    file(WRITE "${FREETYPE2_PC_IN_NAME}" ${FREETYPE2_PC_IN})
-  endif ()
-
-
-  include(CMakePackageConfigHelpers)
-  write_basic_package_version_file(
-    ${PROJECT_BINARY_DIR}/freetype-config-version.cmake
-    VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}
-    COMPATIBILITY SameMajorVersion)
 
 if(SOUI_ENABLE_CORE_LIB)
-  set(CORE_LIBS ${CORE_LIBS} freetype CACHE INTERNAL "core_lib")
+    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} freetype CACHE INTERNAL "swinx_dep_libs")
 endif()
 
 install(TARGETS freetype
@@ -662,27 +604,7 @@ install(TARGETS freetype
     RUNTIME DESTINATION bin/Debug
     LIBRARY DESTINATION lib/Debug
     ARCHIVE DESTINATION lib/Debug
-)
-  # Disable installation and export to avoid conflicts with internal dependencies
-  # install(
-  #   TARGETS freetype freetype-interface
-  #     EXPORT freetype-targets
-  #     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  #     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  #     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  #     FRAMEWORK DESTINATION Library/Frameworks
-  #     COMPONENT libraries)
-  # install(
-  #   EXPORT freetype-targets
-  #     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/freetype
-  #     FILE freetype-config.cmake
-  #     COMPONENT headers)
-  # Disable installation to avoid export conflicts
-  # install(
-  #   FILES ${PROJECT_BINARY_DIR}/freetype-config-version.cmake
-  #   DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/freetype
-  #   COMPONENT headers)
-endif ()
+) 
 
 
 # Packaging
