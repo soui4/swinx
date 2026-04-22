@@ -11,6 +11,7 @@ extern "C"
 
     HKL GetKeyboardLayout(int idx);
 
+#define LOCALE_NAME_MAX_LENGTH 85
     int GetLocaleInfoA(LCID Locale, LCTYPE LCType, LPSTR lpLCData, int cchData);
 
     int GetLocaleInfoW(LCID Locale, LCTYPE LCType, LPWSTR lpLCData, int cchData);
@@ -158,7 +159,7 @@ extern "C"
     LANGID WINAPI GetUserDefaultLangID(void);
     LCID WINAPI GetSystemDefaultLCID(void);
     LANGID WINAPI GetSystemDefaultLangID(void);
-
+    LANGID WINAPI GetUserDefaultUILanguage(void);
 #define LANG_NEUTRAL   0x00
 #define LANG_INVARIANT 0x7f
 

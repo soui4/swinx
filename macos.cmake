@@ -37,6 +37,7 @@ find_library(QUARTZ_LIBRARY QuartzCore)
 find_library(IOKit_LIBRARY IOKit)
 find_library(Carbon_LIBRARY Carbon)
 find_library(Audio_LIBRARY AudioToolbox)
+find_library(CoreFoundation_LIBRARY CoreFoundation)
 # Use internal compiled libraries
 set(SWINX_LIBS 
     Iconv::Iconv       # System Iconv library
@@ -45,6 +46,7 @@ set(SWINX_LIBS
     ${IOKit_LIBRARY}
     ${Carbon_LIBRARY}
     ${Audio_LIBRARY}
+    ${CoreFoundation_LIBRARY}
     )
 
 if (NOT SOUI_ENABLE_CORE_LIB)
@@ -57,9 +59,9 @@ if (NOT SOUI_ENABLE_CORE_LIB)
 else()
     add_library(swinx STATIC ${SRCS} ${HEADERS})
 endif()
-target_link_libraries(swinx PRIVATE ${SWINX_LIBS})
-# Add dependencies to ensure proper build order for all internal libraries
 add_dependencies(swinx cairo fontconfig freetype pixman-1)
+target_link_libraries(swinx PRIVATE ${SWINX_LIBS} cairo fontconfig freetype pixman-1)
+# Add dependencies to ensure proper build order for all internal libraries
 
 if(SOUI_ENABLE_CORE_LIB)
     set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} ${SWINX_LIBS} CACHE INTERNAL "swinx_dep_libs")

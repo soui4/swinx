@@ -118,6 +118,42 @@ uint16_t convertVKToKeyCode(UINT vk){
     return 0;
 }
 
+int GetLocal(char *lpLCData, int cchData){
+    @autoreleasepool {
+        // On macOS, try to get locale from CoreFoundation first
+        CFLocaleRef localeRef = CFLocaleCopyCurrent();
+        if (localeRef)
+        {
+            CFStringRef localeID = CFLocaleGetIdentifier(localeRef);
+            char buffer[256] = {0};
+            
+            if (CFStringGetCString(localeID, buffer, sizeof(buffer), kCFStringEncodingUTF8))
+            {
+                int len = strlen(buffer);
+                if (len < cchData)
+                {
+                    strncpy(lpLCData, buffer, cchData - 1);
+                    lpLCData[cchData - 1] = '\0';
+                    return len + 1;
+                }
+            }
+        }else {
+            // Fallback to LANG environment variable
+            const char* locale = getenv("LANG");
+            if (!locale)
+                return 0;
+            int len = strlen(locale);
+            if (len < cchData)
+            {
+                strncpy(lpLCData, locale, cchData - 1);
+                lpLCData[cchData - 1] = '\0';
+                return len + 1;
+            }else{
+                return 0;
+            }
+        }
+    }
+}
 
 wchar_t scanCodeToChar(uint16_t scanCode,uint32_t modifierFlags) {
     @autoreleasepool {
