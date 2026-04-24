@@ -13,7 +13,7 @@ file(GLOB_RECURSE SRCS
 add_library(xcb-imdkit STATIC ${SRCS} ${HEADEERS})
 target_compile_options(xcb-imdkit PRIVATE -fPIC)
 if(SOUI_ENABLE_CORE_LIB)
-    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} xcb-imdkit CACHE INTERNAL "swinx_dep_libs")
+    set(SWINX_DEP_LIBS xcb-imdkit ${SWINX_DEP_LIBS} CACHE INTERNAL "swinx_dep_libs")
 endif()
 
 target_include_directories(xcb-imdkit

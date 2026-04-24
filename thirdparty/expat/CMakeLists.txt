@@ -381,7 +381,7 @@ target_include_directories(expat
 )
 
 if(SOUI_ENABLE_CORE_LIB)
-    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} expat CACHE INTERNAL "swinx_dep_libs")
+    set(SWINX_DEP_LIBS expat ${SWINX_DEP_LIBS} CACHE INTERNAL "swinx_dep_libs")
 endif()
 
 set_target_properties (expat PROPERTIES

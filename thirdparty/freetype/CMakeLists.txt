@@ -589,7 +589,7 @@ endif ()
 
 
 if(SOUI_ENABLE_CORE_LIB)
-    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} freetype CACHE INTERNAL "swinx_dep_libs")
+    set(SWINX_DEP_LIBS freetype ${SWINX_DEP_LIBS} CACHE INTERNAL "swinx_dep_libs")
 endif()
 
 install(TARGETS freetype

@@ -52,7 +52,7 @@ source_group("Source Files" FILES ${xkbcommon_sources})
 
 add_library(xkbcommon STATIC ${xkbcommon_sources} ${xkbcommon_headers})
 if(SOUI_ENABLE_CORE_LIB)
-set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} xkbcommon CACHE INTERNAL "swinx_dep_libs")
+set(SWINX_DEP_LIBS xkbcommon ${SWINX_DEP_LIBS} CACHE INTERNAL "swinx_dep_libs")
 endif()
 
 target_include_directories(xkbcommon PRIVATE .)

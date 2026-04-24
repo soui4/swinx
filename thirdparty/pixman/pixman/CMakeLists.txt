@@ -226,7 +226,7 @@ target_include_directories(pixman-1
 add_library(pixman::pixman-1 ALIAS pixman-1)
 
 if(SOUI_ENABLE_CORE_LIB)
-    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} pixman-1 CACHE INTERNAL "swinx_dep_libs")
+    set(SWINX_DEP_LIBS pixman-1 ${SWINX_DEP_LIBS} CACHE INTERNAL "swinx_dep_libs")
 endif()
 
 install(TARGETS pixman-1

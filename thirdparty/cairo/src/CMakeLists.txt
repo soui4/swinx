@@ -676,5 +676,5 @@ install(TARGETS cairo
 )
 
 if(SOUI_ENABLE_CORE_LIB)
-    set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} cairo CACHE INTERNAL "swinx_dep_libs")
+    set(SWINX_DEP_LIBS cairo ${SWINX_DEP_LIBS} CACHE INTERNAL "swinx_dep_libs")
 endif()
