@@ -1143,11 +1143,17 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
         if (strncmp(lpParameters, selectPrefix, prefixLen) == 0)
         {
             // 提取要选中的文件路径
-            const char *filePath = lpParameters + prefixLen;
-
+            std::string filePath = lpParameters + prefixLen;
+            if(filePath.front() == '\"')
+            {
+                filePath.erase(0, 1);
+                if(filePath.back() == '\"')
+                    filePath.pop_back();
+            }
 #ifdef __linux__
             // Linux: 使用 xdg-open 打开文件所在目录
             std::string dirPath = filePath;
+            
             size_t lastSlash = dirPath.find_last_of('/');
             if (lastSlash != std::string::npos)
             {
@@ -1161,9 +1167,8 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
             return ret == 0;
 #elif defined(__APPLE__)
             // macOS: 使用 open -R 命令选中文件
-            int len = strlen(filePath);
-            char *cmd = new char[len + 20];
-            sprintf(cmd, "open -R '%s'", filePath);
+            char *cmd = new char[filePath.length() + 20];
+            sprintf(cmd, "open -R '%s'", filePath.c_str());
             int ret = system(cmd);
             delete[] cmd;
             return (ret == 0);
