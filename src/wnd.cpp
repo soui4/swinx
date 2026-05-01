@@ -1652,8 +1652,35 @@ tid_t GetWindowThreadProcessId(HWND hWnd, LPDWORD lpdwProcessId)
 
 BOOL SetForegroundWindow(HWND hWnd)
 {
-    SConnection *connCur = SConnMgr::instance()->getConnection();
-    connCur->SetForegroundWindow(hWnd);
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return FALSE;
+    if(!wndObj->dwStyle & WS_VISIBLE)
+        return FALSE;
+#ifdef __linux__
+    if(!(wndObj->flags&kMapped))
+    {//wait for mapped
+        MSG msg;
+        DWORD ts1 = GetTickCount();
+        DWORD ts2;
+        for(;;)
+        {
+            if(PeekMessage(&msg,NULL,0,0,PM_REMOVE))
+            {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+                if(wndObj->flags&kMapped)
+                    break;
+            }
+            ts2 = GetTickCount();
+            if((ts2-ts1)>1500)
+                break;
+        }
+        if(!(wndObj->flags&kMapped))
+            return FALSE;
+    }
+#endif//__linux__
+    wndObj->mConnection->SetForegroundWindow(hWnd);
     return TRUE;
 }
 
@@ -3047,10 +3074,14 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     break;
     case WM_CONTEXTMENU:
     {
-        HWND hParent = GetParent(hWnd);
-        if (hParent)
+        if(GetWindowLongPtr(hWnd, GWL_STYLE) & WS_CHILD)
         {
-            SendMessageA(hParent, WM_CONTEXTMENU, (WPARAM)hWnd, lp);
+            HWND hParent = GetParent(hWnd);
+            WndObj parentObj = WndMgr::fromHwnd(hParent);
+            if (hParent && parentObj)
+            {
+                SendMessageA(hParent, WM_CONTEXTMENU, (WPARAM)hWnd, lp);
+            }
         }
     }
     break;
@@ -3256,7 +3287,9 @@ BOOL SetLayeredWindowAttributes(HWND hWnd, COLORREF crKey, BYTE byAlpha, DWORD d
     if ((dwFlags & LWA_ALPHA) && byAlpha != wndObj->byAlpha)
     {
         wndObj->byAlpha = byAlpha;
+#ifdef __linux__
         if (wndObj->flags & kMapped)
+#endif//__linux__
             wndObj->mConnection->SetWindowOpacity(hWnd, byAlpha);
     }
 

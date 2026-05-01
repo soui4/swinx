@@ -18,6 +18,7 @@ class TrayWnd : public CNativeWnd {
   protected:
     LRESULT NotifyOwner(UINT uMsg,WPARAM wp,LPARAM lp);
     void OnPaint(HDC hdc);
+    LRESULT OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam);
 
     BEGIN_MSG_MAP_EX(TrayWnd)
 		MESSAGE_HANDLER_EX(WM_LBUTTONDOWN,NotifyOwner)
@@ -25,6 +26,7 @@ class TrayWnd : public CNativeWnd {
 		MESSAGE_HANDLER_EX(WM_MOUSEMOVE,NotifyOwner)
 		MESSAGE_HANDLER_EX(WM_LBUTTONDBLCLK,NotifyOwner)
         MSG_WM_PAINT(OnPaint)
+        MESSAGE_HANDLER_EX(WM_SIZE, OnSize)
     END_MSG_MAP()
 };
 

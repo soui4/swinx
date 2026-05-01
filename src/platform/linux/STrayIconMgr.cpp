@@ -1,5 +1,6 @@
 #include "STrayIconMgr.h"
 #include <assert.h>
+#include <xcb/xcb_icccm.h>
 #include "SConnection.h"
 #include "log.h"
 #define kLogTag "traywnd"
@@ -19,10 +20,23 @@ void TrayWnd::OnPaint(HDC hdc)
     hdc = BeginPaint(m_hWnd, &ps);
     RECT rc;
     GetClientRect(m_hWnd, &rc);
-    ClearRect(hdc, &rc, 0);
-    if (m_iconData->hIcon)
-        DrawIconEx(hdc, 0, 0, m_iconData->hIcon, rc.right, rc.bottom, 0, 0, 0);
+    
+    int width = rc.right - rc.left;
+    int height = rc.bottom - rc.top;
+    // Clear with transparent color
+    ClearRect(hdc, &rc, RGBA(0, 0, 0, 0));
+
+    if (m_iconData && m_iconData->hIcon)
+    {
+        DrawIconEx(hdc, 0, 0, m_iconData->hIcon, width, height, 0, 0, DI_NORMAL);
+    }        
     EndPaint(m_hWnd, &ps);
+}
+
+LRESULT TrayWnd::OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    Invalidate();
+    return 0;
 }
 
 //-------------------------------------------------
@@ -65,11 +79,48 @@ BOOL STrayIconMgr::AddIcon(PNOTIFYICONDATAA lpData)
     memcpy(icon, lpData, sizeof(NOTIFYICONDATAA));
     // create a tray window to contain image.
     icon->hTray = new TrayWnd(icon);
-    BOOL argbTray = this->visualHasAlphaChannel();
-    icon->hTray->CreateWindowA(argbTray ? WS_EX_COMPOSITED : 0, CLS_WINDOWA, "trayicon", WS_CHILD, 0, 0, 24, 24, m_pConn->screen->root, 0, 0);
+
+    DWORD dwStyle = WS_POPUP;
+    DWORD dwExStyle = 0;
+    // If the tray manager advertises a 32-bit ARGB visual via
+    // _NET_SYSTEM_TRAY_VISUAL, the icon window MUST be created using a 32-bit
+    // ARGB visual; otherwise transparent pixels of the icon (and the result of
+    // ClearRect with alpha=0) get rendered as opaque black, which on Ubuntu
+    // shows up as black halos around the icon. WS_EX_COMPOSITED tells the
+    // window factory to use the rgba_visual cached on SConnection.
+    if (visualHasAlphaChannel())
+        dwExStyle |= WS_EX_COMPOSITED;
+
+    // The size we pass here is just the initial request; the tray manager will
+    // reparent the window into its container and resize it according to its layout.
+    const int TRAY_ICON_SIZE = 24;
+    icon->hTray->CreateWindowA(dwExStyle, CLS_WINDOWA, "trayicon", dwStyle, 0, 0, TRAY_ICON_SIZE, TRAY_ICON_SIZE, m_pConn->screen->root, 0, 0);
+
+    //SLOG_STMI()<<"Created tray window: hwnd="<<icon->hTray->m_hWnd;
+
+    // Set WM_NAME for tooltip
     xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, icon->hTray->m_hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(icon->szTip), icon->szTip);
 
+    xcb_size_hints_t size_hints;
+    size_hints.flags = 0x30;  // PMinSize | PMaxSize
+    size_hints.min_width = TRAY_ICON_SIZE;
+    size_hints.min_height = TRAY_ICON_SIZE;
+    size_hints.max_width = TRAY_ICON_SIZE;
+    size_hints.max_height = TRAY_ICON_SIZE;
+
+    xcb_change_property(m_pConn->connection,
+                        XCB_PROP_MODE_REPLACE,
+                        icon->hTray->m_hWnd,
+                        m_pConn->atoms.WM_NORMAL_HINTS,
+                        XCB_ATOM_WM_SIZE_HINTS,
+                        32,
+                        18,  // 18 个 32 位字段
+                        &size_hints);
+
+    // Send the dock request to the tray manager. After this point the manager
+    // owns the window's geometry and visibility.
     xcb_client_message_event_t trayRequest;
+    memset(&trayRequest, 0, sizeof(trayRequest));
     trayRequest.response_type = XCB_CLIENT_MESSAGE;
     trayRequest.format = 32;
     trayRequest.sequence = 0;

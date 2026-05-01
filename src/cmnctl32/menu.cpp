@@ -901,28 +901,11 @@ UINT CMenu::TrackPopupMenu(UINT flag, int x, int y, HWND hOwner, LPTPMPARAMS prc
 
     s_MenuData->m_prcRect = prcRect;
 
-    HWND hActive = hOwner;
-    // 是否IsWindowEnabled的实现和WINDOWS形为不一致？，如果是ownerdarw，这里的窗口是不显示的。
-    if (!hOwner || !::IsWindowEnabled(hOwner) || !::IsWindowVisible(hOwner))
-        hActive = ::GetActiveWindow();
-
-    HWND hRoot = hActive;
-    while ((::GetWindowLong(hRoot, GWL_STYLE) & WS_CHILD) && ::GetParent(hRoot))
-    {
-        hRoot = ::GetParent(hRoot);
-    }
-    SetForegroundWindow(hRoot);
+    HWND hForeground = ::GetForegroundWindow();
     ShowMenu(flag, x, y);
-    RunMenu(hRoot);
+    RunMenu(hForeground);
     HideMenu(FALSE);
     OnMenuEnd();
-    if (hActive)
-    {
-        POINT pt;
-        GetCursorPos(&pt);
-        ::ScreenToClient(hActive, &pt);
-        ::PostMessage(hActive, WM_MOUSEMOVE, 0, MAKELPARAM(pt.x, pt.y));
-    }
 
     int nRet = s_MenuData->GetCmdID();
 

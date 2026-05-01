@@ -46,6 +46,7 @@ class SAtoms {
     _NET_WM_WINDOW_TYPE_TOOLBAR,
     _NET_WM_WINDOW_TYPE_SPLASH,
     _NET_WM_WINDOW_TYPE,
+    WM_NORMAL_HINTS,
 
     _MOTIF_WM_HINTS,
     _XEMBED_INFO,
@@ -142,6 +143,7 @@ class SAtoms {
             "_NET_WM_WINDOW_TYPE_TOOLBAR",
             "_NET_WM_WINDOW_TYPE_SPLASH",
             "_NET_WM_WINDOW_TYPE",
+            "WM_NORMAL_HINTS",
 
             "_MOTIF_WM_HINTS",
             "_XEMBED_INFO",
