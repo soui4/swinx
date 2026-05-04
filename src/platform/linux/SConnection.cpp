@@ -2604,25 +2604,10 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         else if (e2->atom == atoms._NET_WM_STATE || e2->atom == atoms.WM_STATE)
         {
             uint32_t newState = -1;
-            if (e2->atom == atoms.WM_STATE)
-            {
-                const xcb_get_property_cookie_t get_cookie = xcb_get_property(connection, 0, e2->window, atoms.WM_STATE, XCB_ATOM_ANY, 0, 1024);
-                xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, get_cookie, nullptr);
-                if (reply && reply->format == 32 && reply->type == atoms.WM_STATE && reply->length != 0)
-                {
-                    const uint32_t *data = (const uint32_t *)xcb_get_property_value(reply);
-                    if (data[0] == XCB_ICCCM_WM_STATE_ICONIC /* || data[0]==XCB_ICCCM_WM_STATE_WITHDRAWN*/)
-                    {
-                        newState = SIZE_MINIMIZED;
-                    }
-                    else if (data[0] == XCB_ICCCM_WM_STATE_NORMAL)
-                    {
-                        newState = SIZE_RESTORED;
-                    }
-                }
-                free(reply);
-            }
-            if (newState != SIZE_MINIMIZED)
+            BOOL isIconic = this->IsIconic(e2->window);
+            if(isIconic){
+                newState = SIZE_MINIMIZED;
+            }else
             {
                 uint32_t state = netWmStates(e2->window);
                 if ((state & (NetWmStateMaximizedHorz | NetWmStateMaximizedVert)) == (NetWmStateMaximizedHorz | NetWmStateMaximizedVert))
@@ -2640,6 +2625,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                 pMsg->hwnd = e2->window;
                 pMsg->message = UM_STATE;
                 pMsg->wParam = newState;
+//                SLOG_STMI() << "window state changed, hWnd=" << e2->window << ", new state=" << newState;
             }
         }
         break;
@@ -3644,20 +3630,36 @@ static void _SendSysCommand(SConnection *conn, xcb_window_t wnd, uint32_t cmd)
 
 static void _SendSysRestore(SConnection *conn, xcb_window_t wnd)
 {
+    WndObj wndObj = WndMgr::fromHwnd(wnd);
+    if(!wndObj)
+        return;
+    if((wndObj->dwStyle & WS_MAXIMIZE)){
+        // Restore from maximized state - remove maximized flags
+	    xcb_client_message_event_t event;
+	    event.response_type = XCB_CLIENT_MESSAGE;
+	    event.window = wnd;
+	    event.format = 32;
+	    event.sequence = 0;
+	    event.type = conn->atoms._NET_WM_STATE;
+	    event.data.data32[0] = 0;
+	    event.data.data32[1] = conn->atoms._NET_WM_STATE_MAXIMIZED_VERT;
+	    event.data.data32[2] = conn->atoms._NET_WM_STATE_MAXIMIZED_HORZ;
+	    event.data.data32[3] = 0;
+	    event.data.data32[4] = 0;
 
-    xcb_client_message_event_t event;
-    event.response_type = XCB_CLIENT_MESSAGE;
-    event.window = wnd;
-    event.format = 32;
-    event.sequence = 0;
-    event.type = conn->atoms._NET_WM_STATE;
-    event.data.data32[0] = 0;
-    event.data.data32[1] = conn->atoms._NET_WM_STATE_MAXIMIZED_VERT;
-    event.data.data32[2] = conn->atoms._NET_WM_STATE_MAXIMIZED_HORZ;
-    event.data.data32[3] = 0;
-    event.data.data32[4] = 0;
-
-    xcb_send_event(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+	    xcb_send_event(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+    }else if(wndObj->dwStyle & WS_MINIMIZE){
+        _SendSysCommand(conn, wnd, XCB_ICCCM_WM_STATE_NORMAL);
+        xcb_client_message_event_t event;
+        event.response_type = XCB_CLIENT_MESSAGE;
+        event.window = wnd;
+        event.format = 32;
+        event.sequence = 0;
+        event.type = conn->atoms._NET_ACTIVE_WINDOW;
+        event.data.data32[0] = 1;  // 1 = source indication: application
+        event.data.data32[1] = XCB_CURRENT_TIME;
+        xcb_send_event(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+    }
     xcb_flush(conn->connection);
 }
 
@@ -4006,26 +4008,21 @@ BOOL SConnection::EnableWindow(HWND hWnd, BOOL bEnable){
    return TRUE;
 }
 
-
-BOOL SConnection::IsIconic(HWND hWnd){
-    // Check WM_STATE property to determine if window is iconic (minimized)
-    const xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(
-        connection, 0, hWnd, atoms.WM_STATE, XCB_ATOM_CARDINAL, 0, 1);
-    
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
-    
-    if (reply && reply->format == 32 && reply->type == XCB_ATOM_CARDINAL && reply->length > 0) {
-        const uint32_t *data = static_cast<const uint32_t *>(xcb_get_property_value(reply));
-        BOOL isIconic = (data[0] == XCB_ICCCM_WM_STATE_ICONIC);
-        free(reply);
-        return isIconic;
+BOOL SConnection::IsIconic(HWND hWnd)
+{
+    BOOL ret = FALSE;
+    const xcb_get_property_cookie_t get_cookie = xcb_get_property(connection, 0, hWnd, atoms.WM_STATE, XCB_ATOM_ANY, 0, 1024);
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, get_cookie, nullptr);
+    if (reply && reply->format == 32 && reply->type == atoms.WM_STATE && reply->length != 0)
+    {
+        const uint32_t *data = (const uint32_t *)xcb_get_property_value(reply);
+        if (data[0] == XCB_ICCCM_WM_STATE_ICONIC /* || data[0]==XCB_ICCCM_WM_STATE_WITHDRAWN*/)
+        {
+            ret = TRUE;
+        }
     }
-    
-    if (reply) {
-        free(reply);
-    }
-    
-    return FALSE;
+    free(reply);
+    return ret;
 }
 
 BOOL SConnection::IsZoomed(HWND hWnd){

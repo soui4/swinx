@@ -1157,14 +1157,19 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         {
         case SIZE_MINIMIZED:
             wndObj->state = WS_Minimized;
+            wndObj->dwStyle |= WS_MINIMIZE;
+            wndObj->dwStyle &= ~WS_MAXIMIZE;
             lp = 0;
             break;
         case SIZE_MAXIMIZED:
             wndObj->state = WS_Maximized;
+            wndObj->dwStyle |= WS_MAXIMIZE;
+            wndObj->dwStyle &= ~WS_MINIMIZE;
             lp = MAKELPARAM(wndObj->rc.right - wndObj->rc.left, wndObj->rc.bottom - wndObj->rc.top);
             break;
         case SIZE_RESTORED:
             wndObj->state = WS_Normal;
+            wndObj->dwStyle &= ~(WS_MINIMIZE | WS_MAXIMIZE);
             lp = MAKELPARAM(wndObj->rc.right - wndObj->rc.left, wndObj->rc.bottom - wndObj->rc.top);
             break;
         }
@@ -3074,11 +3079,14 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
     {
         int nCmdShow = (int)wp;
         BOOL bVisible = IsWindowVisible(hWnd);
-        BOOL bNew = nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNOACTIVATE || nCmdShow == SW_SHOWNORMAL || nCmdShow == SW_SHOWNA || nCmdShow == SW_MAXIMIZE || nCmdShow == SW_MINIMIZE;
-        if (bVisible == bNew)
-            return TRUE;
-        wndObj->mConnection->SetWindowVisible(hWnd, wndObj.data(), bNew, nCmdShow);
-        SendMessage(hWnd, WM_SHOWWINDOW, bNew, 0);
+        BOOL bNew = nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNOACTIVATE || nCmdShow == SW_SHOWNORMAL 
+                                || nCmdShow == SW_SHOWNA || nCmdShow == SW_MAXIMIZE || nCmdShow == SW_MINIMIZE
+                                || nCmdShow == SW_RESTORE;
+        if (bVisible != bNew)
+        {
+            wndObj->mConnection->SetWindowVisible(hWnd, wndObj.data(), bNew, nCmdShow);
+            SendMessage(hWnd, WM_SHOWWINDOW, bNew, 0);
+        }
         if (nCmdShow == SW_MAXIMIZE)
         {
             SendMessage(hWnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
@@ -3086,6 +3094,9 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         else if (nCmdShow == SW_MINIMIZE)
         {
             SendMessage(hWnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+        }else if(nCmdShow == SW_RESTORE)
+        {
+            SendMessage(hWnd, WM_SYSCOMMAND, SC_RESTORE, 0);
         }
         return TRUE;
     }

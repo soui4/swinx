@@ -17,6 +17,7 @@ class SAtoms {
     CLIPF_HDROP,
 
     _NET_WM_PID,
+    _NET_ACTIVE_WINDOW,
     WM_CLASS,
     WM_DELETE_WINDOW,
     WM_PROTOCOLS,
@@ -114,6 +115,7 @@ class SAtoms {
             "CLIPF_HDROP",
 
             "_NET_WM_PID",
+            "_NET_ACTIVE_WINDOW",
             "WM_CLASS",
             "WM_DELETE_WINDOW",
             "WM_PROTOCOLS",
