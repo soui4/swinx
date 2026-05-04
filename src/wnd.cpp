@@ -1690,6 +1690,12 @@ HWND GetForegroundWindow()
     return connCur->GetForegroundWindow();
 }
 
+BOOL BringWindowToTop(HWND hWnd)
+{
+    SConnection *connCur = SConnMgr::instance()->getConnection();
+    return connCur->BringWindowToTop(hWnd);
+}
+
 BOOL SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int x, int y, int cx, int cy, UINT uFlags)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
@@ -3064,6 +3070,25 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
             wndObj->mConnection->SetWindowOpacity(hWnd, wndObj->byAlpha);
         }
         return 0;
+    case UM_SHOWWINDOW:
+    {
+        int nCmdShow = (int)wp;
+        BOOL bVisible = IsWindowVisible(hWnd);
+        BOOL bNew = nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNOACTIVATE || nCmdShow == SW_SHOWNORMAL || nCmdShow == SW_SHOWNA || nCmdShow == SW_MAXIMIZE || nCmdShow == SW_MINIMIZE;
+        if (bVisible == bNew)
+            return TRUE;
+        wndObj->mConnection->SetWindowVisible(hWnd, wndObj.data(), bNew, nCmdShow);
+        SendMessage(hWnd, WM_SHOWWINDOW, bNew, 0);
+        if (nCmdShow == SW_MAXIMIZE)
+        {
+            SendMessage(hWnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+        }
+        else if (nCmdShow == SW_MINIMIZE)
+        {
+            SendMessage(hWnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+        }
+        return TRUE;
+    }
     case WM_RBUTTONUP:
     {
         POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
@@ -3093,22 +3118,11 @@ BOOL ShowWindow(HWND hWnd, int nCmdShow)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
-        return FALSE;
-    BOOL bVisible = IsWindowVisible(hWnd);
-    BOOL bNew = nCmdShow == SW_SHOW || nCmdShow == SW_SHOWNOACTIVATE || nCmdShow == SW_SHOWNORMAL || nCmdShow == SW_SHOWNA || nCmdShow == SW_MAXIMIZE || nCmdShow == SW_MINIMIZE;
-    if (bVisible == bNew)
-        return TRUE;
-    wndObj->mConnection->SetWindowVisible(hWnd, wndObj.data(), bNew, nCmdShow);
-    SendMessage(hWnd, WM_SHOWWINDOW, bNew, 0);
-    if (nCmdShow == SW_MAXIMIZE)
-    {
-        SendMessage(hWnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+    {//ipc call
+        if(!IsWindow(hWnd))
+            return FALSE;
     }
-    else if (nCmdShow == SW_MINIMIZE)
-    {
-        SendMessage(hWnd, WM_SYSCOMMAND, SC_MINIMIZE, 0);
-    }
-    return TRUE;
+    return SendMessage(hWnd,UM_SHOWWINDOW,nCmdShow,0);
 }
 
 BOOL MoveWindow(HWND hWnd, int x, int y, int nWidth, int nHeight, BOOL bRepaint)
@@ -3125,17 +3139,21 @@ BOOL IsWindowVisible(HWND hWnd)
 BOOL IsZoomed(HWND hWnd)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return FALSE;
-    return wndObj->state == WS_Maximized;
+    if (wndObj){
+        return wndObj->state == WS_Maximized;
+    }else{
+        return SConnMgr::instance()->getConnection()->IsZoomed(hWnd);
+    }
 }
 
 BOOL IsIconic(HWND hWnd)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return FALSE;
-    return wndObj->state == WS_Minimized;
+    if (wndObj){
+        return wndObj->state == WS_Minimized;
+    }else{
+        return SConnMgr::instance()->getConnection()->IsIconic(hWnd);
+    }
 }
 
 int GetWindowTextW(HWND hWnd, LPWSTR lpszStringBuf, int nMaxCount)

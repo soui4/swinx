@@ -143,7 +143,7 @@ class SConnection {
 
     HWND GetForegroundWindow();
     BOOL SetForegroundWindow(HWND hWnd);
-
+    BOOL BringWindowToTop(HWND hWnd);
     BOOL SetWindowOpacity(HWND hWnd, BYTE byAlpha);
     BOOL SetWindowRgn(HWND hWnd, HRGN hRgn);
     HKL  ActivateKeyboardLayout(HKL hKl);
@@ -174,6 +174,8 @@ class SConnection {
     
     void SendSysCommand(HWND hWnd,int nCmd);
     BOOL EnableWindow(HWND hWnd, BOOL bEnable);
+    BOOL IsIconic(HWND hWnd);
+    BOOL IsZoomed(HWND hWnd);
   public:
     struct CaretInfo
     {

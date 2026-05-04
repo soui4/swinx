@@ -110,6 +110,7 @@ class SConnection : public SConnBase{
 
     HWND GetForegroundWindow();
     bool SetForegroundWindow(HWND hWnd);
+    bool BringWindowToTop(HWND hWnd);
 
     bool SetWindowOpacity(HWND hWnd, BYTE byAlpha);
     bool SetWindowRgn(HWND hWnd, HRGN hRgn);
@@ -163,6 +164,8 @@ class SConnection : public SConnBase{
     void updateWindow(HWND hWnd, const RECT &rc);
     void commitCanvas(HWND hWnd, const RECT &rc);
     void EnableWindow(HWND hWnd, int bEnable);
+    bool IsIconic(HWND hWnd) const;
+    bool IsZoomed(HWND hWnd) const;
   public:
     struct CaretInfo
     {

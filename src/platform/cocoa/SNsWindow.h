@@ -29,6 +29,7 @@ BYTE getNsWindowAlpha(HWND hWnd);
 
 HWND getNsForegroundWindow();
 BOOL setNsForegroundWindow(HWND hWnd);
+BOOL setNsWindowToTop(HWND hWnd);
 BOOL setNsMsgTransparent(HWND hWnd,BOOL bTransparent);
 void updateNsWindow(HWND hWnd, const RECT &rc);
 BOOL sendNsSysCommand(HWND hWnd, int nCmd) ;
@@ -62,5 +63,8 @@ void enableNsWindowIme(HWND hWnd, BOOL bEnable);
 BOOL isNsWindowEnableIme(HWND hWnd);
 
 void setNsWindowToolWindow(HWND hWnd, BOOL bToolWindow);
+
+BOOL isNsWindowMinimized(HWND hWnd);
+BOOL isNsWindowMaximized(HWND hWnd);
 
 #endif//_SNSWINDOW_H_

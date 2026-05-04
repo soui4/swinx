@@ -96,6 +96,8 @@ extern "C"
 
     HWND WINAPI GetForegroundWindow();
 
+    BOOL WINAPI BringWindowToTop(HWND hWnd);
+    
     BOOL WINAPI SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
 
     LONG GetWindowLongA(HWND hWnd, int nIndex);

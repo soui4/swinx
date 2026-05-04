@@ -1077,6 +1077,10 @@ bool SConnection::SetForegroundWindow(HWND hWnd) {
     return ret;
 }
 
+bool SConnection::BringWindowToTop(HWND hWnd){
+    return setNsWindowToTop(hWnd);
+}
+
 bool SConnection::SetWindowOpacity(HWND hWnd, BYTE byAlpha) {
     return setNsWindowAlpha(hWnd,byAlpha);
 }
@@ -1801,4 +1805,12 @@ void SConnection::AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESUL
 
 void SConnection::EnableWindow(HWND hWnd, int bEnable){
     enableNsWindow(hWnd, bEnable);
+}
+
+bool SConnection::IsIconic(HWND hWnd) const{
+    return isNsWindowMinimized(hWnd);
+}
+
+bool SConnection::IsZoomed(HWND hWnd) const{
+    return isNsWindowMaximized(hWnd);
 }

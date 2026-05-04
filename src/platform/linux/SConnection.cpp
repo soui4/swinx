@@ -2258,7 +2258,18 @@ HWND SConnection::GetForegroundWindow()
 
 BOOL SConnection::SetForegroundWindow(HWND hWnd)
 {
+    BringWindowToTop(hWnd);
     return SetActiveWindow(hWnd);
+}
+
+BOOL SConnection::BringWindowToTop(HWND hWnd)
+{
+    if (!IsWindow(hWnd))
+        return FALSE;
+    uint32_t values[] = { XCB_STACK_MODE_ABOVE };
+    xcb_configure_window(connection, hWnd, XCB_CONFIG_WINDOW_STACK_MODE, values);
+    xcb_flush(connection);
+    return TRUE;
 }
 
 BOOL SConnection::SetWindowOpacity(HWND hWnd, BYTE byAlpha)
@@ -2365,7 +2376,7 @@ BOOL SConnection::SetFocus(HWND hWnd)
 
 uint32_t SConnection::netWmStates(HWND hWnd)
 {
-    uint32_t result(0);
+    uint32_t result =0;
 
     xcb_get_property_cookie_t get_cookie = xcb_get_property_unchecked(connection, 0, hWnd, atoms._NET_WM_STATE, XCB_ATOM_ATOM, 0, 1024);
 
@@ -3993,4 +4004,35 @@ BOOL SConnection::EnableWindow(HWND hWnd, BOOL bEnable){
 
    free(reply);
    return TRUE;
+}
+
+
+BOOL SConnection::IsIconic(HWND hWnd){
+    // Check WM_STATE property to determine if window is iconic (minimized)
+    const xcb_get_property_cookie_t cookie = xcb_get_property_unchecked(
+        connection, 0, hWnd, atoms.WM_STATE, XCB_ATOM_CARDINAL, 0, 1);
+    
+    xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
+    
+    if (reply && reply->format == 32 && reply->type == XCB_ATOM_CARDINAL && reply->length > 0) {
+        const uint32_t *data = static_cast<const uint32_t *>(xcb_get_property_value(reply));
+        BOOL isIconic = (data[0] == XCB_ICCCM_WM_STATE_ICONIC);
+        free(reply);
+        return isIconic;
+    }
+    
+    if (reply) {
+        free(reply);
+    }
+    
+    return FALSE;
+}
+
+BOOL SConnection::IsZoomed(HWND hWnd){
+    // Check _NET_WM_STATE property to determine if window is maximized
+    uint32_t state = netWmStates(hWnd);
+    
+    // Window is considered zoomed (maximized) if both horizontal and vertical maximized states are set
+    return (state & (NetWmStateMaximizedHorz | NetWmStateMaximizedVert)) == 
+            (NetWmStateMaximizedHorz | NetWmStateMaximizedVert);
 }

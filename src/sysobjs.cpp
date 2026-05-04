@@ -1737,7 +1737,7 @@ LPVOID WINAPI MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DW
     offset.HighPart = dwFileOffsetHigh;
     offset.LowPart = dwFileOffsetLow;
     int flag = 0;
-    if (offset.QuadPart + dwNumberOfBytesToMap >= fmData.size.QuadPart)
+    if (offset.QuadPart + dwNumberOfBytesToMap > fmData.size.QuadPart)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         goto end;

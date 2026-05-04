@@ -2363,6 +2363,20 @@ BOOL setNsForegroundWindow(HWND hWnd) {
     }
 }
 
+BOOL setNsWindowToTop(HWND hWnd){
+    @autoreleasepool {
+    SNsWindow * nswindow = getNsWindow(hWnd);
+    if(!nswindow)
+        return FALSE;
+    if(![nswindow.window isVisible]){
+        return FALSE;
+    }
+    [nswindow.window orderFront:nil];
+    [nswindow.window makeKeyAndOrderFront:nil];
+    return TRUE;
+    }
+}
+
 BOOL setNsMsgTransparent(HWND hWnd, BOOL bTransparent)
 {
     @autoreleasepool {
@@ -2957,5 +2971,24 @@ void setNsWindowToolWindow(HWND hWnd, BOOL bToolWindow){
             // 重新显示窗口
             showNsWindow(hWnd, SW_SHOWNORMAL);
         }
+    }
+}
+
+BOOL isNsWindowMinimized(HWND hWnd){
+    @autoreleasepool{
+        SNsWindow *win = getNsWindow(hWnd);
+        if(win && win.window ){
+            return [win window].isMiniaturized;
+        }
+        return FALSE;
+    }
+}
+BOOL isNsWindowMaximized(HWND hWnd){
+    @autoreleasepool{
+        SNsWindow *win = getNsWindow(hWnd);
+        if(win && win.window ){
+            return [win window].isZoomed;
+        }
+        return FALSE;
     }
 }
