@@ -2,9 +2,9 @@
 #include <shlobj.h>
 #include <log.h>
 #include <tostring.hpp>
+#include "atoms.h"
 #define kLogTag "SNsDataObjectProxy"
 
-static NSString *const NSPasteboardTypeSOUIPrefix = @"com.soui.drag-and-drop_fmt";
 
 SNsDataObjectProxy::SNsDataObjectProxy(NSPasteboard * nspasteboard)
     : m_nspasteboard(nspasteboard)
@@ -71,6 +71,7 @@ HRESULT SNsDataObjectProxy::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
                     void *dst = GlobalLock(pmedium->hGlobal);
                     memcpy(dst, [data bytes], [data length]);
                     GlobalUnlock(pmedium->hGlobal);
+                    return S_OK;
                 }
             }
             break;
@@ -125,5 +126,12 @@ HRESULT SNsDataObjectProxy::EnumFormatEtc(
 
 NSString *SNsDataObjectProxy::getPasteboardType(UINT uFormat)
 {
-    return [NSString stringWithFormat:@"%@/%u",NSPasteboardTypeSOUIPrefix,uFormat];
+  switch (uFormat) {
+  case CF_TEXT:
+    return NSStringPboardType;
+  case CF_BITMAP:
+    return NSPasteboardTypePNG;
+  default:
+    return [NSString stringWithFormat:@"com.swinx.clipboard.format.%d", uFormat];
+  }
 }

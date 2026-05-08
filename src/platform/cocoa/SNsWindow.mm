@@ -21,6 +21,8 @@
 #undef interface    //interface is keyword usedd in macos sdk.
 #define kLogTag "SNsWindow"
 
+static NSString *kDragTypeSwinxMark = @"com.swinx.internal.drag.marker";
+
 typedef BOOL (*FUNENUMDATOBOJECT)(WORD fmt, HGLOBAL hMem, NSPasteboardItem *param);
 static BOOL EnumDataOjbect(IDataObject *pdo, FUNENUMDATOBOJECT fun, NSPasteboardItem *param){
     IEnumFORMATETC *enum_fmt;
@@ -417,7 +419,7 @@ defer:(BOOL)flag;
     m_hWnd = (HWND)(__bridge_retained void *)self;
     s_hWndMgr.add(m_hWnd);
 
-    SLOG_STMI()<<"hjx SNsWindow initWithFrame, m_hWnd="<<m_hWnd;
+    //SLOG_STMI()<<"hjx SNsWindow initWithFrame, m_hWnd="<<m_hWnd;
     m_pListener = listener;
     m_bAutoDblClick = bAutoDblClick;
     m_byAlpha = 255;
@@ -445,14 +447,14 @@ defer:(BOOL)flag;
     //[self removeObserver:self forKeyPath:(nonnull NSString *)]
     [self removeFromSuperview];
     m_pListener->OnNsEvent(m_hWnd, WM_DESTROY, 0, 0);
-    SLOG_STMI()<<"hjx destroy: hWnd="<<m_hWnd;
+    //SLOG_STMI()<<"hjx destroy: hWnd="<<m_hWnd;
     s_hWndMgr.remove(m_hWnd);
     CFBridgingRelease((void*)m_hWnd);
 }
 
 - (void)dealloc
 {
-    SLOG_STMI()<<"hjx SNsWindow dealloc, m_hWnd="<<m_hWnd;
+    //SLOG_STMI()<<"hjx SNsWindow dealloc, m_hWnd="<<m_hWnd;
 }
 
 - (void)updateRect:(NSRect)rc;{
@@ -846,7 +848,7 @@ defer:(BOOL)flag;
 }
 
 - (void)onActive: (BOOL)isActive{
-    SLOG_STMI()<<"hjx onActive:"<<isActive<<" hWnd="<<m_hWnd;
+    //SLOG_STMI()<<"hjx onActive:"<<isActive<<" hWnd="<<m_hWnd;
     m_pListener->OnNsActive(m_hWnd, isActive);
 }
 
@@ -858,10 +860,12 @@ defer:(BOOL)flag;
 - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
     assert(!_doDragging);
     NSPasteboard *pboard = [sender draggingPasteboard];
+    NSArray *types = [pboard types];
     _doDragging = new SNsDataObjectProxy(pboard);
     WndObj wndObj = WndMgr::fromHwnd(m_hWnd);
-    if(!wndObj->dropTarget)
+    if(!wndObj->dropTarget){
         return NSDragOperationNone;
+    }
     float scale = [self.window backingScaleFactor];
     NSPoint nspt = [sender draggingLocation];
     POINTL pt = {float2int(nspt.x*scale),float2int(nspt.y*scale)};
@@ -889,6 +893,8 @@ defer:(BOOL)flag;
         DWORD modifier = ConvertNSEventFlagsToWindowsFlags(modifierFlags);
         _dwDragEffect = dwOKEffect;
         wndObj->dropTarget->DragOver(modifier, pt, &_dwDragEffect);
+    }else{
+        LOG_STMW(kLogTag)<<"draggingUpdated: No drop target for window: "<<m_hWnd;
     }
     LPCTSTR idCursor = IDC_ARROW;
     if(_dwDragEffect & DROPEFFECT_MOVE)
@@ -913,19 +919,24 @@ defer:(BOOL)flag;
     WndObj wndObj = WndMgr::fromHwnd(m_hWnd);
     if(wndObj->dropTarget){
         wndObj->dropTarget->DragLeave();
+    }else{
+        SLOG_STMW()<<"draggingExited: No drop target for window: "<<m_hWnd;
     }
 }
 
 
 // 当释放鼠标执行拖放操作时调用
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
-    if(!_doDragging)
+    if(!_doDragging){
+        SLOG_STMW()<<"performDragOperation: No dragging data object";
         return NO;
-    SLOG_STMI()<<"performDragOperation";
+    }
     NSPasteboard *pboard = [sender draggingPasteboard];
     WndObj wndObj = WndMgr::fromHwnd(m_hWnd);
-    if(!wndObj->dropTarget)
+    if(!wndObj->dropTarget){
+        SLOG_STMW()<<"performDragOperation: No drop target for window: "<<m_hWnd;
         return NO;
+    }
     NSEventModifierFlags modifierFlags = [NSEvent modifierFlags];
     DWORD modifier = ConvertNSEventFlagsToWindowsFlags(modifierFlags);
     float scale = [self.window backingScaleFactor];
@@ -934,12 +945,12 @@ defer:(BOOL)flag;
     nspt.y = [self.window.screen frame].size.height - nspt.y;//convert to ns coordinate.
     POINTL pt = {float2int(nspt.x*scale),float2int(nspt.y*scale)};
     HRESULT hr =wndObj->dropTarget->Drop(_doDragging, modifier, pt, &_dwDragEffect);
+    SLOG_STMI()<<"performDragOperation result: hr="<<hr<<", effect="<<_dwDragEffect;
     return hr==S_OK;
 }
 
 // 拖放操作完成后调用（可选）
 - (void)concludeDragOperation:(nullable id<NSDraggingInfo>)sender {
-    SLOG_STMI()<<"concludeDragOperation";
     [super concludeDragOperation:sender];
     if(_doDragging){
         _doDragging->Release();
@@ -1307,7 +1318,7 @@ defer:(BOOL)flag
     else if(event.type==NSEventTypeLeftMouseDragged || event.type==NSEventTypeRightMouseDragged || event.type==NSEventTypeOtherMouseDragged ){
         [self mouseDragged:event];
     }
-    else
+    else if(event.type != NSEventTypeAppKitDefined)
     {
         [super sendEvent:event];
     }
@@ -1369,11 +1380,10 @@ defer:(BOOL)flag
     [root onStateChange:SIZE_MINIMIZED];
 }
 
-- (void)windowDidResize:(NSNotification *)notification{
-    if(m_bSizing)
-        return;
+- (void)updateWindowPosition:(BOOL)bResize {
     SNsWindow * root = self.contentView;
     NSRect contentRect = [self contentRectForFrameRect:[self frame]];
+    //SLOG_STMI()<<"++++updateWindowPosition, resize="<<bResize<<" x="<<contentRect.origin.x<<" y="<<contentRect.origin.y<<" w="<<contentRect.size.width<<" h="<<contentRect.size.height;
     NSScreen *screen = [self screen];
     ConvertNSRect(screen, FALSE, &contentRect);
     float scale = [screen backingScaleFactor];
@@ -1383,8 +1393,16 @@ defer:(BOOL)flag
     contentRect.size.height *= scale;
     m_bSizing=TRUE;
     RECT rc = NSRect2Rect(contentRect);
-    SetWindowPos(root->m_hWnd,0,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOACTIVATE);
+    //SLOG_STMI()<<"----updateWindowPosition normal rect, resize="<<bResize<<" x="<<rc.left<<" y="<<rc.top<<" w="<<(rc.right-rc.left)<<" h="<<(rc.bottom-rc.top);
+    SetWindowPos(root->m_hWnd,0,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOACTIVATE|(bResize?0:SWP_NOSIZE));
     m_bSizing=FALSE;  
+}
+
+- (void)windowDidResize:(NSNotification *)notification{
+    if(m_bSizing)
+        return;
+    [self updateWindowPosition: YES];
+    SNsWindow * root = self.contentView;
     BOOL bZoomed = [self isZoomed];
     if(bZoomed){
         [root onStateChange:SIZE_MAXIMIZED];
@@ -1396,20 +1414,7 @@ defer:(BOOL)flag
 - (void)windowDidMove:(NSNotification *)notification {
     if(m_bSizing)
         return;
-    NSRect contentRect = [self contentRectForFrameRect:[self frame]];
-    NSScreen *screen = [self screen];
-    ConvertNSRect(screen, FALSE, &contentRect);
-    float scale = [screen backingScaleFactor];
-    contentRect.origin.x *= scale;
-    contentRect.origin.y *= scale;
-    contentRect.size.width *= scale;
-    contentRect.size.height *= scale;
-
-    SNsWindow * root = self.contentView;
-    m_bSizing=TRUE;
-    RECT rc = NSRect2Rect(contentRect);
-    SetWindowPos(root->m_hWnd,0,rc.left,rc.top,0,0,SWP_NOSIZE|SWP_NOZORDER|SWP_NOACTIVATE);
-    m_bSizing=FALSE;
+    [self updateWindowPosition: NO];
 }
 
 - (void)setFrame:(NSRect)frameRect display:(BOOL)flag{
@@ -1668,7 +1673,7 @@ defer:(BOOL)flag
     else if(event.type==NSEventTypeLeftMouseDragged || event.type==NSEventTypeRightMouseDragged || event.type==NSEventTypeOtherMouseDragged ){
         [self mouseDragged:event];
     }
-    else
+    else if(event.type != NSEventTypeAppKitDefined)
     {
         [super sendEvent:event];
     }
@@ -2107,6 +2112,7 @@ BOOL setNsActiveWindow(HWND hWnd){
     if(nswindow.window == nil)
         return FALSE;
     SLOG_STMI()<<"setNsActiveWindow: hWnd="<<hWnd;
+    [NSApp activateIgnoringOtherApps:YES];
     [nswindow.window makeKeyWindow];
     return TRUE;
     }
@@ -2340,7 +2346,7 @@ HWND getNsForegroundWindow() {
         if(topWindow && topWindow.contentView != nil){
             SNsWindow *nswindow = (SNsWindow *)topWindow.contentView;
             if(nswindow){
-                SLOG_STMI()<<"getNsForegroundWindow: hWnd="<<nswindow->m_hWnd;
+                //SLOG_STMI()<<"getNsForegroundWindow: hWnd="<<nswindow->m_hWnd;
                 return nswindow->m_hWnd;
             }
         }
@@ -2510,7 +2516,31 @@ BOOL setNsDropTarget(HWND hWnd, BOOL bEnable){
     if(!nsWindow)
         return FALSE;
     if(bEnable){
-        [nsWindow registerForDraggedTypes:@[(__bridge NSString *)kUTTypeItem]];
+        // macOS drag registration doesn't support wildcards, so we use a comprehensive approach:
+        // Register internal swinx drag marker - ensures we receive drags from swinx sources
+        NSArray *draggedTypes = @[
+            // Swinx internal drag marker - this is the key to guaranteed delivery
+            kDragTypeSwinxMark,
+            
+            // Broadest types - these will catch custom UTIs that conform to standard hierarchy
+            @"public.item",              // Root of all items (broader than public.data)
+            @"public.data",              // All data types
+            
+            // Content hierarchy - catches content-based drags
+            (__bridge NSString *)kUTTypeContent,
+            (__bridge NSString *)kUTTypeCompositeContent,
+            
+            // Common standard types (for performance optimization)
+            NSPasteboardTypeString,
+            NSPasteboardTypeFileURL,
+            NSPasteboardTypeURL,
+            NSPasteboardTypePNG,
+            NSPasteboardTypeTIFF,
+            NSPasteboardTypeRTF,
+            NSPasteboardTypeHTML,
+        ];
+        
+        [nsWindow registerForDraggedTypes:draggedTypes];
     }else{
         [nsWindow unregisterDraggedTypes];
     }
@@ -2518,8 +2548,8 @@ BOOL setNsDropTarget(HWND hWnd, BOOL bEnable){
     }
 }
 
-BOOL EnumDataOjbectCb(WORD fmt, HGLOBAL hMem, NSPasteboardItem *item){
-    @autoreleasepool { 
+static BOOL EnumDataOjbectCb(WORD fmt, HGLOBAL hMem, NSPasteboardItem *item){
+    @autoreleasepool{ 
         if(fmt == CF_UNICODETEXT){
             if([[item types] containsObject:NSPasteboardTypeString])
                 return TRUE;
@@ -2537,12 +2567,32 @@ BOOL EnumDataOjbectCb(WORD fmt, HGLOBAL hMem, NSPasteboardItem *item){
         }else{
             const void *src = GlobalLock(hMem);
             size_t len = GlobalSize(hMem);
-            NSData *data = [NSData dataWithBytes:src length:len];
             GlobalUnlock(hMem);
-            NSString *type = SNsDataObjectProxy::getPasteboardType(fmt);
-            BOOL ret = [item setData:data forType:NSPasteboardTypeURL];
-            if(!ret)
+            
+            // Validate data before proceeding
+            if(!src || len == 0){
+                LOG_FMT(kLogTag, SLOG_WARN, "Invalid data for format %u", (unsigned int)fmt);
                 return FALSE;
+            }
+            
+            NSData *data = [NSData dataWithBytes:src length:len];
+            NSString *type = SNsDataObjectProxy::getPasteboardType(fmt);
+            
+            // Validate pasteboard type
+            if(!type || [type length] == 0){
+                LOG_FMT(kLogTag, SLOG_WARN, "Invalid pasteboard type for format %u", (unsigned int)fmt);
+                return FALSE;
+            }
+            
+            // Check if type already exists
+            if([[item types] containsObject:type])
+                return TRUE;
+            
+            BOOL ret = [item setData:data forType:type];
+            if(!ret){
+                LOG_FMT(kLogTag, SLOG_WARN, "Failed to set data for type: %@ (format: %u)", type, (unsigned int)fmt);
+                return FALSE;
+            }
         }
         return TRUE;
     }
@@ -2626,6 +2676,11 @@ HRESULT doNsDragDrop(IDataObject *pDataObject,
         if([item types].count == 0) {
             return E_UNEXPECTED;
         }
+
+        // CRITICAL: Add internal swinx drag marker to ensure target windows can receive this drag
+        // This marker type is registered by all swinx drop targets, guaranteeing drag event delivery
+        NSData *markerData = [NSData dataWithBytes:"SWINX_DRAG" length:10];
+        [item setData:markerData forType: kDragTypeSwinxMark];
 
         // 创建NSDraggingItem
         NSDraggingItem *draggingItem = [[NSDraggingItem alloc] initWithPasteboardWriter:item];

@@ -736,7 +736,7 @@ bool SConnection::peekMsg(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFi
         }
     }
     auto it = m_msgQueue.begin();
-    for (; it != m_msgQueue.end(); it++)
+    while (it != m_msgQueue.end())
     {
         bool bMatch = TRUE;
         Msg *msg = (*it);
@@ -757,8 +757,18 @@ bool SConnection::peekMsg(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFi
                 break;
             bMatch = FALSE;
         } while (false);
+        if(msg->hwnd){
+            WndObj wndObj = WndMgr::fromHwnd(msg->hwnd);
+            if(!wndObj || wndObj->bDestroyed)
+            {// window destroyed or destroying. don't process the message.
+                it = m_msgQueue.erase(it);
+                delete msg;
+                continue;
+            }
+        }
         if (bMatch)
             break;
+        it++;
     }
    if (it != m_msgQueue.end())
     {
@@ -1334,8 +1344,11 @@ void SConnection::SetZOrder(HWND hWnd, _Window *wndObj, HWND hWndInsertAfter) {
 }
 
 void SConnection::OnStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWORD newStyle){
-
+    if((oldStyle & WS_DISABLED) != (newStyle & WS_DISABLED)){
+        enableNsWindow(hWnd, (newStyle & WS_DISABLED)!=0);
+    }
 }
+
 void SConnection::OnExStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWORD newStyle){
     if(GetParent(hWnd))
         return;
@@ -1740,7 +1753,13 @@ void SConnection::onTerminate() {
 }
 
 void SConnection::OnNsEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-    SendMessageA(hWnd,message,wParam,lParam);
+    //use post message to make sure the message is processed by the message loop.
+    Msg *pMsg = new Msg;
+    pMsg->hwnd = hWnd;
+    pMsg->message = message;
+    pMsg->wParam = wParam;
+    pMsg->lParam = lParam;
+    postMsg(pMsg);
 }
 
 void SConnection::OnNsActive(HWND hWnd, BOOL bActive) {

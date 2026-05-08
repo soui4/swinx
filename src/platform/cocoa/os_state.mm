@@ -34,6 +34,8 @@
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
     // 应用程序启动完成后的处理
     NSLog(@"Application finished launching");
+    [NSApp activateIgnoringOtherApps:YES];
+    //[[NSRunningApplication currentApplication] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {

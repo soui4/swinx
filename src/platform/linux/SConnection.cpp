@@ -879,7 +879,7 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         }
     }
     auto it = m_msgQueue.begin();
-    for (; it != m_msgQueue.end(); it++)
+    for (it != m_msgQueue.end())
     {
         BOOL bMatch = TRUE;
         Msg *msg = (*it);
@@ -900,8 +900,18 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
                 break;
             bMatch = FALSE;
         } while (false);
+        if(msg->hwnd){
+            WndObj wndObj = WndMgr::fromHwnd(msg->hwnd);
+            if(!wndObj || wndObj->bDestroyed)
+            {// window destroyed or destroying. don't process the message.
+                it = m_msgQueue.erase(it);
+                delete msg;
+                continue;
+            }
+        }
         if (bMatch)
             break;
+        it ++;
     }
     if (it != m_msgQueue.end())
     {

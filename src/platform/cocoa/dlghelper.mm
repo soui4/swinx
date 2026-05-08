@@ -5,6 +5,8 @@
 #include "sysapi.h"
 #include "winuser.h"
 #include "wnd.h"
+#include "log.h"
+#define kLogTag "dlghelper"
 
 // 为了支持进程激活，需要包含ApplicationServices
 #include <ApplicationServices/ApplicationServices.h>
@@ -51,6 +53,40 @@
 
 @end
 
+static NSInteger RunModalPanel(HWND hwndOwner, NSSavePanel *panel) {
+    @autoreleasepool {
+        SLOG_STMI()<<"RunModalPanel, hwndOwner: "<<hwndOwner;
+                // Check application activation state
+        if (![NSApp isActive]) {
+            SLOG_STMI()<<"WARNING: Application is not active. Panel may not display correctly.";
+            SLOG_STMI()<<"Please click on the app's Dock icon to activate it, then try again.";
+            // Don't show panel when app is not active - it will fail
+            return NSModalResponseCancel;
+        }
+        
+        SLOG_STMI()<<"Application is active, showing panel...";
+        // 确保应用程序处于前台状态
+        [NSApp activateIgnoringOtherApps:YES];
+        [[NSRunningApplication currentApplication] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
+
+        // 禁用 owner 窗口以实现真正的模态行为
+        if (hwndOwner) {
+            EnableWindow(hwndOwner, FALSE);
+        }
+
+        // 使用 runModal 显示对话框（这会阻塞直到用户操作）
+        NSInteger result = [panel runModal];
+        
+        // 重新启用 owner 窗口并将其带到前台
+        if (hwndOwner) {
+            EnableWindow(hwndOwner, TRUE);
+            setNsWindowToTop(hwndOwner);
+        }
+        
+        return result;
+    }
+}
+
 BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out) {
     @autoreleasepool {
         // 创建颜色面板
@@ -68,34 +104,24 @@ BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out) {
             [colorPanel setColor:initColor];
         }
 
-        // 监听关闭和颜色变更事件
-        __block BOOL didStopModal = NO;
-        __block id closeObserver = nil;
-        __block id colorObserver = nil;
-        __block NSColor *pickedColor = nil;
+        // 禁用父窗口
+        if (parent) {
+            EnableWindow(parent, FALSE);
+        }
 
-        colorObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSColorPanelColorDidChangeNotification object:colorPanel queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification * _Nonnull note) {
-            pickedColor = [[colorPanel color] copy];
-        }];
-        closeObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSWindowWillCloseNotification object:colorPanel queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification * _Nonnull note) {
-            if (!didStopModal) {
-                didStopModal = YES;
-                if (pickedColor) {
-                    [NSApp stopModalWithCode:NSModalResponseOK];
-                } else {
-                    [NSApp stopModalWithCode:NSModalResponseCancel];
-                }
-            }
-        }];
-
-        [colorPanel setIsVisible:YES];
+        // 显示颜色面板并运行模态
+        [colorPanel makeKeyAndOrderFront:nil];
         NSInteger modalResult = [NSApp runModalForWindow:colorPanel];
         [colorPanel orderOut:nil];
 
-        [[NSNotificationCenter defaultCenter] removeObserver:closeObserver];
-        [[NSNotificationCenter defaultCenter] removeObserver:colorObserver];
+        // 重新启用父窗口
+        if (parent) {
+            EnableWindow(parent, TRUE);
+            setNsWindowToTop(parent);
+        }
 
-        if (modalResult == NSModalResponseOK && pickedColor) {
+        if (modalResult == NSModalResponseOK && out) {
+            NSColor *pickedColor = [colorPanel color];
             NSColor *rgbColor = [pickedColor colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]];
             if (!rgbColor) return FALSE;
 
@@ -155,17 +181,13 @@ static BOOL GetOpenFileNameMac(OPENFILENAMEA *lpofn) {
 
         // 设置文件类型过滤
         if (allowedTypes.count > 0) {
-            // 调试输出：显示解析出的扩展名
             NSLog(@"[FileDialog] Parsed extensions: %@", allowedTypes);
 
-            // 使用allowedFileTypes，虽然在新版本中被弃用，但仍然有效
-            // 这样可以避免链接UniformTypeIdentifiers框架的问题
             #pragma clang diagnostic push
             #pragma clang diagnostic ignored "-Wdeprecated-declarations"
             panel.allowedFileTypes = allowedTypes;
             #pragma clang diagnostic pop
 
-            // 不设置allowsOtherFileTypes为YES，这样可以严格按照过滤器过滤
             panel.allowsOtherFileTypes = NO;
         } else {
             NSLog(@"[FileDialog] No file type filters applied");
@@ -201,18 +223,12 @@ static BOOL GetOpenFileNameMac(OPENFILENAMEA *lpofn) {
             panel.delegate = filterDelegate;
         }
 
-        // 确保应用程序处于前台状态，解决窗口激活问题
-        // 使用多种方法确保窗口能够正确激活
-        [NSApp activateIgnoringOtherApps:YES];
-
-        // 确保应用程序获得焦点
-        [[NSRunningApplication currentApplication] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
-
-        // 运行面板
-        NSInteger result = [panel runModal];
+        // 使用 runModal 方式显示对话框
+        NSInteger result = RunModalPanel(lpofn->hwndOwner, panel);
         
         if (result == NSModalResponseOK) {
-            NSArray *urls = panel.URLs;
+            NSArray<NSURL *> *urls = panel.URLs;
+            
             // 准备缓冲区
             char *buffer = lpofn->lpstrFile;
             size_t remaining = lpofn->nMaxFile;
@@ -329,14 +345,11 @@ static BOOL GetSaveFileNameMac(OPENFILENAMEA *lpofn) {
 
         // 设置文件类型过滤
         if (allowedTypes.count > 0) {
-            // 使用allowedFileTypes，虽然在新版本中被弃用，但仍然有效
-            // 这样可以避免链接UniformTypeIdentifiers框架的问题
             #pragma clang diagnostic push
             #pragma clang diagnostic ignored "-Wdeprecated-declarations"
             panel.allowedFileTypes = allowedTypes;
             #pragma clang diagnostic pop
 
-            // 不设置allowsOtherFileTypes为YES，这样可以严格按照过滤器过滤
             panel.allowsOtherFileTypes = NO;
         }
 
@@ -365,31 +378,29 @@ static BOOL GetSaveFileNameMac(OPENFILENAMEA *lpofn) {
         
         // 设置默认扩展名
         if (lpofn->lpstrDefExt) {
-            panel.nameFieldStringValue = [panel.nameFieldStringValue stringByAppendingPathExtension:
-                                         [NSString stringWithUTF8String:lpofn->lpstrDefExt]];
+            NSString *defExt = [NSString stringWithUTF8String:lpofn->lpstrDefExt];
+            if (![panel.nameFieldStringValue.pathExtension isEqualToString:defExt]) {
+                panel.nameFieldStringValue = [panel.nameFieldStringValue stringByAppendingPathExtension:defExt];
+            }
         }
         
         // 处理标志位
         panel.showsHiddenFiles = (lpofn->Flags & OFN_HIDEREADONLY) == 0;
 
-        // 确保应用程序处于前台状态，解决窗口激活问题
-        // 使用多种方法确保窗口能够正确激活
-        [NSApp activateIgnoringOtherApps:YES];
-
-        // 确保应用程序获得焦点
-        [[NSRunningApplication currentApplication] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
-
-        // 运行面板
-        NSInteger result = [panel runModal];
+        // 使用 runModal 方式显示对话框
+        NSInteger result = RunModalPanel(lpofn->hwndOwner, panel);
         
         if (result == NSModalResponseOK) {
-            NSString *path = panel.URL.path;
+            NSURL *selectedURL = panel.URL;
+            NSString *path = selectedURL.path;
             if (path.length + 1 <= lpofn->nMaxFile) {
                 strncpy(lpofn->lpstrFile, path.UTF8String, lpofn->nMaxFile);
+                lpofn->lpstrFile[lpofn->nMaxFile - 1] = '\0';
                 
                 if (lpofn->lpstrFileTitle && lpofn->nMaxFileTitle > 0) {
-                    NSString *fileName = panel.URL.lastPathComponent;
+                    NSString *fileName = selectedURL.lastPathComponent;
                     strncpy(lpofn->lpstrFileTitle, fileName.UTF8String, lpofn->nMaxFileTitle);
+                    lpofn->lpstrFileTitle[lpofn->nMaxFileTitle - 1] = '\0';
                 }
                 
                 return YES;
@@ -401,7 +412,7 @@ static BOOL GetSaveFileNameMac(OPENFILENAMEA *lpofn) {
 }
 
 // 选择文件夹函数
-static BOOL SelectFolderMac(HWND hwndOwner,const char * lpszTitle,char * lpszFolderPath, int nMaxFolderPath) {
+static BOOL SelectFolderMac(HWND hwndOwner, const char *lpszTitle, char *lpszFolderPath, int nMaxFolderPath) {
     @autoreleasepool {
         NSOpenPanel *panel = [NSOpenPanel openPanel];
         
@@ -418,25 +429,16 @@ static BOOL SelectFolderMac(HWND hwndOwner,const char * lpszTitle,char * lpszFol
             panel.message = title; // message显示更大的标题
         }
 
-        // 确保应用程序处于前台状态，解决窗口激活问题
-        // 使用多种方法确保窗口能够正确激活
-        [NSApp activateIgnoringOtherApps:YES];
-
-        // 确保应用程序获得焦点
-        [[NSRunningApplication currentApplication] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
-
-        // 运行模态对话框
-        NSInteger result = [panel runModal];
+        // 使用 runModal 方式显示对话框
+        NSInteger result = RunModalPanel(hwndOwner, panel);
         
         if (result == NSModalResponseOK) {
-            NSURL *url = [panel.URLs firstObject];
-            if (url) {
-                NSString *path = [url path];
-                if ([path length] + 1 <= nMaxFolderPath) {
-                    strncpy(lpszFolderPath, [path UTF8String], nMaxFolderPath);
-                    lpszFolderPath[nMaxFolderPath - 1] = '\0'; // 确保终止
-                    return YES;
-                }
+            NSURL *selectedURL = [panel.URLs firstObject];
+            NSString *path = [selectedURL path];
+            if ([path length] + 1 <= nMaxFolderPath) {
+                strncpy(lpszFolderPath, [path UTF8String], nMaxFolderPath);
+                lpszFolderPath[nMaxFolderPath - 1] = '\0'; // 确保终止
+                return YES;
             }
         }
         
@@ -576,15 +578,22 @@ static BOOL ChooseFontMac(LPCHOOSEFONTA p) {
             return FALSE;
         }
 
+        // 禁用父窗口
+        if (p->hwndOwner) {
+            EnableWindow(p->hwndOwner, FALSE);
+        }
+
         // 获取字体面板
         NSFontPanel *fontPanel = [NSFontPanel sharedFontPanel];
         FontPanelDelegate *delegate = [[FontPanelDelegate alloc] init];
         [fontPanel setEnabled:YES];
+        
         // 设置初始字体
         NSFont *initialFont = LogFontToNSFont(p->lpLogFont);
         if (initialFont) {
             [[NSFontManager sharedFontManager] setSelectedFont:initialFont isMultiple:NO];
         }            
+        
         // 创建委托对象
         delegate.selectedFont = initialFont;
 
@@ -593,29 +602,22 @@ static BOOL ChooseFontMac(LPCHOOSEFONTA p) {
         [fontManager setTarget:delegate];
         [fontManager setAction:@selector(changeFont:)];
 
-        // 设置父窗口（如果有）
-        NSWindow *parentWindow = nil;
-        if (p->hwndOwner) {
-            int parentId = getNsWindowId(p->hwndOwner);
-            parentWindow = [NSApp windowWithWindowNumber:parentId];
-        }
-
         // 显示字体面板并等待用户操作
         [fontPanel makeKeyAndOrderFront:nil];
 
-        // 使用简单的事件循环等待用户操作
-        BOOL result = FALSE;
-        while ([fontPanel isVisible]) {
-            // 处理事件
-            NSEvent *event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                                untilDate:[NSDate dateWithTimeIntervalSinceNow:0.1]
-                                                   inMode:NSDefaultRunLoopMode
-                                                  dequeue:YES];
-            if (event) {
-                [NSApp sendEvent:event];
-            }
+        // 使用 runModalForWindow 运行字体面板
+        NSInteger modalResult = [NSApp runModalForWindow:fontPanel];
+        [fontPanel orderOut:nil];
+
+        // 重新启用父窗口
+        if (p->hwndOwner) {
+            EnableWindow(p->hwndOwner, TRUE);
+            setNsWindowToTop(p->hwndOwner);
         }
-        if (delegate.selectedFont) {
+
+        // 处理结果
+        BOOL result = FALSE;
+        if (modalResult == NSModalResponseOK && delegate.selectedFont) {
             NSFontToLogFont(delegate.selectedFont, p->lpLogFont);
             // 设置点大小
             if (p->Flags & CF_INITTOLOGFONTSTRUCT) {
@@ -625,8 +627,6 @@ static BOOL ChooseFontMac(LPCHOOSEFONTA p) {
         }
 
         // 清理
-        [fontPanel orderOut:nil];
-        // 恢复字体管理器的目标
         [fontManager setTarget:nil];
 
         return result;
@@ -663,26 +663,25 @@ BOOL WINAPI ChooseFontW(LPCHOOSEFONTW p) {
     chooseA.nSizeMin = p->nSizeMin;
     chooseA.nSizeMax = p->nSizeMax;
 
-        // 转换LOGFONTW到LOGFONTA
-        logfontA.lfHeight = p->lpLogFont->lfHeight;
-        logfontA.lfWidth = p->lpLogFont->lfWidth;
-        logfontA.lfEscapement = p->lpLogFont->lfEscapement;
-        logfontA.lfOrientation = p->lpLogFont->lfOrientation;
-        logfontA.lfWeight = p->lpLogFont->lfWeight;
-        logfontA.lfItalic = p->lpLogFont->lfItalic;
-        logfontA.lfUnderline = p->lpLogFont->lfUnderline;
-        logfontA.lfStrikeOut = p->lpLogFont->lfStrikeOut;
-        logfontA.lfCharSet = p->lpLogFont->lfCharSet;
-        logfontA.lfOutPrecision = p->lpLogFont->lfOutPrecision;
-        logfontA.lfClipPrecision = p->lpLogFont->lfClipPrecision;
-        logfontA.lfQuality = p->lpLogFont->lfQuality;
-        logfontA.lfPitchAndFamily = p->lpLogFont->lfPitchAndFamily;
+    // 转换LOGFONTW到LOGFONTA
+    logfontA.lfHeight = p->lpLogFont->lfHeight;
+    logfontA.lfWidth = p->lpLogFont->lfWidth;
+    logfontA.lfEscapement = p->lpLogFont->lfEscapement;
+    logfontA.lfOrientation = p->lpLogFont->lfOrientation;
+    logfontA.lfWeight = p->lpLogFont->lfWeight;
+    logfontA.lfItalic = p->lpLogFont->lfItalic;
+    logfontA.lfUnderline = p->lpLogFont->lfUnderline;
+    logfontA.lfStrikeOut = p->lpLogFont->lfStrikeOut;
+    logfontA.lfCharSet = p->lpLogFont->lfCharSet;
+    logfontA.lfOutPrecision = p->lpLogFont->lfOutPrecision;
+    logfontA.lfClipPrecision = p->lpLogFont->lfClipPrecision;
+    logfontA.lfQuality = p->lpLogFont->lfQuality;
+    logfontA.lfPitchAndFamily = p->lpLogFont->lfPitchAndFamily;
 
-        // 转换字体名称从宽字符到多字节
-        WideCharToMultiByte(CP_UTF8, 0, p->lpLogFont->lfFaceName, -1,
-                        logfontA.lfFaceName, LF_FACESIZE, NULL, NULL);
-        chooseA.lpLogFont = &logfontA;
-
+    // 转换字体名称从宽字符到多字节
+    WideCharToMultiByte(CP_UTF8, 0, p->lpLogFont->lfFaceName, -1,
+                    logfontA.lfFaceName, LF_FACESIZE, NULL, NULL);
+    chooseA.lpLogFont = &logfontA;
 
     // 调用ANSI版本
     BOOL result = ChooseFontA(&chooseA);

@@ -1660,7 +1660,7 @@ BOOL SetForegroundWindow(HWND hWnd)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return FALSE;
-    if(!wndObj->dwStyle & WS_VISIBLE)
+    if(!(wndObj->dwStyle & WS_VISIBLE))
         return FALSE;
 #ifdef __linux__
     if(!(wndObj->flags&kMapped))

@@ -6,29 +6,10 @@
 #include "atoms.h"
 #include "ctypes.h"
 #include "sysapi.h"
+#include "SNsDataObjectProxy.h"
 #define kLogTag "SClipboard"
 #include "tostring.hpp"
 using namespace swinx;
-
-
-static NSPasteboardType clipboardFormat2PasteboardType(UINT uFormat) {
-  switch (uFormat) {
-  case CF_TEXT:
-    return NSStringPboardType;
-  case CF_BITMAP:
-    return NSPasteboardTypePNG;
-  default:
-    if (uFormat > CF_MAX) {
-      char szName[1024];
-      int len = SAtoms::getAtomName(uFormat - CF_MAX, szName, 1024);
-      if (len < 0)
-        return nil;
-      return [NSString stringWithUTF8String:szName];
-    } else {
-      return nil;
-    }
-  }
-}
 
 class SMimeEnumFORMATETC : public SUnkImpl<IEnumFORMATETC> {
   SMimeData *m_mimeData;
@@ -114,8 +95,11 @@ bool SMimeData::isEmpty() const{
 HRESULT SMimeData::QueryGetData(FORMATETC *pformatetc) {
   std::unique_lock<std::recursive_mutex> lock(m_mutex);
   @autoreleasepool {
-    NSPasteboardType type =
-        clipboardFormat2PasteboardType(pformatetc->cfFormat);
+    CLIPFORMAT cf = pformatetc->cfFormat;
+    if(cf == CF_UNICODETEXT){
+      cf = CF_TEXT;
+    }
+    NSPasteboardType type = SNsDataObjectProxy::getPasteboardType(cf);
     if (!type) {
       return DV_E_FORMATETC;
     }
@@ -152,7 +136,7 @@ HRESULT SMimeData::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium) {
       return DV_E_TYMED;
     @autoreleasepool {
       NSPasteboardType type =
-          clipboardFormat2PasteboardType(pformatetcIn->cfFormat);
+          SNsDataObjectProxy::getPasteboardType(pformatetcIn->cfFormat);
       if (!type) {
         return DV_E_FORMATETC;
       }
@@ -196,7 +180,7 @@ void SMimeData::flush() {
     NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
     [pasteboard clearContents];
     for (auto it : m_lstData) {
-      NSPasteboardType type = clipboardFormat2PasteboardType(it->fmt);
+      NSPasteboardType type = SNsDataObjectProxy::getPasteboardType(it->fmt);
       if (!type) {
         continue;
       }
@@ -229,15 +213,32 @@ HRESULT SMimeData::SetData(FORMATETC *pformatetc, STGMEDIUM *pmedium,
     return DV_E_TYMED;
   FormatedData *pdata = new FormatedData;
   pdata->fmt = pformatetc->cfFormat;
-  if (fRelease) {
-    pdata->data = pmedium->hGlobal;
-  } else {
-    pdata->data = GlobalAlloc(0, GlobalSize(pmedium->hGlobal));
-    void *dst = GlobalLock(pdata->data);
-    const void *src = GlobalLock(pmedium->hGlobal);
-    memcpy(dst, src, GlobalSize(pdata->data));
-    GlobalUnlock(pdata->data);
-    GlobalUnlock(pmedium->hGlobal);
+  if(pdata->fmt == CF_UNICODETEXT){
+      //convert to utf8
+      pdata->fmt = CF_TEXT;
+      const wchar_t *src = (const wchar_t*)GlobalLock(pmedium->hGlobal);
+      int len = GlobalSize(pmedium->hGlobal)/sizeof(wchar_t);
+      std::string strU8;
+      tostring(src,len,strU8);
+      pdata->data = GlobalAlloc(0, strU8.size());
+      void *dst = GlobalLock(pdata->data);
+      memcpy(dst, strU8.c_str(), strU8.size());
+      GlobalUnlock(pdata->data);
+      GlobalUnlock(pmedium->hGlobal);
+      if(fRelease){
+        GlobalFree(pmedium->hGlobal);
+      }
+  }else{
+    if (fRelease) {
+      pdata->data = pmedium->hGlobal;
+    } else {
+      pdata->data = GlobalAlloc(0, GlobalSize(pmedium->hGlobal));
+      void *dst = GlobalLock(pdata->data);
+      const void *src = GlobalLock(pmedium->hGlobal);
+      memcpy(dst, src, GlobalSize(pdata->data));
+      GlobalUnlock(pdata->data);
+      GlobalUnlock(pmedium->hGlobal);
+    }
   }
   set(pdata);
   return S_OK;
@@ -346,7 +347,9 @@ void SClipboard::flushClipboard() {
 
 bool SClipboard::hasFormat(UINT format) {
   @autoreleasepool {
-    NSPasteboardType type = clipboardFormat2PasteboardType(format);
+    if(format == CF_UNICODETEXT)
+      format = CF_TEXT;
+    NSPasteboardType type = SNsDataObjectProxy::getPasteboardType(format);
     if (!type)
       return FALSE;
     NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
