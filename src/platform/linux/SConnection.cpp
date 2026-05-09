@@ -879,7 +879,7 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
         }
     }
     auto it = m_msgQueue.begin();
-    for (it != m_msgQueue.end())
+    while(it != m_msgQueue.end())
     {
         BOOL bMatch = TRUE;
         Msg *msg = (*it);
