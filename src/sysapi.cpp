@@ -3011,15 +3011,28 @@ LPSTR WINAPI GetCommandLineA(void)
         perror("Failed to open cmdline file");
         return cmdline;
     }
-    if (fgets(cmdline, sizeof(cmdline), file))
+    
+    // Read the entire cmdline file which contains null-separated arguments
+    size_t bytes_read = fread(cmdline, 1, sizeof(cmdline) - 1, file);
+    fclose(file);
+    
+    if (bytes_read > 0)
     {
-        for (char *p = cmdline; *p; p++)
+        // Null-terminate the string
+        cmdline[bytes_read] = '\0';
+        
+        // Replace null separators with spaces
+        for (size_t i = 0; i < bytes_read; i++)
         {
-            if (*p == '\0')
-                *p = ' ';
+            if (cmdline[i] == '\0')
+                cmdline[i] = ' ';
         }
     }
-    fclose(file);
+    else
+    {
+        cmdline[0] = '\0';
+    }
+    
     return cmdline;
 #endif
 }
