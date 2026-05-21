@@ -3344,10 +3344,10 @@ bail0:
 	return FcTrue;
     }
     if (!ret && complain_again) {
-	if (name)
-	    FcConfigMessage (0, FcSevereError, "Cannot %s config file \"%s\": %s", load ? "load" : "scan", name, FcStrBufDoneStatic (&reason));
-	else
-	    FcConfigMessage (0, FcSevereError, "Cannot %s default config file: %s", load ? "load" : "scan", FcStrBufDoneStatic (&reason));
+	// if (name)
+	//     FcConfigMessage (0, FcSevereError, "Cannot %s config file \"%s\": %s", load ? "load" : "scan", name, FcStrBufDoneStatic (&reason));
+	// else
+	//     FcConfigMessage (0, FcSevereError, "Cannot %s default config file: %s", load ? "load" : "scan", FcStrBufDoneStatic (&reason));
 	FcStrBufDestroy (&reason);
 	return FcFalse;
     }
