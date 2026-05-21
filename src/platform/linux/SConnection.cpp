@@ -389,8 +389,7 @@ SConnection::~SConnection()
     DeleteObject(m_deskBmp);
     DestroyCaret();
 
-    SLOG_STMI() << "quit sconnection";
-    // m_bQuit = true;
+    //SLOG_STMI() << "quit sconnection";
 
     xcb_window_t hTmp = xcb_generate_id(connection);
     xcb_create_window(connection,
