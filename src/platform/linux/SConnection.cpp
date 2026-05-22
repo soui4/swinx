@@ -12,6 +12,9 @@
 #include <sstream>
 #include <string>
 #include <math.h>
+#include <unistd.h>      // For pipe(), read(), write(), close()
+#include <poll.h>        // For poll()
+#include <errno.h>       // For errno
 #include "cursormgr.h"
 #include "src/platform/cocoa/os_state.h"
 #include "uimsg.h"
@@ -125,6 +128,13 @@ SConnection *SConnMgr::getConnection(tid_t tid_, int screenNum)
 uint32_t SConnection::GetDoubleClickSpan()
 {
     uint32_t ret = 400;
+    
+    if (!screen)
+    {
+        SLOG_STMW() << "Screen is NULL, using default double click span";
+        return ret;
+    }
+    
     xcb_window_t root_window = screen->root;
 
     xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, root_window, atoms._NET_DOUBLE_CLICK_TIME, XCB_ATOM_CARDINAL, 0, 1024);
@@ -251,6 +261,7 @@ SConnection::SConnection(int screenNum)
     if (int errCode = xcb_connection_has_error(connection) > 0)
     {
         printf("XCB Error: %d\n", errCode);
+        SLOG_STME()<<"xcb_connect failed, error="<<errCode;
         connection = NULL;
         return;
     }
@@ -271,8 +282,7 @@ SConnection::SConnection(int screenNum)
         iter = xcb_setup_roots_iterator(m_setup);
     }
     screen = iter.data;
-
-    {
+    if(screen){
         xcb_depth_iterator_t depth_iter = xcb_screen_allowed_depths_iterator(screen);
         for (; depth_iter.rem && rgba_visual == 0; xcb_depth_next(&depth_iter))
         {
@@ -339,17 +349,40 @@ SConnection::SConnection(int screenNum)
     m_hWndLastMouseMove = 0;
     m_bBlockTimer = false;
 
-    m_deskDC = new _SDC(screen->root);
+    // Initialize desktop DC and bitmap with fallback for NULL screen
+    m_deskDC = new _SDC(screen?screen->root:0);
+    if (screen)
+    {
+        m_rcWorkArea.right = screen->width_in_pixels;
+        m_rcWorkArea.bottom = screen->height_in_pixels;
+    }
+    else
+    {
+        // Fallback: use default values when screen is NULL
+        SLOG_STMW() << "Screen is NULL, using fallback values for desktop DC and work area";
+        m_rcWorkArea.right = 1920;  // Default width
+        m_rcWorkArea.bottom = 1080; // Default height
+    }
+    
     m_deskBmp = CreateCompatibleBitmap(m_deskDC, 1, 1);
     SelectObject(m_deskDC, m_deskBmp);
-
     memset(&m_caretInfo, 0, sizeof(m_caretInfo));
-
     m_rcWorkArea.left = m_rcWorkArea.top = 0;
-    m_rcWorkArea.right = screen->width_in_pixels;
-    m_rcWorkArea.bottom = screen->height_in_pixels;
 
     m_evtSync = CreateEventA(nullptr, FALSE, FALSE, nullptr);
+    
+    // Create pipe for waking up event reader thread (works without screen)
+    if (pipe(m_wakeupPipe) != 0)
+    {
+        SLOG_STME() << "Failed to create wakeup pipe: " << strerror(errno);
+        m_wakeupPipe[0] = m_wakeupPipe[1] = -1;
+    }
+    else
+    {
+        // Set non-blocking mode for read end
+        int flags = fcntl(m_wakeupPipe[0], F_GETFL, 0);
+        fcntl(m_wakeupPipe[0], F_SETFL, flags | O_NONBLOCK);
+    }
     m_trdEvtReader = std::move(std::thread(std::bind(&readProc, this)));
 
     xcb_compound_text_init();
@@ -389,35 +422,26 @@ SConnection::~SConnection()
     DeleteObject(m_deskBmp);
     DestroyCaret();
 
-    //SLOG_STMI() << "quit sconnection";
-
-    xcb_window_t hTmp = xcb_generate_id(connection);
-    xcb_create_window(connection,
-                      XCB_COPY_FROM_PARENT, // depth -- same as root
-                      hTmp,                 // window id
-                      screen->root,         // parent window id
-                      0, 0, 3, 3,
-                      0,                           // border width
-                      XCB_WINDOW_CLASS_INPUT_ONLY, // window class
-                      screen->root_visual,         // visual
-                      0,                           // value mask
-                      0);                          // value list
-
-    // the hWnd is valid window id.
-    xcb_client_message_event_t client_msg_event = {
-        XCB_CLIENT_MESSAGE, //.response_type
-        32,                 //.format
-        0,                  //.sequence
-        (xcb_window_t)hTmp, //.window
-        atoms.WM_DISCONN    //.type
-    };
-    xcb_send_event(connection, 0, hTmp, XCB_EVENT_MASK_NO_EVENT, (const char *)&client_msg_event);
-    xcb_flush(connection);
-    m_trdEvtReader.join();
-    //    SLOG_STMI() << "event reader quited";
-
-    xcb_destroy_window(connection, hTmp);
-    xcb_flush(connection);
+    // Wake up event reader thread using pipe (works without screen)
+    m_bQuit = true;
+    if (m_wakeupPipe[1] >= 0)
+    {
+        char dummy = 1;
+        write(m_wakeupPipe[1], &dummy, 1);
+    }
+    
+    // Join the event reader thread
+    if (m_trdEvtReader.joinable())
+    {
+        m_trdEvtReader.join();
+    }
+    
+    // Close pipe file descriptors
+    if (m_wakeupPipe[0] >= 0)
+        close(m_wakeupPipe[0]);
+    if (m_wakeupPipe[1] >= 0)
+        close(m_wakeupPipe[1]);
+    m_wakeupPipe[0] = m_wakeupPipe[1] = -1;
     xcb_disconnect(connection);
 
     for (auto it : m_msgQueue)
@@ -442,6 +466,12 @@ SConnection::~SConnection()
 
 void SConnection::readXResources()
 {
+    if (!screen)
+    {
+        SLOG_STMW() << "Screen is NULL, cannot read X resources";
+        return;
+    }
+    
     int offset = 0;
     std::stringstream resources;
     while (1)
@@ -1339,6 +1369,8 @@ HWND SConnection::_QueryActiveWindow()
 
 HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
 {
+    assert(screen);
+    
     HWND hWnd = xcb_generate_id(connection);
     xcb_colormap_t cmap = xcb_generate_id(connection);
     xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE, cmap, screen->root, pWnd->visualId);
@@ -1940,6 +1972,12 @@ xcb_cursor_t SConnection::createXcbCursor(HCURSOR cursor)
 
     do
     {
+        if (!screen)
+        {
+            SLOG_STMW() << "Screen is NULL, cannot create cursor pixmap";
+            break;
+        }
+        
         xcb_pixmap_t pix = xcb_generate_id(connection);
         xcb_create_pixmap(connection, 32, pix, screen->root, bm.bmWidth, bm.bmHeight);
 
@@ -2200,17 +2238,27 @@ HWND SConnection::WindowFromPoint(POINT pt, HWND hWnd) const
 
 BOOL SConnection::GetCursorPos(LPPOINT ppt) const
 {
-    // 获取当前鼠标位置的请求
+    if (!screen)
+    {
+        SLOG_STMW() << "Screen is NULL, cannot get cursor position";
+        ppt->x = 0;
+        ppt->y = 0;
+        return FALSE;
+    }
+    
+    // Get current mouse position
     xcb_query_pointer_cookie_t pointer_cookie = xcb_query_pointer(connection, screen->root);
     xcb_query_pointer_reply_t *pointer_reply = xcb_query_pointer_reply(connection, pointer_cookie, NULL);
     if (!pointer_reply)
     {
         fprintf(stderr, "Failed to get mouse position\n");
+        ppt->x = 0;
+        ppt->y = 0;
         return FALSE;
     }
     ppt->x = pointer_reply->root_x;
     ppt->y = pointer_reply->root_y;
-    // 释放资源
+    // Free resources
     free(pointer_reply);
     return TRUE;
 }
@@ -2219,18 +2267,33 @@ int SConnection::GetDpi(BOOL bx) const
 {
     if (!screen)
     {
-        SLOG_STME() << "screen is null! swinx will crash!!!";
+        SLOG_STMW() << "Screen is NULL, using default DPI value";
+        return 96; // Default DPI
     }
+    
     if (m_forceDpi != -1)
     {
         return m_forceDpi;
     }
+    
     if (bx)
     {
+        // Check for division by zero
+        if (screen->width_in_millimeters == 0)
+        {
+            SLOG_STMW() << "Screen width in millimeters is 0, using default DPI";
+            return 96;
+        }
         return floor(25.4 * screen->width_in_pixels / screen->width_in_millimeters + 0.5f);
     }
     else
     {
+        // Check for division by zero
+        if (screen->height_in_millimeters == 0)
+        {
+            SLOG_STMW() << "Screen height in millimeters is 0, using default DPI";
+            return 96;
+        }
         return floor(25.4 * screen->height_in_pixels / screen->height_in_millimeters + 0.5f);
     }
 }
@@ -2665,13 +2728,13 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         if (!GetParent(e2->window))
         {
             // Do not trust the position, query it instead.
-            xcb_translate_coordinates_cookie_t cookie = xcb_translate_coordinates(connection, e2->window, screen->root, 0, 0);
-            xcb_translate_coordinates_reply_t *reply = xcb_translate_coordinates_reply(connection, cookie, NULL);
-            if (reply)
-            {
-                pos.x = reply->dst_x;
-                pos.y = reply->dst_y;
-                free(reply);
+                xcb_translate_coordinates_cookie_t cookie = xcb_translate_coordinates(connection, e2->window, screen->root, 0, 0);
+                xcb_translate_coordinates_reply_t *reply = xcb_translate_coordinates_reply(connection, cookie, NULL);
+                if (reply)
+                {
+                    pos.x = reply->dst_x;
+                    pos.y = reply->dst_y;
+                    free(reply);
             }
         }
         RECT rc;
@@ -3030,24 +3093,90 @@ void *SConnection::readProc(void *p)
 
 void SConnection::_readProc()
 {
+    int xcb_fd = xcb_get_file_descriptor(connection);
+    
     while (!m_bQuit)
     {
-        xcb_generic_event_t *event = xcb_wait_for_event(connection);
-        if (!event)
+        // Use poll to wait for either XCB events or pipe wakeup
+        struct pollfd fds[2];
+        int nfds = 0;
+        
+        // Add XCB file descriptor
+        if (xcb_fd >= 0)
         {
+            fds[nfds].fd = xcb_fd;
+            fds[nfds].events = POLLIN;
+            fds[nfds].revents = 0;
+            nfds++;
+        }
+        
+        // Add pipe read end
+        if (m_wakeupPipe[0] >= 0)
+        {
+            fds[nfds].fd = m_wakeupPipe[0];
+            fds[nfds].events = POLLIN;
+            fds[nfds].revents = 0;
+            nfds++;
+        }
+        
+        if (nfds == 0)
+        {
+            // No file descriptors to wait on, just sleep briefly
+            usleep(10000); // 10ms
             continue;
         }
-        if ((event->response_type & 0x7f) == XCB_CLIENT_MESSAGE && ((xcb_client_message_event_t *)event)->type == atoms.WM_DISCONN)
+        
+        // Wait for events
+        int ret = poll(fds, nfds, -1); // Block indefinitely
+        if (ret < 0)
         {
-            m_bQuit = true;
-            SetEvent(m_evtSync);
-            //            SLOG_STMI() << "recv WM_DISCONN, quit event reading thread";
+            if (errno == EINTR)
+                continue; // Interrupted by signal, retry
+            break; // Error, exit loop
+        }
+        
+        // Check if we were woken up by the pipe
+        bool pipeWakeup = false;
+        if (m_wakeupPipe[0] >= 0 && nfds > 1 && (fds[nfds-1].revents & POLLIN))
+        {
+            // Read and discard the wakeup byte
+            char dummy;
+            while (read(m_wakeupPipe[0], &dummy, 1) > 0)
+            {
+                // Keep reading until pipe is empty
+            }
+            pipeWakeup = true;
+        }
+        
+        // If quit flag is set (either by pipe wakeup or other means), exit
+        if (m_bQuit)
+        {
             break;
         }
+        
+        // Process XCB events if available
+        if (xcb_fd >= 0 && (fds[0].revents & POLLIN))
         {
-            std::unique_lock<std::mutex> lock(m_mutex4Evt);
-            m_evtQueue.push_back(event);
-            SetEvent(m_evtSync);
+            xcb_generic_event_t *event = xcb_poll_for_event(connection);
+            while (event)
+            {
+                if ((event->response_type & 0x7f) == XCB_CLIENT_MESSAGE && 
+                    ((xcb_client_message_event_t *)event)->type == atoms.WM_DISCONN)
+                {
+                    m_bQuit = true;
+                    SetEvent(m_evtSync);
+                    free(event);
+                    break;
+                }
+                
+                {
+                    std::unique_lock<std::mutex> lock(m_mutex4Evt);
+                    m_evtQueue.push_back(event);
+                    SetEvent(m_evtSync);
+                }
+                
+                event = xcb_poll_for_event(connection);
+            }
         }
     }
 
@@ -3402,6 +3531,7 @@ xcb_window_t SConnection::_findAppChild(xcb_window_t deco_wnd){
 
 BOOL SConnection::_onEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEnumFunc, LPARAM lParam,BOOL bIncludeDescendants,BOOL &bContinue)
 {
+    assert(screen);
     if (!hParent)
         hParent = screen->root;
     xcb_query_tree_cookie_t tree_cookie = xcb_query_tree(connection, hParent);
@@ -3733,27 +3863,54 @@ void SConnection::UpdateWindowIcon(HWND hWnd, _Window * wndObj)
     
     int SConnection::GetScreenWidth(HMONITOR hMonitor) const
     {
+        if (!hMonitor)
+        {
+            SLOG_STMW() << "Monitor handle is NULL, returning default width";
+            return 1920; // Default width
+        }
         return ((xcb_screen_t *)hMonitor)->width_in_pixels;
     }
 
     int SConnection::GetScreenHeight(HMONITOR hMonitor) const
     {
+        if (!hMonitor)
+        {
+            SLOG_STMW() << "Monitor handle is NULL, returning default height";
+            return 1080; // Default height
+        }
         return ((xcb_screen_t *)hMonitor)->height_in_pixels;
     }
 
     HWND SConnection::GetScreenWindow() const
     {
+        if (!screen)
+        {
+            SLOG_STMW() << "Screen is NULL, returning invalid window handle";
+            return 0;
+        }
         return screen->root;
     }
+
+
 
     uint32_t SConnection::GetVisualID(BOOL bScreen) const
     {
         if (bScreen)
         {
+            if (!screen)
+            {
+                SLOG_STMW() << "Screen is NULL, cannot get screen visual ID";
+                return 0;
+            }
             return screen->root_visual;
         }
         else
         {
+            if (!rgba_visual)
+            {
+                SLOG_STMW() << "RGBA visual is NULL, cannot get RGBA visual ID";
+                return 0;
+            }
             return rgba_visual->visual_id;
         }
     }

@@ -448,30 +448,35 @@ SClipboard::SClipboard(SConnection *conn)
     , m_doExClip(NULL)
 {
     m_doClip = new SMimeData();
-    m_owner = xcb_generate_id(xcb_connection());
-    xcb_create_window(xcb_connection(),
-                      XCB_COPY_FROM_PARENT, // depth -- same as root
-                      m_owner,              // window id
-                      conn->screen->root,   // parent window id
-                      0, 0, 3, 3,
-                      0,                           // border width
-                      XCB_WINDOW_CLASS_INPUT_ONLY, // window class
-                      conn->screen->root_visual,   // visual
-                      0,                           // value mask
-                      0);
+    if(conn->screen == NULL)
+    {
+        SLOG_STMW() << "Screen is NULL in SClipboard constructor, clipboard functionality may be limited";
+    }else{
+        m_owner = xcb_generate_id(xcb_connection());
+        xcb_create_window(xcb_connection(),
+                        XCB_COPY_FROM_PARENT, // depth -- same as root
+                        m_owner,              // window id
+                        conn->screen->root,   // parent window id
+                        0, 0, 3, 3,
+                        0,                           // border width
+                        XCB_WINDOW_CLASS_INPUT_ONLY, // window class
+                        conn->screen->root_visual,   // visual
+                        0,                           // value mask
+                        0);
 
-    m_requestor = xcb_generate_id(xcb_connection());
-    xcb_create_window(xcb_connection(),
-                      XCB_COPY_FROM_PARENT, // depth -- same as root
-                      m_requestor,          // window id
-                      conn->screen->root,   // parent window id
-                      0, 0, 3, 3,
-                      0,                           // border width
-                      XCB_WINDOW_CLASS_INPUT_ONLY, // window class
-                      conn->screen->root_visual,   // visual
-                      0,                           // value mask
-                      0);                          // value list
-    m_conn->flush();
+        m_requestor = xcb_generate_id(xcb_connection());
+        xcb_create_window(xcb_connection(),
+                        XCB_COPY_FROM_PARENT, // depth -- same as root
+                        m_requestor,          // window id
+                        conn->screen->root,   // parent window id
+                        0, 0, 3, 3,
+                        0,                           // border width
+                        XCB_WINDOW_CLASS_INPUT_ONLY, // window class
+                        conn->screen->root_visual,   // visual
+                        0,                           // value mask
+                        0);                          // value list
+        m_conn->flush();
+    }
 }
 
 SClipboard::~SClipboard()
@@ -482,10 +487,15 @@ SClipboard::~SClipboard()
     }
     m_doClip->Release();
     m_doClip = NULL;
-    xcb_destroy_window(xcb_connection(), m_requestor);
-    m_requestor = XCB_NONE;
-    xcb_destroy_window(xcb_connection(), m_owner);
-    m_owner = XCB_NONE;
+    if(m_requestor) 
+    {
+        xcb_destroy_window(xcb_connection(), m_requestor);
+        m_requestor = XCB_NONE;
+    }
+    if(m_owner){
+        xcb_destroy_window(xcb_connection(), m_owner);
+        m_owner = XCB_NONE;
+    }
     m_conn->flush();
 }
 

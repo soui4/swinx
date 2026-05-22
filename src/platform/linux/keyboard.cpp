@@ -239,6 +239,11 @@ void SKeyboard::readXKBConfig()
     xcb_get_property_reply_t *config_reply;
 
     xcb_connection_t *c = xcb_connection();
+    if(!m_conn->screen)
+    {
+        qWarning0("Qt: Screen is NULL in readXKBConfig, cannot read XKB configuration");
+        return;
+    }
     xcb_window_t rootWindow = m_conn->screen->root;
 
     cookie = xcb_get_property(c, 0, rootWindow, m_conn->atoms._XKB_RULES_NAMES, XCB_ATOM_STRING, 0, 1024);

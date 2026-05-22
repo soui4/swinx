@@ -32,7 +32,7 @@ sudo apt install xdg-desktop-portal-dde
 linux机器上安装
 sudo apt install -y openssh-server build-essential gdb rsync make zip ninja-build
 本机安装
-CMake, Vcxsvr(https://sourceforge.net/projects/vcxsrv/files/vcxsrv/21.1.10/vcxsrv-64.21.1.10.0.installer.exe/download)
+CMake, Vcxsvr(https://github.com/marchaesen/vcxsrv/releases)
 在VS菜单：
 工具\选项\跨平台 页面的列表中添加linux主机IP，注意配置好登陆启用名，密码
 然后就可以在VS里运行远程调试了。

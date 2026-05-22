@@ -259,12 +259,14 @@ Log::~Log()
 #endif
         gs_LogFunc(buf, m_level);
     }
+#ifdef _DEBUG
     else if (m_level >= gs_level)
     {
         char buf[MAX_LOGLEN] = { 0 };
         snprintf(buf, sizeof(buf), "tid=%ld,%04d-%02d-%02d %02d:%02d:%02d %03dms %s,%d,%s,%s\n", (long int)tid, wtm.wYear, wtm.wMonth, wtm.wDay, wtm.wHour, wtm.wMinute, wtm.wSecond, wtm.wMilliseconds, m_tag, m_level, m_logbuf, m_lineInfo.str().c_str());
         OutputDebugStringA(buf);
     }
+#endif//_DEBUG
 }
 
 SLogStream &Log::stream()

@@ -272,11 +272,22 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     {
         return FALSE;
     }
+    tid_t tid = (tid_t)pthread_self();
+    SConnection *conn = SConnMgr::instance()->getConnection(tid);
+    // Assert screen is valid for window creation
+#ifdef _DEBUG
+    assert(conn && conn->screen && "Screen must be valid for window creation");
+#endif
+    if (!conn || !conn->screen)
+    {
+        SLOG_STME() << "Screen is NULL, cannot create window";
+        return 0;
+    }
+
     _Window *pWnd = new _Window(clsInfo.cbWndExtra);
-    pWnd->tid = (tid_t)pthread_self();
+    pWnd->tid = tid;
     pWnd->hdc = nullptr;
 
-    SConnection *conn = SConnMgr::instance()->getConnection(pWnd->tid);
     HWND hParent = cs->hwndParent;
     BOOL isMsgWnd = hParent == HWND_MESSAGE;
     BOOL isTransparent = cs->dwExStyle & WS_EX_TRANSPARENT;
@@ -1670,7 +1681,7 @@ BOOL SetForegroundWindow(HWND hWnd)
         DWORD ts2;
         for(;;)
         {
-            if(PeekMessage(&msg,NULL,0,0,PM_REMOVE))
+            if(PeekMessage(&msg,0,0,0,PM_REMOVE))
             {
                 TranslateMessage(&msg);
                 DispatchMessage(&msg);

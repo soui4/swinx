@@ -369,6 +369,7 @@ public:
     STrayIconMgr* m_trayIconMgr;
 
     HANDLE m_evtSync;
+    int m_wakeupPipe[2];  // Pipe for waking up event reader thread (m_wakeupPipe[0]=read, m_wakeupPipe[1]=write)
     tid_t m_tid;
     HKL   m_hkl = 0;
     xcb_xim_t *m_xim;
