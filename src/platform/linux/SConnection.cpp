@@ -1369,7 +1369,8 @@ HWND SConnection::_QueryActiveWindow()
 
 HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
 {
-    assert(screen);
+    if(!screen)
+        return 0;
     
     HWND hWnd = xcb_generate_id(connection);
     xcb_colormap_t cmap = xcb_generate_id(connection);

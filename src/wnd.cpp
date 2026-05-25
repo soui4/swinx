@@ -274,15 +274,6 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     }
     tid_t tid = (tid_t)pthread_self();
     SConnection *conn = SConnMgr::instance()->getConnection(tid);
-    // Assert screen is valid for window creation
-#ifdef _DEBUG
-    assert(conn && conn->screen && "Screen must be valid for window creation");
-#endif
-    if (!conn || !conn->screen)
-    {
-        SLOG_STME() << "Screen is NULL, cannot create window";
-        return 0;
-    }
 
     _Window *pWnd = new _Window(clsInfo.cbWndExtra);
     pWnd->tid = tid;
