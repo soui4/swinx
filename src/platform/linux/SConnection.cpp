@@ -1002,6 +1002,10 @@ BOOL SConnection::getMsg(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFi
         if (!bRet)
         {
             waitMsg();
+        }else if(lpMsg->message == WM_QUIT)
+        {
+            bRet = FALSE;
+            break;
         }
     }
 
