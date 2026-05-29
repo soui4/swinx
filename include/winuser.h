@@ -1010,8 +1010,8 @@ extern "C"
 #define LWA_ALPHA    0x00000002
 
 #define IS_INTRESOURCE(_r)  ((((ULONG_PTR)(_r)) >> 16) == 0)
-#define MAKEINTRESOURCEA(x) ((LPSTR)(ULONG_PTR)(WORD((x))))
-#define MAKEINTRESOURCEW(x) ((LPWSTR)(ULONG_PTR)(WORD((x))))
+#define MAKEINTRESOURCEA(x) ((LPSTR)(ULONG_PTR)((x)&0xffff))
+#define MAKEINTRESOURCEW(x) ((LPWSTR)(ULONG_PTR)((x)&0xffff))
 #ifdef UNICODE
 #define MAKEINTRESOURCE MAKEINTRESOURCEW
 #else

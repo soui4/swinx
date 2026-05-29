@@ -1,5 +1,8 @@
 #ifndef _CLASS_H_
 #define _CLASS_H_
+#ifdef __cplusplus
+extern "C"{
+#endif//__cplusplus
 
 #define MAX_ATOM_LEN 255
 
@@ -123,4 +126,7 @@ ATOM WINAPI FindAtomW(_In_opt_ LPCWSTR lpString);
 #define FindAtom        FindAtomA
 #endif // UNICODE
 
+#ifdef __cplusplus
+}
+#endif//__cplusplus
 #endif //_CLASS_H_

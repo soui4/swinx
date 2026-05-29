@@ -1,6 +1,11 @@
 #ifndef _REGION_H_
 #define _REGION_H_
 #include <gdi.h>
+
+#ifdef __cplusplus
+extern "C"{
+#endif//__cplusplus
+
 #ifndef CONST
 #define CONST const
 #endif
@@ -105,4 +110,7 @@ BOOL WINAPI SetRectRgn(HRGN hrgn,      // handle to region
                        int nBottomRect // y-coordinate of lower-right corner of rectangle
 );
 
+#ifdef __cplusplus
+}
+#endif//__cplusplus
 #endif //_REGION_H_

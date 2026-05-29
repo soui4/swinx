@@ -2,7 +2,9 @@
 #define _OLE_AUTO_H_
 #include <ctypes.h>
 #include <oaidl.h>
-
+#ifdef __cplusplus
+extern "C"{
+#endif//__cplusplus
 /* BSTR functions */
 BSTR WINAPI SysAllocString(const OLECHAR *);
 BSTR WINAPI SysAllocStringByteLen(LPCSTR, UINT);
@@ -52,4 +54,7 @@ typedef enum tagREGKIND
     REGKIND_NONE
 } REGKIND;
 
+#ifdef __cplusplus
+}
+#endif//__cplusplus
 #endif //_OLE_AUTO_H_

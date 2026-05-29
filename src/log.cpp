@@ -118,7 +118,7 @@ SLogStream &SLogStream::writeFormat(const char *fmt, ...)
         int len = 0;
         int count = (int)(_end - _cur) - 1;
         len = vsnprintf(_cur, count, fmt, args);
-        if (len == count || (len == -1 && errno == E_RANGE))
+        if (len >= count || (len == -1 && errno == E_RANGE))
         {
             len = count;
             *(_end - 1) = '\0';
