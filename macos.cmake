@@ -47,6 +47,8 @@ set(SWINX_LIBS
     ${Carbon_LIBRARY}
     ${Audio_LIBRARY}
     ${CoreFoundation_LIBRARY}
+    m
+    stdc++
     )
 
 if (NOT SOUI_ENABLE_CORE_LIB)

@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <stdarg.h>
 #include "uniconv.h"
 #include "tostring.hpp"
 
@@ -70,13 +71,13 @@ wchar_t *_wcsupr(wchar_t *s)
 
 void strcpy_s(char *destination, size_t num, const char *source)
 {
-    strncpy(destination, source, num);
-    destination[num - 1] = L'\0';
+    strncpy(destination, source, num - 1);
+    destination[num - 1] = '\0';
 }
 
 void wcscpy_s(wchar_t *destination, size_t num, const wchar_t *source)
 {
-    wcsncpy(destination, source, num);
+    wcsncpy(destination, source, num - 1);
     destination[num - 1] = L'\0';
 }
 
@@ -724,4 +725,20 @@ int _wrename(const wchar_t *oldpath, const wchar_t *newpath)
     tostring(oldpath, -1, strOld);
     tostring(newpath, -1, strNew);
     return rename(strOld.c_str(), strNew.c_str());
+}
+
+int _snprintf(char *buffer, size_t size, const char *format, ...){
+    va_list args;
+    va_start(args, format);
+    int len = vsnprintf(buffer, size, format, args);
+    va_end(args);
+    return len > size? -1:len;
+}
+int _snwprintf(wchar_t *buffer, size_t size, const wchar_t *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int len = vswprintf(buffer, size, format, args);
+    va_end(args);
+    return len > size? -1:len;
 }

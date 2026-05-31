@@ -64,7 +64,7 @@ endif()
 
 # Add dependencies to ensure proper build order for all internal libraries
 add_dependencies(swinx cairo fontconfig freetype pixman-1 xcb-imdkit xkbcommon dbus-1)
-set(SWINX_LIBS dl xcb uuid atomic ${ALSA_LIBRARIES})
+set(SWINX_LIBS dl xcb uuid atomic m stdc++ ${ALSA_LIBRARIES})
 if(SOUI_ENABLE_CORE_LIB)
     set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} ${SWINX_LIBS} CACHE INTERNAL "swinx_dep_libs")
 endif()

@@ -14,16 +14,13 @@ extern "C"
 {
 #endif //__cplusplus
 
+//count the length of the formatted string
 #define _vscprintf(fmt, argList) vsnprintf(nullptr, 0, fmt, argList)
-#define _snprintf                snprintf
+#define _vscwprintf(fmt, argList) vswprintf(nullptr, 0, fmt, argList)
 #define vsprintf_s               vsnprintf
-#define sprintf_s                snprintf
+#define sprintf_s                _snprintf
 #define strcat_s(dst, n, src)    strncat(dst, src, n)
 #define wcscat_s(dst, n, src)    wcsncat(dst, src, n)
-
-    const uint8_t *_mbsinc(const uint8_t *srcU8);
-
-    uint8_t *_mbscvt(uint8_t *srcU8, BOOL bLower);
 
 #define _mbslwr(x) _mbscvt((uint8_t *)(x), TRUE)
 #define _mbsupr(x) _mbscvt((uint8_t *)(x), FALSE)
@@ -40,13 +37,17 @@ extern "C"
 #define _wtol(x)                       wcstol(x, NULL, 10)
 #define memmove_s(dst, ndst, src, len) memmove(dst, src, len)
 #define swscanf_s                      swscanf
-#define snwprintf                      swprintf
+#define vswprintf_s                    vswprintf
 #define lstrlenA                       strlen
 #define lstrlenW                       wcslen
 #define lstrcpyA                       strcpy
 #define lstrcpyW                       wcscpy
 #define lstrcatA                       strcat
 #define lstrcatW                       wcscat
+
+    const uint8_t *_mbsinc(const uint8_t *srcU8);
+
+    uint8_t *_mbscvt(uint8_t *srcU8, BOOL bLower);
 
     wchar_t *WINAPI _wcslwr(wchar_t *s);
 
@@ -55,6 +56,10 @@ extern "C"
     void WINAPI strcpy_s(char *destination, size_t num, const char *source);
 
     void WINAPI wcscpy_s(wchar_t *destination, size_t num, const wchar_t *source);
+
+    int WINAPI _snprintf(char *buffer,size_t size,const char *format, ...);
+    
+    int WINAPI _snwprintf(wchar_t *buffer, size_t size, const wchar_t *format, ...);
 
     float WINAPI _wtof(const wchar_t *src);
 
@@ -82,7 +87,6 @@ extern "C"
 #define stricmp(s1, s2)       strcasecmp(s1, s2)
 #define strnicmp(s1, s2, num) strncasecmp(s1, s2, num)
 #define wcsicmp               _wcsicmp
-#define _snwprintf            swprintf
 
 #define lstrcpynW wcsncpy
 #define lstrcpynA strncpy
