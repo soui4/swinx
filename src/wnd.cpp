@@ -2201,7 +2201,7 @@ HDC BeginPaint(HWND hWnd, PAINTSTRUCT *ps)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return 0;
-    wndObj->Lock();
+    wndObj->AddRef();
     ps->hdc = GetDC(hWnd);
     GetClipBox(ps->hdc, &ps->rcPaint);
     return ps->hdc;
@@ -2212,7 +2212,7 @@ BOOL EndPaint(HWND hWnd, const PAINTSTRUCT *ps)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return FALSE;
-    wndObj->Unlock();
+    wndObj->Release();
     return ReleaseDC(hWnd, ps->hdc);
 }
 

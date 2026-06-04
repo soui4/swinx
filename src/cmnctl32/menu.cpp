@@ -1095,6 +1095,8 @@ void CMenu::RunMenu(HWND hRoot)
     BOOL bMsgQuit(FALSE);
     HWND hCurMenu(0);
 
+    if(s_MenuData->GetOwner())
+        ::SendMessageA(s_MenuData->GetOwner(), WM_ENTERMENULOOP, 0, 0);
     for (;;)
     {
 
@@ -1210,6 +1212,8 @@ void CMenu::RunMenu(HWND hRoot)
             break;
         }
     }
+    if(s_MenuData->GetOwner())
+        ::SendMessageA(s_MenuData->GetOwner(), WM_EXITMENULOOP, 0, 0);
 }
 
 void CMenu::OnTimer(UINT_PTR timeID)
