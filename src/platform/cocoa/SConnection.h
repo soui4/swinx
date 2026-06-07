@@ -166,6 +166,7 @@ class SConnection : public SConnBase{
     void EnableWindow(HWND hWnd, int bEnable);
     bool IsIconic(HWND hWnd) const;
     bool IsZoomed(HWND hWnd) const;
+    int ShowCursor(BOOL bShow);
   public:
     struct CaretInfo
     {
@@ -264,6 +265,7 @@ public:
       SClipboard* m_clipboard;
       STrayIconMgr* m_trayIconMgr;
       std::map<HWND,HCURSOR>          m_wndCursor;
+      int m_cursorCount = 1;//default cursor is visible
 };
 
 class SConnMgr {

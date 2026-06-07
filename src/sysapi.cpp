@@ -1,4 +1,4 @@
-#include <windows.h>
+﻿#include <windows.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -665,7 +665,8 @@ HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
         ret = dlopen(lpFileName, RTLD_NOW);
         if (ret)
             break;
-        if (GetFileAttributesA(lpFileName) != INVALID_FILE_ATTRIBUTES)
+        DWORD dwAttrib = GetFileAttributesA(lpFileName);
+        if (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY) == 0)
         {
             SLOG_FMTE("LoadLibraryA: dlopen failed for %s, error: %s", lpFileName, dlerror());
             break;

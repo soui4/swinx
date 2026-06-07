@@ -1837,3 +1837,19 @@ bool SConnection::IsIconic(HWND hWnd) const{
 bool SConnection::IsZoomed(HWND hWnd) const{
     return isNsWindowMaximized(hWnd);
 }
+
+int SConnection::ShowCursor(BOOL bShow){
+    if (bShow) {
+        m_cursorCount++;
+        if (m_cursorCount > 0) {
+            [NSCursor unhide];
+        }
+    } else {
+        m_cursorCount--;
+        if (m_cursorCount <= 0) {
+            m_cursorCount = 0;
+            [NSCursor hide];
+        }
+    }
+    return m_cursorCount;
+}

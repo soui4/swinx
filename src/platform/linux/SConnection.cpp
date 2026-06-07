@@ -4204,3 +4204,23 @@ BOOL SConnection::IsZoomed(HWND hWnd){
     return (state & (NetWmStateMaximizedHorz | NetWmStateMaximizedVert)) == 
             (NetWmStateMaximizedHorz | NetWmStateMaximizedVert);
 }
+
+int SConnection::ShowCursor(BOOL bShow){
+    if (bShow) {
+        m_cursorCount++;
+        if (m_cursorCount > 0) {
+            // Show cursor - restore cursor visibility
+            xcb_xfixes_show_cursor(connection, screen->root);
+            xcb_flush(connection);
+        }
+    } else {
+        m_cursorCount--;
+        if (m_cursorCount <= 0) {
+            m_cursorCount = 0;
+            // Hide cursor using XFixes
+            xcb_xfixes_hide_cursor(connection, screen->root);
+            xcb_flush(connection);
+        }
+    }
+    return m_cursorCount;
+}

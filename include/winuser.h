@@ -86,6 +86,7 @@ extern "C"
 #define WM_GETMINMAXINFO 0x0024
 #define WM_NEXTDLGCTL    0x0028
 
+    int WINAPI ShowCursor(BOOL bShow);
     /*
      * Struct pointed to by WM_GETMINMAXINFO lParam
      */
@@ -2179,6 +2180,7 @@ extern "C"
 #define GA_PARENT    1 // GetParent
 #define GA_ROOT      2 // GetAncestor (top level window)
 #define GA_ROOTOWNER 3 // root owner window (top level window)
+
 
 #ifdef __cplusplus
 }

@@ -3839,3 +3839,56 @@ HMENU WINAPI GetSystemMenu(HWND hWnd, BOOL bRevert)
     }
     return 0;
 }
+
+BOOL GetWindowPlacement(HWND hWnd,WINDOWPLACEMENT *lpwndpl){
+    if (!lpwndpl || lpwndpl->length < sizeof(WINDOWPLACEMENT))
+        return FALSE;
+
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(!wndObj)
+        return FALSE;
+
+    lpwndpl->flags = 0;
+    lpwndpl->ptMinPosition.x = -1;
+    lpwndpl->ptMinPosition.y = -1;
+    lpwndpl->rcNormalPosition = wndObj->rc;
+
+    switch (wndObj->state)
+    {
+    case WS_Minimized:
+        lpwndpl->showCmd = SW_SHOWMINIMIZED;
+        lpwndpl->ptMaxPosition.x = -1;
+        lpwndpl->ptMaxPosition.y = -1;
+        break;
+    case WS_Maximized:
+        lpwndpl->showCmd = SW_SHOWMAXIMIZED;
+        lpwndpl->ptMaxPosition.x = 0;
+        lpwndpl->ptMaxPosition.y = 0;
+        break;
+    case WS_Normal:
+    default:
+        lpwndpl->showCmd = SW_SHOWNORMAL;
+        lpwndpl->ptMaxPosition.x = -1;
+        lpwndpl->ptMaxPosition.y = -1;
+        break;
+    }
+
+    return TRUE;
+}
+
+BOOL SetWindowPlacement(HWND hWnd,WINDOWPLACEMENT *lpwndpl){
+    if (!lpwndpl || lpwndpl->length < sizeof(WINDOWPLACEMENT))
+        return FALSE;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return FALSE;
+    BOOL bRet = SetWindowPos(hWnd, 0, 
+        lpwndpl->rcNormalPosition.left, 
+        lpwndpl->rcNormalPosition.top, 
+        lpwndpl->rcNormalPosition.right - lpwndpl->rcNormalPosition.left, 
+        lpwndpl->rcNormalPosition.bottom - lpwndpl->rcNormalPosition.top, 
+        SWP_NOZORDER | SWP_NOACTIVATE);
+    if (!bRet)
+        return FALSE;
+    return ShowWindow(hWnd, lpwndpl->showCmd);
+}

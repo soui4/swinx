@@ -393,7 +393,17 @@ extern "C"
 #endif // UNICODE
 
     HMENU WINAPI GetSystemMenu(HWND hWnd, BOOL bRevert);
-
+    typedef struct _WINDOWPLACEMENT {
+        UINT length;
+        UINT flags;
+        UINT showCmd;
+        POINT ptMinPosition;
+        POINT ptMaxPosition;
+        RECT rcNormalPosition;
+    } WINDOWPLACEMENT;
+    BOOL WINAPI GetWindowPlacement(HWND hWnd,WINDOWPLACEMENT *lpwndpl);
+    BOOL WINAPI SetWindowPlacement(HWND hWnd,WINDOWPLACEMENT *lpwndpl);
+    
 #ifdef __cplusplus
 }
 #endif //__cplusplus

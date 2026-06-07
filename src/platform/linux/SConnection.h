@@ -176,6 +176,7 @@ class SConnection {
     BOOL EnableWindow(HWND hWnd, BOOL bEnable);
     BOOL IsIconic(HWND hWnd);
     BOOL IsZoomed(HWND hWnd);
+    int ShowCursor(BOOL bShow);
   public:
     struct CaretInfo
     {
@@ -379,6 +380,7 @@ public:
     BOOL m_bComposited = FALSE;
     RECT m_rcWorkArea = { 0 };
     uint32_t xfixes_first_event = 0;
+    int m_cursorCount = 1;//default cursor is visible
 };
 
 class SConnMgr {
