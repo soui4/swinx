@@ -583,8 +583,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     POINT ptClick;
     if (!wndObj->mConnection->GetCursorPos(&ptClick))
         return -1;
-    // SLOG_STMI() << "HandleNcTestCode,code=" << htCode;
-    wndObj->mConnection->SetTimerBlock(true);
+    //SLOG_STMI() << "HandleNcTestCode,code=" << htCode;
     RECT rcWnd = wndObj->rc;
     BOOL bQuit = FALSE;
     SetCapture(hWnd);
@@ -709,8 +708,7 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     SendMessageA(hWnd, WM_EXITSIZEMOVE, 0, 0);
     ReleaseCapture();
 
-    wndObj->mConnection->SetTimerBlock(false);
-    // SLOG_STMI() << "HandleNcTestCode,Quit";
+    //SLOG_STMI() << "HandleNcTestCode,Quit";
 
     return 0;
 }
