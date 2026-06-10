@@ -54,7 +54,11 @@ HIMC ImmAssociateContext(HWND hWnd, HIMC hIMC)
     if (!wndObj)
         return nullptr;
     HIMC hRet = wndObj->hIMC;
+    if (hIMC)
+        hIMC->AddRef();
     wndObj->mConnection->AssociateHIMC(hWnd, wndObj.data(), hIMC);
+    if (hRet)
+        hRet->Release();
     return hRet;
 }
 
