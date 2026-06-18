@@ -1,9 +1,9 @@
 #include <windows.h>
 #include <atomic>
 #include "uimsg.h"
-#ifdef __linux__
+#if defined(__linux__) && !defined(__OHOS__)
 #include "SDragdrop.h"
-#endif //__linux__
+#endif // defined(__linux__) && !defined(__OHOS__)
 #include "log.h"
 #define kLogTag "uimsg"
 
@@ -106,7 +106,7 @@ void IpcMsg::SetResult(LRESULT res)
     SetEvent(synEvt);
 }
 //-----------------------------------------------------------
-#ifdef __linux__
+#if defined(__linux__) && !defined(__OHOS__)
 DragEnterData::DragEnterData(XDndDataObjectProxy *_pData)
 {
     pData = _pData;
@@ -121,4 +121,4 @@ DragEnterData::~DragEnterData()
         pData = NULL;
     }
 }
-#endif //__linux__
+#endif // defined(__linux__) && !defined(__OHOS__)

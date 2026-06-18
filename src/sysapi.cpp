@@ -564,6 +564,10 @@ class DllLoader {
         }
 #endif //__APPLE__
         m_lstDirs.push_back(szPath);
+#ifdef __OHOS__
+        m_lstDirs.push_back("/data/storage/el1/bundle/libs/arm64/");
+        m_lstDirs.push_back("/data/storage/el1/bundle/libs/arm64-v8a/");
+#endif
     }
 
     BOOL SetDllDirectoryA(LPCSTR lpPathName)

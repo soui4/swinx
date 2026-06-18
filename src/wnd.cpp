@@ -17,9 +17,12 @@
 #include "tostring.hpp"
 #include "wndobj.h"
 #include "debug.h"
-#ifdef __linux__
+#if defined(__linux__) && !defined(__OHOS__)
 #include "SDragdrop.h"
-#endif //__linux__
+#endif // defined(__linux__) && !defined(__OHOS__)
+#if defined(__OHOS__)
+#include "platform/ohos/SOhosWindow.h"
+#endif
 #include "synhandle.h"
 #include "cmnctl32/builtin_classname.h"
 #define kLogTag "wnd"
@@ -94,6 +97,23 @@ static BOOL InitWndDC(HWND hwnd, int cx, int cy)
     SelectObject(wndObj->hdc, wndObj->bmp);
     return TRUE;
 }
+
+#if defined(__OHOS__)
+static void RebindWndDCBitmap(WndObj &wndObj)
+{
+    if (!wndObj || !wndObj->hdc || !wndObj->bmp)
+        return;
+    cairo_antialias_t antialias = CAIRO_ANTIALIAS_GOOD;
+    if (wndObj->hdc->cairo)
+    {
+        antialias = cairo_get_antialias(wndObj->hdc->cairo);
+        cairo_destroy(wndObj->hdc->cairo);
+    }
+    wndObj->hdc->bmp = wndObj->bmp;
+    wndObj->hdc->cairo = cairo_create((cairo_surface_t *)GetGdiObjPtr(wndObj->bmp));
+    cairo_set_antialias(wndObj->hdc->cairo, antialias);
+}
+#endif
 
 static BOOL GetScrollBarRect(HWND hWnd, UINT uSb, RECT *pRc)
 {
@@ -308,7 +328,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     pWnd->showSbFlags |= (cs->style & WS_HSCROLL) ? SB_HORZ : 0;
     pWnd->showSbFlags |= (cs->style & WS_VSCROLL) ? SB_VERT : 0;
     pWnd->visualId = conn->GetVisualID(TRUE);
-#ifdef __linux__
+#if defined(__linux__) && !defined(__OHOS__)
     int depth = XCB_COPY_FROM_PARENT;
 #else
     int depth = 24;
@@ -587,6 +607,12 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     RECT rcWnd = wndObj->rc;
     BOOL bQuit = FALSE;
     SetCapture(hWnd);
+#if defined(__OHOS__)
+    if (htCode == HTCAPTION)
+        beginOhosMainWindowMove(hWnd);
+    else
+        beginOhosMainWindowResize(hWnd);
+#endif
     SendMessageA(hWnd, WM_ENTERSIZEMOVE, 0, 0);
     for (; !bQuit;)
     {
@@ -622,6 +648,14 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
             }
             else if (msg.message == WM_MOUSEMOVE)
             {
+#if defined(__OHOS__)
+                if ((msg.wParam & MK_LBUTTON) == 0)
+                {
+                    bQuit = TRUE;
+                    break;
+                }
+#endif
+
                 POINT ptNow;
                 wndObj->mConnection->GetCursorPos(&ptNow);
                 switch (htCode)
@@ -706,6 +740,12 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     }
 
     SendMessageA(hWnd, WM_EXITSIZEMOVE, 0, 0);
+#if defined(__OHOS__)
+    if (htCode == HTCAPTION)
+        endOhosMainWindowMove(hWnd);
+    else
+        endOhosMainWindowResize(hWnd);
+#endif
     ReleaseCapture();
 
     //SLOG_STMI() << "HandleNcTestCode,Quit";
@@ -872,7 +912,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     BOOL bSkipMsg = FALSE;
     switch (msg)
     {
-#ifdef __linux__
+#if defined(__linux__) && !defined(__OHOS__)
     case UM_XDND_DRAG_ENTER:
     {
         SLOG_STMI() << "UM_XDND_DRAG_ENTER!";
@@ -957,8 +997,15 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         SLOG_STMI() << "UM_XDND_DRAG_DROP, set dragData to null";
         return 0;
     }
-#endif //__linux__
+#endif // defined(__linux__) && !defined(__OHOS__)
     case WM_LBUTTONDOWN:
+#if defined(__OHOS__)
+    {
+        POINT pt;
+        wndObj->mConnection->GetCursorPos(&pt);
+        wndObj->htCode = CallWindowObjProc(wndObj, proc, hWnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
+    }
+#endif
         if (bSkipMsg = (0 == HandleNcTestCode(hWnd, wndObj->htCode)))
             break;
     case WM_MBUTTONDOWN:
@@ -987,7 +1034,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             POINT pt;
             wndObj->mConnection->GetCursorPos(&pt);
             int htCode = CallWindowObjProc(wndObj, proc, hWnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
-#ifdef __APPLE__
+#if defined(__APPLE__)
             DWORD dwStyle = GetWindowLong(hWnd, GWL_STYLE);
             if ((dwStyle & WS_DLGFRAME) && (dwStyle & WS_THICKFRAME))
             {
@@ -1181,6 +1228,24 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     case WM_SIZE:
         wp = wndObj->state;
         SIZE sz = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
+#if defined(__OHOS__)
+        int oldCx = wndObj->rc.right - wndObj->rc.left;
+        int oldCy = wndObj->rc.bottom - wndObj->rc.top;
+        wndObj->rc.right = wndObj->rc.left + sz.cx;
+        wndObj->rc.bottom = wndObj->rc.top + sz.cy;
+        if (wndObj->bmp && sz.cx > 0 && sz.cy > 0 && (sz.cx != oldCx || sz.cy != oldCy))
+        {
+            cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(wndObj->bmp);
+            int surfCx = surface ? cairo_image_surface_get_width(surface) : 0;
+            int surfCy = surface ? cairo_image_surface_get_height(surface) : 0;
+            if (sz.cx != surfCx || sz.cy != surfCy)
+            {
+                surface = wndObj->mConnection->ResizeSurface(surface, hWnd, wndObj->visualId, sz.cx, sz.cy);
+                SetGdiObjPtr(wndObj->bmp, surface);
+                RebindWndDCBitmap(wndObj);
+            }
+        }
+#else
         if (wndObj->bmp && (sz.cx != wndObj->rc.right - wndObj->rc.left || sz.cy != wndObj->rc.bottom - wndObj->rc.top))
         {
             wndObj->rc.right = wndObj->rc.left + sz.cx;
@@ -1192,6 +1257,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             OffsetRect(&rc, -rc.left, -rc.top);
             InvalidateRect(hWnd, &rc, TRUE);
         }
+#endif
         wndObj->nSizing++;
         break;
     }
@@ -1258,6 +1324,12 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     else if (msg == WM_SIZE)
     {
         wndObj->nSizing--;
+#if defined(__OHOS__)
+        if (GET_X_LPARAM(lp) > 0 && GET_Y_LPARAM(lp) > 0)
+        {
+            InvalidateRect(hWnd, nullptr, TRUE);
+        }
+#endif
     }
     else if (msg == WM_DESTROY)
     {
@@ -1662,7 +1734,7 @@ BOOL SetForegroundWindow(HWND hWnd)
         return FALSE;
     if(!(wndObj->dwStyle & WS_VISIBLE))
         return FALSE;
-#ifdef __linux__
+#if defined(__linux__) && !defined(__OHOS__)
     if(!(wndObj->flags&kMapped))
     {//wait for mapped
         MSG msg;
@@ -1684,7 +1756,7 @@ BOOL SetForegroundWindow(HWND hWnd)
         if(!(wndObj->flags&kMapped))
             return FALSE;
     }
-#endif//__linux__
+#endif// defined(__linux__) && !defined(__OHOS__)
     wndObj->mConnection->SetForegroundWindow(hWnd);
     return TRUE;
 }
@@ -3020,6 +3092,12 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         }
         if (!(wndPos.flags & SWP_NOSIZE))
         {
+#if defined(__OHOS__)
+            if (wndPos.cx < 1)
+                wndPos.cx = 1;
+            if (wndPos.cy < 1)
+                wndPos.cy = 1;
+#endif
             if ((wndPos.cx != rc.right - rc.left || wndPos.cy != rc.bottom - rc.top))
             {
                 wndObj->mConnection->SetWindowSize(hWnd, wndPos.cx, wndPos.cy);
@@ -3269,7 +3347,20 @@ int ReleaseDC(HWND hWnd, HDC hdc)
     if (hdc->nSave > 0)
         return 1;
     RECT rc;
+#ifdef __OHOS__
+    if (hdc->hasDirty)
+    {
+        rc = hdc->dirtyRect;
+        hdc->hasDirty = FALSE;
+        hdc->dirtyRect = { 0, 0, 0, 0 };
+    }
+    else
+    {
+        return 1;
+    }
+#else
     GetClipBox(hdc, &rc);
+#endif
     wndObj->mConnection->commitCanvas(hWnd, rc);
     return 1;
 }
@@ -3316,9 +3407,9 @@ BOOL SetLayeredWindowAttributes(HWND hWnd, COLORREF crKey, BYTE byAlpha, DWORD d
     if ((dwFlags & LWA_ALPHA) && byAlpha != wndObj->byAlpha)
     {
         wndObj->byAlpha = byAlpha;
-#ifdef __linux__
+#if defined(__linux__) && !defined(__OHOS__)
         if (wndObj->flags & kMapped)
-#endif//__linux__
+#endif// defined(__linux__) && !defined(__OHOS__)
             wndObj->mConnection->SetWindowOpacity(hWnd, byAlpha);
     }
 

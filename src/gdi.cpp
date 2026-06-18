@@ -1,6 +1,9 @@
 #include <windows.h>
 #include <gdi.h>
 #include <cairo.h>
+#ifdef __OHOS__
+#include <cairo-ft.h>
+#endif
 #include <fontconfig/fontconfig.h>
 #include <math.h>
 #include <png.h>
@@ -607,11 +610,155 @@ static bool ApplyBrush(cairo_t *ctx, HBRUSH hbr, double wid, double hei, double 
     return ret;
 }
 
+#ifdef __OHOS__
+static void InitOhosFontConfig()
+{
+    static std::once_flag s_once;
+    std::call_once(s_once, []() {
+        FcInit();
+        FcConfig *config = FcConfigGetCurrent();
+        if (!config)
+            return;
+
+        const char *fontDirs[] = {
+            "/system/fonts",
+            "/system/font",
+            "/vendor/fonts",
+            "/hw_product/fonts",
+        };
+        for (const char *dir : fontDirs)
+            FcConfigAppFontAddDir(config, (const FcChar8 *)dir);
+        FcConfigBuildFonts(config);
+    });
+}
+
+static bool IsLikelyChineseFontAlias(const char *faceName)
+{
+    if (!faceName || !faceName[0])
+        return true;
+
+    const char *aliases[] = {
+        "simsun",
+        "SimSun",
+        "Microsoft YaHei",
+        "Microsoft JhengHei",
+        "NSimSun",
+        "SimHei",
+        "Arial",
+        "sans",
+        "sans-serif",
+    };
+    for (const char *alias : aliases)
+    {
+        if (strcasecmp(faceName, alias) == 0)
+            return true;
+    }
+
+    for (const unsigned char *p = (const unsigned char *)faceName; *p; ++p)
+    {
+        if ((*p) & 0x80)
+            return true;
+    }
+    return false;
+}
+
+static cairo_font_face_t *CreateOhosFontFace(const LOGFONTA *lf)
+{
+    InitOhosFontConfig();
+
+    const char *faceName = lf->lfFaceName[0] ? lf->lfFaceName : "sans-serif";
+    FcPattern *pat = FcPatternCreate();
+    if (!pat)
+        return nullptr;
+
+    if (IsLikelyChineseFontAlias(faceName))
+    {
+        FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)"FZHeiT-SC");
+        FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)"FZHeiT-SC-Regular");
+        FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)"sans-serif");
+        FcPatternAddString(pat, FC_LANG, (const FcChar8 *)"zh-cn");
+
+        FcCharSet *charset = FcCharSetCreate();
+        if (charset)
+        {
+            FcCharSetAddChar(charset, 0x4E2D);
+            FcPatternAddCharSet(pat, FC_CHARSET, charset);
+            FcCharSetDestroy(charset);
+        }
+    }
+    else
+    {
+        FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)faceName);
+    }
+
+    FcPatternAddInteger(pat, FC_WEIGHT, lf->lfWeight > 400 ? FC_WEIGHT_BOLD : FC_WEIGHT_NORMAL);
+    FcPatternAddInteger(pat, FC_SLANT, lf->lfItalic ? FC_SLANT_ITALIC : FC_SLANT_ROMAN);
+    FcConfigSubstitute(NULL, pat, FcMatchPattern);
+    FcDefaultSubstitute(pat);
+
+    FcResult result = FcResultNoMatch;
+    FcPattern *font = FcFontMatch(NULL, pat, &result);
+    FcPatternDestroy(pat);
+    if (!font)
+        return nullptr;
+
+    cairo_font_face_t *face = cairo_ft_font_face_create_for_pattern(font);
+    FcPatternDestroy(font);
+    if (cairo_font_face_status(face) != CAIRO_STATUS_SUCCESS)
+    {
+        cairo_font_face_destroy(face);
+        return nullptr;
+    }
+    return face;
+}
+
+static std::string MakeOhosFontCacheKey(const LOGFONTA *lf)
+{
+    std::string key = lf->lfFaceName[0] ? lf->lfFaceName : "sans-serif";
+    key += lf->lfItalic ? "|i" : "|n";
+    key += lf->lfWeight > 400 ? "|b" : "|r";
+    return key;
+}
+
+static cairo_font_face_t *GetCachedOhosFontFace(const LOGFONTA *lf)
+{
+    static std::mutex s_mutex;
+    static std::map<std::string, cairo_font_face_t *> s_cache;
+
+    const std::string key = MakeOhosFontCacheKey(lf);
+    std::lock_guard<std::mutex> lock(s_mutex);
+    auto it = s_cache.find(key);
+    if (it != s_cache.end())
+        return cairo_font_face_reference(it->second);
+
+    cairo_font_face_t *face = CreateOhosFontFace(lf);
+    if (!face)
+        return nullptr;
+
+    s_cache.insert(std::make_pair(key, face));
+    return cairo_font_face_reference(face);
+}
+#endif
+
 static BOOL ApplyFont(HDC hdc)
 {
     if (hdc->hfont)
     {
         LOGFONTA *lf = (LOGFONTA *)GetGdiObjPtr(hdc->hfont);
+#ifdef __OHOS__
+        cairo_font_face_t *fontFace = GetCachedOhosFontFace(lf);
+        if (fontFace)
+        {
+            cairo_set_font_face(hdc->cairo, fontFace);
+            cairo_font_face_destroy(fontFace);
+        }
+        else
+        {
+            cairo_select_font_face(hdc->cairo, "sans-serif", lf->lfItalic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL, lf->lfWeight > 400 ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
+        }
+        cairo_set_font_size(hdc->cairo, abs(lf->lfHeight));
+        return TRUE;
+#else
         const char *fontName = lf->lfFaceName;
         // If the font name is not ASCII, try to resolve to English name using fontconfig
         bool needResolve = false;
@@ -666,6 +813,7 @@ static BOOL ApplyFont(HDC hdc)
 
         cairo_set_font_size(hdc->cairo, abs(lf->lfHeight));
         return TRUE;
+#endif
     }
     return FALSE;
 }
@@ -1646,6 +1794,24 @@ static cairo_surface_t *cairo_surface_create_copy(cairo_surface_t *src)
     return srcCpy;
 }
 
+#ifdef __OHOS__
+static void markDcDirty(HDC hdc, int x, int y, int cx, int cy)
+{
+    if (!hdc || cx <= 0 || cy <= 0)
+        return;
+    RECT rc = { x, y, x + cx, y + cy };
+    if (!hdc->hasDirty)
+    {
+        hdc->dirtyRect = rc;
+        hdc->hasDirty = TRUE;
+    }
+    else
+    {
+        UnionRect(&hdc->dirtyRect, &hdc->dirtyRect, &rc);
+    }
+}
+#endif
+
 BOOL BitBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, DWORD rop)
 {
     assert(hdc && hdcSrc);
@@ -1695,6 +1861,9 @@ BOOL BitBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, D
         // destroy surface copy
         cairo_surface_destroy(src);
     }
+#ifdef __OHOS__
+    markDcDirty(hdc, x, y, cx, cy);
+#endif
     return TRUE;
 }
 
@@ -1753,6 +1922,9 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
         // destroy surface copy
         cairo_surface_destroy(src);
     }
+#ifdef __OHOS__
+    markDcDirty(hdc, x, y, cx, cy);
+#endif
     return TRUE;
 }
 

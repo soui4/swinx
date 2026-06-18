@@ -51,6 +51,10 @@ _SDC::_SDC(HWND _hwnd)
     , pathRecording(FALSE)
     , currentPath(nullptr)
     , polyFillMode(ALTERNATE)
+#ifdef __OHOS__
+    , hasDirty(FALSE)
+    , dirtyRect({ 0, 0, 0, 0 })
+#endif
 {
     ptOrigin.x = ptOrigin.y = 0;
     cairo_matrix_init_identity(&mtx);
