@@ -132,6 +132,8 @@ private:
         const std::vector<std::wstring>& typePath,
         std::vector<ResourceInfo>& resources, int depth = 0);
 
+    BOOL ParseResFile();
+
 public:
     WindResResourceParser(const void* data, size_t size)
         : m_baseAddr(static_cast<const uint8_t*>(data)),

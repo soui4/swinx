@@ -25,6 +25,10 @@ typedef struct _SDC
     UINT textAlign;
     int rop2;
     int polyFillMode;
+#ifdef __OHOS__
+    BOOL hasDirty;
+    RECT dirtyRect;
+#endif
 
     // Path support
     BOOL pathRecording;     // TRUE if path recording is active

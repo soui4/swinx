@@ -309,7 +309,7 @@ enum{
     SETTINGS_DPI=1,
 };
 
-#ifdef __linux__
+#if defined(__linux__) && !defined(__OHOS__)
 struct DragBase {
     HWND hFrom;
 };
@@ -350,6 +350,6 @@ struct DragOverMsg : Msg, DragOverData {
     }
 };
 
-#endif//__linux__
+#endif// defined(__linux__) && !defined(__OHOS__)
 
 #endif //_UIMSG_H_

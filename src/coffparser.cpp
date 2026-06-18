@@ -21,6 +21,59 @@ static void strtoup(std::string &str)
     }
 }
 
+static uint16_t read_u16(const uint8_t *p)
+{
+    uint16_t v = 0;
+    memcpy(&v, p, sizeof(v));
+    return v;
+}
+
+static uint32_t read_u32(const uint8_t *p)
+{
+    uint32_t v = 0;
+    memcpy(&v, p, sizeof(v));
+    return v;
+}
+
+static const uint8_t *align_dword(const uint8_t *p)
+{
+    uintptr_t value = reinterpret_cast<uintptr_t>(p);
+    value = (value + 3) & ~static_cast<uintptr_t>(3);
+    return reinterpret_cast<const uint8_t *>(value);
+}
+
+static bool parse_res_id(const uint8_t *&p, const uint8_t *end, std::wstring &out)
+{
+    if (p + sizeof(uint16_t) > end)
+        return false;
+
+    uint16_t first = read_u16(p);
+    p += sizeof(uint16_t);
+    if (first == 0xffff)
+    {
+        if (p + sizeof(uint16_t) > end)
+            return false;
+        wchar_t buf[32];
+        swprintf(buf, 32, L"#%u", read_u16(p));
+        p += sizeof(uint16_t);
+        out = buf;
+        return true;
+    }
+
+    std::vector<uint16_t> chars;
+    while (first)
+    {
+        chars.push_back(first);
+        if (p + sizeof(uint16_t) > end)
+            return false;
+        first = read_u16(p);
+        p += sizeof(uint16_t);
+    }
+    int unConvertedChars = 0;
+    to_unicode(reinterpret_cast<const char *>(chars.data()), chars.size() * sizeof(uint16_t), CP_UTF16_LE, out, unConvertedChars);
+    return true;
+}
+
 // 将资源ID字符串转换为可读形式
 std::wstring WindResResourceParser::ResourceIdToString(uintptr_t id) const
 {
@@ -192,6 +245,11 @@ void WindResResourceParser::ParseResourceDirectory(const uint8_t *dirBase, uint3
 
 BOOL WindResResourceParser::Parse()
 {
+    if (m_totalSize >= 8 && read_u32(m_baseAddr) == 0 && read_u32(m_baseAddr + 4) >= 32)
+    {
+        return ParseResFile();
+    }
+
     // 查找资源数据的起始位置（通常是.data段）
     const uint8_t *resourceBase = FindDataSection();
     if (!resourceBase)
@@ -220,6 +278,62 @@ BOOL WindResResourceParser::Parse()
 #endif //_DEBUG
     m_isValid = true;
     return TRUE;
+}
+
+BOOL WindResResourceParser::ParseResFile()
+{
+    const uint8_t *p = m_baseAddr;
+    const uint8_t *end = m_baseAddr + m_totalSize;
+    int count = 0;
+
+    while (p + 8 <= end)
+    {
+        const uint8_t *entry = p;
+        uint32_t dataSize = read_u32(p);
+        uint32_t headerSize = read_u32(p + 4);
+        p += 8;
+        if (headerSize < 8 || entry + headerSize > end)
+            break;
+
+        std::wstring typeName;
+        std::wstring nameName;
+        if (!parse_res_id(p, entry + headerSize, typeName) || !parse_res_id(p, entry + headerSize, nameName))
+            break;
+        p = align_dword(p);
+        if (p + 16 > entry + headerSize)
+            break;
+
+        p += 4; // data version
+        p += 2; // memory flags
+        uint16_t languageId = read_u16(p);
+        p += 2;
+        p += 4; // version
+        p += 4; // characteristics
+
+        const uint8_t *data = entry + headerSize;
+        if (data + dataSize > end)
+            break;
+
+        if (dataSize > 0)
+        {
+            ResourceInfo info;
+            info.typeName = typeName;
+            info.nameName = nameName;
+            info.languageId = languageId;
+            info.dataOffset = static_cast<uint32_t>(data - m_baseAddr);
+            info.dataSize = dataSize;
+            info.codePage = 0;
+            info.dataPtr = data;
+            m_resourceMap[info.typeName][info.nameName][info.languageId] = info;
+            ++count;
+        }
+
+        p = align_dword(data + dataSize);
+    }
+
+    SLOG_STMI() << "parse res done, found " << count << " resources";
+    m_isValid = count > 0;
+    return m_isValid ? TRUE : FALSE;
 }
 
 // FindResource 的等价实现
