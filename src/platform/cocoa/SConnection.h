@@ -166,7 +166,7 @@ class SConnection : public SConnBase{
     void EnableWindow(HWND hWnd, int bEnable);
     bool IsIconic(HWND hWnd) const;
     bool IsZoomed(HWND hWnd) const;
-    int ShowCursor(BOOL bShow);
+    int ShowCursor(bool bShow);
   public:
     struct CaretInfo
     {

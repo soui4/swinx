@@ -1838,7 +1838,7 @@ bool SConnection::IsZoomed(HWND hWnd) const{
     return isNsWindowMaximized(hWnd);
 }
 
-int SConnection::ShowCursor(BOOL bShow){
+int SConnection::ShowCursor(bool bShow){
     if (bShow) {
         m_cursorCount++;
         if (m_cursorCount > 0) {
