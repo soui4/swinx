@@ -21,13 +21,6 @@ static void strtoup(std::string &str)
     }
 }
 
-static uint16_t read_u16(const uint8_t *p)
-{
-    uint16_t v = 0;
-    memcpy(&v, p, sizeof(v));
-    return v;
-}
-
 static uint32_t read_u32(const uint8_t *p)
 {
     uint32_t v = 0;
@@ -42,36 +35,26 @@ static const uint8_t *align_dword(const uint8_t *p)
     return reinterpret_cast<const uint8_t *>(value);
 }
 
-static bool parse_res_id(const uint8_t *&p, const uint8_t *end, std::wstring &out)
+static bool is_supported_coff_machine(uint16_t machine)
 {
-    if (p + sizeof(uint16_t) > end)
+    // IMAGE_FILE_MACHINE_I386/AMD64/ARMNT/ARM64.
+    return machine == 0x014c || machine == 0x8664 || machine == 0x01c4 || machine == 0xaa64;
+}
+
+static bool is_coff_object_blob(const uint8_t *base, size_t size)
+{
+    if (size < sizeof(COFF_FILE_HEADER))
         return false;
 
-    uint16_t first = read_u16(p);
-    p += sizeof(uint16_t);
-    if (first == 0xffff)
+    const COFF_FILE_HEADER *coffHeader = reinterpret_cast<const COFF_FILE_HEADER *>(base);
+    if (!is_supported_coff_machine(coffHeader->Machine) || coffHeader->NumberOfSections == 0 ||
+        coffHeader->NumberOfSections > 96)
     {
-        if (p + sizeof(uint16_t) > end)
-            return false;
-        wchar_t buf[32];
-        swprintf(buf, 32, L"#%u", read_u16(p));
-        p += sizeof(uint16_t);
-        out = buf;
-        return true;
+        return false;
     }
 
-    std::vector<uint16_t> chars;
-    while (first)
-    {
-        chars.push_back(first);
-        if (p + sizeof(uint16_t) > end)
-            return false;
-        first = read_u16(p);
-        p += sizeof(uint16_t);
-    }
-    int unConvertedChars = 0;
-    to_unicode(reinterpret_cast<const char *>(chars.data()), chars.size() * sizeof(uint16_t), CP_UTF16_LE, out, unConvertedChars);
-    return true;
+    size_t sectionTableSize = sizeof(COFF_FILE_HEADER) + sizeof(COFF_SECTION_HEADER) * coffHeader->NumberOfSections;
+    return sectionTableSize <= size;
 }
 
 // 将资源ID字符串转换为可读形式
@@ -108,9 +91,9 @@ const uint8_t *WindResResourceParser::FindDataSection() const
 {
     const COFF_FILE_HEADER *coffHeader = reinterpret_cast<const COFF_FILE_HEADER *>(m_baseAddr);
 
-    if (m_totalSize < sizeof(COFF_FILE_HEADER))
+    if (!is_coff_object_blob(m_baseAddr, m_totalSize))
     {
-        SLOG_STME() << "COFF header too small";
+        SLOG_STME() << "invalid COFF header";
         return nullptr;
     }
 
@@ -123,7 +106,7 @@ const uint8_t *WindResResourceParser::FindDataSection() const
         if (memcmp(section.Name, ".rsrc", 5) == 0 || memcmp(section.Name, ".rdata", 6) == 0 || memcmp(section.Name, ".data", 5) == 0)
         {
             // 验证段偏移是否有效
-            if (section.PointerToRawData >= m_totalSize)
+            if (section.PointerToRawData >= m_totalSize || section.SizeOfRawData > m_totalSize - section.PointerToRawData)
             {
                 SLOG_STME() << "section offset out of range";
                 return nullptr;
@@ -245,9 +228,10 @@ void WindResResourceParser::ParseResourceDirectory(const uint8_t *dirBase, uint3
 
 BOOL WindResResourceParser::Parse()
 {
-    if (m_totalSize >= 8 && read_u32(m_baseAddr) == 0 && read_u32(m_baseAddr + 4) >= 32)
+    if (!is_coff_object_blob(m_baseAddr, m_totalSize))
     {
-        return ParseResFile();
+        SLOG_STME() << "unsupported resource blob format";
+        return FALSE;
     }
 
     // 查找资源数据的起始位置（通常是.data段）
@@ -278,62 +262,6 @@ BOOL WindResResourceParser::Parse()
 #endif //_DEBUG
     m_isValid = true;
     return TRUE;
-}
-
-BOOL WindResResourceParser::ParseResFile()
-{
-    const uint8_t *p = m_baseAddr;
-    const uint8_t *end = m_baseAddr + m_totalSize;
-    int count = 0;
-
-    while (p + 8 <= end)
-    {
-        const uint8_t *entry = p;
-        uint32_t dataSize = read_u32(p);
-        uint32_t headerSize = read_u32(p + 4);
-        p += 8;
-        if (headerSize < 8 || entry + headerSize > end)
-            break;
-
-        std::wstring typeName;
-        std::wstring nameName;
-        if (!parse_res_id(p, entry + headerSize, typeName) || !parse_res_id(p, entry + headerSize, nameName))
-            break;
-        p = align_dword(p);
-        if (p + 16 > entry + headerSize)
-            break;
-
-        p += 4; // data version
-        p += 2; // memory flags
-        uint16_t languageId = read_u16(p);
-        p += 2;
-        p += 4; // version
-        p += 4; // characteristics
-
-        const uint8_t *data = entry + headerSize;
-        if (data + dataSize > end)
-            break;
-
-        if (dataSize > 0)
-        {
-            ResourceInfo info;
-            info.typeName = typeName;
-            info.nameName = nameName;
-            info.languageId = languageId;
-            info.dataOffset = static_cast<uint32_t>(data - m_baseAddr);
-            info.dataSize = dataSize;
-            info.codePage = 0;
-            info.dataPtr = data;
-            m_resourceMap[info.typeName][info.nameName][info.languageId] = info;
-            ++count;
-        }
-
-        p = align_dword(data + dataSize);
-    }
-
-    SLOG_STMI() << "parse res done, found " << count << " resources";
-    m_isValid = count > 0;
-    return m_isValid ? TRUE : FALSE;
 }
 
 // FindResource 的等价实现
