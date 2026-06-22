@@ -42,6 +42,44 @@ static const uint8_t *align_dword(const uint8_t *p)
     return reinterpret_cast<const uint8_t *>(value);
 }
 
+static bool is_supported_coff_machine(uint16_t machine)
+{
+    // IMAGE_FILE_MACHINE_I386/AMD64/ARMNT/ARM64.
+    return machine == 0x014c || machine == 0x8664 || machine == 0x01c4 || machine == 0xaa64;
+}
+
+static bool is_res_file_blob(const uint8_t *base, size_t size)
+{
+    if (size < 32)
+        return false;
+
+    uint32_t dataSize = read_u32(base);
+    uint32_t headerSize = read_u32(base + 4);
+    if (dataSize != 0 || headerSize < 32 || headerSize > size)
+        return false;
+
+    // llvm-rc and rc.exe emit a leading null resource record:
+    // type = 0xffff, 0; name = 0xffff, 0.
+    return read_u16(base + 8) == 0xffff && read_u16(base + 10) == 0 &&
+           read_u16(base + 12) == 0xffff && read_u16(base + 14) == 0;
+}
+
+static bool is_coff_object_blob(const uint8_t *base, size_t size)
+{
+    if (size < sizeof(COFF_FILE_HEADER))
+        return false;
+
+    const COFF_FILE_HEADER *coffHeader = reinterpret_cast<const COFF_FILE_HEADER *>(base);
+    if (!is_supported_coff_machine(coffHeader->Machine) || coffHeader->NumberOfSections == 0 ||
+        coffHeader->NumberOfSections > 96)
+    {
+        return false;
+    }
+
+    size_t sectionTableSize = sizeof(COFF_FILE_HEADER) + sizeof(COFF_SECTION_HEADER) * coffHeader->NumberOfSections;
+    return sectionTableSize <= size;
+}
+
 static bool parse_res_id(const uint8_t *&p, const uint8_t *end, std::wstring &out)
 {
     if (p + sizeof(uint16_t) > end)
@@ -108,9 +146,9 @@ const uint8_t *WindResResourceParser::FindDataSection() const
 {
     const COFF_FILE_HEADER *coffHeader = reinterpret_cast<const COFF_FILE_HEADER *>(m_baseAddr);
 
-    if (m_totalSize < sizeof(COFF_FILE_HEADER))
+    if (!is_coff_object_blob(m_baseAddr, m_totalSize))
     {
-        SLOG_STME() << "COFF header too small";
+        SLOG_STME() << "invalid COFF header";
         return nullptr;
     }
 
@@ -123,7 +161,7 @@ const uint8_t *WindResResourceParser::FindDataSection() const
         if (memcmp(section.Name, ".rsrc", 5) == 0 || memcmp(section.Name, ".rdata", 6) == 0 || memcmp(section.Name, ".data", 5) == 0)
         {
             // 验证段偏移是否有效
-            if (section.PointerToRawData >= m_totalSize)
+            if (section.PointerToRawData >= m_totalSize || section.SizeOfRawData > m_totalSize - section.PointerToRawData)
             {
                 SLOG_STME() << "section offset out of range";
                 return nullptr;
@@ -245,9 +283,15 @@ void WindResResourceParser::ParseResourceDirectory(const uint8_t *dirBase, uint3
 
 BOOL WindResResourceParser::Parse()
 {
-    if (m_totalSize >= 8 && read_u32(m_baseAddr) == 0 && read_u32(m_baseAddr + 4) >= 32)
+    if (is_res_file_blob(m_baseAddr, m_totalSize))
     {
         return ParseResFile();
+    }
+
+    if (!is_coff_object_blob(m_baseAddr, m_totalSize))
+    {
+        SLOG_STME() << "unsupported resource blob format";
+        return FALSE;
     }
 
     // 查找资源数据的起始位置（通常是.data段）
