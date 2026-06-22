@@ -21,13 +21,6 @@ static void strtoup(std::string &str)
     }
 }
 
-static uint16_t read_u16(const uint8_t *p)
-{
-    uint16_t v = 0;
-    memcpy(&v, p, sizeof(v));
-    return v;
-}
-
 static uint32_t read_u32(const uint8_t *p)
 {
     uint32_t v = 0;
@@ -48,22 +41,6 @@ static bool is_supported_coff_machine(uint16_t machine)
     return machine == 0x014c || machine == 0x8664 || machine == 0x01c4 || machine == 0xaa64;
 }
 
-static bool is_res_file_blob(const uint8_t *base, size_t size)
-{
-    if (size < 32)
-        return false;
-
-    uint32_t dataSize = read_u32(base);
-    uint32_t headerSize = read_u32(base + 4);
-    if (dataSize != 0 || headerSize < 32 || headerSize > size)
-        return false;
-
-    // llvm-rc and rc.exe emit a leading null resource record:
-    // type = 0xffff, 0; name = 0xffff, 0.
-    return read_u16(base + 8) == 0xffff && read_u16(base + 10) == 0 &&
-           read_u16(base + 12) == 0xffff && read_u16(base + 14) == 0;
-}
-
 static bool is_coff_object_blob(const uint8_t *base, size_t size)
 {
     if (size < sizeof(COFF_FILE_HEADER))
@@ -78,38 +55,6 @@ static bool is_coff_object_blob(const uint8_t *base, size_t size)
 
     size_t sectionTableSize = sizeof(COFF_FILE_HEADER) + sizeof(COFF_SECTION_HEADER) * coffHeader->NumberOfSections;
     return sectionTableSize <= size;
-}
-
-static bool parse_res_id(const uint8_t *&p, const uint8_t *end, std::wstring &out)
-{
-    if (p + sizeof(uint16_t) > end)
-        return false;
-
-    uint16_t first = read_u16(p);
-    p += sizeof(uint16_t);
-    if (first == 0xffff)
-    {
-        if (p + sizeof(uint16_t) > end)
-            return false;
-        wchar_t buf[32];
-        swprintf(buf, 32, L"#%u", read_u16(p));
-        p += sizeof(uint16_t);
-        out = buf;
-        return true;
-    }
-
-    std::vector<uint16_t> chars;
-    while (first)
-    {
-        chars.push_back(first);
-        if (p + sizeof(uint16_t) > end)
-            return false;
-        first = read_u16(p);
-        p += sizeof(uint16_t);
-    }
-    int unConvertedChars = 0;
-    to_unicode(reinterpret_cast<const char *>(chars.data()), chars.size() * sizeof(uint16_t), CP_UTF16_LE, out, unConvertedChars);
-    return true;
 }
 
 // 将资源ID字符串转换为可读形式
@@ -283,11 +228,6 @@ void WindResResourceParser::ParseResourceDirectory(const uint8_t *dirBase, uint3
 
 BOOL WindResResourceParser::Parse()
 {
-    if (is_res_file_blob(m_baseAddr, m_totalSize))
-    {
-        return ParseResFile();
-    }
-
     if (!is_coff_object_blob(m_baseAddr, m_totalSize))
     {
         SLOG_STME() << "unsupported resource blob format";
@@ -322,62 +262,6 @@ BOOL WindResResourceParser::Parse()
 #endif //_DEBUG
     m_isValid = true;
     return TRUE;
-}
-
-BOOL WindResResourceParser::ParseResFile()
-{
-    const uint8_t *p = m_baseAddr;
-    const uint8_t *end = m_baseAddr + m_totalSize;
-    int count = 0;
-
-    while (p + 8 <= end)
-    {
-        const uint8_t *entry = p;
-        uint32_t dataSize = read_u32(p);
-        uint32_t headerSize = read_u32(p + 4);
-        p += 8;
-        if (headerSize < 8 || entry + headerSize > end)
-            break;
-
-        std::wstring typeName;
-        std::wstring nameName;
-        if (!parse_res_id(p, entry + headerSize, typeName) || !parse_res_id(p, entry + headerSize, nameName))
-            break;
-        p = align_dword(p);
-        if (p + 16 > entry + headerSize)
-            break;
-
-        p += 4; // data version
-        p += 2; // memory flags
-        uint16_t languageId = read_u16(p);
-        p += 2;
-        p += 4; // version
-        p += 4; // characteristics
-
-        const uint8_t *data = entry + headerSize;
-        if (data + dataSize > end)
-            break;
-
-        if (dataSize > 0)
-        {
-            ResourceInfo info;
-            info.typeName = typeName;
-            info.nameName = nameName;
-            info.languageId = languageId;
-            info.dataOffset = static_cast<uint32_t>(data - m_baseAddr);
-            info.dataSize = dataSize;
-            info.codePage = 0;
-            info.dataPtr = data;
-            m_resourceMap[info.typeName][info.nameName][info.languageId] = info;
-            ++count;
-        }
-
-        p = align_dword(data + dataSize);
-    }
-
-    SLOG_STMI() << "parse res done, found " << count << " resources";
-    m_isValid = count > 0;
-    return m_isValid ? TRUE : FALSE;
 }
 
 // FindResource 的等价实现
