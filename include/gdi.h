@@ -508,6 +508,7 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     HBRUSH WINAPI CreateGradientBrush(const GRADIENTITEM *pGradients, int nCount, const GRADIENTINFO *info, BYTE byAlpha, TILEMODE tileMode);
 
     HBITMAP WINAPI CreateDIBSection(HDC hdc, CONST BITMAPINFO *lpbmi, UINT usage, VOID **ppvBits, HANDLE hSection, DWORD offset);
+    HBITMAP WINAPI CreateDIBSectionEx(int bitsPixel, int wid,int hei,int stride, VOID *pvBits);
     BOOL WINAPI UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, CONST VOID *pjBits);
     void WINAPI MarkPixmapDirty(HBITMAP bmp);
 

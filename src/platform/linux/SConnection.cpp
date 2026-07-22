@@ -12,6 +12,9 @@
 #include <sstream>
 #include <string>
 #include <math.h>
+#include <linux/input.h>
+#include <sys/ioctl.h>
+#include <dirent.h>
 #include <unistd.h>      // For pipe(), read(), write(), close()
 #include <poll.h>        // For poll()
 #include <errno.h>       // For errno
@@ -4223,4 +4226,221 @@ int SConnection::ShowCursor(BOOL bShow){
         }
     }
     return m_cursorCount;
+}
+
+struct RawInputDeviceEntry {
+    std::string device_path;
+    DWORD device_type;
+};
+
+static std::map<int, RawInputDeviceEntry> s_rawInputDevices;
+static std::recursive_mutex s_rawInputMutex;
+static int s_nextDeviceId = 1;
+
+static int get_device_type(int fd) {
+    unsigned char evtype_bits[EV_MAX / 8 + 1];
+    memset(evtype_bits, 0, sizeof(evtype_bits));
+
+    if (ioctl(fd, EVIOCGBIT(0, sizeof(evtype_bits)), evtype_bits) < 0) {
+        return -1;
+    }
+
+    if (evtype_bits[EV_KEY / 8] & (1 << (EV_KEY % 8))) {
+        unsigned char key_bits[KEY_MAX / 8 + 1];
+        memset(key_bits, 0, sizeof(key_bits));
+        if (ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(key_bits)), key_bits) >= 0) {
+            if (key_bits[KEY_A / 8] & (1 << (KEY_A % 8)) ||
+                key_bits[KEY_1 / 8] & (1 << (KEY_1 % 8))) {
+                return RIM_TYPEKEYBOARD;
+            }
+        }
+        if (key_bits[BTN_LEFT / 8] & (1 << (BTN_LEFT % 8))) {
+            return RIM_TYPEMOUSE;
+        }
+        return RIM_TYPEHID;
+    }
+
+    if (evtype_bits[EV_REL / 8] & (1 << (EV_REL % 8)) ||
+        evtype_bits[EV_ABS / 8] & (1 << (EV_ABS % 8))) {
+        return RIM_TYPEMOUSE;
+    }
+
+    return -1;
+}
+
+UINT SConnection::GetRawInputDeviceList(
+        _Out_writes_opt_(*puiNumDevices) PRAWINPUTDEVICELIST pRawInputDeviceList,
+        _Inout_ PUINT puiNumDevices,
+        _In_ UINT cbSize)
+{
+    DIR *dir;
+    struct dirent *entry;
+    int device_count = 0;
+    int max_devices = (pRawInputDeviceList != NULL) ? *puiNumDevices : 0;
+    int filled = 0;
+
+    if (cbSize < sizeof(RAWINPUTDEVICELIST)) {
+        return 0;
+    }
+
+    dir = opendir("/dev/input");
+    if (dir == NULL) {
+        return 0;
+    }
+
+    {
+        std::lock_guard<std::recursive_mutex> lock(s_rawInputMutex);
+        s_rawInputDevices.clear();
+        s_nextDeviceId = 1;
+    }
+
+    while ((entry = readdir(dir)) != NULL) {
+        if (strncmp(entry->d_name, "event", 5) != 0)
+            continue;
+
+        char path[256];
+        snprintf(path, sizeof(path), "/dev/input/%s", entry->d_name);
+
+        int fd = open(path, O_RDONLY);
+        if (fd < 0) {
+            continue;
+        }
+
+        int type = get_device_type(fd);
+        close(fd);
+        if (type < 0) {
+            continue;
+        }
+
+        int deviceId;
+        {
+            std::lock_guard<std::recursive_mutex> lock(s_rawInputMutex);
+            deviceId = s_nextDeviceId++;
+            s_rawInputDevices[deviceId] = { path, (DWORD)type };
+        }
+
+        if (pRawInputDeviceList != NULL && filled < max_devices) {
+            pRawInputDeviceList[filled].hDevice = (HANDLE)(intptr_t)deviceId;
+            pRawInputDeviceList[filled].dwType = (DWORD)type;
+            filled++;
+        }
+
+        device_count++;
+    }
+
+    closedir(dir);
+
+    *puiNumDevices = device_count;
+    return (UINT)filled;
+}
+
+UINT SConnection::GetRawInputDeviceInfoA(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize)
+{
+    if (!pcbSize)
+        return (UINT)-1;
+
+    UINT requiredSize = 0;
+    int deviceId = (int)(intptr_t)hDevice;
+    std::string device_path;
+    DWORD device_type = RIM_TYPEMOUSE;
+
+    {
+        std::lock_guard<std::recursive_mutex> lock(s_rawInputMutex);
+        auto it = s_rawInputDevices.find(deviceId);
+        if (it == s_rawInputDevices.end()) {
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return (UINT)-1;
+        }
+        device_path = it->second.device_path;
+        device_type = it->second.device_type;
+    }
+
+    switch (uiCommand)
+    {
+        case RIDI_DEVICENAME:
+        {
+            requiredSize = (UINT)device_path.length() + 1;
+            if (pData && *pcbSize >= requiredSize)
+                strcpy((char*)pData, device_path.c_str());
+            *pcbSize = requiredSize;
+            break;
+        }
+        case RIDI_DEVICEINFO:
+        {
+            requiredSize = sizeof(RID_DEVICE_INFO);
+            if (pData && *pcbSize >= requiredSize)
+            {
+                RID_DEVICE_INFO* pInfo = (RID_DEVICE_INFO*)pData;
+                pInfo->cbSize = sizeof(RID_DEVICE_INFO);
+                pInfo->dwType = device_type;
+                if (pInfo->dwType == RIM_TYPEMOUSE)
+                {
+                    pInfo->mouse.dwId = 0;
+                    pInfo->mouse.dwNumberOfButtons = 3;
+                    pInfo->mouse.dwSampleRate = 125;
+                    pInfo->mouse.fHasHorizontalWheel = FALSE;
+                }
+                else if (pInfo->dwType == RIM_TYPEKEYBOARD)
+                {
+                    pInfo->keyboard.dwType = 1;
+                    pInfo->keyboard.dwSubType = 0;
+                    pInfo->keyboard.dwKeyboardMode = 0;
+                    pInfo->keyboard.dwNumberOfFunctionKeys = 12;
+                    pInfo->keyboard.dwNumberOfIndicators = 3;
+                    pInfo->keyboard.dwNumberOfKeysTotal = 104;
+                }
+                else if (pInfo->dwType == RIM_TYPEHID)
+                {
+                    pInfo->hid.dwVendorId = 0;
+                    pInfo->hid.dwProductId = 0;
+                    pInfo->hid.dwVersionNumber = 0;
+                    pInfo->hid.usUsagePage = 0;
+                    pInfo->hid.usUsage = 0;
+                }
+            }
+            *pcbSize = requiredSize;
+            break;
+        }
+        case RIDI_PREPARSEDDATA:
+        {
+            requiredSize = 0;
+            *pcbSize = requiredSize;
+            break;
+        }
+        default:
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return (UINT)-1;
+    }
+
+    return requiredSize;
+}
+
+UINT SConnection::GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize)
+{
+    if (uiCommand != RIDI_DEVICENAME) {
+        return GetRawInputDeviceInfoA(hDevice, uiCommand, pData, pcbSize);
+    }
+    if (!pcbSize)
+        return (UINT)-1;
+
+    UINT requiredSize = 0;
+    int deviceId = (int)(intptr_t)hDevice;
+    std::string device_path;
+
+    {
+        std::lock_guard<std::recursive_mutex> lock(s_rawInputMutex);
+        auto it = s_rawInputDevices.find(deviceId);
+        if (it == s_rawInputDevices.end()) {
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return (UINT)-1;
+        }
+        device_path = it->second.device_path;
+    }
+
+    int wLen = MultiByteToWideChar(CP_UTF8, 0, device_path.c_str(), -1, NULL, 0);
+    requiredSize = (UINT)(wLen * sizeof(wchar_t));
+    if (pData && *pcbSize >= requiredSize)
+        MultiByteToWideChar(CP_UTF8, 0, device_path.c_str(), -1, (wchar_t*)pData, wLen);
+    *pcbSize = requiredSize;
+    return requiredSize;
 }

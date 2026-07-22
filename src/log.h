@@ -74,7 +74,6 @@ namespace swinx
         ~Log();
         SLogStream& stream();
         static void setLogCallback(::SWinxLogCallback logCallback);
-        static void PrintLog(const char *log, int level);
         static void setLogLevel(int level);
     private:
         char m_tag[100];

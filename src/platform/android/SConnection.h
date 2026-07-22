@@ -1,5 +1,5 @@
-#ifndef _OHOS_SCONNECTION_H_
-#define _OHOS_SCONNECTION_H_
+#ifndef _ANDROID_SCONNECTION_H_
+#define _ANDROID_SCONNECTION_H_
 
 #include <windows.h>
 #include <map>
@@ -8,13 +8,11 @@
 #include <atomic>
 #include <vector>
 #include <memory>
-#include <sdc.h>
 #include <SRwLock.hpp>
+#include <sdc.h>
 #include <uimsg.h>
 #include "SConnBase.h"
-#include "SOhosWindow.h"
 #include "SClipboard.h"
-#include "STrayIconMgr.h"
 #include "countmutex.h"
 
 struct TimerInfo
@@ -28,8 +26,8 @@ struct TimerInfo
 
 class _Window;
 
-class SConnection : public SConnBase {
-  public:
+class SConnection {
+public:
     enum {
         TM_CARET = -100,
         TS_CARET = 500,
@@ -39,11 +37,6 @@ class SConnection : public SConnBase {
 
     SConnection(int screenNum);
     ~SConnection();
-
-    void onTerminate() override;
-    void OnNsEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) override;
-    void OnDrawRect(HWND hWnd, const RECT &rc, cairo_t *ctx) override;
-    void OnNsActive(HWND hWnd, BOOL bActive) override;
 
     void BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
     void AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT res);
@@ -128,7 +121,7 @@ class SConnection : public SConnBase {
     void SendClientMessage(HWND hWnd, uint32_t type, uint32_t *data, int len);
     uint32_t GetIpcAtom() const;
     cairo_surface_t *CreateWindowSurface(HWND hWnd, uint32_t visualId, int cx, int cy);
-    cairo_surface_t *ResizeSurface(cairo_surface_t *surface, HWND hWnd, uint32_t visualId, int width, int height);
+    cairo_surface_t * ResizeSurface(cairo_surface_t *surface, HWND hWnd, uint32_t visualId,int cx, int cy);
     DWORD GetWndProcessId(HWND hWnd);
     HWND WindowFromPoint(POINT pt);
     BOOL GetClientRect(HWND hWnd, RECT *pRc);
@@ -145,7 +138,14 @@ class SConnection : public SConnBase {
     BOOL IsIconic(HWND hWnd) const;
     BOOL IsZoomed(HWND hWnd) const;
     int ShowCursor(BOOL bShow);
-    
+
+    UINT GetRawInputDeviceList(
+            _Out_writes_opt_(*puiNumDevices) PRAWINPUTDEVICELIST pRawInputDeviceList,
+            _Inout_ PUINT puiNumDevices,
+            _In_ UINT cbSize);
+    UINT GetRawInputDeviceInfoA(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize);
+    UINT GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize);
+    BOOL ShowSoftKeyboard(HWND hWnd, BOOL bShow);
     struct CaretInfo
     {
         HWND hOwner;
@@ -177,7 +177,6 @@ class SConnection : public SConnBase {
     HANDLE GetClipboardData(UINT uFormat);
     HANDLE SetClipboardData(UINT uFormat, HANDLE hMem);
 
-    STrayIconMgr *GetTrayIconMgr();
     void EnableDragDrop(HWND hWnd, BOOL enable);
     HRESULT DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource, DWORD dwOKEffect, DWORD *pdwEffect);
     HWND OnWindowCreate(_Window *wnd, CREATESTRUCT *cs, int depth);
@@ -192,25 +191,31 @@ class SConnection : public SConnBase {
     void sync();
     BOOL IsScreenComposited() const;
 
-  protected:
+    // Android-specific: Register a virtual HWND from external ID
+    static BOOL
+    RegisterVirtualHWND(UINT_PTR externalId, HWND hParent, DWORD dwStyle, DWORD dwExStyle,
+                        const RECT *prc, int ctrlId);
+    static BOOL UnregisterVirtualHWND(UINT_PTR externalId);
+
+protected:
+    _Window *CreateVirtualWindowObject();
     void updateMsgQueue(DWORD dwTimeout);
     void postMsg(Msg *pMsg);
 
-  private:
+private:
     CountMutex m_mutex;
     std::list<Msg *> m_msgQueue;
     Msg *m_msgPeek;
     bool m_bMsgNeedFree;
     std::list<Msg *> m_msgStack;
     std::list<CbTask *> m_lstCallbackTask;
-    std::list<TimerInfo> m_lstTimer;
-    bool m_bBlockTimer;
     uint64_t m_tsLastMsg;
     std::atomic<bool> m_bQuit;
     tid_t m_tid;
 
     HDC m_deskDC;
     HBITMAP m_deskBmp;
+    int m_screenNum;
     HWND m_hWndCapture;
     HWND m_hFocus;
     HWND m_hActive;
@@ -222,18 +227,17 @@ class SConnection : public SConnBase {
     CaretInfo m_caretInfo;
     UINT m_caretBlinkTime;
     SClipboard *m_clipboard;
-    STrayIconMgr *m_trayIconMgr;
 };
 
 class SConnMgr {
     friend class SConnection;
 
-  public:
+public:
     static SConnMgr *instance();
     SConnection *getConnection(tid_t tid = 0, int screenNum = 0);
     HANDLE getProcessHeap();
 
-  private:
+private:
     SConnMgr();
     ~SConnMgr();
 
@@ -242,4 +246,4 @@ class SConnMgr {
     std::map<tid_t, SConnection *> m_conns;
 };
 
-#endif // _OHOS_SCONNECTION_H_
+#endif // _ANDROID_SCONNECTION_H_

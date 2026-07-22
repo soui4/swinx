@@ -1,4 +1,5 @@
 ﻿#include <windows.h>
+#include <dlfcn.h>
 #include <pthread.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -35,7 +36,9 @@
 #include "debug.h"
 #include "sysapi.h"
 #include "cursormgr.h"
-
+#ifdef ANDROID
+#include <android/log.h>
+#endif//ANDROID
 // 声明外部函数
 extern void UnloadModuleResources(HMODULE hModule);
 
@@ -2218,8 +2221,12 @@ DWORD WINAPI GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize)
 
 void WINAPI OutputDebugStringA(LPCSTR lpOutputString)
 {
+#ifdef ANDROID
+    __android_log_print(ANDROID_LOG_INFO, "output", "%s", lpOutputString);
+#else
     printf("%s", lpOutputString);
     fflush(stdout);
+#endif
 }
 
 void WINAPI OutputDebugStringW(LPCWSTR lpOutputString)
@@ -3761,3 +3768,53 @@ VOID WINAPI ExitThread(DWORD dwExitCode)
 {
     tls_exitCode = dwExitCode;
 }
+
+BOOL WINAPI GetModuleHandleExA(
+        _In_ DWORD dwFlags,
+        _In_opt_ LPCSTR lpModuleName,
+        _Out_ HMODULE* phModule
+        ){
+            if (!phModule)
+                return FALSE;
+
+            if (dwFlags & GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
+            {
+                const void *addr = lpModuleName;
+                Dl_info info;
+                if (dladdr(addr, &info) != 0 && info.dli_fbase != NULL)
+                {
+                    *phModule = (HMODULE)info.dli_fbase;
+                    return TRUE;
+                }
+                return FALSE;
+            }
+
+            HMODULE hMod = GetModuleHandleA(lpModuleName);
+            if (hMod)
+            {
+                *phModule = hMod;
+                return TRUE;
+            }
+            return FALSE;
+        }
+
+BOOL WINAPI GetModuleHandleExW(
+        _In_ DWORD dwFlags,
+        _In_opt_ LPCWSTR lpModuleName,
+        _Out_ HMODULE* phModule
+        ){
+            if (!phModule)
+                return FALSE;
+
+            if (dwFlags & GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
+            {
+                return GetModuleHandleExA(dwFlags, (LPCSTR)lpModuleName, phModule);
+            }
+
+            if (!lpModuleName)
+                return GetModuleHandleExA(dwFlags, NULL, phModule);
+
+            std::string str;
+            tostring(lpModuleName, -1, str);
+            return GetModuleHandleExA(dwFlags, str.c_str(), phModule);
+        }

@@ -1853,3 +1853,134 @@ int SConnection::ShowCursor(bool bShow){
     }
     return m_cursorCount;
 }
+
+
+
+struct RawInputDeviceEntry {
+    std::string device_path;
+    DWORD device_type;
+};
+
+static std::map<int, RawInputDeviceEntry> s_rawInputDevices;
+static std::recursive_mutex s_rawInputMutex;
+static int s_nextDeviceId = 1;
+
+UINT SConnection::GetRawInputDeviceList(
+        _Out_writes_opt_(*puiNumDevices) PRAWINPUTDEVICELIST pRawInputDeviceList,
+        _Inout_ PUINT puiNumDevices,
+        _In_ UINT cbSize)
+{
+    // TODO: Implement
+    return 0;
+}
+
+UINT SConnection::GetRawInputDeviceInfoA(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize)
+{
+    if (!pcbSize)
+        return (UINT)-1;
+
+    UINT requiredSize = 0;
+    int deviceId = (int)(intptr_t)hDevice;
+    std::string device_path;
+    DWORD device_type = RIM_TYPEMOUSE;
+
+    {
+        std::lock_guard<std::recursive_mutex> lock(s_rawInputMutex);
+        auto it = s_rawInputDevices.find(deviceId);
+        if (it == s_rawInputDevices.end()) {
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return (UINT)-1;
+        }
+        device_path = it->second.device_path;
+        device_type = it->second.device_type;
+    }
+
+    switch (uiCommand)
+    {
+        case RIDI_DEVICENAME:
+        {
+            requiredSize = (UINT)device_path.length() + 1;
+            if (pData && *pcbSize >= requiredSize)
+                strcpy((char*)pData, device_path.c_str());
+            *pcbSize = requiredSize;
+            break;
+        }
+        case RIDI_DEVICEINFO:
+        {
+            requiredSize = sizeof(RID_DEVICE_INFO);
+            if (pData && *pcbSize >= requiredSize)
+            {
+                RID_DEVICE_INFO* pInfo = (RID_DEVICE_INFO*)pData;
+                pInfo->cbSize = sizeof(RID_DEVICE_INFO);
+                pInfo->dwType = device_type;
+                if (pInfo->dwType == RIM_TYPEMOUSE)
+                {
+                    pInfo->mouse.dwId = 0;
+                    pInfo->mouse.dwNumberOfButtons = 3;
+                    pInfo->mouse.dwSampleRate = 125;
+                    pInfo->mouse.fHasHorizontalWheel = FALSE;
+                }
+                else if (pInfo->dwType == RIM_TYPEKEYBOARD)
+                {
+                    pInfo->keyboard.dwType = 1;
+                    pInfo->keyboard.dwSubType = 0;
+                    pInfo->keyboard.dwKeyboardMode = 0;
+                    pInfo->keyboard.dwNumberOfFunctionKeys = 12;
+                    pInfo->keyboard.dwNumberOfIndicators = 3;
+                    pInfo->keyboard.dwNumberOfKeysTotal = 104;
+                }
+                else if (pInfo->dwType == RIM_TYPEHID)
+                {
+                    pInfo->hid.dwVendorId = 0;
+                    pInfo->hid.dwProductId = 0;
+                    pInfo->hid.dwVersionNumber = 0;
+                    pInfo->hid.usUsagePage = 0;
+                    pInfo->hid.usUsage = 0;
+                }
+            }
+            *pcbSize = requiredSize;
+            break;
+        }
+        case RIDI_PREPARSEDDATA:
+        {
+            requiredSize = 0;
+            *pcbSize = requiredSize;
+            break;
+        }
+        default:
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return (UINT)-1;
+    }
+
+    return requiredSize;
+}
+
+UINT SConnection::GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize)
+{
+    if (uiCommand != RIDI_DEVICENAME) {
+        return GetRawInputDeviceInfoA(hDevice, uiCommand, pData, pcbSize);
+    }
+    if (!pcbSize)
+        return (UINT)-1;
+
+    UINT requiredSize = 0;
+    int deviceId = (int)(intptr_t)hDevice;
+    std::string device_path;
+
+    {
+        std::lock_guard<std::recursive_mutex> lock(s_rawInputMutex);
+        auto it = s_rawInputDevices.find(deviceId);
+        if (it == s_rawInputDevices.end()) {
+            SetLastError(ERROR_INVALID_PARAMETER);
+            return (UINT)-1;
+        }
+        device_path = it->second.device_path;
+    }
+
+    int wLen = MultiByteToWideChar(CP_UTF8, 0, device_path.c_str(), -1, NULL, 0);
+    requiredSize = (UINT)(wLen * sizeof(wchar_t));
+    if (pData && *pcbSize >= requiredSize)
+        MultiByteToWideChar(CP_UTF8, 0, device_path.c_str(), -1, (wchar_t*)pData, wLen);
+    *pcbSize = requiredSize;
+    return requiredSize;
+}

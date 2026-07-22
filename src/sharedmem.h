@@ -10,7 +10,12 @@
 #include <assert.h>
 #include <semaphore.h>
 #include <string>
-
+#include <errno.h>
+#if defined(__ANDROID__)
+#include <sys/file.h>
+#include <unistd.h>
+#include <string.h>
+#endif
 namespace swinx{
 struct ISemRwLock
 {
@@ -130,6 +135,79 @@ class TSemRwLock : public ISemRwLock {
     }
 };
 
+#ifdef __ANDROID__
+template <int kNumLock = 2>
+class TNamedSemRwLock : public ISemRwLock {
+  private:
+    int m_fd;
+    std::string m_lockPath;
+
+  private:
+    void setFileLock(short type)
+    {
+        struct flock lock;
+        memset(&lock, 0, sizeof(lock));
+        lock.l_type = type;
+        lock.l_whence = SEEK_SET;
+        lock.l_start = 0;
+        lock.l_len = 0;
+        if (fcntl(m_fd, F_SETLKW, &lock) == -1)
+        {
+            perror("fcntl(F_SETLKW)");
+        }
+    }
+
+  public:
+    TNamedSemRwLock()
+        : m_fd(-1)
+    {
+    }
+    ~TNamedSemRwLock()
+    {
+        if (m_fd != -1)
+        {
+            close(m_fd);
+        }
+    }
+
+    bool init(const char *name)
+    {
+        assert(m_fd == -1);
+        m_lockPath = "/data/local/tmp/soui_lock_";
+        m_lockPath += (name != nullptr ? name : "default");
+        m_lockPath += ".lock";
+        m_fd = open(m_lockPath.c_str(), O_CREAT | O_RDWR, 0666);
+        if (m_fd == -1)
+        {
+            int err = errno;
+            printf("open lock file failed, path=%s, errno=%d\n", m_lockPath.c_str(), err);
+            return false;
+        }
+        return true;
+    }
+
+    void lockShared() override
+    {
+        setFileLock(F_RDLCK);
+    }
+
+    void unlockShared() override
+    {
+        setFileLock(F_UNLCK);
+    }
+
+    void lockExclusive() override
+    {
+        setFileLock(F_WRLCK);
+    }
+
+    void unlockExclusive() override
+    {
+        setFileLock(F_UNLCK);
+    }
+};
+#else
+
 template <int kNumLock = 2>
 class TNamedSemRwLock : public ISemRwLock {
   private:
@@ -193,6 +271,7 @@ class TNamedSemRwLock : public ISemRwLock {
         }
     }
 };
+#endif//__ANDROID__
 
 class SharedMemory {
     enum

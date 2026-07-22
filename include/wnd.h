@@ -404,6 +404,11 @@ extern "C"
     BOOL WINAPI GetWindowPlacement(HWND hWnd,WINDOWPLACEMENT *lpwndpl);
     BOOL WINAPI SetWindowPlacement(HWND hWnd,WINDOWPLACEMENT *lpwndpl);
     
+#ifdef ENABLE_VIRTUAL_HWND
+    BOOL WINAPI RegisterVirtualHWND(UINT_PTR externalId,HWND hParent, DWORD dwStyle,DWORD dwExStyle, const RECT* prc, int ctrlid);
+    BOOL WINAPI UnregisterVirtualHWND(UINT_PTR externalId);
+#endif // ENABLE_VIRTUAL_HWND
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus

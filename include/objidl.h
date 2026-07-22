@@ -1475,7 +1475,6 @@ typedef /* [v1_enum] */
 #if _MSC_VER >= 1200
 #pragma warning(push)
 #endif
-#pragma warning(disable : 4200)
 #endif
 typedef struct tagRemSTGMEDIUM
 {
@@ -1490,8 +1489,6 @@ typedef struct tagRemSTGMEDIUM
 #ifndef RC_INVOKED
 #if _MSC_VER >= 1200
 #pragma warning(pop)
-#else
-#pragma warning(default : 4200)
 #endif
 #endif
 

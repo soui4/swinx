@@ -1,4 +1,4 @@
-﻿#ifndef _SCONN_H_
+#ifndef _SCONN_H_
 #define _SCONN_H_
 
 #include <windows.h>
@@ -167,6 +167,14 @@ class SConnection : public SConnBase{
     bool IsIconic(HWND hWnd) const;
     bool IsZoomed(HWND hWnd) const;
     int ShowCursor(bool bShow);
+
+    UINT GetRawInputDeviceList(
+            _Out_writes_opt_(*puiNumDevices) PRAWINPUTDEVICELIST pRawInputDeviceList,
+            _Inout_ PUINT puiNumDevices,
+            _In_ UINT cbSize);
+    UINT GetRawInputDeviceInfoA(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize);
+    UINT GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize);
+
   public:
     struct CaretInfo
     {

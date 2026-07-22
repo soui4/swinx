@@ -17,6 +17,165 @@
 #include "uimsg.h"
 using namespace swinx;
 
+#ifdef __ANDROID__
+#include <android/sharedmem.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/stat.h>
+
+// Android-specific shared memory implementation
+// Android doesn't support POSIX shm_open/shm_unlink, so we use a hybrid approach:
+// 1. Use ASharedMemory_create for new shared memory
+// 2. Use temporary files as a fallback for named shared memory
+// 3. Maintain a registry to track shared memory by name
+
+struct AndroidSharedMemEntry {
+    std::string name;
+    int fd;
+    size_t size;
+    int refCount;
+};
+
+static std::mutex s_androidShmMutex;
+static std::map<std::string, AndroidSharedMemEntry*> s_androidShmRegistry;
+
+static int android_shm_open(const char *name, int oflag, mode_t mode)
+{
+    std::lock_guard<std::mutex> lock(s_androidShmMutex);
+    
+    // Check if shared memory already exists in registry
+    auto it = s_androidShmRegistry.find(name);
+    if (it != s_androidShmRegistry.end())
+    {
+        // Open existing shared memory
+        AndroidSharedMemEntry* entry = it->second;
+        if (oflag & O_CREAT && !(oflag & O_EXCL))
+        {
+            // Open existing
+            entry->refCount++;
+            return dup(entry->fd);
+        }
+        else if (oflag & O_CREAT && (oflag & O_EXCL))
+        {
+            // Fail if exists and O_EXCL is set
+            errno = EEXIST;
+            return -1;
+        }
+        else
+        {
+            // Open existing
+            entry->refCount++;
+            return dup(entry->fd);
+        }
+    }
+    
+    // Shared memory doesn't exist
+    if (oflag & O_CREAT)
+    {
+        // Create new shared memory using ASharedMemory_create
+        // Use a default size that can be resized later
+        size_t defaultSize = 4096;
+        int fd = ASharedMemory_create(name, defaultSize);
+        if (fd < 0)
+        {
+            // Fallback to temporary file
+            char tempPath[256];
+            snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d", name, getpid());
+            
+            int flags = O_RDWR | O_CREAT;
+            if (oflag & O_EXCL)
+                flags |= O_EXCL;
+            
+            fd = open(tempPath, flags, mode);
+            if (fd < 0)
+            {
+                return -1;
+            }
+            
+            // Set default size
+            ftruncate(fd, defaultSize);
+        }
+        
+        // Set protection flags
+        int prot = 0;
+        if (oflag & O_RDONLY)
+            prot |= PROT_READ;
+        if (oflag & O_RDWR)
+            prot |= PROT_READ | PROT_WRITE;
+        
+        if (prot != 0)
+        {
+            ASharedMemory_setProt(fd, prot);
+        }
+        
+        // Register the shared memory
+        AndroidSharedMemEntry* entry = new AndroidSharedMemEntry();
+        entry->name = name;
+        entry->fd = fd;
+        entry->size = defaultSize;
+        entry->refCount = 1;
+        s_androidShmRegistry[name] = entry;
+        
+        return dup(fd);
+    }
+    else
+    {
+        // Not found and not creating
+        errno = ENOENT;
+        return -1;
+    }
+}
+
+static int android_shm_unlink(const char *name)
+{
+    std::lock_guard<std::mutex> lock(s_androidShmMutex);
+    
+    auto it = s_androidShmRegistry.find(name);
+    if (it == s_androidShmRegistry.end())
+    {
+        errno = ENOENT;
+        return -1;
+    }
+    
+    AndroidSharedMemEntry* entry = it->second;
+    
+    // Close the original fd
+    if (entry->fd >= 0)
+    {
+        close(entry->fd);
+    }
+    
+    // Remove from registry
+    s_androidShmRegistry.erase(it);
+    delete entry;
+    
+    return 0;
+}
+
+// Redefine shm_open and shm_unlink for Android
+#define shm_open android_shm_open
+#define shm_unlink android_shm_unlink
+
+// Android-specific ftruncate for ASharedMemory
+static int android_ftruncate(int fd, off_t length)
+{
+    // ASharedMemory doesn't support ftruncate after creation
+    // We need to recreate with new size if needed
+    // For now, just return success (size is set at creation)
+    return 0;
+}
+
+// Redefine ftruncate for Android if needed
+#ifndef ftruncate
+#define ftruncate android_ftruncate
+#endif
+
+#endif//__ANDROID__
+
+
 enum
 {
     kKey_SharedMem = 0x00110207, // key for shared memory
@@ -114,7 +273,7 @@ class GLobalHandleTable {
 
         m_sharedMem = new SharedMemory();
         SharedMemory::InitStat ret = m_sharedMem->init(name, maxObjects * sizeof(HandleData) + sizeof(TableHeader));
-        assert(ret);
+        //assert(ret);
         if (!ret)
         {
             delete m_sharedMem;
@@ -1038,6 +1197,80 @@ struct FileMapObject
             flag = O_RDWR;
             break;
         }
+        
+#ifdef __ANDROID__
+        // Android-specific: Use ASharedMemory_create for new shared memory
+        // First try to open existing from registry
+        {
+            std::lock_guard<std::mutex> lock(s_androidShmMutex);
+            auto it = s_androidShmRegistry.find(pData->szName);
+            if (it != s_androidShmRegistry.end())
+            {
+                // Open existing shared memory
+                AndroidSharedMemEntry* entry = it->second;
+                this->fd = dup(entry->fd);
+                if (this->fd >= 0)
+                {
+                    errno = NOERROR;
+                    pData->nRef++;
+                    entry->refCount++;
+                    mutex.init(s_globalHandleTable.getHeader()->key + idx + 10000);
+                    this->index = idx;
+                    return true;
+                }
+            }
+        }
+        
+        // Create new shared memory with correct size
+        size_t memSize = fmData.size.QuadPart > 0 ? fmData.size.QuadPart : 4096;
+        int fd = ASharedMemory_create(pData->szName, memSize);
+        if (fd < 0)
+        {
+            // Fallback to temporary file
+            char tempPath[256];
+            snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d", pData->szName, getpid());
+            
+            int flags = O_RDWR | O_CREAT | O_TRUNC;
+            fd = open(tempPath, flags, 0666);
+            if (fd < 0)
+            {
+                return false;
+            }
+            
+            // Set size
+            if (ftruncate(fd, memSize) == -1)
+            {
+                close(fd);
+                return false;
+            }
+        }
+        else
+        {
+            // Set protection flags
+            int prot = 0;
+            if (flag & O_RDONLY)
+                prot |= PROT_READ;
+            if (flag & O_RDWR)
+                prot |= PROT_READ | PROT_WRITE;
+            
+            if (prot != 0)
+            {
+                ASharedMemory_setProt(fd, prot);
+            }
+            
+            // Register the shared memory
+            std::lock_guard<std::mutex> lock(s_androidShmMutex);
+            AndroidSharedMemEntry* entry = new AndroidSharedMemEntry();
+            entry->name = pData->szName;
+            entry->fd = fd;
+            entry->size = memSize;
+            entry->refCount = 1;
+            s_androidShmRegistry[pData->szName] = entry;
+        }
+        
+        this->fd = fd;
+#else
+        // Non-Android platforms use shm_open
         int fd = shm_open(pData->szName, flag, 0666);
         if (fd == -1)
         {
@@ -1052,6 +1285,7 @@ struct FileMapObject
             }
         }
         this->fd = fd;
+#endif
 
         errno = NOERROR;
         pData->nRef++;

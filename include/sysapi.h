@@ -887,6 +887,29 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
     HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName);
     HMODULE WINAPI GetModuleHandleW(LPCWSTR lpModuleName);
 
+#define GET_MODULE_HANDLE_EX_FLAG_PIN                 (0x00000001)
+#define GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT  (0x00000002)
+#define GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS        (0x00000004)
+
+    BOOL WINAPI GetModuleHandleExA(
+        _In_ DWORD dwFlags,
+        _In_opt_ LPCSTR lpModuleName,
+        _Out_ HMODULE* phModule
+        );
+
+    BOOL WINAPI GetModuleHandleExW(
+        _In_ DWORD dwFlags,
+        _In_opt_ LPCWSTR lpModuleName,
+        _Out_ HMODULE* phModule
+        );
+
+#ifdef UNICODE
+#define GetModuleHandleEx  GetModuleHandleExW
+#else
+#define GetModuleHandleEx  GetModuleHandleExA
+#endif // !UNICODE
+
+
     BOOL WINAPI SetEnvironmentVariableA(LPCSTR lpName, LPCSTR lpValue);
     BOOL WINAPI SetEnvironmentVariableW(LPCWSTR lpName, LPCWSTR lpValue);
 

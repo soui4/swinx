@@ -125,6 +125,7 @@ typedef BOOL *PBOOL;
 typedef BOOL *LPBOOL;
 typedef BYTE *PBYTE;
 typedef BYTE *LPBYTE;
+typedef CONST BYTE * LPCBYTE;
 typedef int *PINT;
 typedef int *LPINT;
 typedef WORD *PWORD;

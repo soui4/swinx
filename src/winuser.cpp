@@ -107,3 +107,33 @@ int ShowCursor(BOOL bShow){
     SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->ShowCursor(bShow);
 }
+
+UINT GetRawInputDeviceInfoA(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
+    return conn->GetRawInputDeviceInfoA(hDevice, uiCommand, pData, pcbSize);
+}
+
+UINT GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
+    return conn->GetRawInputDeviceInfoW(hDevice, uiCommand, pData, pcbSize);
+}
+
+UINT GetRawInputDeviceList(
+        _Out_writes_opt_(*puiNumDevices) PRAWINPUTDEVICELIST pRawInputDeviceList,
+        _Inout_ PUINT puiNumDevices,
+        _In_ UINT cbSize)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
+    return conn->GetRawInputDeviceList(pRawInputDeviceList, puiNumDevices, cbSize);
+}
+
+BOOL ShowSoftKeyboard(HWND hWnd,BOOL bShow){
+#ifdef __ANDROID__
+    SConnection *conn = SConnMgr::instance()->getConnection();
+    return conn->ShowSoftKeyboard(hWnd, bShow);
+#else
+    return FALSE;
+#endif//__ANDROID__
+}

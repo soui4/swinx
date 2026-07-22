@@ -48,7 +48,7 @@ include(CPack)
 include(GNUInstallDirs)
 
 set(CPACK_INCLUDED TRUE)
-
+set(ZLIB_CONF_WRITTEN FALSE)
 if(NOT ZLIB_CONF_WRITTEN)
     set(Z_PREFIX ${ZLIB_PREFIX})
     set(CONF_OUT_FILE ${zlib_BINARY_DIR}/zconf.h.cmakein)

@@ -6,7 +6,6 @@
 #include <vector>
 #include <assert.h>
 #include <sys/stat.h>
-#include <uuid/uuid.h>
 #include "class.h"
 #include "SConnection.h"
 #include "sdc.h"
@@ -328,7 +327,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     pWnd->showSbFlags |= (cs->style & WS_HSCROLL) ? SB_HORZ : 0;
     pWnd->showSbFlags |= (cs->style & WS_VSCROLL) ? SB_VERT : 0;
     pWnd->visualId = conn->GetVisualID(TRUE);
-#if defined(__linux__) && !defined(__OHOS__)
+#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__)
     int depth = XCB_COPY_FROM_PARENT;
 #else
     int depth = 24;
@@ -350,7 +349,8 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
         free(pWnd);
         return 0;
     }
-    WndMgr::insertWindow(hWnd, pWnd);
+    BOOL ok = WndMgr::insertWindow(hWnd, pWnd);
+    assert(ok);
     if (strcmp(cs->lpszClass, WC_MENUA) != 0 && (cs->style & WS_SYSMENU))
     {
         pWnd->hSysMenu = CreatePopupMenu();
@@ -433,6 +433,7 @@ HWND WINAPI CreateWindowExA(DWORD exStyle, LPCSTR className, LPCSTR windowName, 
             return 0;
         className = szClassName;
     }
+    //SLOG_STMI()<<"CreateWindowExA, className="<<className;
     CREATESTRUCT cs;
     cs.lpCreateParams = data;
     cs.hInstance = instance;
@@ -912,7 +913,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     BOOL bSkipMsg = FALSE;
     switch (msg)
     {
-#if defined(__linux__) && !defined(__OHOS__)
+#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__)
     case UM_XDND_DRAG_ENTER:
     {
         SLOG_STMI() << "UM_XDND_DRAG_ENTER!";
@@ -3199,6 +3200,10 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         }
     }
     break;
+    default:
+        if(msg>=WM_KEYFIRST && msg<=WM_KEYLAST){
+            return 1;//not handed.
+        }
     }
     return 0;
 }
@@ -3981,3 +3986,13 @@ BOOL SetWindowPlacement(HWND hWnd,WINDOWPLACEMENT *lpwndpl){
         return FALSE;
     return ShowWindow(hWnd, lpwndpl->showCmd);
 }
+
+#ifdef ENABLE_VIRTUAL_HWND
+BOOL WINAPI RegisterVirtualHWND(UINT_PTR externalId,HWND hParent, DWORD dwStyle,DWORD dwExStyle, const RECT* prc, int ctrlId)
+{
+    return SConnection::RegisterVirtualHWND(externalId, hParent, dwStyle, dwExStyle, prc, ctrlId);
+}
+BOOL WINAPI UnregisterVirtualHWND(UINT_PTR externalId){
+    return SConnection::UnregisterVirtualHWND(externalId);
+}
+#endif // ENABLE_VIRTUAL_HWND

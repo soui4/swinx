@@ -2,7 +2,6 @@
 #define _UIMSG_H_
 #include <mutex>
 #include <string>
-#include <uuid/uuid.h>
 #include <hook.h>
 #include "handle.h"
 #include "sharedmem.h"

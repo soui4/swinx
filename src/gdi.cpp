@@ -1140,6 +1140,35 @@ HBITMAP CreateDIBSection(HDC hdc, const BITMAPINFO *lpbmi, UINT usage, VOID **pp
     return InitGdiObj(OBJ_BITMAP, ret);
 }
 
+HBITMAP CreateDIBSectionEx(int bitsPixel, int wid,int hei,int stride, VOID *pvBits){
+    cairo_format_t fmt = CAIRO_FORMAT_INVALID;
+    switch (bitsPixel)
+    {
+    case 1:
+        fmt = CAIRO_FORMAT_A1;
+        break;
+    case 32:
+        fmt = CAIRO_FORMAT_ARGB32;
+        break;
+    case 24:
+        fmt = CAIRO_FORMAT_RGB24;
+        break;
+    }
+    if (fmt == CAIRO_FORMAT_INVALID)
+        return 0;
+    cairo_surface_t *ret = cairo_image_surface_create_for_data((unsigned char*)pvBits, fmt, wid,hei, stride);
+    if (!ret)
+        return 0;
+    cairo_status_t status = cairo_surface_status(ret);
+    if (status != CAIRO_STATUS_SUCCESS)
+    {
+        cairo_surface_destroy(ret);
+        return 0;
+    }
+    cairo_surface_mark_dirty(ret);
+    return InitGdiObj(OBJ_BITMAP, ret);
+}
+
 BOOL UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, CONST VOID *pjBits)
 {
     BITMAP bm = { 0 };

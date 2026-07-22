@@ -2,7 +2,13 @@
 #include "log.h"
 #include <assert.h>
 #include <cstdarg>
-
+#ifdef ANDROID
+#include <android/log.h>
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, LOG_TAG, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+#endif
 #ifndef E_RANGE
 #define E_RANGE 9944
 #endif
@@ -264,7 +270,33 @@ Log::~Log()
     {
         char buf[MAX_LOGLEN] = { 0 };
         snprintf(buf, sizeof(buf), "tid=%ld,%04d-%02d-%02d %02d:%02d:%02d %03dms %s,%d,%s,%s\n", (long int)tid, wtm.wYear, wtm.wMonth, wtm.wDay, wtm.wHour, wtm.wMinute, wtm.wSecond, wtm.wMilliseconds, m_tag, m_level, m_logbuf, m_lineInfo.str().c_str());
+#ifdef ANDROID
+        int level = 0;
+        switch (m_level)
+        {
+        case SLOG_DEBUG:
+            level = ANDROID_LOG_DEBUG;
+            break;
+        case SLOG_INFO:
+            level = ANDROID_LOG_INFO;
+            break;
+        case SLOG_WARN:
+            level = ANDROID_LOG_WARN;
+            break;
+        case SLOG_ERROR:
+            level = ANDROID_LOG_ERROR;
+            break;
+        case SLOG_FATAL:
+            level = ANDROID_LOG_FATAL;
+            break;
+        default:
+            level = ANDROID_LOG_INFO;
+            break;
+        }
+        __android_log_print(level, "output", "%s", buf);
+#else
         OutputDebugStringA(buf);
+#endif
     }
 #endif//_DEBUG
 }
@@ -274,26 +306,6 @@ SLogStream &Log::stream()
     return m_stream;
 }
 
-void Log::PrintLog(const char *log, int level)
-{
-    if (gs_LogFunc != NULL)
-    {
-        gs_LogFunc(log, level);
-    }
-    else
-    {
-#if defined(WEBRTC_ANDROID)
-        __android_log_write(level, "yyaudio", log);
-#elif defined(WEBRTC_WIN)
-        OutputDebugStringA(log);
-        OutputDebugStringA("\n");
-#elif defined(WEBRTC_IOS) || defined(WEBRTC_MAC)
-        char buf[MAX_LOGLEN] = { 0 };
-        printf("%s\n", log);
-        fflush(stdout);
-#endif
-    }
-}
 void Log::setLogCallback(::SWinxLogCallback logCallback)
 {
     if (gs_LogFunc == NULL && logCallback != NULL)
