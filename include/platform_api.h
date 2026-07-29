@@ -92,11 +92,16 @@ struct PlatformIMEAPI {
     BOOL (*immIsIME)(HKL hKL);
 };
 
+struct PlatformAudioAPI {
+    BOOL (*playSound)(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound);
+};
+
 struct PlatformAPI {
     int version;
     struct PlatformClipboardAPI clipboard;
     struct PlatformWindowAPI window;
     struct PlatformIMEAPI ime;
+    struct PlatformAudioAPI audio;
 };
 
 extern struct PlatformAPI g_platformAPI;

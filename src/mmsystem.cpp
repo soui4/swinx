@@ -20,6 +20,10 @@
 #include <memory>
 #endif
 
+#if defined(__ANDROID__)
+#include "platform_api.h"
+#endif
+
 #include "log.h"
 #define kLogTag "mmsystem"
 
@@ -512,7 +516,11 @@ BOOL PlaySound(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound)
     {
         return FALSE;
     }
-#if defined(__APPLE__) || defined(__linux__)
+#if defined(__ANDROID__)
+    if (g_platformAPI.audio.playSound)
+        return g_platformAPI.audio.playSound(pszSound, hmod, fdwSound);
+    return FALSE;
+#elif defined(__APPLE__) || defined(__linux__)
     return AudioPlayer::getInstance()->play(pszSound, fdwSound & SND_PURGE);
 #else
     // For other platforms, return FALSE as before
