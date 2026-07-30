@@ -596,6 +596,9 @@ HWND GetCapture()
 
 static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
 {
+#ifdef __ANDROID__
+    return -1;
+#endif//__ANDROID__
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return -1;
@@ -2263,7 +2266,11 @@ HWND SetFocus(HWND hWnd)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
     HWND oldFocus = conn->GetFocus();
-    conn->SetFocus(hWnd);
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(wndObj && 0 != (wndObj->dwExStyle & WS_EX_NOACTIVATE))
+    {
+        conn->SetFocus(hWnd);
+    }
     return oldFocus;
 }
 
@@ -2426,6 +2433,9 @@ static void OnNcPaint(HWND hWnd, WPARAM wp, LPARAM lp)
 
 static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp, LPARAM lp)
 {
+#ifdef __ANDROID__
+    return 0;
+#endif//__ANDROID__
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     assert(wndObj);
     RECT rcSbHorz, rcSbVert;

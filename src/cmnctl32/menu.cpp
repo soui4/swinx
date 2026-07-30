@@ -894,8 +894,11 @@ CMenu *CMenu::GetSubMenu(int nPos)
 
 UINT CMenu::TrackPopupMenu(UINT flag, int x, int y, HWND hOwner, LPTPMPARAMS prcRect)
 {
+#ifdef __ANDROID__
+    return 0;
+#endif//__ANDROID__
     if (!IsWindow(m_hWnd) || GetMenuItemCount() == 0)
-        return (UINT)-1;
+        return 0;
     if (!s_MenuData)
         s_MenuData = new SMenuRunData(hOwner);
 

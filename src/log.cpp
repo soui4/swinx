@@ -2,7 +2,7 @@
 #include "log.h"
 #include <assert.h>
 #include <cstdarg>
-#ifdef ANDROID
+#ifdef __ANDROID__
 #include <android/log.h>
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -270,7 +270,7 @@ Log::~Log()
     {
         char buf[MAX_LOGLEN] = { 0 };
         snprintf(buf, sizeof(buf), "tid=%ld,%04d-%02d-%02d %02d:%02d:%02d %03dms %s,%d,%s,%s\n", (long int)tid, wtm.wYear, wtm.wMonth, wtm.wDay, wtm.wHour, wtm.wMinute, wtm.wSecond, wtm.wMilliseconds, m_tag, m_level, m_logbuf, m_lineInfo.str().c_str());
-#ifdef ANDROID
+#ifdef __ANDROID__
         int level = 0;
         switch (m_level)
         {

@@ -36,9 +36,9 @@
 #include "debug.h"
 #include "sysapi.h"
 #include "cursormgr.h"
-#ifdef ANDROID
+#ifdef __ANDROID__
 #include <android/log.h>
-#endif//ANDROID
+#endif//__ANDROID__
 // 声明外部函数
 extern void UnloadModuleResources(HMODULE hModule);
 
@@ -2221,12 +2221,12 @@ DWORD WINAPI GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize)
 
 void WINAPI OutputDebugStringA(LPCSTR lpOutputString)
 {
-#ifdef ANDROID
+#ifdef __ANDROID__
     __android_log_print(ANDROID_LOG_INFO, "output", "%s", lpOutputString);
 #else
     printf("%s", lpOutputString);
     fflush(stdout);
-#endif
+#endif//__ANDROID__
 }
 
 void WINAPI OutputDebugStringW(LPCWSTR lpOutputString)
