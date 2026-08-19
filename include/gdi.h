@@ -1,4 +1,4 @@
-﻿#ifndef _LINUX_GDI_H_
+#ifndef _LINUX_GDI_H_
 #define _LINUX_GDI_H_
 #include <ctypes.h>
 #include <winuser.h>
@@ -799,6 +799,9 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     COLORREF WINAPI SetTextColor(HDC hdc, COLORREF color);
     COLORREF WINAPI GetTextColor(HDC hdc);
+
+    BOOL WINAPI SetBrushOrgEx(HDC hdc, int x, int y, LPPOINT lppt);
+    BOOL WINAPI GetBrushOrgEx(HDC hdc, LPPOINT lppt);
 
     typedef USHORT COLOR16;
 

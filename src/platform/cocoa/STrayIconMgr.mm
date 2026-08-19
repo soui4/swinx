@@ -1,6 +1,6 @@
 
 #import <Cocoa/Cocoa.h>
-#include <cairo-quartz.h>
+
 #include "STrayIconMgr.h"
 #include <gdi.h>
 
@@ -35,7 +35,8 @@ NSImage *imageFromHICON(HICON hIcon) {
     int height = bitmap.bmHeight;
     int bytesPerRow = bitmap.bmWidthBytes;
     
-    // 复制 bitmap 数据
+    // 复制 bitmap 数据。Windows DIB 是 bottom-up（首行在内存最高地址），
+    // 而 CGImage 期望 top-down，按行倒序拷贝完成 Y 翻转。
     size_t dataSize = bytesPerRow * height;
     unsigned char *copiedData = (unsigned char *)malloc(dataSize);
     if (!copiedData) {
@@ -43,8 +44,8 @@ NSImage *imageFromHICON(HICON hIcon) {
         DeleteObject(iconInfo.hbmMask);
         return nil;
     }
-    memcpy(copiedData, bitmap.bmBits, dataSize);
-    
+    unsigned char *src = (unsigned char *)bitmap.bmBits;
+    memcpy(copiedData,src, dataSize);
     // 现在可以安全地删除 GDI 对象
     DeleteObject(iconInfo.hbmColor);
     DeleteObject(iconInfo.hbmMask);

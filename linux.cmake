@@ -43,6 +43,7 @@ file(GLOB SRCS
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
     src/platform/linux/*.cpp
+    src/gdi/cairo/*.cpp
     )
 
 source_group("Header Files" FILES ${HEADERS})

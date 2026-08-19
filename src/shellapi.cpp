@@ -1129,6 +1129,16 @@ static bool is_probably_url(const char *str)
     }
     return false;
 }
+
+static int mysystem(const char *cmd){
+#if defined(__IOS__)
+    return -1;
+#else
+    return system(cmd);
+#endif
+}
+
+
 BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd)
 {
     if (!lpOperation || stricmp(lpOperation, "open") != 0)
@@ -1169,7 +1179,7 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
             // macOS: 使用 open -R 命令选中文件
             char *cmd = new char[filePath.length() + 20];
             sprintf(cmd, "open -R '%s'", filePath.c_str());
-            int ret = system(cmd);
+            int ret = mysystem(cmd);
             delete[] cmd;
             return (ret == 0);
 #else
@@ -1205,7 +1215,7 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
         int len = strlen(url);
         char *cmd = new char[len + 10];
         sprintf(cmd, "open '%s'", url);
-        int ret = system(cmd);
+        int ret = mysystem(cmd);
         delete[] cmd;
         return (ret == 0);
 #else
@@ -1259,7 +1269,7 @@ BOOL WINAPI ShellExecuteExA(LPSHELLEXECUTEINFOA lpExecInfo)
         int len = strlen(lpFile);
         char *cmd = new char[len + 10];
         sprintf(cmd, "xdg-open %s", lpFile);
-        int ret = system(cmd);
+        int ret = mysystem(cmd);
         delete[] cmd;
         return TRUE;
     }

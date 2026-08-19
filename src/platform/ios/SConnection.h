@@ -1,4 +1,4 @@
-﻿#ifndef _SCONN_H_
+#ifndef _SCONN_H_
 #define _SCONN_H_
 
 #include <windows.h>
@@ -15,7 +15,7 @@
 #include <uimsg.h>
 #include "os_state.h"
 #include "SConnBase.h"
-#include "SNsWindow.h"
+#include "SUIWindow.h"
 #include "SClipboard.h"
 #include "countmutex.h"
 
@@ -32,10 +32,10 @@ class _Window;
 class STrayIconMgr;
 
 
-/// @brief 
+/// @brief iOS 平台连接，管理消息循环与窗口
 class SConnection : public SConnBase{
   public:
- 
+
     enum {
         TM_CARET = -100, //timer for caret blink
         TS_CARET = 500,//default caret blink elapse, 500ms
@@ -94,12 +94,12 @@ class SConnection : public SConnBase{
     bool SetActiveWindow(HWND hWnd);
 
     HWND WindowFromPoint(POINT pt, HWND hWnd) const;
-    
+
     bool IsWindow(HWND hWnd) const;
 
     void SetWindowPos(HWND hWnd,int x,int y) const;
     void SetWindowSize(HWND hWnd,int cx,int cy) const;
-    
+
     bool MoveWindow(HWND hWnd, int x, int y, int cx, int cy) const;
 
     bool GetCursorPos(LPPOINT ppt) const;
@@ -135,9 +135,7 @@ class SConnection : public SConnBase{
     HWND OnGetAncestor(HWND hwnd,UINT gaFlags);
     HMONITOR MonitorFromWindow(HWND hWnd, DWORD dwFlags);
     HMONITOR MonitorFromPoint(POINT pt,  DWORD dwFlags );
-    HMONITOR MonitorFromRect(LPCRECT lprc, // rectangle
-                             DWORD dwFlags // determine return value
-    );
+    HMONITOR MonitorFromRect(LPCRECT lprc, DWORD dwFlags);
     int GetScreenWidth(HMONITOR hMonitor) const;
     int GetScreenHeight(HMONITOR hMonitor) const;
     HWND GetScreenWindow() const;
@@ -165,6 +163,9 @@ class SConnection : public SConnBase{
     bool IsIconic(HWND hWnd) const;
     bool IsZoomed(HWND hWnd) const;
     int ShowCursor(bool bShow);
+
+    // 由 SUIView 触摸事件调用，记录屏幕物理像素坐标的光标位置
+    void UpdateCursorPos(POINT pt) { m_cursorPos = pt; }
 
     UINT GetRawInputDeviceList(
             _Out_writes_opt_(*puiNumDevices) PRAWINPUTDEVICELIST pRawInputDeviceList,
@@ -213,13 +214,15 @@ public:
     HANDLE SetClipboardData(UINT uFormat, HANDLE hMem);
 
     UINT RegisterClipboardFormatA(LPCSTR pszName);
+
+    BOOL ShowSoftKeyboard(HWND hWnd, BOOL bShow);
   public:
       STrayIconMgr* GetTrayIconMgr() ;
 
       void EnableDragDrop(HWND hWnd, bool enable);
       HRESULT DoDragDrop(IDataObject *pDataObject,
                           IDropSource *pDropSource,
-                          DWORD dwOKEffect,     
+                          DWORD dwOKEffect,
                           DWORD *pdwEffect);
 
       HWND OnWindowCreate(_Window *wnd,CREATESTRUCT *cs,int depth);
@@ -257,12 +260,12 @@ public:
 
       std::list<Msg *> m_msgStack; // msg stack that are handling
       std::list<CbTask *> m_lstCallbackTask;
-      
+
       tid_t m_tid;
 
       HDC m_deskDC;
-      HBITMAP m_deskBmp;  
-      HWND m_hWndCapture=NULL;  
+      HBITMAP m_deskBmp;
+      HWND m_hWndCapture=NULL;
       HWND m_hFocus = NULL;
       HWND m_hActive = NULL;
       HWND m_hForeground = NULL;
@@ -272,6 +275,13 @@ public:
       STrayIconMgr* m_trayIconMgr;
       std::map<HWND,HCURSOR>          m_wndCursor;
       int m_cursorCount = 1;//default cursor is visible
+
+      // iOS 触摸光标位置（屏幕物理像素坐标），由 SUIView 触摸事件更新
+      POINT m_cursorPos = {0, 0};
+
+      // iOS 运行循环唤醒机制
+      void *m_wakeSource;       // CFRunLoopSourceRef
+      void *m_wakeRunLoop;      // CFRunLoopRef
 };
 
 class SConnMgr {

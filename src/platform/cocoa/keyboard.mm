@@ -148,10 +148,9 @@ int GetLocal(char *lpLCData, int cchData){
                 strncpy(lpLCData, locale, cchData - 1);
                 lpLCData[cchData - 1] = '\0';
                 return len + 1;
-            }else{
-                return 0;
             }
         }
+        return 0;
     }
 }
 

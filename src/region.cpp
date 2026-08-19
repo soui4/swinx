@@ -565,11 +565,13 @@ INT WINAPI GetRgnBox(HRGN hrgn, RECT *rect)
     if (obj)
     {
         INT ret;
-        rect->left = obj->extents.left;
-        rect->top = obj->extents.top;
-        rect->right = obj->extents.right;
-        rect->bottom = obj->extents.bottom;
-        TRACE("%p %s\n", hrgn, wine_dbgstr_rect(rect));
+        if(rect){
+            rect->left = obj->extents.left;
+            rect->top = obj->extents.top;
+            rect->right = obj->extents.right;
+            rect->bottom = obj->extents.bottom;
+            TRACE("%p %s\n", hrgn, wine_dbgstr_rect(rect));
+        }
         ret = get_region_type(obj);
         GDI_ReleaseObj(hrgn);
         return ret;

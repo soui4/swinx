@@ -2,7 +2,7 @@
 #import <QuartzCore/QuartzCore.h>
 #include <objc/objc.h>
 #include <objc/NSObjCRuntime.h>
-#include <cairo-quartz.h>
+
 #include <map>
 #include <set>
 #include <mutex>
@@ -458,7 +458,6 @@ defer:(BOOL)flag;
 }
 
 - (void)updateRect:(NSRect)rc;{
-    //todo:hjx
     [self invalidRect:rc];
 }
 
@@ -506,62 +505,25 @@ defer:(BOOL)flag;
     }
 }
 
-#ifdef MOCOS_PATTERN_TEST
 - (void)drawRect:(NSRect)dirtyRect {
     CGContextRef cgContext = [[NSGraphicsContext currentContext] CGContext];
+    if (!cgContext || !m_pListener) return;
     float scale = [self.window backingScaleFactor];
-    cairo_surface_t *windowSurface = cairo_quartz_surface_create_for_cg_context(
-        cgContext,
-        self.bounds.size.width,
-        self.bounds.size.height
-    );
-    double width = self.bounds.size.width*scale;
-    double height = self.bounds.size.height*scale;
-    cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width/2, height/2);
-    cairo_surface_set_device_scale(surface, 0.5,0.5);
-    cairo_t *cr = cairo_create(surface);
-
-    dirtyRect.origin.x *= scale;
-    dirtyRect.origin.y *= scale;
-    dirtyRect.size.width *= scale;
-    dirtyRect.size.height *= scale;
-
-    {
-        RECT rc = {(LONG)dirtyRect.origin.x, (LONG)dirtyRect.origin.y, (LONG)(dirtyRect.origin.x+dirtyRect.size.width), (LONG)(dirtyRect.origin.y+dirtyRect.size.height)};
-        m_pListener->OnDrawRect(m_hWnd, rc, cr);
-    }
-    cairo_t *windowCr = cairo_create(windowSurface);
-    cairo_surface_set_device_scale(windowSurface, 1.0f/scale, 1.0f/scale);
-    cairo_set_source_surface(windowCr, surface, 0, 0);
-    cairo_paint(windowCr);
-    cairo_destroy(windowCr);
-    cairo_surface_destroy(windowSurface);
-}
-#else
-- (void)drawRect:(NSRect)dirtyRect {
-    CGContextRef cgContext = [[NSGraphicsContext currentContext] CGContext];
-    float scale = [self.window backingScaleFactor];
-    cairo_surface_t *windowSurface = cairo_quartz_surface_create_for_cg_context(
-        cgContext,
-        self.bounds.size.width,
-        self.bounds.size.height
-    );
-    cairo_surface_set_device_scale(windowSurface, 1.0f/scale, 1.0f/scale);
-    dirtyRect.origin.x *= scale;
-    dirtyRect.origin.y *= scale;
-    dirtyRect.size.width *= scale;
-    dirtyRect.size.height *= scale;
-
-    cairo_t *windowCr = cairo_create(windowSurface);
-    {
-        RECT rc = {(LONG)dirtyRect.origin.x, (LONG)dirtyRect.origin.y, (LONG)(dirtyRect.origin.x+dirtyRect.size.width), (LONG)(dirtyRect.origin.y+dirtyRect.size.height)};
-        m_pListener->OnDrawRect(m_hWnd, rc, windowCr);
-    }
-    cairo_destroy(windowCr);
-    cairo_surface_destroy(windowSurface);
+    CGContextSaveGState(cgContext);
+    //CGContextTranslateCTM(cgContext, 0, self.bounds.size.height);
+    CGContextScaleCTM(cgContext, 1.0 / scale, 1.0 / scale);
+    // 以物理像素构造裁剪矩形传入 OnDrawRect
+    const NSRect physRect = NSMakeRect(dirtyRect.origin.x * scale,
+                                       dirtyRect.origin.y * scale,
+                                       dirtyRect.size.width * scale,
+                                       dirtyRect.size.height * scale);
+    RECT rc = {(LONG)physRect.origin.x, (LONG)physRect.origin.y,
+               (LONG)(physRect.origin.x + physRect.size.width),
+               (LONG)(physRect.origin.y + physRect.size.height)};
+    m_pListener->OnDrawRect(m_hWnd, rc, cgContext);
+    CGContextRestoreGState(cgContext);
 }
 
-#endif//MOCOS_PATTERN_TEST
 - (BOOL)isFlipped {
     return YES;
 }
@@ -2871,6 +2833,13 @@ BOOL getNsCursorPos(LPPOINT ppt) {
     ppt->y *= scale;
     return TRUE;
     }
+}
+
+float getScale(){
+    @autoreleasepool {
+    NSScreen *screen = [NSScreen mainScreen];
+    return  [screen backingScaleFactor];
+    } 
 }
 
 int getNsDpi(bool bx) {

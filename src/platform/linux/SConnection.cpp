@@ -19,7 +19,6 @@
 #include <poll.h>        // For poll()
 #include <errno.h>       // For errno
 #include "cursormgr.h"
-#include "src/platform/cocoa/os_state.h"
 #include "uimsg.h"
 #include "keyboard.h"
 #include "SClipboard.h"
@@ -2159,7 +2158,8 @@ BOOL SConnection::SetActiveWindow(HWND hWnd){
         if(wndObj->dwExStyle & (WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE))
             return FALSE;
     }
-    xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hWnd ? hWnd : screen->root, XCB_CURRENT_TIME);
+    HWND hFocus = hWnd ? hWnd : screen->root;
+    xcb_set_input_focus(connection, XCB_INPUT_FOCUS_POINTER_ROOT, hFocus, XCB_CURRENT_TIME);
     xcb_flush(connection);
     if (_QueryActiveWindow() == hWnd)
         OnActiveChange(hWnd);
@@ -2605,7 +2605,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         xcb_key_press_event_t *e2 = (xcb_key_press_event_t *)event;
         m_tsSelection = e2->time;
         pMsg = new Msg;
-        pMsg->hwnd = m_hFocus;
+        pMsg->hwnd = m_hFocus?m_hFocus:m_hWndActive;
 
         UINT vk = m_keyboard->onKeyEvent(true, e2->detail, e2->state, e2->time);
         pMsg->message = (vk < VK_NUMLOCK || (vk >= VK_OEM_1 && vk <= VK_OEM_8)) ? WM_KEYDOWN : WM_SYSKEYDOWN;
@@ -2621,7 +2621,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
     {
         xcb_key_release_event_t *e2 = (xcb_key_release_event_t *)event;
         pMsg = new Msg;
-        pMsg->hwnd = m_hFocus;
+        pMsg->hwnd = m_hFocus?m_hFocus:m_hWndActive;
 
         UINT vk = m_keyboard->onKeyEvent(false, e2->detail, e2->state, e2->time);
         pMsg->message = vk < VK_NUMLOCK ? WM_KEYUP : WM_SYSKEYUP;
@@ -3609,7 +3609,7 @@ void SConnection::OnActiveChange(HWND hWnd)
     if (hWnd)
     {
         SendMessageA(hWnd, WM_ACTIVATE, WA_ACTIVE, oldActive);
-        HWND hFocus = 0;
+        HWND hFocus = m_hWndActive;
         auto it = m_mapFocus.find(hWnd);
         if (it != m_mapFocus.end()) {
             hFocus = it->second;

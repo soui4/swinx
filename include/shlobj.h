@@ -24,7 +24,7 @@ typedef struct _DROPFILES
 
 #ifndef __IDragSourceHelper_FWD_DEFINED__
 #define __IDragSourceHelper_FWD_DEFINED__
-typedef interface IDragSourceHelper IDragSourceHelper;
+typedef struct IDragSourceHelper IDragSourceHelper;
 
 #endif /* __IDragSourceHelper_FWD_DEFINED__ */
 

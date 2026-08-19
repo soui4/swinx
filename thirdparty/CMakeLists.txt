@@ -15,6 +15,8 @@ add_subdirectory(expat)
 # fontconfig depends on freetype
 add_subdirectory(fontconfig)
 
+
+if(NOT CMAKE_SYSTEM_NAME MATCHES "iOS|Darwin")
 # cairo depends on pixman, freetype, and fontconfig
 add_subdirectory(cairo)
-
+endif()

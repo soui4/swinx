@@ -265,7 +265,7 @@ Log::~Log()
 #endif
         gs_LogFunc(buf, m_level);
     }
-#ifdef _DEBUG
+#ifndef NDEBUG
     else if (m_level >= gs_level)
     {
         char buf[MAX_LOGLEN] = { 0 };

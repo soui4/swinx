@@ -85,6 +85,22 @@ static inline void set_win_data(void *ptr, LONG_PTR val, UINT size)
     }
 }
 
+#if defined(__APPLE__)
+static BOOL InitWndDC(HWND hwnd, int cx, int cy)
+{
+    assert(hwnd);
+    WndObj wndObj = WndMgr::fromHwnd(hwnd);
+    assert(wndObj);
+    if (cx <= 0) cx = 1;
+    if (cy <= 0) cy = 1;
+    HBITMAP hBmp = CreateCompatibleBitmap(NULL, cx, cy);
+    if (!hBmp) return FALSE;
+    wndObj->bmp = hBmp;
+    wndObj->hdc = new _SDC(hwnd);
+    SelectObject(wndObj->hdc, hBmp);
+    return TRUE;
+}
+#else
 static BOOL InitWndDC(HWND hwnd, int cx, int cy)
 {
     assert(hwnd);
@@ -96,6 +112,7 @@ static BOOL InitWndDC(HWND hwnd, int cx, int cy)
     SelectObject(wndObj->hdc, wndObj->bmp);
     return TRUE;
 }
+#endif
 
 #if defined(__OHOS__)
 static void RebindWndDCBitmap(WndObj &wndObj)
@@ -596,9 +613,9 @@ HWND GetCapture()
 
 static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
 {
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
     return -1;
-#endif//__ANDROID__
+#endif
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return -1;
@@ -1003,11 +1020,12 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     }
 #endif // defined(__linux__) && !defined(__OHOS__)
     case WM_LBUTTONDOWN:
-#if defined(__OHOS__)
-    {
+#if defined(__OHOS__) || defined(__ANDROID__) || defined(__IOS__)
+    {//for mobile os
         POINT pt;
         wndObj->mConnection->GetCursorPos(&pt);
         wndObj->htCode = CallWindowObjProc(wndObj, proc, hWnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
+        CallWindowObjProc(wndObj, proc, hWnd, WM_MOUSEMOVE, wp, lp);
     }
 #endif
         if (bSkipMsg = (0 == HandleNcTestCode(hWnd, wndObj->htCode)))
@@ -1249,7 +1267,28 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
                 RebindWndDCBitmap(wndObj);
             }
         }
-#else
+#elif defined(__APPLE__)
+        if (wndObj->bmp && (sz.cx != wndObj->rc.right - wndObj->rc.left || sz.cy != wndObj->rc.bottom - wndObj->rc.top))
+        {
+            wndObj->rc.right = wndObj->rc.left + sz.cx;
+            wndObj->rc.bottom = wndObj->rc.top + sz.cy;
+            if (sz.cx > 0 && sz.cy > 0 && wndObj->hdc)
+            {
+                HBITMAP oldBmp = wndObj->bmp;
+                HBITMAP newBmp = CreateCompatibleBitmap(NULL, sz.cx, sz.cy);
+                if (newBmp)
+                {
+                    SelectObject(wndObj->hdc, newBmp);
+                    wndObj->bmp = newBmp;
+                    if (oldBmp)
+                        DeleteObject(oldBmp);
+                    RECT rc = wndObj->rc;
+                    OffsetRect(&rc, -rc.left, -rc.top);
+                    InvalidateRect(hWnd, &rc, TRUE);
+                }
+            }
+        }
+#else //linux
         if (wndObj->bmp && (sz.cx != wndObj->rc.right - wndObj->rc.left || sz.cy != wndObj->rc.bottom - wndObj->rc.top))
         {
             wndObj->rc.right = wndObj->rc.left + sz.cx;
@@ -2267,9 +2306,16 @@ HWND SetFocus(HWND hWnd)
     SConnection *conn = SConnMgr::instance()->getConnection();
     HWND oldFocus = conn->GetFocus();
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if(wndObj && 0 != (wndObj->dwExStyle & WS_EX_NOACTIVATE))
+    if(wndObj)
     {
-        conn->SetFocus(hWnd);
+        HWND hRoot = GetAncestor(hWnd, GA_ROOT);
+        if(hRoot){
+            DWORD dwExStyle = GetWindowLongA(hRoot, GWL_EXSTYLE);
+            if((dwExStyle & WS_EX_NOACTIVATE) == 0)
+            {
+                conn->SetFocus(hWnd);
+            }
+        }
     }
     return oldFocus;
 }

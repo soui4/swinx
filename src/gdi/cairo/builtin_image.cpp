@@ -1,5 +1,6 @@
-#include "builtin_image.h"
+#include "../builtin_image.h"
 #include <assert.h>
+#include <cairo.h>
 #include "image.hpp"
 
 BuiltinImage *BuiltinImage::instance()

@@ -7,7 +7,6 @@
 #include <MacTypes.h>
 #include <memory>
 #include <map>
-#include <cairo-quartz.h>
 #include <fontconfig/fontconfig.h>
 #include "SNsWindow.h"
 #include "SConnection.h"
@@ -1384,15 +1383,6 @@ void SConnection::postCallbackTask(CbTask *pTask) {
     pTask->AddRef();
 }
 
-cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, uint32_t visualId, int width, int height) {
-    return cairo_image_surface_create(CAIRO_FORMAT_ARGB32, width, height);
-}
-
-cairo_surface_t * SConnection::ResizeSurface(cairo_surface_t *surface,HWND hWnd, uint32_t visualId, int width, int height) {
-    cairo_surface_destroy(surface);
-    return CreateWindowSurface(hWnd, visualId, width, height);
-}
-
 DWORD SConnection::GetWndProcessId(HWND hWnd) {
     CFArrayRef windowInfos = CGWindowListCopyWindowInfo(kCGWindowListOptionIncludingWindow, hWnd);
     if (windowInfos && CFArrayGetCount(windowInfos) > 0) {
@@ -1756,8 +1746,8 @@ void SConnection::onTerminate() {
     PostQuitMessage(0);
 }
 
+//note, we use postMsg but not sendMsg here. postMsg will fill the msg to msg queue. and stop msg wait right now, which will follow by peekmsg immeadially. therefore, there is no delay for msg handle.
 void SConnection::OnNsEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-    //use post message to make sure the message is processed by the message loop.
     Msg *pMsg = new Msg;
     pMsg->hwnd = hWnd;
     pMsg->message = message;
@@ -1780,16 +1770,19 @@ void SConnection::OnNsActive(HWND hWnd, BOOL bActive) {
     SendMessageA(hWnd, WM_ACTIVATE, bActive?1:0, 0);
 }
 
-void SConnection::OnDrawRect(HWND hWnd, const RECT &rc, cairo_t *ctx){
+void SConnection::OnDrawRect(HWND hWnd, const RECT &rc, CGContextRef ctx){
   WndObj wndObj = WndMgr::fromHwnd(hWnd);
   if(!wndObj)
     return;
   assert(wndObj->hdc);
-  cairo_t * oldCtx = wndObj->hdc->cairo;
-  wndObj->hdc->cairo = ctx;
+  CGContextRef oldCtx = wndObj->hdc->cgCtx;
+  BOOL oldOwned = wndObj->hdc->cgCtxOwned;
+  wndObj->hdc->cgCtx = ctx;
+  wndObj->hdc->cgCtxOwned = NO; // window system 传入的 ctx 非拥有引用，不要 Release
   SetRectRgn(wndObj->invalid.hRgn, rc.left, rc.top, rc.right, rc.bottom);
   SendMessageA(hWnd, WM_PAINT, 0,(LPARAM)wndObj->invalid.hRgn);
-  wndObj->hdc->cairo = oldCtx;
+  wndObj->hdc->cgCtx = oldCtx;
+  wndObj->hdc->cgCtxOwned = oldOwned;
   SetRectRgn(wndObj->invalid.hRgn, 0, 0, 0, 0);
 }
 

@@ -864,7 +864,7 @@ static HBITMAP create_alpha_bitmap(HBITMAP color, const BITMAPINFO *src_info, co
     if (src_info)
     {
         SelectObject(hdc, alpha);
-        StretchDIBits(hdc, 0, 0, bm.bmWidth, bm.bmHeight, 0, 0, src_info->bmiHeader.biWidth, -src_info->bmiHeader.biHeight, color_bits, src_info, DIB_RGB_COLORS, SRCCOPY);
+        StretchDIBits(hdc, 0, 0, bm.bmWidth, bm.bmHeight, 0, src_info->bmiHeader.biHeight, src_info->bmiHeader.biWidth, -src_info->bmiHeader.biHeight, color_bits, src_info, DIB_RGB_COLORS, SRCCOPY);
     }
     else
     {
@@ -996,7 +996,7 @@ static BOOL create_icon_frame(const BITMAPINFO *bmi, DWORD maxsize, POINT hotspo
 
         /* copy color data into second half of mask bitmap */
         SelectObject(hdc, frame->mask);
-        StretchDIBits(hdc, 0, height, width, height, 0, 0, bmi_width, -bmi_height, color_bits, bmi_copy, DIB_RGB_COLORS, SRCCOPY);
+        StretchDIBits(hdc, 0, height, width, height, 0, bmi_height, bmi_width, -bmi_height, color_bits, bmi_copy, DIB_RGB_COLORS, SRCCOPY);
     }
     else
     {
@@ -1005,7 +1005,7 @@ static BOOL create_icon_frame(const BITMAPINFO *bmi, DWORD maxsize, POINT hotspo
         if (!(frame->color = create_color_bitmap(width, height)))
             goto done;
         SelectObject(hdc, frame->color);
-        StretchDIBits(hdc, 0, 0, width, height, 0, 0, bmi_width, -bmi_height, color_bits, bmi_copy, DIB_RGB_COLORS, SRCCOPY);
+        StretchDIBits(hdc, 0, 0, width, height, 0, bmi_height, bmi_width, -bmi_height, color_bits, bmi_copy, DIB_RGB_COLORS, SRCCOPY);
 
         if (bmi_has_alpha(bmi_copy, color_bits))
         {
@@ -1028,6 +1028,20 @@ static BOOL create_icon_frame(const BITMAPINFO *bmi, DWORD maxsize, POINT hotspo
                     mask_bits = alpha_mask_bits;
                     mask_size = bmi_height * dst_stride;
                 }
+            }
+        }
+        else if (bpp == 32)
+        {
+            /* 非 alpha 的 32bpp 图标：color 位图 alpha 字节为 0（透明），
+               设为 0xFF 使其不透明（cairo/CoreGraphics 要求预乘 alpha） */
+            BITMAP bm;
+            GetObject(frame->color, sizeof(bm), &bm);
+            if (bm.bmBitsPixel == 32 && bm.bmBits)
+            {
+                unsigned char *ptr = (unsigned char *)bm.bmBits;
+                int count = bm.bmWidth * bm.bmHeight;
+                for (int i = 0; i < count; i++, ptr += 4)
+                    ptr[3] = 0xFF;
             }
         }
 
@@ -1078,7 +1092,9 @@ static HICON create_cursoricon_object(struct cursoricon_desc *desc, BOOL is_icon
         return NULL;
     ICONINFO info;
     info.fIcon = is_icon;
-    info.hbmColor = desc->frames[0].color;
+    // 优先使用预乘 alpha 位图（cairo/CoreGraphics 都要求预乘 alpha），
+    // 没有时回退到原始 color 位图
+    info.hbmColor = desc->frames[0].alpha ? desc->frames[0].alpha : desc->frames[0].color;
     info.hbmMask = desc->frames[0].mask;
     info.xHotspot = desc->frames[0].hotspot.x;
     info.yHotspot = desc->frames[0].hotspot.y;

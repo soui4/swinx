@@ -1,10 +1,12 @@
-﻿#include "../nativewnd.h"
+#include "../nativewnd.h"
 #include "../tostring.hpp"
 #include "cmnctl32.h"
 #include <unordered_map>
 #include <algorithm>
-#include <src/builtin_image.h>
+#include "gdi/builtin_image.h"
 #include <list>
+#include <log.h>
+#define kLogTag "msgbox"
 
 class CMessageBox : public CNativeWnd {
 

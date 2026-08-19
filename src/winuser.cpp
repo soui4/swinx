@@ -130,7 +130,7 @@ UINT GetRawInputDeviceList(
 }
 
 BOOL ShowSoftKeyboard(HWND hWnd,BOOL bShow){
-#ifdef __ANDROID__
+#if defined(__ANDROID__) || defined(__IOS__)
     SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->ShowSoftKeyboard(hWnd, bShow);
 #else

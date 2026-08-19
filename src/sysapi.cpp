@@ -16,6 +16,7 @@
 #include <sys/event.h>
 #include <crt_externs.h>
 #include <sys/sysctl.h>
+#include <os/log.h>
 #endif
 #include <fcntl.h>
 #include <signal.h>
@@ -2223,12 +2224,13 @@ void WINAPI OutputDebugStringA(LPCSTR lpOutputString)
 {
 #ifdef __ANDROID__
     __android_log_print(ANDROID_LOG_INFO, "output", "%s", lpOutputString);
+#elif defined(__APPLE__)
+    os_log(OS_LOG_DEFAULT, "%{public}s", lpOutputString);
 #else
     printf("%s", lpOutputString);
     fflush(stdout);
 #endif//__ANDROID__
 }
-
 void WINAPI OutputDebugStringW(LPCWSTR lpOutputString)
 {
     wprintf(L"%s", lpOutputString);

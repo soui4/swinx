@@ -361,10 +361,11 @@ static bool IsNullPen(HPEN hpen)
     return pen->lopnStyle == PS_NULL;
 }
 
-static bool ApplyBrush(cairo_t *ctx, HBRUSH hbr, double wid, double hei, double x, double y);
+static bool ApplyBrush(HDC hdc, HBRUSH hbr, double wid, double hei, double x, double y);
 
-static bool ApplyPen(cairo_t *ctx, HPEN hpen, double wid, double hei, double x, double y)
+static bool ApplyPen(HDC hdc, HPEN hpen, double wid, double hei, double x, double y)
 {
+    cairo_t *ctx = hdc->cairo;
     LOGPEN *pen = (LOGPEN *)GetGdiObjPtr(hpen);
     if (pen->lopnStyle == PS_NULL)
         return false;
@@ -381,7 +382,7 @@ static bool ApplyPen(cairo_t *ctx, HPEN hpen, double wid, double hei, double x, 
             // Use provided rectangle dimensions, or default to 1.0 if not provided
             double patternWidth = (wid > 0) ? wid : 1.0;
             double patternHeight = (hei > 0) ? hei : 1.0;
-            if (!ApplyBrush(ctx, lpex->patternBrush, patternWidth, patternHeight, x, y))
+            if (!ApplyBrush(hdc, lpex->patternBrush, patternWidth, patternHeight, x, y))
             {
                 // Fallback to solid color if pattern brush application fails
                 CairoColor cr(pen->lopnColor);
@@ -562,8 +563,9 @@ static bool IsPatternBrush(HBRUSH hbr)
     return br->lbStyle == BS_PATTERN;
 }
 
-static bool ApplyBrush(cairo_t *ctx, HBRUSH hbr, double wid, double hei, double x, double y)
+static bool ApplyBrush(HDC hdc, HBRUSH hbr, double wid, double hei, double x, double y)
 {
+    cairo_t *ctx = hdc->cairo;
     if (hbr == 0)
         return false;
     if (IS_INTRESOURCE(hbr))
@@ -589,25 +591,44 @@ static bool ApplyBrush(cairo_t *ctx, HBRUSH hbr, double wid, double hei, double 
     case BS_PATTERN:
     {
         PatternInfo *info = (PatternInfo *)br->lbHatch;
+        if(info->useBmp){
+            x = -hdc->brushOrg.x;
+            y = -hdc->brushOrg.y;
+        }
         cairo_pattern_t *pattern = info->create(wid, hei, x, y);
         cairo_set_source(ctx, pattern);
-#ifdef MOCOS_PATTERN_TEST
-        // todo: quartz surface on macos has device scale, I'not sure how to set it.
-        // if I setup a software surface, and set device scale as quartz surface, the following code is work well, but it's not work for quartz surface itself.
-        // do not remove this code.
-        cairo_surface_t *surface = cairo_get_target(ctx);
-        double dscale_x, dscale_y;
-        cairo_surface_get_device_scale(surface, &dscale_x, &dscale_y);
-        cairo_matrix_t matrix;
-        cairo_matrix_init_scale(&matrix, dscale_x, dscale_y);
-        cairo_pattern_set_matrix(pattern, &matrix);
-#endif
         break;
     }
     default:
         ret = false;
     }
     return ret;
+}
+
+static void DrawPathFillStroke(cairo_t *ctx, HDC hdc, double wid, double hei, double x, double y)
+{
+    ApplyRop2(hdc->cairo, hdc->rop2);
+    if (ApplyBrush(hdc, hdc->brush, wid, hei, x,y))
+    {
+        cairo_fill_preserve(ctx); // Preserve path for stroke
+    }
+    if (ApplyPen(hdc, hdc->pen, wid, hei, x, y))
+    {
+        cairo_stroke(ctx);
+    }else{
+        cairo_new_path(ctx); // Clear path if no stroke is applied
+    }
+}
+
+static void DrawPathStroke(cairo_t *ctx, HDC hdc, double wid, double hei, double x, double y)
+{
+    ApplyRop2(ctx, hdc->rop2);
+    if (ApplyPen(hdc, hdc->pen, wid, hei, x, y))
+    {
+        cairo_stroke(ctx);
+    }else{
+        cairo_new_path(ctx);
+    }
 }
 
 #ifdef __OHOS__
@@ -841,8 +862,14 @@ HPEN ExtCreatePen(DWORD iPenStyle, DWORD cWidth, const LOGBRUSH *plbrush, DWORD 
         SetLastError(ERROR_INVALID_PARAMETER);
         return 0;
     }
+    // BS_NULL/BS_HOLLOW: create a null pen
+    if (plbrush->lbStyle == BS_NULL || plbrush->lbStyle == BS_HOLLOW)
+    {
+        return CreatePen(PS_NULL, cWidth, plbrush->lbColor);
+    }
+    // BS_SOLID with no custom dash: use CreatePen with the style from iPenStyle
     if(plbrush->lbStyle == BS_SOLID && cStyle==0){
-        return CreatePen(PS_SOLID, cWidth, plbrush->lbColor);
+        return CreatePen(iPenStyle & PS_STYLE_MASK, cWidth, plbrush->lbColor);
     }
     if (plbrush->lbStyle == BS_PATTERN || plbrush->lbStyle == BS_BRUSH)
     {
@@ -855,7 +882,8 @@ HPEN ExtCreatePen(DWORD iPenStyle, DWORD cWidth, const LOGBRUSH *plbrush, DWORD 
     LOGPENEX *lpex = new LOGPENEX;
     lpex->lopnColor = plbrush->lbColor;
     lpex->lopnWidth.x = cWidth;
-    lpex->lopnStyle = PS_USERSTYLE;
+    // Preserve endcap, join, and type from iPenStyle; use PS_USERSTYLE as style marker for LOGPENEX detection
+    lpex->lopnStyle = (iPenStyle & ~PS_STYLE_MASK) | PS_USERSTYLE;
     if (plbrush->lbStyle == BS_PATTERN)
     {
         // Handle PS_PATTERN by creating a pattern brush
@@ -870,15 +898,14 @@ HPEN ExtCreatePen(DWORD iPenStyle, DWORD cWidth, const LOGBRUSH *plbrush, DWORD 
         }
         // Store the pattern brush
         lpex->patternBrush = hPatternBrush;
-        lpex->lopnStyle |= PS_GEOMETRIC; // Mark as geometric pen
     }
     else if (plbrush->lbStyle == BS_BRUSH)
     {
         lpex->patternBrush = (HBRUSH)RefGdiObj((HBRUSH)plbrush->lbHatch);
-        lpex->lopnStyle |= PS_GEOMETRIC; // Mark as geometric pen
     }
     else
     {
+        // BS_SOLID with custom dash, or other styles with user-defined dash pattern
         assert(cStyle > 0 && pstyle);
         lpex->dash.resize(cStyle);
         for (DWORD i = 0; i < cStyle; i++)
@@ -886,7 +913,7 @@ HPEN ExtCreatePen(DWORD iPenStyle, DWORD cWidth, const LOGBRUSH *plbrush, DWORD 
             lpex->dash[i] = pstyle[i];
         }
     }
-    
+
     return InitGdiObj(OBJ_PEN, lpex);
 }
 
@@ -1169,6 +1196,7 @@ HBITMAP CreateDIBSectionEx(int bitsPixel, int wid,int hei,int stride, VOID *pvBi
     return InitGdiObj(OBJ_BITMAP, ret);
 }
 
+
 BOOL UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, CONST VOID *pjBits)
 {
     BITMAP bm = { 0 };
@@ -1371,7 +1399,8 @@ BOOL RestoreDC(HDC hdc, int nSavedDC)
 int GetClipRgn(HDC hdc, HRGN hrgn)
 {
     cairo_rectangle_list_t *rcList = cairo_copy_clip_rectangle_list(hdc->cairo);
-
+    if (rcList->status != CAIRO_STATUS_SUCCESS)
+        return -1;
     int size = FIELD_OFFSET(RGNDATA, Buffer) + rcList->num_rectangles * sizeof(RECT);
     RGNDATA *pRgnData = (RGNDATA *)malloc(size);
     pRgnData->rdh.dwSize = size;
@@ -1552,12 +1581,11 @@ BOOL FillRgn(HDC hdc, HRGN hrgn, HBRUSH hbr)
     ApplyRegion(ctx, hrgn);
     RECT rc;
     GetRgnBox(hrgn, &rc);
-    cairo_translate(ctx, rc.left, rc.top);
     double wid = rc.right - rc.left, hei = rc.bottom - rc.top;
-    if (ApplyBrush(ctx, hbr, wid, hei, 0, 0))
+    if (ApplyBrush(hdc, hbr, wid, hei, rc.left, rc.top))
     {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_rectangle(ctx, 0, 0, wid, hei);
+        ApplyRop2(ctx, hdc->rop2);
+        cairo_rectangle(ctx, rc.left, rc.top, wid, hei);
         cairo_fill(ctx);
         ret = TRUE;
     }
@@ -1575,7 +1603,7 @@ BOOL FrameRgn(HDC hdc, HRGN hrgn, HBRUSH hbr, int nWidth, int nHeight)
     RECT rc;
     GetRgnBox(hrgn, &rc);
     double rgn_wid = rc.right - rc.left, rgn_hei = rc.bottom - rc.top;
-    ApplyPen(ctx, hdc->pen, rgn_wid, rgn_hei, rc.left, rc.top);
+    ApplyPen(hdc, hdc->pen, rgn_wid, rgn_hei, rc.left, rc.top);
     ApplyRop2(ctx, hdc->rop2);
     cairo_stroke(ctx);
     cairo_restore(ctx);
@@ -1637,7 +1665,7 @@ BOOL AlphaBlend(HDC hdc, int x, int y, int wDst, int hDst, HDC hdcSrc, int x1, i
         cairo_paint(hdc->cairo);
 
     cairo_restore(hdc->cairo);
-    return 0;
+    return TRUE;
 }
 
 static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, cairo_surface_t *src, int x1, int y1, int wSrc, int hSrc, BLENDFUNCTION ftn, int filterLevel)
@@ -1683,7 +1711,7 @@ static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, cairo_surfac
         cairo_paint(hdc->cairo);
     cairo_pattern_destroy(pattern);
     cairo_restore(hdc->cairo);
-    return 0;
+    return TRUE;
 }
 
 BOOL DrawBitmapEx(HDC hdc, LPCRECT pRcDest, HBITMAP bmp, LPCRECT pRcSrc, UINT expendMode, BYTE byAlpha /*=0xFF*/)
@@ -1913,29 +1941,31 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
 
     cairo_rectangle(hdc->cairo, x, y, cx, cy);
     cairo_clip(hdc->cairo);
-
+    cairo_rectangle(hdc->cairo, x, y, cx, cy);
     cairo_translate(hdc->cairo, x + cx / 2.0, y + cy / 2.0);
     double scale_x = cx * 1.0 / cx2;
     double scale_y = cy * 1.0 / cy2;
     cairo_scale(hdc->cairo, scale_x, scale_y);
-    cx2 = abs(cx2);
-    cy2 = abs(cy2);
+    // 源 surface 定位：源矩形中心 (x1 + cx2/2, y1 + cy2/2) 映射到目标中心（当前原点）。
+    // 必须使用有符号的 cx2/cy2，否则镜像（cx2<0）时源偏移错误。
+    double src_ox = -(x1 + cx2 / 2.0);
+    double src_oy = -(y1 + cy2 / 2.0);
     switch (rop)
     {
     case SRCCOPY:
-        cairo_set_source_surface(hdc->cairo, src, -x1 - cx2 / 2.0, -y1 - cy2 / 2.0);
+        cairo_set_source_surface(hdc->cairo, src, src_ox, src_oy);
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_SOURCE);
         break;
     case SRCINVERT:
-        cairo_set_source_surface(hdc->cairo, src, -x1 - cx2 / 2.0, -y1 - cy2 / 2.0);
+        cairo_set_source_surface(hdc->cairo, src, src_ox, src_oy);
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_DIFFERENCE);
         break;
     case SRCPAINT:
-        cairo_set_source_surface(hdc->cairo, src, -x1 - cx2 / 2.0, -y1 - cy2 / 2.0);
+        cairo_set_source_surface(hdc->cairo, src, src_ox, src_oy);
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_OVER);
         break;
     case SRCAND:
-        cairo_set_source_surface(hdc->cairo, src, -x1 - cx2 / 2.0, -y1 - cy2 / 2.0);
+        cairo_set_source_surface(hdc->cairo, src, src_ox, src_oy);
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_DEST_IN);
         break;
     case DSTINVERT:
@@ -1943,8 +1973,7 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_DIFFERENCE);
         break;
     }
-    cairo_rectangle(hdc->cairo, -cx / 2.0, -cy / 2.0, cx, cy);
-    cairo_paint(hdc->cairo);
+    cairo_fill(hdc->cairo);
     cairo_restore(hdc->cairo);
     if (hdc == hdcSrc)
     {
@@ -2042,7 +2071,7 @@ BOOL PatBlt(_In_ HDC hdc, _In_ int x, _In_ int y, _In_ int w, _In_ int h, _In_ D
     BOOL ret = FALSE;
     cairo_t *cr = hdc->cairo;
     cairo_save(cr);
-    if (ApplyBrush(cr, hdc->brush, w, h, x, y))
+    if (ApplyBrush(hdc, hdc->brush, w, h, x, y))
     {
         switch (rop)
         {
@@ -2185,7 +2214,7 @@ static void DrawTextDecLines(HDC hdc, cairo_font_extents_t &font_ext, LPCSTR str
     if (lf->lfStrikeOut || lf->lfUnderline)
     {
         HPEN pen = CreatePen(PS_SOLID, 1, GetTextColor(hdc));
-        ApplyPen(hdc->cairo, pen, 0, 0, 0, 0);
+        ApplyPen(hdc, pen, 0, 0, 0, 0);
         ApplyRop2(hdc->cairo, hdc->rop2);
         if (lf->lfStrikeOut)
         {
@@ -2383,7 +2412,7 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
     cairo_save(hdc->cairo);
     ApplyFont(hdc);
     double text_wid = pRect->right - pRect->left, text_hei = pRect->bottom - pRect->top;
-    ApplyPen(hdc->cairo, hdc->pen, text_wid, text_hei, pRect->left, pRect->top);
+    ApplyPen(hdc, hdc->pen, text_wid, text_hei, pRect->left, pRect->top);
     CairoColor cr(hdc->crText);
     cairo_set_source_rgba(hdc->cairo, cr.r, cr.g, cr.b, cr.a);
     cairo_matrix_t mtx = { 0 };
@@ -2396,7 +2425,7 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
         cairo_font_extents_t font_ext;
         cairo_font_extents(hdc->cairo, &font_ext);
         HPEN pen = CreatePen(PS_SOLID, 1, GetTextColor(hdc));
-        ApplyPen(hdc->cairo, pen, text_wid, text_hei, pRect->left, pRect->top);
+        ApplyPen(hdc, pen, 0, 0, 0, 0);
         ApplyRop2(hdc->cairo, hdc->rop2);
         if (lf->lfStrikeOut)
         {
@@ -2906,6 +2935,44 @@ HPEN GetSysColorPen(int i)
     return sysColorPens.hSysColorPen[i];
 }
 
+// Standard stock brushes (created via CreateSolidBrush, same lifecycle pattern as GetSysColorBrush)
+class StockBrush {
+  public:
+    StockBrush()
+    {
+        hStockBr[0] = CreateSolidBrush(RGBA(255, 255, 255, 255)); // WHITE_BRUSH
+        hStockBr[1] = CreateSolidBrush(RGBA(192, 192, 192, 255)); // LTGRAY_BRUSH
+        hStockBr[2] = CreateSolidBrush(RGBA(128, 128, 128, 255)); // GRAY_BRUSH
+        hStockBr[3] = CreateSolidBrush(RGBA(64, 64, 64, 255));   // DKGRAY_BRUSH
+        hStockBr[4] = CreateSolidBrush(RGBA(0, 0, 0, 255));     // BLACK_BRUSH
+    }
+    ~StockBrush()
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            DeleteObject(hStockBr[i]);
+        }
+    }
+
+    HBRUSH hStockBr[5];
+};
+
+static HBRUSH GetStockBrush(int i)
+{
+    static StockBrush stockBrs;
+    int idx = -1;
+    switch (i)
+    {
+    case WHITE_BRUSH:  idx = 0; break;
+    case LTGRAY_BRUSH: idx = 1; break;
+    case GRAY_BRUSH:   idx = 2; break;
+    case DKGRAY_BRUSH: idx = 3; break;
+    case BLACK_BRUSH:  idx = 4; break;
+    }
+    if (idx < 0) return nullptr;
+    return stockBrs.hStockBr[idx];
+}
+
 HGDIOBJ GetStockObject(int i)
 {
     switch (i)
@@ -2923,29 +2990,13 @@ HGDIOBJ GetStockObject(int i)
         static _Handle br(OBJ_BRUSH, &log, nullptr);
         return &br;
     }
+    case WHITE_BRUSH:
+    case LTGRAY_BRUSH:
+    case GRAY_BRUSH:
+    case DKGRAY_BRUSH:
     case BLACK_BRUSH:
     {
-        static LOGBRUSH log;
-        log.lbStyle = BS_SOLID;
-        log.lbColor = RGBA(0, 0, 0, 255);
-        static _Handle br(OBJ_BRUSH, &log, nullptr);
-        return &br;
-    }
-    case WHITE_BRUSH:
-    {
-        static LOGBRUSH log;
-        log.lbStyle = BS_SOLID;
-        log.lbColor = RGBA(255, 255, 255, 255);
-        static _Handle br(OBJ_BRUSH, &log, nullptr);
-        return &br;
-    }
-    case GRAY_BRUSH:
-    {
-        static LOGBRUSH log;
-        log.lbStyle = BS_SOLID;
-        log.lbColor = RGBA(128, 128, 128, 255);
-        static _Handle br(OBJ_BRUSH, &log, nullptr);
-        return &br;
+        return (HGDIOBJ)GetStockBrush(i);
     }
     case NULL_PEN:
     {
@@ -2997,30 +3048,16 @@ BOOL Rectangle(HDC hdc, int left, int top, int right, int bottom)
     if (!ctx)
         return FALSE;
 
-    // If recording path, just add rectangle to path
+    double wid = right - left, hei = bottom - top;
+    cairo_rectangle(ctx, left, top, wid, hei);
     if (hdc->pathRecording)
     {
-        cairo_rectangle(ctx, left, top, right - left, bottom - top);
         return TRUE;
     }
 
-    // Otherwise, draw rectangle immediately
     cairo_save(ctx);
-    cairo_translate(ctx, left, top);
-    double wid = right - left, hei = bottom - top;
-    if (ApplyBrush(hdc->cairo, hdc->brush, wid, hei, 0, 0))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_rectangle(ctx, 0, 0, wid, hei);
-        cairo_fill(hdc->cairo);
-    }
-    if (ApplyPen(hdc->cairo, hdc->pen, wid, hei, 0, 0))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_rectangle(ctx, 0, 0, wid, hei);
-        cairo_stroke(hdc->cairo);
-    }
-    cairo_restore(hdc->cairo);
+    DrawPathFillStroke(ctx, hdc, wid, hei, left,top);
+    cairo_restore(ctx);
     return TRUE;
 }
 
@@ -3064,32 +3101,17 @@ BOOL RoundRect(HDC hdc, int left, int top, int right, int bottom, int width, int
         return FALSE;
 
     double wid = right - left, hei = bottom - top;
-
-    // If recording path, just add rounded rectangle to path
+    cairo_save(ctx);
+    cairo_translate(ctx, left, top);
+    drawRoundRect(ctx, 0, 0, wid, hei, width / 2, height / 2);
+    cairo_restore(ctx);
     if (hdc->pathRecording)
     {
-        cairo_save(ctx);
-        cairo_translate(ctx, left, top);
-        drawRoundRect(ctx, 0, 0, wid, hei, width / 2, height / 2);
-        cairo_restore(ctx);
         return TRUE;
     }
 
-    // Otherwise, draw rounded rectangle immediately
     cairo_save(ctx);
-    cairo_translate(ctx, left, top);
-    if (ApplyBrush(ctx, hdc->brush, wid, hei, 0, 0))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        drawRoundRect(ctx, 0, 0, wid, hei, width / 2, height / 2);
-        cairo_fill(ctx);
-    }
-    if (ApplyPen(ctx, hdc->pen, wid, hei, 0, 0))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        drawRoundRect(ctx, 0, 0, wid, hei, width / 2, height / 2);
-        cairo_stroke(ctx);
-    }
+    DrawPathFillStroke(ctx, hdc, wid, hei, left,top);
     cairo_restore(ctx);
     return TRUE;
 }
@@ -3107,27 +3129,24 @@ BOOL Polyline(HDC hdc, const POINT *apt, int cpt)
     if (!ctx || cpt < 2)
         return FALSE;
 
-    // Always add polyline to path
     cairo_move_to(ctx, apt[0].x, apt[0].y);
     for (int i = 1; i < cpt; i++)
     {
         cairo_line_to(ctx, apt[i].x, apt[i].y);
     }
 
-    // If not recording path, stroke immediately
-    if (!hdc->pathRecording)
+    if (hdc->pathRecording)
     {
-        cairo_save(ctx);
-        double x1, y1, x2, y2;
-        cairo_path_extents(ctx, &x1,&y1, &x2,&y2);
-        ApplyPen(ctx, hdc->pen, x2-x1, y2-y1, x1, y1);
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_stroke(ctx);
-        cairo_restore(ctx);
+        return TRUE;
     }
-
+    cairo_save(ctx);
+    double x1, y1, x2, y2;
+    cairo_path_extents(ctx, &x1,&y1, &x2,&y2);
+    DrawPathStroke(ctx, hdc, x2-x1, y2-y1, x1, y1);
+    cairo_restore(ctx);
     return TRUE;
 }
+
 
 BOOL PolyBezier(HDC hdc, const POINT *apt, DWORD cpt)
 {
@@ -3135,42 +3154,30 @@ BOOL PolyBezier(HDC hdc, const POINT *apt, DWORD cpt)
     if (!ctx || !apt || cpt < 4)
         return FALSE;
 
-    // Validate point count: must be 1 + 3*n (start point + 3 points per curve)
     if ((cpt - 1) % 3 != 0)
         return FALSE;
 
-    // Save current position to restore later (PolyBezier doesn't update current position)
     double saved_x, saved_y;
     bool has_current_point = cairo_has_current_point(ctx);
     if (has_current_point)
         cairo_get_current_point(ctx, &saved_x, &saved_y);
 
-    // Start from the first point
     cairo_move_to(ctx, apt[0].x, apt[0].y);
-
-    // Draw Bézier curves
     for (DWORD i = 1; i < cpt; i += 3)
     {
         if (i + 2 >= cpt)
-            break; // Safety check
-
-        // Each Bézier curve needs 3 points: control1, control2, end
-        cairo_curve_to(ctx, apt[i].x, apt[i].y,     // First control point
-                       apt[i + 1].x, apt[i + 1].y,  // Second control point
-                       apt[i + 2].x, apt[i + 2].y); // End point
+            break;
+        cairo_curve_to(ctx, apt[i].x, apt[i].y,
+                       apt[i + 1].x, apt[i + 1].y,
+                       apt[i + 2].x, apt[i + 2].y);
     }
 
-    // If not recording path, stroke the curves
     if (!hdc->pathRecording)
     {
         cairo_save(ctx);
         double x1, y1, x2, y2;
         cairo_path_extents(ctx, &x1,&y1, &x2,&y2);
-        if (ApplyPen(ctx, hdc->pen, x2-x1, y2-y1, x1, y1))
-        {
-            ApplyRop2(hdc->cairo, hdc->rop2);
-            cairo_stroke(ctx);
-        }
+        DrawPathStroke(ctx, hdc, x2-x1, y2-y1, x1, y1);
         cairo_restore(ctx);
     }
 
@@ -3178,7 +3185,7 @@ BOOL PolyBezier(HDC hdc, const POINT *apt, DWORD cpt)
     if (has_current_point)
         cairo_move_to(ctx, saved_x, saved_y);
     else
-        cairo_new_sub_path(ctx); // Clear current point if there wasn't one
+        cairo_new_sub_path(ctx);
 
     return TRUE;
 }
@@ -3189,49 +3196,35 @@ BOOL PolyBezierTo(HDC hdc, const POINT *apt, DWORD cpt)
     if (!ctx || !apt || cpt < 3)
         return FALSE;
 
-    // Validate point count: must be 3*n (3 points per curve)
     if (cpt % 3 != 0)
         return FALSE;
 
-    // Check if we have a current point (required for PolyBezierTo)
     if (!cairo_has_current_point(ctx))
         return FALSE;
 
-    // Draw Bézier curves starting from current position
     for (DWORD i = 0; i < cpt; i += 3)
     {
         if (i + 2 >= cpt)
-            break; // Safety check
-
-        // Each Bézier curve needs 3 points: control1, control2, end
-        // The starting point is the current position (for first curve) or end of previous curve
-        cairo_curve_to(ctx, apt[i].x, apt[i].y,     // First control point
-                       apt[i + 1].x, apt[i + 1].y,  // Second control point
-                       apt[i + 2].x, apt[i + 2].y); // End point (becomes new current position)
+            break;
+        cairo_curve_to(ctx, apt[i].x, apt[i].y,
+                       apt[i + 1].x, apt[i + 1].y,
+                       apt[i + 2].x, apt[i + 2].y);
     }
 
-    // If not recording path, stroke the curves
     if (!hdc->pathRecording)
     {
-        // Save the final position before stroking (stroke clears the path)
         double final_x, final_y;
         cairo_get_current_point(ctx, &final_x, &final_y);
 
         cairo_save(ctx);
         double x1, y1, x2, y2;
         cairo_path_extents(ctx, &x1,&y1, &x2,&y2);
-        if (ApplyPen(ctx, hdc->pen, x2-x1, y2-y1, x1, y1))
-        {
-            ApplyRop2(hdc->cairo, hdc->rop2);
-            cairo_stroke(ctx);
-        }
+        DrawPathStroke(ctx, hdc, x2-x1, y2-y1, x1, y1);
         cairo_restore(ctx);
 
-        // Restore the final position after stroking
         cairo_move_to(ctx, final_x, final_y);
     }
 
-    // Current position is now at the end of the last curve (automatically updated by cairo_curve_to)
     return TRUE;
 }
 
@@ -3253,12 +3246,11 @@ int FillRect(HDC hdc, const RECT *lprc, HBRUSH hbr)
 {
     int ret = 0;
     cairo_save(hdc->cairo);
-    cairo_translate(hdc->cairo, lprc->left, lprc->top);
     double wid = lprc->right - lprc->left, hei = lprc->bottom - lprc->top;
-    if (ApplyBrush(hdc->cairo, hbr, wid, hei, 0, 0))
+    if (ApplyBrush(hdc, hbr, wid, hei, lprc->left, lprc->top))
     {
         ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_rectangle(hdc->cairo, 0, 0, wid, hei);
+        cairo_rectangle(hdc->cairo, lprc->left, lprc->top, wid, hei);
         cairo_fill(hdc->cairo);
         ret = 1;
     }
@@ -3271,7 +3263,10 @@ int FrameRect(HDC hdc, const RECT *lprc, HBRUSH hbr)
     cairo_t *ctx = hdc->cairo;
     cairo_save(ctx);
     double rc_wid = lprc->right - lprc->left, rc_hei = lprc->bottom - lprc->top;
-    ApplyPen(ctx, hdc->pen, rc_wid, rc_hei, lprc->left, lprc->top);
+    if(hbr)
+        ApplyBrush(hdc, hbr, rc_wid, rc_hei, lprc->left, lprc->top);
+    else
+        ApplyPen(hdc, hdc->pen, rc_wid, rc_hei, lprc->left, lprc->top);
     ApplyRop2(hdc->cairo, hdc->rop2);
     cairo_rectangle(hdc->cairo, lprc->left, lprc->top, rc_wid, rc_hei);
     cairo_stroke(ctx);
@@ -3328,18 +3323,17 @@ BOOL LineTo(HDC hdc, int nXEnd, int nYEnd)
     if (!ctx)
         return FALSE;
 
-    // Always add line to path
     cairo_line_to(ctx, nXEnd, nYEnd);
 
-    // If not recording path, stroke immediately
     if (!hdc->pathRecording)
     {
         double x1, y1, x2, y2;
         cairo_path_extents(ctx, &x1,&y1, &x2,&y2);
-        if (!ApplyPen(ctx, hdc->pen, x2-x1, y2-y1, x1, y1))
-            return FALSE;
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_stroke(ctx);
+        cairo_save(ctx);
+        DrawPathStroke(ctx, hdc, x2-x1, y2-y1, x1, y1);
+        cairo_restore(ctx);
+        // Restore current point (DrawPathStroke consumed the path)
+        cairo_move_to(ctx, nXEnd, nYEnd);
     }
 
     return TRUE;
@@ -3351,47 +3345,30 @@ BOOL Ellipse(HDC hdc, int left, int top, int right, int bottom)
     if (!ctx)
         return FALSE;
 
-    double x = (left + right) / 2.0;
-    double y = (top + bottom) / 2.0;
-    double scale_x = (right - left) / 2.0;
-    double scale_y = (bottom - top) / 2.0;
+    double cx = (left + right) / 2.0;
+    double cy = (top + bottom) / 2.0;
     double wid = right - left, hei = bottom - top;
 
-    // If recording path, just add ellipse to path
-    if (hdc->pathRecording)
-    {
-        cairo_save(ctx);
-        cairo_translate(ctx, x, y);
-        cairo_scale(ctx, scale_x, scale_y);
-        cairo_move_to(ctx, 1, 0);
-        cairo_arc(ctx, 0, 0, 1, 0, 2 * M_PI);
-        cairo_restore(ctx);
-        return TRUE;
-    }
 
+    // Create pie path
     cairo_save(ctx);
-    cairo_translate(ctx, x, y);
-    // Otherwise, draw ellipse immediately
-    if (ApplyBrush(ctx, hdc->brush, wid, hei, 0, 0))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_scale(ctx, scale_x, scale_y);
-        cairo_move_to(ctx, 1, 0);
-        cairo_arc(ctx, 0, 0, 1, 0, 2 * M_PI);
-        cairo_fill(ctx);
-    }
-    if (ApplyPen(ctx, hdc->pen, wid, hei, 0, 0))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_scale(ctx, scale_x, scale_y);
-        cairo_move_to(ctx, 1, 0);
-        cairo_arc(ctx, 0, 0, 1, 0, 2 * M_PI);
-        cairo_stroke(ctx);
-    }
+    cairo_translate(ctx, cx, cy);
+    cairo_scale(ctx, wid, hei);
+    cairo_move_to(ctx, 0.5, 0);
+    cairo_arc(ctx, 0, 0, 0.5, 0, M_PI * 2);
     cairo_restore(ctx);
 
+    // If recording path, we're done
+    if (hdc->pathRecording)
+    {
+        return TRUE;
+    }
+    cairo_save(ctx);
+    DrawPathFillStroke(ctx, hdc, wid, hei, left, top);
+    cairo_restore(ctx);
     return TRUE;
 }
+
 
 BOOL Pie(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4)
 {
@@ -3429,19 +3406,8 @@ BOOL Pie(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4
         return TRUE;
     }
 
-    // Otherwise, draw pie immediately
     cairo_save(ctx);
-    cairo_translate(ctx, x1, y1);
-    if (ApplyBrush(ctx, hdc->brush, wid, hei, 0, 0))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_fill_preserve(ctx); // Preserve path for stroke
-    }
-    if (ApplyPen(ctx, hdc->pen, wid, hei, 0, 0))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_stroke(ctx);
-    }
+    DrawPathFillStroke(ctx, hdc, wid, hei, x1, y1);
     cairo_restore(ctx);
     return TRUE;
 }
@@ -3470,7 +3436,7 @@ BOOL Arc(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4
     cairo_save(ctx);
     cairo_translate(ctx, cx, cy);
     cairo_scale(ctx, wid, hei);
-    cairo_move_to(ctx, dx4, dy4);
+    cairo_move_to(ctx, 0.5 * cos(arc2), 0.5 * sin(arc2));
     cairo_arc(ctx, 0, 0, 0.5, arc2, arc1);
     cairo_restore(ctx);
 
@@ -3479,14 +3445,8 @@ BOOL Arc(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int y4
     {
         return TRUE;
     }
-
-    // Otherwise, stroke arc immediately
     cairo_save(ctx);
-    if (ApplyPen(ctx, hdc->pen, wid, hei, 0, 0))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_stroke(ctx);
-    }
+    DrawPathStroke(ctx, hdc, wid, hei, x1, y1);
     cairo_restore(ctx);
     return TRUE;
 }
@@ -3511,13 +3471,12 @@ BOOL Chord(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int 
     double arc1 = atan2(dy3, dx3);
     double arc2 = atan2(dy4, dx4);
 
-    // Create chord path (arc with straight line connecting endpoints)
+    // Create arc path
     cairo_save(ctx);
     cairo_translate(ctx, cx, cy);
     cairo_scale(ctx, wid, hei);
-    cairo_move_to(ctx, dx4, dy4);
+    cairo_move_to(ctx, 0.5 * cos(arc2), 0.5 * sin(arc2));
     cairo_arc(ctx, 0, 0, 0.5, arc2, arc1);
-    cairo_line_to(ctx, dx4, dy4); // Close with straight line
     cairo_close_path(ctx);
     cairo_restore(ctx);
 
@@ -3526,20 +3485,8 @@ BOOL Chord(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int 
     {
         return TRUE;
     }
-
     cairo_save(ctx);
-    cairo_translate(ctx, x1, y1);
-    // Otherwise, draw chord immediately
-    if (ApplyBrush(ctx, hdc->brush, wid, hei, 0, 0))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_fill_preserve(ctx); // Preserve path for stroke
-    }
-    if (ApplyPen(ctx, hdc->pen, wid, hei, 0, 0))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_stroke(ctx);
-    }
+    DrawPathStroke(ctx, hdc, wid, hei, x1, y1);
     cairo_restore(ctx);
     return TRUE;
 }
@@ -3697,6 +3644,25 @@ COLORREF SetTextColor(HDC hdc, COLORREF color)
 COLORREF GetTextColor(HDC hdc)
 {
     return hdc->crText;
+}
+
+BOOL SetBrushOrgEx(HDC hdc, int x, int y, LPPOINT lppt)
+{
+    if (!hdc)
+        return FALSE;
+    if (lppt)
+        *lppt = hdc->brushOrg;
+    hdc->brushOrg.x = x;
+    hdc->brushOrg.y = y;
+    return TRUE;
+}
+
+BOOL GetBrushOrgEx(HDC hdc, LPPOINT lppt)
+{
+    if (!hdc || !lppt)
+        return FALSE;
+    *lppt = hdc->brushOrg;
+    return TRUE;
 }
 
 HBITMAP CreateBitmap(int nWidth,         // bitmap width, in pixels
@@ -3895,8 +3861,10 @@ BOOL DrawIconEx(HDC hDC, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWi
     HDC memdc = CreateCompatibleDC(hDC);
     HGDIOBJ oldBmp = SelectObject(memdc, hIcon->hbmColor);
     BLENDFUNCTION bf;
-    bf.BlendOp = AC_SRC_ALPHA;
+    bf.BlendOp = AC_SRC_OVER;
+    bf.BlendFlags = 0;
     bf.SourceConstantAlpha = 255;
+    bf.AlphaFormat = AC_SRC_ALPHA;
     AlphaBlend(hDC, xLeft, yTop, cxWidth, cyWidth, memdc, 0, 0, bm.bmWidth, bm.bmHeight, bf);
     SelectObject(memdc, oldBmp);
     DeleteDC(memdc);
@@ -4002,7 +3970,6 @@ BOOL Polygon_Priv(HDC hdc, const POINT *apt, int cpt)
 
     cairo_t *ctx = hdc->cairo;
 
-    // Always add polygon to path
     cairo_move_to(ctx, apt[0].x, apt[0].y);
     for (int i = 1; i < cpt; i++)
     {
@@ -4010,26 +3977,14 @@ BOOL Polygon_Priv(HDC hdc, const POINT *apt, int cpt)
     }
     cairo_close_path(ctx);
 
-    // If not recording path, draw immediately
     if (!hdc->pathRecording)
     {
         cairo_save(ctx);
-
         double x1, y1, x2, y2;
         cairo_path_extents(ctx, &x1,&y1, &x2,&y2);
-        if (ApplyBrush(ctx, hdc->brush, x2-x1, y2-y1, x1, y1))
-        {
-            cairo_fill_rule_t mode = hdc->polyFillMode == ALTERNATE ? CAIRO_FILL_RULE_EVEN_ODD : CAIRO_FILL_RULE_WINDING;
-            cairo_set_fill_rule(ctx, mode);
-            ApplyRop2(hdc->cairo, hdc->rop2);
-            cairo_fill_preserve(ctx); // Preserve path for stroke
-        }
-        if (ApplyPen(ctx, hdc->pen, x2-x1, y2-y1, x1, y1))
-        {
-            ApplyRop2(hdc->cairo, hdc->rop2);
-            cairo_stroke(ctx);
-        }
-
+        cairo_fill_rule_t mode = hdc->polyFillMode == ALTERNATE ? CAIRO_FILL_RULE_EVEN_ODD : CAIRO_FILL_RULE_WINDING;
+        cairo_set_fill_rule(ctx, mode);
+        DrawPathFillStroke(ctx, hdc, x2-x1, y2-y1, x1, y1);
         cairo_restore(ctx);
     }
 
@@ -4453,22 +4408,13 @@ BOOL StrokePath(HDC hdc)
         return FALSE;
 
     cairo_save(hdc->cairo);
-
-    // Clear current path and append the stored path
     cairo_new_path(hdc->cairo);
     cairo_append_path(hdc->cairo, hdc->currentPath);
     double x1, y1, x2, y2;
     cairo_path_extents(hdc->cairo, &x1,&y1, &x2,&y2);
-    // Apply pen settings and stroke
-    if (ApplyPen(hdc->cairo, hdc->pen, x2-x1, y2-y1, x1, y1))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_stroke(hdc->cairo);
-    }
-
+    DrawPathStroke(hdc->cairo, hdc, x2-x1, y2-y1, x1, y1);
     cairo_restore(hdc->cairo);
 
-    // Clear the path after stroking
     cairo_path_destroy(hdc->currentPath);
     hdc->currentPath = nullptr;
 
@@ -4481,27 +4427,21 @@ BOOL FillPath(HDC hdc)
         return FALSE;
 
     cairo_save(hdc->cairo);
-
-    // Clear current path and append the stored path
     cairo_new_path(hdc->cairo);
     cairo_append_path(hdc->cairo, hdc->currentPath);
 
-    // Get path bounds for brush application
     double x1, y1, x2, y2;
     cairo_path_extents(hdc->cairo, &x1, &y1, &x2, &y2);
     double width = x2 - x1;
     double height = y2 - y1;
-
-    // Apply brush settings and fill
-    if (ApplyBrush(hdc->cairo, hdc->brush, width, height, x1, y1))
+    ApplyRop2(hdc->cairo, hdc->rop2);
+    if (ApplyBrush(hdc, hdc->brush, width, height, x1, y1))
     {
-        ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_fill(hdc->cairo);
     }
 
     cairo_restore(hdc->cairo);
 
-    // Clear the path after filling
     cairo_path_destroy(hdc->currentPath);
     hdc->currentPath = nullptr;
 
@@ -4514,34 +4454,18 @@ BOOL StrokeAndFillPath(HDC hdc)
         return FALSE;
 
     cairo_save(hdc->cairo);
-
-    // Clear current path and append the stored path
     cairo_new_path(hdc->cairo);
     cairo_append_path(hdc->cairo, hdc->currentPath);
 
-    // Get path bounds for brush application
     double x1, y1, x2, y2;
     cairo_path_extents(hdc->cairo, &x1, &y1, &x2, &y2);
     double width = x2 - x1;
     double height = y2 - y1;
 
-    // Fill first
-    if (ApplyBrush(hdc->cairo, hdc->brush, width, height, x1, y1))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_fill_preserve(hdc->cairo); // Preserve path for stroke
-    }
-
-    // Then stroke
-    if (ApplyPen(hdc->cairo, hdc->pen, width, height, x1, y1))
-    {
-        ApplyRop2(hdc->cairo, hdc->rop2);
-        cairo_stroke(hdc->cairo);
-    }
+    DrawPathFillStroke(hdc->cairo, hdc, width, height, x1, y1);
 
     cairo_restore(hdc->cairo);
 
-    // Clear the path after stroking and filling
     cairo_path_destroy(hdc->currentPath);
     hdc->currentPath = nullptr;
 
@@ -4552,8 +4476,10 @@ HRGN PathToRegion(HDC hdc)
 {
     if (!hdc || !hdc->cairo || !hdc->currentPath)
         return nullptr;
+    cairo_path_t *path = hdc->currentPath;
     cairo_save(hdc->cairo);
-    cairo_append_path(hdc->cairo, hdc->currentPath);
+    cairo_reset_clip(hdc->cairo);
+    cairo_append_path(hdc->cairo, path);
     cairo_clip(hdc->cairo);
     HRGN hrgn = CreateRectRgn(0, 0, 0, 0);
     GetClipRgn(hdc, hrgn);
@@ -4733,6 +4659,7 @@ BOOL PolyDraw(HDC hdc, LPPOINT lppt, LPBYTE lpbTypes, int cpt)
     if (!hdc || !lppt || !lpbTypes || cpt <= 0)
         return FALSE;
 
+    cairo_t *ctx = hdc->cairo;
     for (int i = 0; i < cpt; i++)
     {
         BYTE type = lpbTypes[i];
@@ -4740,37 +4667,37 @@ BOOL PolyDraw(HDC hdc, LPPOINT lppt, LPBYTE lpbTypes, int cpt)
 
         if (type & PT_MOVETO)
         {
-            cairo_move_to(hdc->cairo, pt.x, pt.y);
+            cairo_move_to(ctx, pt.x, pt.y);
         }
         else if (type & PT_LINETO)
         {
-            cairo_line_to(hdc->cairo, pt.x, pt.y);
+            cairo_line_to(ctx, pt.x, pt.y);
         }
         else if (type & PT_BEZIERTO)
         {
-            // For Bezier curves, we need 3 control points
             if (i + 2 < cpt && (lpbTypes[i + 1] & PT_BEZIERTO) && (lpbTypes[i + 2] & PT_BEZIERTO))
             {
                 POINT pt1 = lppt[i + 1];
                 POINT pt2 = lppt[i + 2];
-                cairo_curve_to(hdc->cairo, pt.x, pt.y, pt1.x, pt1.y, pt2.x, pt2.y);
-                i += 2; // Skip next two points as they are control points
+                cairo_curve_to(ctx, pt.x, pt.y, pt1.x, pt1.y, pt2.x, pt2.y);
+                i += 2;
             }
         }
 
-        // Check for close figure
         if (type & PT_CLOSEFIGURE)
         {
-            cairo_close_path(hdc->cairo);
+            cairo_close_path(ctx);
         }
     }
+
+    if (hdc->pathRecording)
+        return TRUE;
+
     double x1, y1, x2, y2;
-    cairo_path_extents(hdc->cairo, &x1, &y1, &x2, &y2);
-    // Stroke the path if a pen is selected
-    if (ApplyPen(hdc->cairo, hdc->pen, x2-x1, y2-y1, x1, y1))
-    {
-        cairo_stroke(hdc->cairo);
-    }
+    cairo_path_extents(ctx, &x1, &y1, &x2, &y2);
+    cairo_save(ctx);
+    DrawPathStroke(ctx, hdc, x2-x1, y2-y1, x1, y1);
+    cairo_restore(ctx);
 
     return TRUE;
 }

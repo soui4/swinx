@@ -43,8 +43,33 @@ if(NOT PNG_INCLUDE_DIR)
 endif()
 find_package(Threads)
 
-# option for disable Quartz font backend, default OFF
-option(DISABLE_QUARTZ_FONT "Disable Quartz font backend" OFF)
+# Quartz backend option (mirrors meson option('quartz'))
+# Meson only enables quartz on darwin (macOS); iOS lacks the ApplicationServices
+# umbrella framework, so quartz stays disabled there — matching meson behavior.
+# When enabled on macOS, checks for CoreFoundation and ApplicationServices
+# frameworks (quartz_deps). Surface/image backends are enabled when the deps
+# are found; the Quartz font backend is enabled only when CTFontDrawGlyphs is
+# available, matching meson's behavior.
+option(ENABLE_QUARTZ "Enable Quartz surface backend" ON)
+
+if(ENABLE_QUARTZ AND CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    find_library(CORE_FOUNDATION CoreFoundation)
+    find_library(APPLICATION_SERVICES ApplicationServices)
+    if(CORE_FOUNDATION AND APPLICATION_SERVICES)
+        set(CAIRO_QUARTZ_DEPS_FOUND TRUE)
+        list(APPEND CAIRO_LIBS ${CORE_FOUNDATION} ${APPLICATION_SERVICES})
+        include(CheckCSourceCompiles)
+        set(CMAKE_REQUIRED_LIBRARIES ${CORE_FOUNDATION} ${APPLICATION_SERVICES})
+        check_c_source_compiles("
+#include <ApplicationServices/ApplicationServices.h>
+int main(void) { CTFontDrawGlyphs(0, 0, 0, 0, 0); return 0; }
+" HAVE_CTFontDrawGlyphs)
+        unset(CMAKE_REQUIRED_LIBRARIES)
+    else()
+        set(CAIRO_QUARTZ_DEPS_FOUND FALSE)
+        message(STATUS "Quartz enabled but CoreFoundation/ApplicationServices not found; disabling Quartz.")
+    endif()
+endif()
 
 include(Configure_config.cmake)
 include(Configure_features.cmake)
@@ -76,7 +101,7 @@ include_directories(${ZLIB_INCLUDE_DIRS})
 # Link libraries - use target names for internal dependencies
 list(APPEND CAIRO_LIBS pixman-1 freetype fontconfig png_static zlib_static)
 
-if (APPLE)
+if (APPLE AND CAIRO_QUARTZ_DEPS_FOUND)
     find_library(CORE_FOUNDATION CoreFoundation)
     find_library(APPLICATION_SERVICES ApplicationServices)
     if (CORE_FOUNDATION AND APPLICATION_SERVICES)

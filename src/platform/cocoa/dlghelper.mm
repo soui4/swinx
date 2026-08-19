@@ -86,12 +86,33 @@ static NSInteger RunModalPanel(HWND hwndOwner, NSSavePanel *panel) {
         return result;
     }
 }
+// 颜色面板委托：监听窗口关闭事件并退出 modal
+@interface ColorPanelDelegate : NSObject <NSWindowDelegate>
+@property (nonatomic, assign) BOOL colorChanged;
+@end
+
+@implementation ColorPanelDelegate
+
+- (void)windowWillClose:(NSNotification *)notification {
+    // 点击关闭按钮时停止 modal session，避免程序卡死
+    if ([NSApp modalWindow]) {
+        [NSApp stopModalWithCode:NSModalResponseCancel];
+    }
+}
+
+@end
 
 BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out) {
+    if(!out)
+        return FALSE;
     @autoreleasepool {
         // 创建颜色面板
         NSColorPanel *colorPanel = [NSColorPanel sharedColorPanel];
         colorPanel.showsAlpha = YES;
+
+        // 颜色面板委托：处理关闭按钮事件
+        ColorPanelDelegate *colorDelegate = [[ColorPanelDelegate alloc] init];
+        colorPanel.delegate = colorDelegate;
 
         // 设置初始颜色（如果有）
         if (initClr && out) {
@@ -114,27 +135,28 @@ BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out) {
         NSInteger modalResult = [NSApp runModalForWindow:colorPanel];
         [colorPanel orderOut:nil];
 
+        // 清理 delegate（sharedColorPanel 是全局共享的，避免野指针）
+        colorPanel.delegate = nil;
+
         // 重新启用父窗口
         if (parent) {
             EnableWindow(parent, TRUE);
             setNsWindowToTop(parent);
         }
+        NSColor *pickedColor = [colorPanel color];
+        if(!pickedColor)
+            return FALSE;
+        NSColor *rgbColor = [pickedColor colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]];
+        if (!rgbColor) 
+            return FALSE;
 
-        if (modalResult == NSModalResponseOK && out) {
-            NSColor *pickedColor = [colorPanel color];
-            NSColor *rgbColor = [pickedColor colorUsingColorSpace:[NSColorSpace genericRGBColorSpace]];
-            if (!rgbColor) return FALSE;
-
-            // 转换为COLORREF格式
-            uint8_t r = (uint8_t)([rgbColor redComponent] * 255);
-            uint8_t g = (uint8_t)([rgbColor greenComponent] * 255);
-            uint8_t b = (uint8_t)([rgbColor blueComponent] * 255);
-            uint32_t a = (uint8_t)([rgbColor alphaComponent] * 255);
-            *out = RGBA(r, g, b, a);
-
-            return TRUE;
-        }
-        return FALSE;
+        // 转换为COLORREF格式
+        uint8_t r = (uint8_t)([rgbColor redComponent] * 255);
+        uint8_t g = (uint8_t)([rgbColor greenComponent] * 255);
+        uint8_t b = (uint8_t)([rgbColor blueComponent] * 255);
+        uint32_t a = (uint8_t)([rgbColor alphaComponent] * 255);
+        *out = RGBA(r, g, b, a);
+        return TRUE;
     }
 }
 
@@ -538,15 +560,18 @@ static void NSFontToLogFont(NSFont* font, LOGFONTA* logFont) {
     logFont->lfPitchAndFamily = DEFAULT_PITCH | FF_DONTCARE;
 
     // 设置字体名称
-    NSString *fontName = [font fontName];
-    if (fontName) {
-        strncpy(logFont->lfFaceName, [fontName UTF8String], LF_FACESIZE - 1);
+    NSString *familyName = [font familyName];
+    if (familyName) {
+        strncpy(logFont->lfFaceName, [familyName UTF8String], LF_FACESIZE - 1);
         logFont->lfFaceName[LF_FACESIZE - 1] = '\0';
     }
 }
 
 // 简化的字体选择委托类
-@interface FontPanelDelegate : NSObject
+
+
+// 字体面板委托：监听字体变化 + 窗口关闭事件
+@interface FontPanelDelegate : NSObject <NSWindowDelegate>
 @property (nonatomic, strong) NSFont *selectedFont;
 @property (nonatomic, assign) BOOL fontChanged;
 @end
@@ -563,14 +588,47 @@ static void NSFontToLogFont(NSFont* font, LOGFONTA* logFont) {
 }
 
 - (void)changeFont:(id)sender {
+    // 直接从 fontManager 取用户在面板上选择的完整字体
+    // （convertFont: 只应用 trait/size 改变，不更新 family）
     NSFontManager *fontManager = [NSFontManager sharedFontManager];
-    if (self.selectedFont) {
-        self.selectedFont = [fontManager convertFont:self.selectedFont];
+    NSFont *newFont = [fontManager selectedFont];
+    if (newFont) {
+        self.selectedFont = newFont;
         self.fontChanged = YES;
     }
 }
 
+- (void)windowWillClose:(NSNotification *)notification {
+    // 点击关闭按钮时停止 modal session，避免程序卡死
+    if ([NSApp modalWindow]) {
+        [NSApp stopModalWithCode:NSModalResponseCancel];
+    }
+}
+
 @end
+static FontPanelDelegate *g_fontPanelDelegate = nil;          // 当前有效的字体面板委托
+static id g_fontPanelActivationObserver = nil;               // 激活通知观察者（持久）
+
+static void registerFontPanelActivationObserver(void) {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        g_fontPanelActivationObserver = [[NSNotificationCenter defaultCenter]
+            addObserverForName:NSApplicationDidBecomeActiveNotification
+                         object:nil
+                          queue:[NSOperationQueue mainQueue]
+                     usingBlock:^(NSNotification * _Nonnull note) {
+            NSFontPanel *fp = [NSFontPanel sharedFontPanel];
+            // 如果当前正在模态运行（即在 ChooseFontMac 内部），不干预
+            if ([NSApp modalWindow] == fp) return;
+            // 只有当我们自己设置的委托还在时，才表示这个面板是我们打开的，需要隐藏
+            if ([fp delegate] == g_fontPanelDelegate) {
+                [fp orderOut:nil];
+                fp.delegate = nil;
+                g_fontPanelDelegate = nil;   // 清理委托引用，此后不再自动隐藏
+            }
+        }];
+    });
+}
 
 static BOOL ChooseFontMac(LPCHOOSEFONTA p) {
     @autoreleasepool {
@@ -583,31 +641,50 @@ static BOOL ChooseFontMac(LPCHOOSEFONTA p) {
             EnableWindow(p->hwndOwner, FALSE);
         }
 
-        // 获取字体面板
+        // 获取字体面板和字体管理器
         NSFontPanel *fontPanel = [NSFontPanel sharedFontPanel];
+        NSFontManager *fontManager = [NSFontManager sharedFontManager];
+
+        // ---- 新增：禁用窗口状态恢复 ----
+        if ([fontPanel respondsToSelector:@selector(setRestorationClass:)]) {
+            [fontPanel setRestorationClass:nil];
+        }
+        // -----------------------------
+
+        // 清理前一个未释放的委托（如果有）
+        if (g_fontPanelDelegate) {
+            if ([fontPanel delegate] == g_fontPanelDelegate) {
+                fontPanel.delegate = nil;
+            }
+            g_fontPanelDelegate = nil;
+        }
+
+        // 创建新的委托并保存为全局
         FontPanelDelegate *delegate = [[FontPanelDelegate alloc] init];
-        [fontPanel setEnabled:YES];
-        
+        g_fontPanelDelegate = delegate;
+        fontPanel.delegate = delegate;
+
         // 设置初始字体
         NSFont *initialFont = LogFontToNSFont(p->lpLogFont);
         if (initialFont) {
-            [[NSFontManager sharedFontManager] setSelectedFont:initialFont isMultiple:NO];
-        }            
-        
-        // 创建委托对象
+            [fontManager setSelectedFont:initialFont isMultiple:NO];
+        }
         delegate.selectedFont = initialFont;
 
-        // 设置字体管理器的目标
-        NSFontManager *fontManager = [NSFontManager sharedFontManager];
+        // 设置字体管理器的目标，监听字体变化
         [fontManager setTarget:delegate];
         [fontManager setAction:@selector(changeFont:)];
 
-        // 显示字体面板并等待用户操作
-        [fontPanel makeKeyAndOrderFront:nil];
+        // 注册持久化的激活观察者（只注册一次）
+        registerFontPanelActivationObserver();
 
-        // 使用 runModalForWindow 运行字体面板
-        NSInteger modalResult = [NSApp runModalForWindow:fontPanel];
+        // 显示字体面板并运行模态
+        [fontPanel makeKeyAndOrderFront:nil];
+        [NSApp runModalForWindow:fontPanel];
         [fontPanel orderOut:nil];
+
+        // 清理字体管理器的 target（但保留 delegate 以便激活时处理）
+        [fontManager setTarget:nil];
 
         // 重新启用父窗口
         if (p->hwndOwner) {
@@ -615,20 +692,19 @@ static BOOL ChooseFontMac(LPCHOOSEFONTA p) {
             setNsWindowToTop(p->hwndOwner);
         }
 
-        // 处理结果
+        // 获取最终选择的字体
+        NSFont *finalFont = [fontManager selectedFont];
         BOOL result = FALSE;
-        if (modalResult == NSModalResponseOK && delegate.selectedFont) {
-            NSFontToLogFont(delegate.selectedFont, p->lpLogFont);
-            // 设置点大小
+        if (finalFont) {
+            NSFontToLogFont(finalFont, p->lpLogFont);
             if (p->Flags & CF_INITTOLOGFONTSTRUCT) {
-                p->iPointSize = (INT)([delegate.selectedFont pointSize] * 10);
+                p->iPointSize = (INT)([finalFont pointSize] * 10);
             }
             result = TRUE;
         }
 
-        // 清理
-        [fontManager setTarget:nil];
-
+        // 注意：delegate 未在这里置 nil，保留给激活观察者使用。
+        // 但若用户不再切换激活，则 delegate 会一直保留，直到下次调用 ChooseFontMac 时被清理。
         return result;
     }
 }

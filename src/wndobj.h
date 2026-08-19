@@ -3,7 +3,7 @@
 
 #include "SConnection.h"
 #include "countmutex.h"
-#include "builtin_image.h"
+#include "gdi/builtin_image.h"
 
 enum WndState
 {
