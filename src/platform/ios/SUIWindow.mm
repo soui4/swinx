@@ -918,11 +918,10 @@ BOOL showUiWindow(HWND hWnd,int nCmdShow){
                 window.windowLevel = UIWindowLevelNormal;
                 [window addSubview:view];
                 view.frame = window.bounds;
-                // 同步 m_rcPos 为物理像素，保持与 GetClientRect 返回值一致
-                //CGFloat sc = window.screen.scale ?: [UIScreen mainScreen].scale;
-                //view->m_rcPos = CGRectMake(0, 0, winRect.size.width * sc, winRect.size.height * sc);
                 view.hostWindow = window;
                 window.hidden = YES;  // 先隐藏，等 makeKeyAndVisible 时显示
+            }else{
+                view.frame = view.hostWindow.bounds;
             }
         //SLOG_STMI()<<"showUiWindow makeKeyAndVisible, hWnd="<<hWnd;
             [view.hostWindow makeKeyAndVisible];
@@ -949,8 +948,11 @@ BOOL setUiWindowPos(HWND hWnd, int x, int y){
         CGFloat scale = screen.scale;
         rect.origin.x /= scale;
         rect.origin.y /= scale;
+        rect.size.width /= scale;
+        rect.size.height /= scale;
         if(IsRootView(view) && view.hostWindow){
             view.hostWindow.frame = rect;
+            view.frame = view.hostWindow.bounds;
         }else{
             view.frame = rect;
         }
@@ -976,6 +978,8 @@ BOOL setUiWindowSize(HWND hWnd, int cx, int cy){
         rect.size.height /= scale;
         if(IsRootView(view) && view.hostWindow){
             view.hostWindow.frame = rect;
+            view.frame = view.hostWindow.bounds;
+            [view setNeedsDisplay];
         }else{
             view.frame = rect;
             [view setNeedsDisplay];
