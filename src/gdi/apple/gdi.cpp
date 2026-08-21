@@ -2606,6 +2606,65 @@ static void DrawSingleLine(HDC hdc, LPCSTR pszBuf, int iBegin, int cchText, LPRE
         CFRelease(line);
 }
 
+#define DT_ELLIPSIS (DT_PATH_ELLIPSIS | DT_END_ELLIPSIS | DT_WORD_ELLIPSIS)
+#define CH_ELLIPSIS "..."
+
+// 参照 cairo.gdi 的 drawLineEndWithEllipsis：当文本宽度超过 pRect 宽度时，
+// 在末尾以省略号 "..." 截断显示；未超长时退化为普通单行绘制。
+// 返回实际绘制的文本宽度（含省略号）。
+static int DrawSingleLineWithEllipsis(HDC hdc, LPCSTR pszBuf, int iBegin, int cchText, LPRECT pRect, UINT uFormat)
+{
+    if (!hdc->cgCtx)
+        return 0;
+    int maxWidth = pRect->right - pRect->left;
+    // 测量整段文本宽度
+    CGFloat ascent = 0, descent = 0, x_advance = 0;
+    CTLineRef line = CreateCTLineWithDC(hdc, pszBuf + iBegin, cchText, &ascent, &descent, &x_advance);
+    if (line)
+        CFRelease(line);
+    if (x_advance <= maxWidth)
+    {
+        // 未超长：按普通单行绘制（内部处理 DT_CALCRECT/对齐/下划线）
+        DrawSingleLine(hdc, pszBuf, iBegin, cchText, pRect, uFormat);
+        return (int)x_advance;
+    }
+    // 超长：先扣除省略号宽度，再按字符累加确定截断点
+    CGFloat ellA = 0, ellD = 0, ellWid = 0;
+    CTLineRef ellLine = CreateCTLineWithDC(hdc, CH_ELLIPSIS, 3, &ellA, &ellD, &ellWid);
+    if (ellLine)
+        CFRelease(ellLine);
+    int limit = maxWidth - (int)ellWid;
+    if (limit < 0)
+        limit = 0;
+    int i = 0;
+    int fWid = 0;
+    LPCSTR p = pszBuf + iBegin;
+    while (i < cchText)
+    {
+        LPCSTR next = nextChar(p);
+        int chLen = (int)(next - p);
+        if (chLen <= 0)
+            break;
+        CGFloat chA = 0, chD = 0, chWid = 0;
+        CTLineRef chLine = CreateCTLineWithDC(hdc, p, chLen, &chA, &chD, &chWid);
+        if (chLine)
+            CFRelease(chLine);
+        if (fWid + (int)chWid > limit)
+            break;
+        fWid += (int)chWid;
+        i += chLen;
+        p = next;
+    }
+    // 拼接截断文本 + 省略号后按普通单行绘制
+    int newLen = i + 3;
+    char *pbuf = new char[newLen];
+    memcpy(pbuf, pszBuf + iBegin, i);
+    memcpy(pbuf + i, CH_ELLIPSIS, 3);
+    DrawSingleLine(hdc, pbuf, 0, newLen, pRect, uFormat);
+    delete[] pbuf;
+    return fWid + (int)ellWid;
+}
+
 #define kDrawText_LineInterval 0
 
 void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
@@ -2657,13 +2716,18 @@ void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uForm
 
             if (pLineTail > pLineHead)
             {
+                BOOL bVertOverflow = (pt.y + nLineHei + kDrawText_LineInterval > pRect->bottom);
                 if (!(uFormat & DT_CALCRECT))
                 {
                     RECT rcText = { pRect->left, pt.y, nRight, pt.y + nLineHei };
-                    DrawSingleLine(hdc, pszBuf, (int)(pLineHead - pszBuf), (int)(pLineTail - pLineHead), &rcText, uFormat);
+                    if (bVertOverflow && (uFormat & DT_ELLIPSIS))
+                        // 最后一可见行：将当前行及超长词以省略号截断显示
+                        DrawSingleLineWithEllipsis(hdc, pszBuf, (int)(pLineHead - pszBuf), (int)(p2 - pLineHead), &rcText, uFormat);
+                    else
+                        DrawSingleLine(hdc, pszBuf, (int)(pLineHead - pszBuf), (int)(pLineTail - pLineHead), &rcText, uFormat);
                 }
                 // 显示多行文本时，如果下一行文字的高度超过了文本框，则不再输出下一行文字内容。
-                if (pt.y + nLineHei + kDrawText_LineInterval > pRect->bottom)
+                if (bVertOverflow)
                 { //将绘制限制在有效区。
                     pLineHead = pLineTail;
                     break;
@@ -2754,20 +2818,29 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
         CGContextRestoreGState(ctx);
     }
     CGContextSaveGState(ctx);
+    // 裁剪到 pRect（除非 DT_NOCLIP）；参照 cairo.gdi 在绘制前 cairo_clip
+    if (!(uFormat & DT_NOCLIP) && !bCalc)
+    {
+        CGRect clipRect = CGRectMake((CGFloat)pRect->left, (CGFloat)pRect->top,
+                                    (CGFloat)(pRect->right - pRect->left),
+                                    (CGFloat)(pRect->bottom - pRect->top));
+        CGContextClipToRect(ctx, clipRect);
+    }
     ApplyFont(hdc);
     const LOGFONT *lf = (const LOGFONT *)GetGdiObjPtr(hdc->hfont);
     assert(lf);
     COLORREF crTxt = hdc->crText;
     CGContextSetRGBFillColor(ctx, GetRValue(crTxt)/255.0, GetGValue(crTxt)/255.0, GetBValue(crTxt)/255.0, GetAValue(crTxt)/255.0);
-    // 单行绘制分支：DT_SINGLELINE 时按 cairo 的 TextLayoutEx::draw 逻辑
-    // 处理 DT_VCENTER / DT_BOTTOM 垂直对齐，否则文字永远顶对齐导致“偏上”。
-    // 多行时 DrawMultiLine 内部按行顶对齐，无需垂直居中（与 Windows 语义一致）。
+    BOOL bEllipsis = (uFormat & DT_ELLIPSIS) != 0;
     if (uFormat & DT_SINGLELINE)
     {
         if (bCalc)
         {
             // 测量：宽度=文本宽，高度=行高，不含垂直对齐偏移（与 cairo 一致）
-            DrawSingleLine(hdc, pszBuf, 0, cchText, pRect, uFormat);
+            if (bEllipsis)
+                DrawSingleLineWithEllipsis(hdc, pszBuf, 0, cchText, pRect, uFormat);
+            else
+                DrawSingleLine(hdc, pszBuf, 0, cchText, pRect, uFormat);
         }
         else
         {
@@ -2779,9 +2852,11 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
                 offset = (rectHeight - lineSpan) / 2;
             else if (uFormat & DT_BOTTOM)
                 offset = rectHeight - lineSpan;
-            // offset 可能为负（文本高于矩形），不裁剪，与 cairo 行为一致
             RECT rcLine = { pRect->left, pRect->top + offset, pRect->right, pRect->bottom };
-            DrawSingleLine(hdc, pszBuf, 0, cchText, &rcLine, uFormat);
+            if (bEllipsis)
+                DrawSingleLineWithEllipsis(hdc, pszBuf, 0, cchText, &rcLine, uFormat);
+            else
+                DrawSingleLine(hdc, pszBuf, 0, cchText, &rcLine, uFormat);
         }
     }
     else
