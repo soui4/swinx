@@ -1,4 +1,4 @@
-﻿#include "drawtext.h"
+#include "drawtext.h"
 #include "cairo_show_text2.h"
 
 #define DT_ELLIPSIS (DT_PATH_ELLIPSIS | DT_END_ELLIPSIS | DT_WORD_ELLIPSIS)
@@ -206,8 +206,11 @@ RECT TextLayoutEx::draw()
     float x1 = m_rcBound.left, x2 = m_rcBound.right;
 
     cairo_save(m_ctx);
-    cairo_rectangle(m_ctx, m_rcBound.left, m_rcBound.top, m_rcBound.right - m_rcBound.left, m_rcBound.bottom - m_rcBound.top);
-    cairo_clip(m_ctx);
+    if (!(m_uFormat & DT_NOCLIP))
+    {
+        cairo_rectangle(m_ctx, m_rcBound.left, m_rcBound.top, m_rcBound.right - m_rcBound.left, m_rcBound.bottom - m_rcBound.top);
+        cairo_clip(m_ctx);
+    }
     cairo_set_line_width(m_ctx, 1);
     cairo_set_dash(m_ctx, nullptr, 0, 0.0);
 
