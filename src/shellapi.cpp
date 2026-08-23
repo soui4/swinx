@@ -1334,7 +1334,6 @@ HRESULT SHCreateStreamOnFileExW(LPCWSTR pszFile, DWORD grfMode, DWORD dwAttribut
 class FileStream : public SUnkImpl<IStream> {
   private:
     FILE *m_file;
-    LONG m_refCount;
     DWORD m_grfMode;
 
   public:
@@ -1344,51 +1343,25 @@ class FileStream : public SUnkImpl<IStream> {
     {
     }
 
-    // IUnknown methods
-    STDMETHOD(QueryInterface)(REFIID riid, void **ppvObject)
+  public:
+    IUNKNOWN_BEGIN(IStream)
+        IUNKNOWN_ADD_IID(ISequentialStream)
+    IUNKNOWN_END()
+    void OnFinalRelease() override
     {
-        if (!ppvObject)
-            return E_INVALIDARG;
-
-        *ppvObject = nullptr;
-
-        if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_ISequentialStream) || IsEqualIID(riid, IID_IStream))
+        if (m_file)
         {
-            *ppvObject = static_cast<IStream *>(this);
-            AddRef();
-            return S_OK;
+            fclose(m_file);
+            m_file = nullptr;
         }
-
-        return E_NOINTERFACE;
+        delete this;
     }
 
-    STDMETHOD_(ULONG, AddRef)()
-    {
-        return InterlockedIncrement(&m_refCount);
-    }
-
-    STDMETHOD_(ULONG, Release)()
-    {
-        LONG count = InterlockedDecrement(&m_refCount);
-        if (count == 0)
-        {
-            if (m_file)
-            {
-                fclose(m_file);
-                m_file = nullptr;
-            }
-            delete this;
-        }
-        return count;
-    }
-
+  public:
     // ISequentialStream methods
-    STDMETHOD(Read)(void *pv, ULONG cb, ULONG *pcbRead)
+    STDMETHOD(Read)(void *pv, ULONG cb, ULONG *pcbRead) override
     {
         if (!m_file)
-            return STG_E_ACCESSDENIED;
-
-        if (!(m_grfMode & 0x00000001)) // GENERIC_READ
             return STG_E_ACCESSDENIED;
 
         size_t bytesRead = fread(pv, 1, cb, m_file);
@@ -1401,12 +1374,12 @@ class FileStream : public SUnkImpl<IStream> {
         return S_OK;
     }
 
-    STDMETHOD(Write)(const void *pv, ULONG cb, ULONG *pcbWritten)
+    STDMETHOD(Write)(const void *pv, ULONG cb, ULONG *pcbWritten) override
     {
         if (!m_file)
             return STG_E_ACCESSDENIED;
 
-        if (!(m_grfMode & 0x00000002)) // GENERIC_WRITE
+        if (!(m_grfMode & STGM_WRITE))
             return STG_E_ACCESSDENIED;
 
         size_t bytesWritten = fwrite(pv, 1, cb, m_file);
@@ -1420,7 +1393,7 @@ class FileStream : public SUnkImpl<IStream> {
     }
 
     // IStream methods
-    STDMETHOD(Seek)(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER *plibNewPosition)
+    STDMETHOD(Seek)(LARGE_INTEGER dlibMove, DWORD dwOrigin, ULARGE_INTEGER *plibNewPosition) override
     {
         if (!m_file)
             return STG_E_ACCESSDENIED;
@@ -1455,7 +1428,7 @@ class FileStream : public SUnkImpl<IStream> {
         return S_OK;
     }
 
-    STDMETHOD(SetSize)(ULARGE_INTEGER libNewSize)
+    STDMETHOD(SetSize)(ULARGE_INTEGER libNewSize) override
     {
         if (!m_file)
             return STG_E_ACCESSDENIED;
@@ -1476,12 +1449,12 @@ class FileStream : public SUnkImpl<IStream> {
         return S_OK;
     }
 
-    STDMETHOD(CopyTo)(IStream *pstm, ULARGE_INTEGER cb, ULARGE_INTEGER *pcbRead, ULARGE_INTEGER *pcbWritten)
+    STDMETHOD(CopyTo)(IStream *pstm, ULARGE_INTEGER cb, ULARGE_INTEGER *pcbRead, ULARGE_INTEGER *pcbWritten) override
     {
         return E_NOTIMPL;
     }
 
-    STDMETHOD(Commit)(DWORD grfCommitFlags)
+    STDMETHOD(Commit)(DWORD grfCommitFlags) override
     {
         if (!m_file)
             return STG_E_ACCESSDENIED;
@@ -1492,22 +1465,22 @@ class FileStream : public SUnkImpl<IStream> {
         return S_OK;
     }
 
-    STDMETHOD(Revert)()
+    STDMETHOD(Revert)() override
     {
         return E_NOTIMPL;
     }
 
-    STDMETHOD(LockRegion)(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType)
+    STDMETHOD(LockRegion)(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType) override
     {
         return E_NOTIMPL;
     }
 
-    STDMETHOD(UnlockRegion)(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType)
+    STDMETHOD(UnlockRegion)(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType) override
     {
         return E_NOTIMPL;
     }
 
-    STDMETHOD(Stat)(STATSTG *pstatstg, DWORD grfStatFlag)
+    STDMETHOD(Stat)(STATSTG *pstatstg, DWORD grfStatFlag) override
     {
         if (!pstatstg)
             return E_INVALIDARG;
@@ -1540,7 +1513,7 @@ class FileStream : public SUnkImpl<IStream> {
         return S_OK;
     }
 
-    STDMETHOD(Clone)(IStream **ppstm)
+    STDMETHOD(Clone)(IStream **ppstm) override
     {
         return E_NOTIMPL;
     }
@@ -1556,10 +1529,9 @@ HRESULT SHCreateStreamOnFileExA(LPCSTR pszFile, DWORD grfMode, DWORD dwAttribute
     if (pstmTemplate)
         return E_NOTIMPL; // We don't support template streams
 
-    // Map Windows GENERIC_* flags to standard POSIX flags
     const char *mode = "";
-    bool canRead = (grfMode & 0x00000001) != 0;  // GENERIC_READ
-    bool canWrite = (grfMode & 0x00000002) != 0; // GENERIC_WRITE
+    bool canRead = true;
+    bool canWrite = (grfMode & STGM_WRITE) != 0;
 
     // Determine file access mode
     if (canRead && canWrite)
@@ -1603,7 +1575,6 @@ HRESULT SHCreateStreamOnFileExA(LPCSTR pszFile, DWORD grfMode, DWORD dwAttribute
         else
             return E_FAIL;
     }
-
     // Create our stream implementation
     FileStream *stream = new FileStream(file, grfMode);
     if (!stream)
