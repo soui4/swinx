@@ -2,6 +2,7 @@
 #include <sys/stat.h>
 #include "enumformatetc.h"
 #include "tostring.hpp"
+#include "platform_api.h"
 HRESULT SHCreateStdEnumFmtEtc(UINT cfmt, const FORMATETC afmt[], IEnumFORMATETC **ppenumFormatEtc)
 {
     *ppenumFormatEtc = new SEnumFormatEtc(cfmt, afmt);
@@ -10,8 +11,23 @@ HRESULT SHCreateStdEnumFmtEtc(UINT cfmt, const FORMATETC afmt[], IEnumFORMATETC 
     return S_OK;
 }
 
+#if defined(__IOS__)
+// 由 platform/ios/utils.mm 实现，基于 NSSearchPathForDirectoriesInDomains
+// 映射 CSIDL_* 常量到 iOS 沙盒目录（NSCachesDirectory/NSDocumentDirectory 等）
+BOOL swinx_iOSSpecialFolderPathA(HWND hwndOwner, LPSTR lpszPath, int nFolder, BOOL fCreate);
+#endif
+
 BOOL WINAPI SHGetSpecialFolderPathA(HWND hwndOwner, LPSTR lpszPath,int nFolder,BOOL fCreate)
 {
+#if defined(__IOS__)
+	// iOS：委托 utils.mm，基于 NSSearchPathForDirectoriesInDomains 获取沙盒目录
+	return swinx_iOSSpecialFolderPathA(hwndOwner, lpszPath, nFolder, fCreate);
+#elif defined(__ANDROID__)
+	// Android：优先委托平台层（Java 层 getCacheDir/getFilesDir 等）
+	if (g_platformAPI.path.getSpecialFolderPathA)
+		return g_platformAPI.path.getSpecialFolderPathA(hwndOwner, lpszPath, nFolder, fCreate);
+	return FALSE;
+#else
 	const char* homeDir = getenv("HOME");
 	if (!homeDir) {
 		return FALSE; // HOME environment variable is required
@@ -209,8 +225,9 @@ BOOL WINAPI SHGetSpecialFolderPathA(HWND hwndOwner, LPSTR lpszPath,int nFolder,B
 				return FALSE; // Failed to create directory
 		}
 	}
-	
+
 	return TRUE;
+#endif
 }
 BOOL WINAPI SHGetSpecialFolderPathW(HWND hwndOwner, LPWSTR lpszPath,int nFolder,BOOL fCreate){
     char szPath[MAX_PATH];

@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-#define PLATFORM_API_VERSION 1
+#define PLATFORM_API_VERSION 2
 
 struct PlatformClipboardAPI {
     BOOL (*openClipboard)(HWND hWndNewOwner);
@@ -96,12 +96,23 @@ struct PlatformAudioAPI {
     BOOL (*playSound)(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound);
 };
 
+struct PlatformPathAPI {
+    // 获取临时目录路径（UTF-8）。返回值约定与 Win32 GetTempPathA 一致：
+    // 成功为写入 lpBuffer 的字节数（含结尾 '\0"），缓冲区不足或失败返回 0
+    DWORD (*getTempPathA)(DWORD nBufferLength, LPSTR lpBuffer);
+    // 获取特殊文件夹路径（UTF-8）。语义与 Win32 SHGetSpecialFolderPathA 一致：
+    // nFolder 为 CSIDL_* 常量；fCreate 指示是否在目录不存在时创建。
+    // 成功返回 TRUE 并将含结尾 '\0" 的路径写入 lpszPath，失败返回 FALSE
+    BOOL (*getSpecialFolderPathA)(HWND hwndOwner, LPSTR lpszPath, int nFolder, BOOL fCreate);
+};
+
 struct PlatformAPI {
     int version;
     struct PlatformClipboardAPI clipboard;
     struct PlatformWindowAPI window;
     struct PlatformIMEAPI ime;
     struct PlatformAudioAPI audio;
+    struct PlatformPathAPI path;
 };
 
 extern struct PlatformAPI g_platformAPI;

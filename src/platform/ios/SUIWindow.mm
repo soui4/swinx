@@ -1330,27 +1330,13 @@ BOOL setUiMsgTransparent(HWND hWnd, BOOL bTransparent){
 BOOL sendUiSysCommand(HWND hWnd, int nCmd){
     @autoreleasepool {
         SUIView *view = getUiView(hWnd);
-        if(!view)
+        if(!view || nCmd != SC_MAXIMIZE)
             return FALSE;
-        if(nCmd == SC_MAXIMIZE){
-            UIScreen *screen = getUiScreen(hWnd);
-            CGFloat scale = screen.scale;
-            CGRect full = screen.bounds;
-            view->m_rcPos = CGRectMake(0,0,full.size.width*scale,full.size.height*scale);
-            if(view.hostWindow)
-                view.hostWindow.frame = full;
-            [view onStateChange:SIZE_MAXIMIZED];
-            return TRUE;
-        }
-        if(nCmd == SC_RESTORE){
-            [view onStateChange:SIZE_RESTORED];
-            return TRUE;
-        }
-        if(nCmd == SC_MINIMIZE){
-            [view onStateChange:SIZE_MINIMIZED];
-            return TRUE;
-        }
-        return FALSE;
+        UIScreen *screen = getUiScreen(hWnd);
+        CGFloat scale = screen.scale;
+        CGRect full = screen.bounds;
+        SetWindowPos(hWnd, NULL, 0, 0, full.size.width*scale, full.size.height*scale, SWP_NOZORDER|SWP_NOACTIVATE);
+        return TRUE;
     }
 }
 

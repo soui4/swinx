@@ -675,7 +675,17 @@ DWORD WINAPI GetCurrentDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer)
 BOOL CreateDirectoryA(LPCSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
 {
     mode_t mode = 0755;
-    return mkdir(lpPathName, mode) == 0;
+    BOOL ret = mkdir(lpPathName, mode) == 0;
+    if(!ret){
+        if(errno == EEXIST){
+            SetLastError(ERROR_ALREADY_EXISTS);
+        }else{
+            SetLastError(ERROR_PATH_NOT_FOUND);
+        }
+    }else{
+        SetLastError(NOERROR);
+    }
+    return ret;
 }
 
 BOOL CreateDirectoryW(LPCWSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
@@ -1150,48 +1160,171 @@ static void get_iso_time(char *buffer, size_t size)
     strftime(buffer, size, "%Y-%m-%dT%H:%M:%S", timeinfo);
 }
 
+// 递归复制目录树（跨文件系统），用于 rename 失败(EXDEV)时的回退
+static int copy_tree(const char *src, const char *dest)
+{
+    struct stat st;
+    if (stat(src, &st) == -1)
+        return -1;
+
+    if (!S_ISDIR(st.st_mode))
+    {
+        // 单文件：直接用 CopyFileA
+        return CopyFileA(src, dest, FALSE) ? 0 : -1;
+    }
+
+    // 目录：递归复制
+    DIR *dir = opendir(src);
+    if (!dir)
+        return -1;
+
+    if (mkdir(dest, 0755) == -1 && errno != EEXIST)
+    {
+        closedir(dir);
+        return -1;
+    }
+
+    struct dirent *entry;
+    int ret = 0;
+    while ((entry = readdir(dir)) != NULL && ret == 0)
+    {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        char src_path[MAX_PATH], dest_path[MAX_PATH];
+        snprintf(src_path, sizeof(src_path), "%s/%s", src, entry->d_name);
+        snprintf(dest_path, sizeof(dest_path), "%s/%s", dest, entry->d_name);
+
+        struct stat sub_st;
+        if (stat(src_path, &sub_st) == -1)
+        {
+            ret = -1;
+            break;
+        }
+        if (S_ISDIR(sub_st.st_mode))
+            ret = copy_tree(src_path, dest_path);
+        else
+            ret = CopyFileA(src_path, dest_path, FALSE) ? 0 : -1;
+    }
+
+    closedir(dir);
+    return ret;
+}
+
+// 递归删除非空目录（内部使用，不写 trashinfo）
+static int remove_tree(const char *path)
+{
+    struct stat st;
+    if (stat(path, &st) == -1)
+        return -1;
+
+    if (!S_ISDIR(st.st_mode))
+        return remove(path);
+
+    DIR *dir = opendir(path);
+    if (!dir)
+        return -1;
+
+    struct dirent *entry;
+    int ret = 0;
+    while ((entry = readdir(dir)) != NULL && ret == 0)
+    {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        char full_path[MAX_PATH];
+        snprintf(full_path, sizeof(full_path), "%s/%s", path, entry->d_name);
+
+        struct stat sub_st;
+        if (stat(full_path, &sub_st) == -1)
+        {
+            ret = -1;
+            break;
+        }
+        if (S_ISDIR(sub_st.st_mode))
+            ret = remove_tree(full_path);
+        else
+            ret = remove(full_path);
+    }
+
+    closedir(dir);
+    if (ret == 0)
+        ret = rmdir(path);
+    return ret;
+}
+
 // 移动文件或目录到回收站
 static int move_to_trash(const char *path)
 {
     struct stat st;
     if (stat(path, &st) == -1)
     {
-        perror("stat");
         return -1;
     }
 
     const char *home = get_home_dir();
-    char trash_path[1024], info_path[1024], unique_trash_path[1024];
+    char trash_path[1024], unique_trash_path[1024];
 
-    // 目标回收站路径
+#ifdef __APPLE__
+    // macOS: ~/.Trash/  (Finder 可直接识别)
+    char trash_dir[1024];
+    snprintf(trash_dir, sizeof(trash_dir), "%s/.Trash", home);
+    mkdir(trash_dir, 0755); // 确保回收站目录存在
+
+    snprintf(trash_path, sizeof(trash_path), "%s/.Trash/%s", home, basename((char *)path));
+#else
+    // Linux: ~/.local/share/Trash/files/ + .trashinfo (FreeDesktop 规范)
+    char trash_files_dir[1024], trash_info_dir[1024];
+    snprintf(trash_files_dir, sizeof(trash_files_dir), "%s%s", home, TRASH_DIR_FILES);
+    snprintf(trash_info_dir, sizeof(trash_info_dir), "%s%s", home, TRASH_DIR_INFO);
+    // 确保目录存在
+    {
+        char tmp[1024];
+        snprintf(tmp, sizeof(tmp), "%s/.local", home);          mkdir(tmp, 0755);
+        snprintf(tmp, sizeof(tmp), "%s/.local/share", home);   mkdir(tmp, 0755);
+        snprintf(tmp, sizeof(tmp), "%s/.local/share/Trash", home); mkdir(tmp, 0755);
+        mkdir(trash_files_dir, 0755);
+        mkdir(trash_info_dir, 0755);
+    }
+
     snprintf(trash_path, sizeof(trash_path), "%s%s%s", home, TRASH_DIR_FILES, basename((char *)path));
+#endif
+
     generate_unique_filename(trash_path, unique_trash_path, sizeof(unique_trash_path));
 
-    // 移动文件或文件夹
+    // 尝试 rename（同文件系统下会成功）
     if (rename(path, unique_trash_path) == -1)
     {
-        perror("rename");
-        return -1;
+        // EXDEV: 跨文件系统，回退到复制+删除
+        if (errno == EXDEV)
+        {
+            if (copy_tree(path, unique_trash_path) != 0)
+                return -1;
+            if (remove_tree(path) != 0)
+                return -1;
+        }
+        else
+        {
+            return -1;
+        }
     }
 
-    // 创建 .trashinfo 记录
-    snprintf(info_path, sizeof(info_path), "%s%s%s.trashinfo", home, TRASH_DIR_INFO, basename((char *)path));
+#ifndef __APPLE__
+    // Linux: .trashinfo 文件名必须与 trash files/ 中的实际文件名一致
+    char info_path[1024];
+    const char *trash_base = strrchr(unique_trash_path, '/');
+    trash_base = trash_base ? trash_base + 1 : unique_trash_path;
+    snprintf(info_path, sizeof(info_path), "%s%s%s.trashinfo", home, TRASH_DIR_INFO, trash_base);
     FILE *info_file = fopen(info_path, "w");
-    if (!info_file)
+    if (info_file)
     {
-        perror("fopen");
-        return -1;
+        char iso_time[32];
+        get_iso_time(iso_time, sizeof(iso_time));
+        fprintf(info_file, "[Trash Info]\nPath=%s\nDeletionDate=%s\n", path, iso_time);
+        fclose(info_file);
     }
+#endif
 
-    char iso_time[32];
-    get_iso_time(iso_time, sizeof(iso_time));
-
-    fprintf(info_file, "[Trash Info]\n");
-    fprintf(info_file, "Path=%s\n", path);
-    fprintf(info_file, "DeletionDate=%s\n", iso_time);
-    fclose(info_file);
-
-    printf("Moved to trash: %s -> %s\n", path, unique_trash_path);
     return 0;
 }
 

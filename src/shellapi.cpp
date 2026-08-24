@@ -9,7 +9,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cstdio>
+#include <dirent.h>
+#include <errno.h>
+#include <libgen.h>
 #include <shlobj.h>
+#include <fileapi.h>
 #include "SConnection.h"
 #include "shellapi.h"
 #include "SUnkImpl.h"
@@ -1587,29 +1591,206 @@ HRESULT SHCreateStreamOnFileExA(LPCSTR pszFile, DWORD grfMode, DWORD dwAttribute
     return S_OK;
 }
 
+//----------------------------------------------------------------------
+// SHFileOperationA helpers
+//----------------------------------------------------------------------
+
+// 检查路径是否包含通配符
+static bool path_has_wildcard(const char *path)
+{
+    return path && (strchr(path, '*') || strchr(path, '?'));
+}
+
+// 展开通配符为实际文件列表
+static std::vector<std::string> expand_wildcard(const std::string &path, bool filesOnly)
+{
+    std::vector<std::string> result;
+    if (!path_has_wildcard(path.c_str()))
+    {
+        result.push_back(path);
+        return result;
+    }
+
+    // 分离目录和通配模式
+    std::string dir, pattern;
+    size_t lastSlash = path.find_last_of('/');
+    if (lastSlash != std::string::npos)
+    {
+        dir = path.substr(0, lastSlash);
+        pattern = path.substr(lastSlash + 1);
+    }
+    else
+    {
+        dir = ".";
+        pattern = path;
+    }
+    if (dir.empty())
+        dir = "/";
+
+    DIR *d = opendir(dir.c_str());
+    if (!d)
+        return result;
+
+    struct dirent *entry;
+    while ((entry = readdir(d)) != NULL)
+    {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+        if (fnmatch(pattern.c_str(), entry->d_name, 0) != 0)
+            continue;
+
+        char full[MAX_PATH];
+        snprintf(full, sizeof(full), "%s/%s", dir.c_str(), entry->d_name);
+
+        if (filesOnly)
+        {
+            struct stat st;
+            if (stat(full, &st) == 0 && S_ISDIR(st.st_mode))
+                continue; // FOF_FILESONLY: 跳过目录
+        }
+        result.push_back(full);
+    }
+    closedir(d);
+    return result;
+}
+
+// 从路径提取文件名
+static std::string get_base_name(const std::string &path)
+{
+    size_t lastSlash = path.find_last_of('/');
+    if (lastSlash == std::string::npos)
+        lastSlash = path.find_last_of('\\');
+    if (lastSlash != std::string::npos)
+        return path.substr(lastSlash + 1);
+    return path;
+}
+
+// 检查是否为目录
+static bool is_dir(const char *path)
+{
+    struct stat st;
+    return stat(path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+// 生成避免冲突的新文件名（Windows 风格 "Copy of X" / "Copy 2 of X"）
+static std::string generate_collision_name(const std::string &destPath)
+{
+    std::string dir, name;
+    size_t lastSlash = destPath.find_last_of('/');
+    if (lastSlash != std::string::npos)
+    {
+        dir = destPath.substr(0, lastSlash);
+        name = destPath.substr(lastSlash + 1);
+    }
+    else
+    {
+        dir = ".";
+        name = destPath;
+    }
+
+    for (int count = 2;; ++count)
+    {
+        std::string newName;
+        if (count == 2)
+            newName = "Copy of " + name;
+        else
+            newName = "Copy " + std::to_string(count) + " of " + name;
+
+        std::string fullPath = dir + "/" + newName;
+        struct stat st;
+        if (stat(fullPath.c_str(), &st) != 0)
+            return fullPath; // 不存在，可以使用
+    }
+}
+
+// 复制文件或目录（目录时递归）
+static bool copy_path(const std::string &from, const std::string &to)
+{
+    if (is_dir(from.c_str()))
+        return CopyDirA(from.c_str(), to.c_str()) == 0;
+
+    FILE *src = fopen(from.c_str(), "rb");
+    if (!src)
+        return false;
+    FILE *dst = fopen(to.c_str(), "wb");
+    if (!dst)
+    {
+        fclose(src);
+        return false;
+    }
+    char buffer[8192];
+    size_t n;
+    bool ok = true;
+    while ((n = fread(buffer, 1, sizeof(buffer), src)) > 0)
+    {
+        if (fwrite(buffer, 1, n, dst) != n)
+        {
+            ok = false;
+            break;
+        }
+    }
+    fclose(src);
+    fclose(dst);
+    return ok;
+}
+
+// 删除文件或目录（目录时递归），支持回收站
+static bool delete_path(const std::string &path, bool allowUndo)
+{
+    return DelDirA(path.c_str(), allowUndo) == 0;
+}
+
+// 移动文件或目录（rename 失败则复制+删除）
+static bool move_path(const std::string &from, const std::string &to)
+{
+    if (rename(from.c_str(), to.c_str()) == 0)
+        return true;
+    // rename 失败（跨文件系统等），回退到复制+删除
+    if (copy_path(from, to))
+    {
+        return delete_path(from, false);
+    }
+    return false;
+}
+
+// 确保目标路径完整（如果目标为已存在的目录，将源文件名追加到目标路径后）
+static std::string resolve_dest(const std::string &from, const std::string &to)
+{
+    if (is_dir(to.c_str()))
+    {
+        return to + "/" + get_base_name(from);
+    }
+    return to;
+}
+
 int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp)
 {
     if (!lpFileOp)
-    {
         return ERROR_INVALID_PARAMETER;
-    }
 
+    DWORD fFlags = lpFileOp->fFlags;
+    bool bAllowUndo = (fFlags & FOF_ALLOWUNDO) != 0;
+    bool bMultiDest = (fFlags & FOF_MULTIDESTFILES) != 0;
+    bool bRenameOnCollision = (fFlags & FOF_RENAMEONCOLLISION) != 0;
+    bool bFilesOnly = (fFlags & FOF_FILESONLY) != 0;
+    bool bNoRecursion = (fFlags & FOF_NORECURSION) != 0;
+
+    BOOL anyAborted = FALSE;
     int result = 0;
-    BOOL anyAborted = false;
 
-    // 解析源路径
-    std::vector<std::string> fromPaths;
+    // 解析双 NULL 结尾的源路径列表
+    std::vector<std::string> rawFrom;
     if (lpFileOp->pFrom)
     {
         const char *p = lpFileOp->pFrom;
         while (*p)
         {
-            fromPaths.push_back(p);
+            rawFrom.push_back(p);
             p += strlen(p) + 1;
         }
     }
 
-    // 解析目标路径
+    // 解析双 NULL 结尾的目标路径列表
     std::vector<std::string> toPaths;
     if (lpFileOp->pTo)
     {
@@ -1621,222 +1802,108 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp)
         }
     }
 
+    if (rawFrom.empty())
+        return ERROR_INVALID_PARAMETER;
+
+    // 展开通配符，合并为最终源路径列表
+    std::vector<std::string> fromPaths;
+    for (const auto &raw : rawFrom)
+    {
+        auto expanded = expand_wildcard(raw, bFilesOnly);
+        for (auto &e : expanded)
+            fromPaths.push_back(std::move(e));
+    }
+
     switch (lpFileOp->wFunc)
     {
-    case FO_COPY:
-    {
-        if (fromPaths.empty())
-        {
-            return ERROR_INVALID_PARAMETER;
-        }
-
-        for (size_t i = 0; i < fromPaths.size(); ++i)
-        {
-            const std::string &from = fromPaths[i];
-            std::string to;
-            if (i < toPaths.size())
-            {
-                to = toPaths[i];
-            }
-            else if (!toPaths.empty())
-            {
-                to = toPaths[0];
-            }
-            else
-            {
-                anyAborted = true;
-                continue;
-            }
-
-            // 检查目标是否为目录
-            struct stat statbuf;
-            if (stat(to.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
-            {
-                // 目标是目录，在目录中创建同名文件
-                size_t lastSlash = from.find_last_of('/');
-                if (lastSlash == std::string::npos)
-                {
-                    lastSlash = from.find_last_of('\\');
-                }
-                if (lastSlash != std::string::npos)
-                {
-                    to += '/' + from.substr(lastSlash + 1);
-                }
-                else
-                {
-                    to += '/' + from;
-                }
-            }
-
-            // 使用posix的copyfile或cp命令
-            FILE *src = fopen(from.c_str(), "rb");
-            if (!src)
-            {
-                anyAborted = true;
-                continue;
-            }
-
-            FILE *dest = fopen(to.c_str(), "wb");
-            if (!dest)
-            {
-                fclose(src);
-                anyAborted = true;
-                continue;
-            }
-
-            char buffer[4096];
-            size_t bytesRead;
-            while ((bytesRead = fread(buffer, 1, sizeof(buffer), src)) > 0)
-            {
-                if (fwrite(buffer, 1, bytesRead, dest) != bytesRead)
-                {
-                    anyAborted = true;
-                    break;
-                }
-            }
-
-            fclose(src);
-            fclose(dest);
-        }
-    }
-    break;
-
-    case FO_MOVE:
-    {
-        if (fromPaths.empty())
-        {
-            return ERROR_INVALID_PARAMETER;
-        }
-
-        for (size_t i = 0; i < fromPaths.size(); ++i)
-        {
-            const std::string &from = fromPaths[i];
-            std::string to;
-            if (i < toPaths.size())
-            {
-                to = toPaths[i];
-            }
-            else if (!toPaths.empty())
-            {
-                to = toPaths[0];
-            }
-            else
-            {
-                anyAborted = true;
-                continue;
-            }
-
-            // 检查目标是否为目录
-            struct stat statbuf;
-            if (stat(to.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
-            {
-                // 目标是目录，在目录中创建同名文件
-                size_t lastSlash = from.find_last_of('/');
-                if (lastSlash == std::string::npos)
-                {
-                    lastSlash = from.find_last_of('\\');
-                }
-                if (lastSlash != std::string::npos)
-                {
-                    to += '/' + from.substr(lastSlash + 1);
-                }
-                else
-                {
-                    to += '/' + from;
-                }
-            }
-
-            // 使用posix的rename
-            if (rename(from.c_str(), to.c_str()) != 0)
-            {
-                // 如果rename失败，尝试复制然后删除
-                FILE *src = fopen(from.c_str(), "rb");
-                if (!src)
-                {
-                    anyAborted = true;
-                    continue;
-                }
-
-                FILE *dest = fopen(to.c_str(), "wb");
-                if (!dest)
-                {
-                    fclose(src);
-                    anyAborted = true;
-                    continue;
-                }
-
-                char buffer[4096];
-                size_t bytesRead;
-                while ((bytesRead = fread(buffer, 1, sizeof(buffer), src)) > 0)
-                {
-                    if (fwrite(buffer, 1, bytesRead, dest) != bytesRead)
-                    {
-                        anyAborted = true;
-                        break;
-                    }
-                }
-
-                fclose(src);
-                fclose(dest);
-
-                if (!anyAborted)
-                {
-                    unlink(from.c_str());
-                }
-            }
-        }
-    }
-    break;
-
     case FO_DELETE:
     {
-        if (fromPaths.empty())
+        for (const auto &path : fromPaths)
         {
-            return ERROR_INVALID_PARAMETER;
+            if (!delete_path(path, bAllowUndo))
+                anyAborted = TRUE;
         }
+    }
+    break;
 
-        for (const std::string &path : fromPaths)
+    case FO_COPY:
+    case FO_MOVE:
+    {
+        for (size_t i = 0; i < fromPaths.size(); ++i)
         {
-            // 检查是否为目录
-            struct stat statbuf;
-            if (stat(path.c_str(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
+            const std::string &from = fromPaths[i];
+
+            // 确定目标路径
+            std::string to;
+            if (bMultiDest && i < toPaths.size())
             {
-                // 使用posix的rmdir或递归删除
-                // 这里简化实现，只删除空目录
-                if (rmdir(path.c_str()) != 0)
-                {
-                    anyAborted = true;
-                }
+                // 多目标模式：一一对应
+                to = toPaths[i];
+            }
+            else if (!toPaths.empty())
+            {
+                // 单目标模式：全部放到第一个目标
+                to = toPaths[0];
+                // 如果目标是已存在的目录，追加文件名
+                to = resolve_dest(from, to);
             }
             else
             {
-                // 使用posix的unlink
-                if (unlink(path.c_str()) != 0)
-                {
-                    anyAborted = true;
-                }
+                anyAborted = TRUE;
+                continue;
             }
+
+            // 处理目标已存在
+            struct stat st;
+            if (stat(to.c_str(), &st) == 0)
+            {
+                if (bRenameOnCollision)
+                {
+                    // 自动重命名以避免冲突
+                    to = generate_collision_name(to);
+                }
+                else if (S_ISDIR(st.st_mode))
+                {
+                    // 目标是已存在目录：将源放入目录内
+                    to = to + "/" + get_base_name(from);
+                }
+                // 如果目标文件已存在且未设 RENAMEONCOLLISION，覆盖
+            }
+
+            bool ok = false;
+            if (lpFileOp->wFunc == FO_COPY)
+                ok = copy_path(from, to);
+            else // FO_MOVE
+                ok = move_path(from, to);
+
+            if (!ok)
+                anyAborted = TRUE;
         }
     }
     break;
 
     case FO_RENAME:
     {
-        if (fromPaths.empty() || toPaths.empty())
-        {
+        if (toPaths.empty())
             return ERROR_INVALID_PARAMETER;
-        }
 
-        for (size_t i = 0; i < fromPaths.size() && i < toPaths.size(); ++i)
+        size_t count = std::min(fromPaths.size(), toPaths.size());
+        for (size_t i = 0; i < count; ++i)
         {
-            const std::string &from = fromPaths[i];
-            const std::string &to = toPaths[i];
+            std::string to = toPaths[i];
 
-            // 使用posix的rename
-            if (rename(from.c_str(), to.c_str()) != 0)
+            // 处理目标冲突
+            struct stat st;
+            if (stat(to.c_str(), &st) == 0)
             {
-                anyAborted = true;
+                if (bRenameOnCollision)
+                {
+                    to = generate_collision_name(to);
+                }
             }
+
+            if (rename(fromPaths[i].c_str(), to.c_str()) != 0)
+                anyAborted = TRUE;
         }
     }
     break;

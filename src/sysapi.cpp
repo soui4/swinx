@@ -36,6 +36,7 @@
 #include "tostring.hpp"
 #include "debug.h"
 #include "sysapi.h"
+#include "platform_api.h"
 #include "cursormgr.h"
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -2628,24 +2629,52 @@ BOOL WINAPI MessageBeep(_In_ UINT uType)
     return FALSE;
 }
 
+#if defined(__IOS__)
+// 由 platform/ios/utils.mm 实现，调用 NSTemporaryDirectory()
+DWORD swinx_iOSTempPathA(DWORD nBufferLength, LPSTR lpBuffer);
+#endif
+
 DWORD
 WINAPI
 GetTempPathA(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return +1) LPSTR lpBuffer)
 {
-    if (nBufferLength < 5)
+#if defined(__IOS__)
+    // iOS：使用 NSTemporaryDirectory() 获取应用沙盒临时目录
+    return swinx_iOSTempPathA(nBufferLength, lpBuffer);
+#elif defined(__ANDROID__)
+    // Android：优先调用平台层（Java getCacheDir）提供的临时目录
+    if (g_platformAPI.path.getTempPathA)
+        return g_platformAPI.path.getTempPathA(nBufferLength, lpBuffer);
+	return 0;
+#else
+    // Linux/macOS 及其它 POSIX 平台：优先 TMPDIR，回退到 /tmp
+    const char* tmp = getenv("TMPDIR");
+    if (!tmp || !*tmp)
+        tmp = "/tmp";
+    DWORD nLen = (DWORD)strlen(tmp) + 1; // 含结尾 '\0'
+    if (nBufferLength < nLen)
         return 0;
-    strcpy(lpBuffer, "/tmp");
-    return 5;
+    memcpy(lpBuffer, tmp, nLen);
+    return nLen;
+#endif
 }
 
 DWORD
 WINAPI
 GetTempPathW(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return +1) LPWSTR lpBuffer)
 {
-    if (nBufferLength < 5)
+    // 复用 GetTempPathA 的平台相关解析逻辑，避免重复实现
+    char szTmp[MAX_PATH];
+    DWORD nLen = GetTempPathA(MAX_PATH, szTmp);
+    if (nLen == 0)
         return 0;
-    wcscpy(lpBuffer, L"/tmp");
-    return 5;
+    std::wstring str;
+    towstring(szTmp, -1, str);
+    DWORD nWide = (DWORD)str.length() + 1; // 含结尾 '\0'
+    if (nBufferLength < nWide)
+        return 0;
+    wcscpy(lpBuffer, str.c_str());
+    return nWide;
 }
 
 UINT WINAPI GetTempFileNameW(LPCWSTR lpPathName, LPCWSTR lpPrefixString, UINT uUnique, LPWSTR lpTempFileName)
