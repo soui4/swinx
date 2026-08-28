@@ -607,13 +607,14 @@ static bool ApplyBrush(HDC hdc, HBRUSH hbr, double wid, double hei, double x, do
 
 static void DrawPathFillStroke(cairo_t *ctx, HDC hdc, double wid, double hei, double x, double y)
 {
-    ApplyRop2(hdc->cairo, hdc->rop2);
     if (ApplyBrush(hdc, hdc->brush, wid, hei, x,y))
     {
+        ApplyRop2(ctx, hdc->rop2);
         cairo_fill_preserve(ctx); // Preserve path for stroke
     }
     if (ApplyPen(hdc, hdc->pen, wid, hei, x, y))
     {
+        ApplyRop2(ctx, hdc->rop2);
         cairo_stroke(ctx);
     }else{
         cairo_new_path(ctx); // Clear path if no stroke is applied
@@ -622,9 +623,9 @@ static void DrawPathFillStroke(cairo_t *ctx, HDC hdc, double wid, double hei, do
 
 static void DrawPathStroke(cairo_t *ctx, HDC hdc, double wid, double hei, double x, double y)
 {
-    ApplyRop2(ctx, hdc->rop2);
     if (ApplyPen(hdc, hdc->pen, wid, hei, x, y))
     {
+        ApplyRop2(ctx, hdc->rop2);
         cairo_stroke(ctx);
     }else{
         cairo_new_path(ctx);
@@ -1658,7 +1659,6 @@ BOOL AlphaBlend(HDC hdc, int x, int y, int wDst, int hDst, HDC hdcSrc, int x1, i
 
     cairo_set_source_surface(hdc->cairo, src, -x1, -y1);
     ApplyRop2(hdc->cairo, hdc->rop2);
-    // cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_OVER);
     if (ftn.SourceConstantAlpha != 255)
         cairo_paint_with_alpha(hdc->cairo, ftn.SourceConstantAlpha * 1.0 / 255.0);
     else
@@ -4434,9 +4434,9 @@ BOOL FillPath(HDC hdc)
     cairo_path_extents(hdc->cairo, &x1, &y1, &x2, &y2);
     double width = x2 - x1;
     double height = y2 - y1;
-    ApplyRop2(hdc->cairo, hdc->rop2);
     if (ApplyBrush(hdc, hdc->brush, width, height, x1, y1))
     {
+        ApplyRop2(hdc->cairo, hdc->rop2);
         cairo_fill(hdc->cairo);
     }
 

@@ -714,29 +714,46 @@ static bool ApplyPen(HDC hdc, HPEN hpen, double wid, double hei, double x, doubl
 }
 
 // must call after ApplyPen, ApplyBrush
+// Maps Windows ROP2 codes to CoreGraphics blend modes, mirroring cairo/gdi.cpp.
+// Cairo operator          -> CG blend mode
+//   CAIRO_OPERATOR_DIFFERENCE -> kCGBlendModeDifference
+//   CAIRO_OPERATOR_XOR        -> kCGBlendModeXOR
+//   CAIRO_OPERATOR_OVER       -> kCGBlendModeNormal
+//   CAIRO_OPERATOR_SOURCE     -> kCGBlendModeCopy
+//   CAIRO_OPERATOR_ADD        -> kCGBlendModePlusLighter
+//   CAIRO_OPERATOR_CLEAR      -> kCGBlendModeClear
+//   CAIRO_OPERATOR_SATURATE   -> (no CG equivalent, fall back to Normal)
 static void ApplyRop2(CGContextRef cr, int rop2)
 {
     switch (rop2)
     {
     case R2_BLACK:
+        // Result is always black: source=black + Over.
         CGContextSetRGBStrokeColor(cr, 0.0, 0.0, 0.0, 1.0);
         CGContextSetRGBFillColor(cr, 0.0, 0.0, 0.0, 1.0);
         CGContextSetBlendMode(cr, kCGBlendModeNormal);
         break;
     case R2_WHITE:
+        // Result is always white: source=white + Over.
         CGContextSetRGBStrokeColor(cr, 1.0, 1.0, 1.0, 1.0);
         CGContextSetRGBFillColor(cr, 1.0, 1.0, 1.0, 1.0);
         CGContextSetBlendMode(cr, kCGBlendModeNormal);
         break;
     case R2_NOT:
     case DSTINVERT:
-        CGContextSetBlendMode(cr, kCGBlendModeXOR);
+        // Invert destination: source=white + Difference => |1 - Dst|.
+        CGContextSetRGBStrokeColor(cr, 1.0, 1.0, 1.0, 1.0);
+        CGContextSetRGBFillColor(cr, 1.0, 1.0, 1.0, 1.0);
+        CGContextSetBlendMode(cr, kCGBlendModeDifference);
         break;
     case R2_NOP:
+        // No change: transparent source + Over draws nothing.
         CGContextSetAlpha(cr, 0.0);
+        CGContextSetBlendMode(cr, kCGBlendModeNormal);
         break;
     case R2_COPYPEN:
     case SRCCOPY:
+        // Copy source to destination.
         CGContextSetBlendMode(cr, kCGBlendModeCopy);
         break;
     case R2_EXT_OVER:
@@ -752,8 +769,6 @@ static void ApplyRop2(CGContextRef cr, int rop2)
         CGContextSetBlendMode(cr, kCGBlendModeSourceAtop);
         break;
     case R2_EXT_DEST:
-        CGContextSetBlendMode(cr, kCGBlendModeDestinationOver);
-        break;
     case R2_EXT_DEST_OVER:
         CGContextSetBlendMode(cr, kCGBlendModeDestinationOver);
         break;
@@ -774,10 +789,12 @@ static void ApplyRop2(CGContextRef cr, int rop2)
         CGContextSetBlendMode(cr, kCGBlendModePlusLighter);
         break;
     case R2_EXT_SATURATE:
+        // CG has no direct saturate blend; fall back to Normal.
         CGContextSetBlendMode(cr, kCGBlendModeNormal);
         break;
     case SRCINVERT:
-        CGContextSetBlendMode(cr, kCGBlendModeXOR);
+        // Cairo maps this to CAIRO_OPERATOR_DIFFERENCE (result = |Src - Dst|).
+        CGContextSetBlendMode(cr, kCGBlendModeDifference);
         break;
     case R2_EXT_CLEAR:
         CGContextSetBlendMode(cr, kCGBlendModeClear);
@@ -908,11 +925,13 @@ static void _ClearPathIfLeft(CGContextRef ctx) {
 // The caller must build the path in ctx before calling this function.
 static void DrawPathFillStroke(CGContextRef ctx, HDC hdc, double wid, double hei, double x, double y)
 {
-    ApplyRop2(ctx, hdc->rop2);
     BrushKind brushKind = kBrushColor;
     void *patternObj = nullptr;
     BOOL hasBrush = ApplyBrush(hdc, hdc->brush, wid, hei, x, y, &brushKind, &patternObj);
     BOOL hasPen   = ApplyPen(hdc, hdc->pen,   wid, hei, x, y);
+    // ApplyRop2 after ApplyBrush/ApplyPen: rop2 may override source (R2_BLACK/WHITE/NOT),
+    // so it must take priority over pen/brush colors.
+    ApplyRop2(ctx, hdc->rop2);
 
     if (hasBrush && brushKind == kBrushShading)
     {
@@ -948,9 +967,9 @@ static void DrawPathFillStroke(CGContextRef ctx, HDC hdc, double wid, double hei
 // The caller must build the path in ctx before calling this function.
 static void DrawPathStroke(CGContextRef ctx, HDC hdc, double wid, double hei, double x, double y)
 {
-    ApplyRop2(ctx, hdc->rop2);
     if (ApplyPen(hdc, hdc->pen, wid, hei, x, y))
     {
+        ApplyRop2(ctx, hdc->rop2);
         CGContextStrokePath(ctx);
     }
     else
@@ -2058,6 +2077,7 @@ BOOL AlphaBlend(HDC hdc, int x, int y, int wDst, int hDst, HDC hdcSrc, int x1, i
     CGRect srcRect = CGRectMake(x1, y1, wSrc, hSrc);
     if (ftn.SourceConstantAlpha != 255)
         CGContextSetAlpha(ctx, ftn.SourceConstantAlpha * 1.0 / 255.0);
+    ApplyRop2(ctx, hdc->rop2);
     drawImage(ctx, dstRect, srcImg,srcRect);
     CGContextRestoreGState(ctx);
     CGImageRelease(srcImg);
@@ -2092,6 +2112,7 @@ static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, CGImageRef s
         break;
     }
     CGContextSetInterpolationQuality(ctx, quality);
+    ApplyRop2(ctx, hdc->rop2);
     drawImage(ctx, dstRect, src, srcRect);
     CGContextRestoreGState(ctx);
     return 0;
@@ -2543,10 +2564,11 @@ static void DrawTextDecLines(HDC hdc, double ascent, double descent, LPCSTR str,
         CGContextRef ctx = hdc->cgCtx;
         HPEN pen = CreatePen(PS_SOLID, 1, GetTextColor(hdc));
         ApplyPen(hdc, pen, 0, 0, 0, 0);
-        ApplyRop2(ctx, hdc->rop2);
         double penWid = 1;
         COLORREF penCol = GetTextColor(hdc);
         CGContextSetRGBStrokeColor(ctx, GetRValue(penCol)/255.0, GetGValue(penCol)/255.0, GetBValue(penCol)/255.0, GetAValue(penCol)/255.0);
+        // ApplyRop2 after all source color setup so rop2 has highest priority.
+        ApplyRop2(ctx, hdc->rop2);
         CGContextSetLineWidth(ctx, 1.0);
         CGContextBeginPath(ctx);
         if (lf->lfStrikeOut)
@@ -3772,19 +3794,12 @@ int FillRect(HDC hdc, const RECT *lprc, HBRUSH hbr)
     if(!hdc->cgCtx) return 0;
     CGContextRef ctx = hdc->cgCtx;
     CGContextSaveGState(ctx);
-    // ApplyRop2 (blend mode) must be set before ApplyBrush, matching DrawPathFillStroke order.
-    CGBlendMode blend = kCGBlendModeNormal;
-    switch(hdc->rop2) {
-        case R2_EXT_XOR: blend = kCGBlendModeXOR; break;
-        case R2_NOT: blend = kCGBlendModeDestinationOut; break;
-        default: blend = kCGBlendModeNormal; break;
-    }
-    CGContextSetBlendMode(ctx, blend);
     double wid = lprc->right - lprc->left, hei = lprc->bottom - lprc->top;
     BrushKind brushKind = kBrushColor;
     void *patternObj = nullptr;
     if (ApplyBrush(hdc, hbr, wid, hei, lprc->left, lprc->top, &brushKind, &patternObj))
     {
+        ApplyRop2(ctx, hdc->rop2);
         if (brushKind == kBrushShading)
         {
             GradientDrawInfo *gdi = (GradientDrawInfo *)patternObj;
@@ -3813,13 +3828,7 @@ int FrameRect(HDC hdc, const RECT *lprc, HBRUSH hbr)
     CGContextSaveGState(ctx);
     double rc_wid = lprc->right - lprc->left, rc_hei = lprc->bottom - lprc->top;
     ApplyPen(hdc, hdc->pen, rc_wid, rc_hei, lprc->left, lprc->top);
-    CGBlendMode blend = kCGBlendModeNormal;
-    switch(hdc->rop2) {
-        case R2_EXT_XOR: blend = kCGBlendModeXOR; break;
-        case R2_NOT: blend = kCGBlendModeDestinationOut; break;
-        default: blend = kCGBlendModeNormal; break;
-    }
-    CGContextSetBlendMode(ctx, blend);
+    ApplyRop2(ctx, hdc->rop2);
     CGContextStrokeRect(ctx, CGRectMake(lprc->left, lprc->top, rc_wid, rc_hei));
     CGContextRestoreGState(ctx);
     return TRUE;
@@ -3830,8 +3839,7 @@ BOOL InvertRect(HDC hdc, const RECT *lprc)
     if(!hdc->cgCtx) return FALSE;
     CGContextRef ctx = hdc->cgCtx;
     CGContextSaveGState(ctx);
-    CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
-    CGContextSetBlendMode(ctx, kCGBlendModeXOR);
+    ApplyRop2(ctx,R2_NOT);
     CGContextFillRect(ctx, CGRectMake(lprc->left, lprc->top, lprc->right - lprc->left, lprc->bottom - lprc->top));
     CGContextRestoreGState(ctx);
     return TRUE;
@@ -4955,16 +4963,9 @@ BOOL FillPath(HDC hdc)
     CGContextSaveGState(ctx);
     CGContextAddPath(ctx, hdc->recordedPath);
     CGRect bb = CGPathGetBoundingBox(hdc->recordedPath);
-    // ApplyRop2 must be set before ApplyBrush, matching DrawPathFillStroke order.
-    CGBlendMode blend = kCGBlendModeNormal;
-    switch(hdc->rop2) {
-        case R2_EXT_XOR: blend = kCGBlendModeXOR; break;
-        case R2_NOT: blend = kCGBlendModeDestinationOut; break;
-        default: blend = kCGBlendModeNormal; break;
-    }
-    CGContextSetBlendMode(ctx, blend);
     if (ApplyBrush(hdc, hdc->brush, bb.size.width, bb.size.height, bb.origin.x, bb.origin.y))
     {
+        ApplyRop2(ctx, hdc->rop2);
         CGContextFillPath(ctx);
     }
     CGContextRestoreGState(ctx);
