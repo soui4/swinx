@@ -2311,7 +2311,7 @@ HWND SetFocus(HWND hWnd)
         HWND hRoot = GetAncestor(hWnd, GA_ROOT);
         if(hRoot){
             DWORD dwExStyle = GetWindowLongA(hRoot, GWL_EXSTYLE);
-            if((dwExStyle & WS_EX_NOACTIVATE) == 0)
+            if((dwExStyle & (WS_EX_NOACTIVATE|WS_EX_TOOLWINDOW)) == 0)
             {
                 conn->SetFocus(hWnd);
             }
