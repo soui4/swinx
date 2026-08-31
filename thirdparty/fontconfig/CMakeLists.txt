@@ -200,6 +200,9 @@ endif()
 
 
 # Generate configuration files
+# ConfigureChecks.cmake 负责完成 HAVE_*/FC_GPERF_SIZE_T 等检测变量，
+# GenerateConfigFiles.cmake 再据此生成 config.h；两者必须同时 include，
+# 否则 config.h 中的宏会全部为空（fcobjs.c 等会编译失败）。
 include(cmake/ConfigureChecks.cmake)
 include(cmake/GenerateConfigFiles.cmake)
 

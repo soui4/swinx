@@ -1,5 +1,5 @@
-#ifndef _ANDROID_SCLIPBOARD_H_
-#define _ANDROID_SCLIPBOARD_H_
+#ifndef _SWINX_MOBILE_SCLIPBOARD_H_
+#define _SWINX_MOBILE_SCLIPBOARD_H_
 
 #include <windows.h>
 #include <map>
@@ -37,4 +37,4 @@ private:
     IDataObject *m_externalDataObject;
 };
 
-#endif // _ANDROID_SCLIPBOARD_H_
+#endif // _SWINX_MOBILE_SCLIPBOARD_H_

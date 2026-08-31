@@ -1,5 +1,5 @@
-#ifndef _OHOS_UUID_UUID_H_
-#define _OHOS_UUID_UUID_H_
+#ifndef _SWINX_MOBILE_UUID_UUID_H_
+#define _SWINX_MOBILE_UUID_UUID_H_
 
 #include <stdint.h>
 #include <string.h>
@@ -28,4 +28,4 @@ static inline void uuid_generate(uuid_t out)
     out[8] = (out[8] & 0x3f) | 0x80;
 }
 
-#endif // _OHOS_UUID_UUID_H_
+#endif // _SWINX_MOBILE_UUID_UUID_H_

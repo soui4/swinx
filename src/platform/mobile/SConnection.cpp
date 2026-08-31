@@ -1,16 +1,14 @@
 #include "SConnection.h"
-#include "SImContext.h"
-#include "keyboard.h"
-#include "napi_bridge.h"
 #include "wndobj.h"
 #include "sdc.h"
+#include "platform_api.h"
 #include <gdi.h>
-#include <ohos_ime_bridge.h>
 #include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <thread>
-#include <unistd.h>
+#include <log.h>
+#define kLogTag "SConnection"
 
 static UINT s_nextRegisteredMessage = WM_USER + 100000;
 static std::recursive_mutex s_registeredMessageMutex;
@@ -127,36 +125,102 @@ static void updateKeyboardStateForMsg(BYTE *keyboardState, UINT msg, WPARAM wp)
     }
 }
 
+_Window *SConnection::CreateVirtualWindowObject()
+{
+    _Window *pWnd = new _Window(0);
+    pWnd->tid = m_tid;
+    pWnd->mConnection = this;
+    pWnd->state = WS_Normal;
+    pWnd->dwStyle = 0;
+    pWnd->dwExStyle = 0;
+    pWnd->hInstance = 0;
+    pWnd->clsAtom = 0;
+    pWnd->bAutoDblClick = FALSE;
+    pWnd->iconSmall = pWnd->iconBig = nullptr;
+    pWnd->parent = NULL;
+    pWnd->winproc = DefWindowProc;
+    pWnd->rc = {0, 0, 0, 0};
+    pWnd->showSbFlags = 0;
+    pWnd->visualId = GetVisualID(TRUE);
+    return pWnd;
+}
+
+
+BOOL
+SConnection::RegisterVirtualHWND(UINT_PTR externalId, HWND hParent, DWORD dwStyle, DWORD dwExStyle,
+                                 const RECT *prc, int ctrlId)
+{
+    HWND hWnd = reinterpret_cast<HWND>(externalId);
+    if (WndMgr::fromHwnd(hWnd))
+    {
+        SLOG_STME()<<"HWND already registered"<<externalId;
+        return FALSE;
+    }    
+    SConnection *pConn = SConnMgr::instance()->getConnection();
+    _Window *pWnd = pConn->CreateVirtualWindowObject();
+    pWnd->parent = hParent;
+    pWnd->dwStyle = dwStyle;
+    pWnd->dwExStyle = dwExStyle;
+    pWnd->rc = *prc;
+    BOOL ok = WndMgr::insertWindow(hWnd, pWnd);
+    assert(ok);
+    int cx =  prc->right-prc->left;
+    int cy = prc->bottom-prc->top;
+    SetWindowLongPtrA(hWnd, GWLP_ID, ctrlId);
+    cairo_surface_t *surface = pConn->CreateWindowSurface(hWnd, 0, cx, cy);
+    pWnd->bmp = InitGdiObj(OBJ_BITMAP, surface);
+    pWnd->hdc = new _SDC(hWnd);
+    SelectObject(pWnd->hdc, pWnd->bmp);
+    SLOG_STMI()<<"Registered virtual HWND:"<<externalId;
+    return TRUE;
+}
+
+BOOL SConnection::UnregisterVirtualHWND(UINT_PTR externalId)
+{
+    HWND hWnd = reinterpret_cast<HWND>(externalId);
+    WndObj wnd = WndMgr::fromHwnd(hWnd);
+    if (!wnd)
+    {
+        SLOG_STMW()<<"Unregistered virtual HWND:"<<externalId<<" not found";
+        return FALSE;
+    }
+    WndMgr::freeWindow(hWnd);
+    SLOG_STMI()<<"Unregistered virtual HWND:"<<externalId;
+    return TRUE;
+}
+
+//=============================================================================
+// SConnection Implementation
+//=============================================================================
+
 SConnection::SConnection(int)
     : m_msgPeek(nullptr)
     , m_bMsgNeedFree(false)
-    , m_bBlockTimer(false)
     , m_tsLastMsg(0)
     , m_bQuit(false)
     , m_tid(GetCurrentThreadId())
     , m_deskDC(new _SDC(0))
     , m_deskBmp(nullptr)
+    , m_screenNum(0)
     , m_hWndCapture(0)
     , m_hFocus(0)
     , m_hActive(0)
     , m_hForeground(0)
-    , m_mouseButtons(0)
     , m_cursorCount(1)
     , m_caretBlinkTime(TS_CARET)
     , m_clipboard(new SClipboard())
-    , m_trayIconMgr(new STrayIconMgr())
 {
     m_deskBmp = CreateCompatibleBitmap(m_deskDC, 1, 1);
     SelectObject(m_deskDC, m_deskBmp);
     memset(&m_caretInfo, 0, sizeof(m_caretInfo));
     memset(m_keyboardState, 0, sizeof(m_keyboardState));
+    SLOG_FMTI("SConnection created for thread %d", m_tid);
 }
 
 SConnection::~SConnection()
 {
     std::unique_lock<CountMutex> lock(m_mutex);
     delete m_clipboard;
-    delete m_trayIconMgr;
     for (auto msg : m_msgStack)
         delete msg;
     for (auto msg : m_msgQueue)
@@ -167,34 +231,16 @@ SConnection::~SConnection()
         delete m_msgPeek;
     DeleteDC(m_deskDC);
     DeleteObject(m_deskBmp);
+    SLOG_FMTI("SConnection destroyed");
 }
 
-void SConnection::onTerminate()
-{
-    m_bQuit = true;
-    postMsg(0, WM_QUIT, 0, 0);
-}
-
-void SConnection::OnNsEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    postMsg(hWnd, message, wParam, lParam);
-}
-
-void SConnection::OnDrawRect(HWND, const RECT &, cairo_t *)
-{
-}
-
-void SConnection::OnNsActive(HWND hWnd, BOOL bActive)
-{
-    if (bActive)
-        SetActiveWindow(hWnd);
-    else if (m_hActive == hWnd)
-        m_hActive = 0;
+DWORD SConnection::getMouseButton() const {
+    return g_platformAPI.window.getMouseButtons ? g_platformAPI.window.getMouseButtons() : 0;
 }
 
 SHORT SConnection::GetKeyState(int vk)
 {
-    unsigned int buttons = m_mouseButtons.load();
+    unsigned int buttons = getMouseButton();
     if ((vk == VK_LBUTTON && (buttons & MK_LBUTTON)) || (vk == VK_RBUTTON && (buttons & MK_RBUTTON)) || (vk == VK_MBUTTON && (buttons & MK_MBUTTON)))
         return (SHORT)0x8000;
     if (vk >= 0 && vk < 256)
@@ -214,7 +260,7 @@ BOOL SConnection::GetKeyboardState(PBYTE lpKeyState)
     if (!lpKeyState)
         return FALSE;
     memset(lpKeyState, 0, 256);
-    unsigned int buttons = m_mouseButtons.load();
+    unsigned int buttons = getMouseButton();
     if (buttons & MK_LBUTTON)
         lpKeyState[VK_LBUTTON] = 0x80;
     if (buttons & MK_RBUTTON)
@@ -237,10 +283,10 @@ UINT SConnection::MapVirtualKey(UINT uCode, UINT uMapType) const
     {
     case MAPVK_VK_TO_VSC:
     case MAPVK_VK_TO_VSC_EX:
-        return OhosVKToKeyCode(uCode);
+        return uCode;
     case MAPVK_VSC_TO_VK:
     case MAPVK_VSC_TO_VK_EX:
-        return OhosKeyCodeToVK(uCode);
+        return uCode;
     case MAPVK_VK_TO_CHAR:
         if (uCode >= 'A' && uCode <= 'Z')
             return uCode;
@@ -294,213 +340,42 @@ DWORD SConnection::GetQueueStatus(UINT flags)
 
 void SConnection::updateMsgQueue(DWORD dwTimeout)
 {
-    if (dwTimeout != 0 && dwTimeout != INFINITE)
-        std::this_thread::sleep_for(std::chrono::milliseconds(std::min<DWORD>(dwTimeout, 10)));
-    else if (dwTimeout == INFINITE)
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-    std::unique_lock<CountMutex> lock(m_mutex);
-    if (m_bBlockTimer)
-        return;
-
-    UINT now = GetTickCount();
-    for (auto &timer : m_lstTimer)
-    {
-        if ((INT)(now - timer.fireRemain) >= 0)
-        {
-            if (!hasQueuedTimerMsg(m_msgQueue, timer.hWnd, timer.id, timer.proc))
-            {
-                Msg *msg = new Msg;
-                msg->hwnd = timer.hWnd;
-                msg->message = WM_TIMER;
-                msg->wParam = timer.id;
-                msg->lParam = (LPARAM)timer.proc;
-                msg->time = now;
-                m_msgQueue.push_back(msg);
-            }
-            timer.fireRemain = now + timer.elapse;
-        }
-    }
+    return;
 }
 
 bool SConnection::waitMsg(UINT timeOut)
 {
-    updateMsgQueue(timeOut);
-    std::unique_lock<CountMutex> lock(m_mutex);
-    return !m_msgQueue.empty();
+    return false;
 }
 
 int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD timeout, BOOL, DWORD)
 {
-    DWORD start = GetTickCount();
-    do
-    {
-        for (int i = 0; i < nCount; ++i)
-        {
-            if (WaitForSingleObject(handles[i], 0) == WAIT_OBJECT_0)
-                return WAIT_OBJECT_0 + i;
-        }
-        if (waitMsg(1))
-            return WAIT_OBJECT_0 + nCount;
-    } while (timeout == INFINITE || GetTickCount() - start < timeout);
     return WAIT_TIMEOUT;
 }
 
 BOOL SConnection::TranslateMessage(const MSG *pMsg)
 {
-    if (!pMsg)
-        return FALSE;
-    if (pMsg->message == WM_KEYDOWN)
-    {
-        if ((GetKeyState(VK_CONTROL) & 0x8000) || (GetKeyState(VK_MENU) & 0x8000))
-            return TRUE;
-        UINT ch = MapVirtualKey((UINT)pMsg->wParam, MAPVK_VK_TO_CHAR);
-        if (ch)
-            postMsg(pMsg->hwnd, WM_CHAR, ch, pMsg->lParam);
-    }
-    return TRUE;
+    return FALSE;
 }
 
 BOOL SConnection::peekMsg(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
 {
-    updateMsgQueue(0);
-    std::unique_lock<CountMutex> lock(m_mutex);
-
-    for (auto itTask = m_lstCallbackTask.begin(); itTask != m_lstCallbackTask.end();)
-    {
-        CbTask *task = *itTask;
-        if (task->TestEvent())
-        {
-            itTask = m_lstCallbackTask.erase(itTask);
-            task->Release();
-        }
-        else
-        {
-            ++itTask;
-        }
-    }
-
-    auto it = m_msgQueue.begin();
-    for (; it != m_msgQueue.end(); ++it)
-    {
-        Msg *msg = *it;
-        bool match = true;
-        if (msg->hwnd != hWnd && hWnd != 0)
-            match = false;
-        if (match && (wMsgFilterMin != 0 || wMsgFilterMax != 0) && (msg->message < wMsgFilterMin || msg->message > wMsgFilterMax))
-            match = false;
-        if (match)
-            break;
-    }
-
-    if (it == m_msgQueue.end())
-        return FALSE;
-
-    if (m_msgPeek && m_bMsgNeedFree)
-    {
-        delete m_msgPeek;
-        m_msgPeek = nullptr;
-        m_bMsgNeedFree = false;
-    }
-
-    Msg *msg = *it;
-    if (msg->message == WM_TIMER && msg->lParam)
-    {
-        TIMERPROC proc = (TIMERPROC)msg->lParam;
-        HWND timerWnd = msg->hwnd;
-        UINT_PTR timerId = msg->wParam;
-        DWORD timerTime = msg->time;
-        m_msgQueue.erase(it);
-        LONG lockCount = m_mutex.FreeLock();
-        proc(timerWnd, WM_TIMER, timerId, timerTime);
-        m_mutex.RestoreLock(lockCount);
-        delete msg;
-        return peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
-    }
-
-    m_msgPeek = msg;
-    if (wRemoveMsg == PM_NOREMOVE)
-    {
-        m_bMsgNeedFree = false;
-    }
-    else
-    {
-        m_msgQueue.erase(it);
-        m_bMsgNeedFree = true;
-    }
-    memcpy(pMsg, (MSG *)m_msgPeek, sizeof(MSG));
-    if (wRemoveMsg != PM_NOREMOVE)
-        updateKeyboardStateForMsg(m_keyboardState, pMsg->message, pMsg->wParam);
-    m_tsLastMsg = pMsg->time;
-    return TRUE;
+    return FALSE;
 }
 
 BOOL SConnection::getMsg(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
 {
-    while (!m_bQuit)
-    {
-        if (peekMsg(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, PM_REMOVE))
-            return lpMsg->message != WM_QUIT;
-        waitMsg();
-    }
-    return FALSE;
+    if(m_msgQueue.empty())
+        return FALSE;
+    Msg *pMsg = m_msgQueue.front();
+    m_msgQueue.pop_front();
+    memcpy(lpMsg,(MSG*)pMsg,sizeof(MSG));
+    delete pMsg;
+    return TRUE;
 }
 
 void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp)
 {
-    if (message >= WM_MOUSEFIRST && message <= WM_MOUSELAST)
-    {
-        POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
-        POINT screenPt = pt;
-        mapOhosPointToWindow(hWnd, 0, &screenPt);
-        setOhosCursorPos(screenPt);
-
-        unsigned int buttons = m_mouseButtons.load();
-        unsigned int msgButton = mouseButtonBitFromMsg(message);
-        if (isMouseButtonDownMsg(message))
-        {
-            buttons |= msgButton;
-        }
-        else if (isMouseButtonUpMsg(message))
-        {
-            buttons &= ~msgButton;
-        }
-        else if (message == WM_MOUSEMOVE)
-        {
-            unsigned int postedButtons = (unsigned int)wp & (MK_LBUTTON | MK_RBUTTON | MK_MBUTTON);
-            if (postedButtons == 0 && buttons != 0)
-            {
-                message = mouseButtonUpMsgFromButtons(buttons);
-                msgButton = mouseButtonBitFromMsg(message);
-                buttons &= ~msgButton;
-            }
-            else if (postedButtons != 0)
-            {
-                buttons = postedButtons;
-            }
-        }
-        m_mouseButtons.store(buttons);
-        wp = (wp & ~(MK_LBUTTON | MK_RBUTTON | MK_MBUTTON)) | buttons;
-
-        if (m_hWndCapture && shouldSendToCapture(message))
-        {
-            hWnd = m_hWndCapture;
-            pt = screenPt;
-            mapOhosPointToWindow(0, hWnd, &pt);
-            lp = MAKELPARAM(pt.x, pt.y);
-        }
-        else if (shouldSendToCapture(message))
-        {
-            HWND hit = ohosHwndFromPoint(0, screenPt);
-            if (hit)
-            {
-                hWnd = hit;
-                pt = screenPt;
-                mapOhosPointToWindow(0, hWnd, &pt);
-                lp = MAKELPARAM(pt.x, pt.y);
-            }
-        }
-    }
     Msg *msg = new Msg;
     msg->hwnd = hWnd;
     msg->message = message;
@@ -541,6 +416,10 @@ void SConnection::postMsg(Msg *pMsg)
         return;
     }
     m_msgQueue.push_back(pMsg);
+    if (g_platformAPI.window.postMessage && m_msgQueue.size()==1)
+    {
+        g_platformAPI.window.postMessage();
+    }
 }
 
 void SConnection::postMsg2(BOOL, HWND hWnd, UINT message, WPARAM wp, LPARAM lp, MsgReply *reply)
@@ -566,25 +445,20 @@ void SConnection::postCallbackTask(CbTask *pTask)
 
 UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC proc)
 {
-    std::unique_lock<CountMutex> lock(m_mutex);
-    if (id == 0)
-        id = (UINT_PTR)(&m_lstTimer) ^ (UINT_PTR)GetTickCount();
-    KillTimer(hWnd, id);
-    TimerInfo timer = { id, hWnd, uElapse ? uElapse : 1, GetTickCount() + (uElapse ? uElapse : 1), proc };
-    m_lstTimer.push_back(timer);
-    return id;
+    // If platform provides timer API, delegate to platform layer
+    if (g_platformAPI.window.setTimer)
+    {
+        return g_platformAPI.window.setTimer(reinterpret_cast<UINT_PTR>(hWnd), id, uElapse, proc);
+    }
+    return 0;
 }
 
 BOOL SConnection::KillTimer(HWND hWnd, UINT_PTR id)
 {
-    std::unique_lock<CountMutex> lock(m_mutex);
-    for (auto it = m_lstTimer.begin(); it != m_lstTimer.end(); ++it)
+    // If platform provides timer kill API, delegate
+    if (g_platformAPI.window.killTimer)
     {
-        if (it->hWnd == hWnd && it->id == id)
-        {
-            m_lstTimer.erase(it);
-            return TRUE;
-        }
+        return g_platformAPI.window.killTimer(reinterpret_cast<UINT_PTR>(hWnd), id);
     }
     return FALSE;
 }
@@ -602,14 +476,18 @@ BOOL SConnection::ReleaseDC(HDC)
 HWND SConnection::SetCapture(HWND hCapture)
 {
     HWND old = m_hWndCapture;
-    if (setOhosWindowCapture(hCapture))
-        m_hWndCapture = hCapture;
+    m_hWndCapture = hCapture;
+    if(g_platformAPI.window.setCapture){
+        return g_platformAPI.window.setCapture(hCapture);
+    }
     return old;
 }
 
 BOOL SConnection::ReleaseCapture()
 {
-    releaseOhosWindowCapture(m_hWndCapture);
+    if(g_platformAPI.window.releaseCapture){
+        return g_platformAPI.window.releaseCapture();
+    }
     m_hWndCapture = 0;
     return TRUE;
 }
@@ -623,7 +501,6 @@ HCURSOR SConnection::SetCursor(HWND hWnd, HCURSOR cursor)
 {
     HCURSOR old = m_wndCursor[hWnd];
     m_wndCursor[hWnd] = cursor;
-    setOhosWindowCursor(hWnd, cursor);
     return old;
 }
 
@@ -640,18 +517,16 @@ BOOL SConnection::DestroyCursor(HCURSOR)
 
 void SConnection::SetTimerBlock(bool bBlock)
 {
-    m_bBlockTimer = bBlock;
+
 }
 
 HWND SConnection::GetActiveWnd() const
 {
-    return m_hActive ? m_hActive : getOhosActiveWindow();
+    return m_hActive;
 }
 
 BOOL SConnection::SetActiveWindow(HWND hWnd)
 {
-    if (!setOhosActiveWindow(hWnd))
-        return FALSE;
     m_hActive = hWnd;
     m_hForeground = hWnd;
     return TRUE;
@@ -659,49 +534,70 @@ BOOL SConnection::SetActiveWindow(HWND hWnd)
 
 HWND SConnection::WindowFromPoint(POINT pt, HWND) const
 {
-    return ohosHwndFromPoint(0, pt);
+    return m_hActive;
 }
 
 BOOL SConnection::IsWindow(HWND hWnd) const
 {
-    RECT rc;
-    return getOhosWindowRect(hWnd, &rc);
+    return (bool)WndMgr::fromHwnd(hWnd);
 }
 
 void SConnection::SetWindowPos(HWND hWnd, int x, int y) const
 {
-    setOhosWindowPos(hWnd, x, y);
+    // If platform API provides setWindowPos and this is a virtual HWND, delegate
+    if (g_platformAPI.window.setWindowPos && IsWindow(hWnd))
+    {
+        g_platformAPI.window.setWindowPos(hWnd, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+
 }
 
 void SConnection::SetWindowSize(HWND hWnd, int cx, int cy) const
 {
-    setOhosWindowSize(hWnd, cx, cy);
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(!wndObj)
+        return;
+    if (g_platformAPI.window.setWindowSize)
+    {
+        g_platformAPI.window.setWindowSize(hWnd, cx, cy);
+    }
 }
 
 BOOL SConnection::MoveWindow(HWND hWnd, int x, int y, int cx, int cy) const
 {
-    return setOhosWindowPos(hWnd, x, y) && setOhosWindowSize(hWnd, cx, cy);
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(!wndObj)
+        return FALSE;
+    if (g_platformAPI.window.moveWindow)
+    {
+        g_platformAPI.window.moveWindow(hWnd, x, y, cx, cy, TRUE);
+    }
+    return TRUE;
 }
 
 BOOL SConnection::GetCursorPos(LPPOINT ppt) const
 {
-    return getOhosCursorPos(ppt);
+    if(g_platformAPI.window.getCursorPos){
+        return g_platformAPI.window.getCursorPos(ppt);
+    }
+    return FALSE;
 }
 
-int SConnection::GetDpi(BOOL bx) const
+int SConnection::GetDpi(BOOL) const
 {
-    return getOhosDpi(bx);
+    if (g_platformAPI.window.getDpi) {
+        return g_platformAPI.window.getDpi();
+    }
+    return 96;
 }
 
 void SConnection::KillWindowTimer(HWND hWnd)
 {
-    std::unique_lock<CountMutex> lock(m_mutex);
-    for (auto it = m_lstTimer.begin(); it != m_lstTimer.end();)
+    // If platform provides a way to cancel all timers for a window, use it
+    if (g_platformAPI.window.killWindowTimers)
     {
-        if (it->hWnd == hWnd)
-            it = m_lstTimer.erase(it);
-        else
-            ++it;
+        g_platformAPI.window.killWindowTimers(reinterpret_cast<UINT_PTR>(hWnd));
+        return;
     }
 }
 
@@ -718,21 +614,17 @@ BOOL SConnection::SetForegroundWindow(HWND hWnd)
 
 BOOL SConnection::BringWindowToTop(HWND hWnd)
 {
-    setOhosWindowZorder(hWnd, HWND_TOP);
     return SetForegroundWindow(hWnd);
 }
 
-BOOL SConnection::SetWindowOpacity(HWND hWnd, BYTE byAlpha)
+BOOL SConnection::SetWindowOpacity(HWND hWnd, BYTE)
 {
-    return setOhosWindowAlpha(hWnd, byAlpha);
+    return TRUE;
 }
 
-BOOL SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn)
+BOOL SConnection::SetWindowRgn(HWND hWnd, HRGN)
 {
-    RECT rc;
-    if (!GetRgnBox(hRgn, &rc))
-        return FALSE;
-    return setOhosWindowRgn(hWnd, &rc, 1);
+    return TRUE;
 }
 
 HKL SConnection::ActivateKeyboardLayout(HKL hKl)
@@ -747,21 +639,20 @@ HBITMAP SConnection::GetDesktopBitmap()
 
 HWND SConnection::GetFocus() const
 {
-    return m_hFocus ? m_hFocus : getOhosFocusWindow();
+    return m_hFocus;
 }
 
 BOOL SConnection::SetFocus(HWND hWnd)
 {
+    if (g_platformAPI.window.setFocus) {
+        g_platformAPI.window.setFocus(hWnd);
+    }
     HWND old = m_hFocus;
-    if (!hWnd && old && swinx::ohos::IsImeProxyActive())
-        return TRUE;
-    if (!setOhosFocusWindow(hWnd))
-        return FALSE;
     m_hFocus = hWnd;
     if (old && old != hWnd)
-        postMsg(old, WM_KILLFOCUS, (WPARAM)hWnd, 0);
+        SendMessageA(old, WM_KILLFOCUS, (WPARAM)hWnd, 0);
     if (hWnd && old != hWnd)
-        postMsg(hWnd, WM_SETFOCUS, (WPARAM)old, 0);
+        SendMessageA(hWnd, WM_SETFOCUS, (WPARAM)old, 0);
     return TRUE;
 }
 
@@ -837,40 +728,69 @@ BOOL SConnection::OnEnumWindows(HWND, HWND, WNDENUMPROC, LPARAM)
 
 HWND SConnection::OnGetAncestor(HWND hwnd, UINT gaFlags)
 {
-    if (gaFlags == GA_PARENT)
-        return GetWindow(hwnd, nullptr, GW_OWNER);
-    return hwnd;
+    switch (gaFlags)
+    {
+        case GA_PARENT:
+            return GetParent(hwnd);
+        case GA_ROOT:
+        {
+            HWND ret = hwnd;
+            while(ret){
+                if(0==(GetWindowLongPtr(ret,GWL_STYLE)&WS_CHILD))
+                    break;
+                ret = GetParent(ret);
+            }
+            return ret;
+        }
+        case GA_ROOTOWNER:
+        {
+            HWND ret = OnGetAncestor(hwnd,GA_ROOT);
+            HWND hOwner = GetParent(ret);
+            if (hOwner)
+                ret = hOwner;
+            return ret;
+        }
+        default:
+            return 0;
+    }
 }
 
 HMONITOR SConnection::MonitorFromWindow(HWND, DWORD)
 {
-    return (HMONITOR)1;
+    return GetScreen(0);
 }
 
 HMONITOR SConnection::MonitorFromPoint(POINT, DWORD)
 {
-    return (HMONITOR)1;
+    return GetScreen(0);
 }
 
 HMONITOR SConnection::MonitorFromRect(LPCRECT, DWORD)
 {
-    return (HMONITOR)1;
+    return GetScreen(0);
 }
 
 int SConnection::GetScreenWidth(HMONITOR) const
 {
-    swinx::ohos::XComponentState state = swinx::ohos::GetXComponentState();
-    return state.width > 0 ? state.width : 1280;
+    if(g_platformAPI.window.getScreenWidth){
+        return g_platformAPI.window.getScreenWidth(0);
+    }
+    return 1280;
 }
 
 int SConnection::GetScreenHeight(HMONITOR) const
 {
-    swinx::ohos::XComponentState state = swinx::ohos::GetXComponentState();
-    return state.height > 0 ? state.height : 720;
+    if(g_platformAPI.window.getScreenHeight){
+        return g_platformAPI.window.getScreenHeight(0);
+    }
+    return 720;
 }
 
 HWND SConnection::GetScreenWindow() const
 {
+    if(g_platformAPI.window.getScreen){
+        return g_platformAPI.window.getScreen();
+    }
     return 0;
 }
 
@@ -888,9 +808,8 @@ uint32_t SConnection::GetCmap() const
     return 0;
 }
 
-void SConnection::SetZOrder(HWND hWnd, _Window *, HWND hWndInsertAfter)
+void SConnection::SetZOrder(HWND, _Window *, HWND)
 {
-    setOhosWindowZorder(hWnd, hWndInsertAfter);
 }
 
 void SConnection::OnStyleChanged(HWND, _Window *, DWORD, DWORD)
@@ -910,17 +829,17 @@ uint32_t SConnection::GetIpcAtom() const
     return 0;
 }
 
-cairo_surface_t *SConnection::CreateWindowSurface(HWND, uint32_t, int cx, int cy)
+cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, uint32_t visualId, int cx, int cy)
 {
-    return cairo_image_surface_create(CAIRO_FORMAT_ARGB32, std::max(cx, 1), std::max(cy, 1));
+    return cairo_image_surface_create(CAIRO_FORMAT_ARGB32,cx,cy);
 }
 
-cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd, uint32_t visualId, int width, int height)
+cairo_surface_t * SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd, uint32_t visualId,int cx, int cy)
 {
-    if (surface)
-        cairo_surface_destroy(surface);
-    return CreateWindowSurface(hWnd, visualId, width, height);
+    if(surface) cairo_surface_destroy(surface);
+    return cairo_image_surface_create(CAIRO_FORMAT_ARGB32,cx,cy);
 }
+
 
 DWORD SConnection::GetWndProcessId(HWND)
 {
@@ -929,31 +848,45 @@ DWORD SConnection::GetWndProcessId(HWND)
 
 HWND SConnection::WindowFromPoint(POINT pt)
 {
-    return ohosHwndFromPoint(0, pt);
+    return m_hActive;
 }
 
 BOOL SConnection::GetClientRect(HWND hWnd, RECT *pRc)
 {
-    if (!getOhosWindowRect(hWnd, pRc))
+    if (!pRc)
         return FALSE;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+    {
+        return FALSE;
+    }
+    *pRc = wndObj->rc;
     OffsetRect(pRc, -pRc->left, -pRc->top);
     return TRUE;
 }
 
-void SConnection::SendSysCommand(HWND hWnd, int nCmd)
+void SConnection::SendSysCommand(HWND hWnd, int cmd)
 {
-    sendOhosSysCommand(hWnd, nCmd);
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(cmd == SC_MAXIMIZE){
+
+    }
 }
 
 BOOL SConnection::IsWindowVisible(HWND hWnd)
 {
-    return isOhosWindowVisible(hWnd);
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if(!wndObj)
+        return FALSE;
+    return (wndObj->dwStyle & WS_VISIBLE);
 }
 
-HWND SConnection::GetWindow(HWND hWnd, _Window *wndObj, UINT uCmd)
+HWND SConnection::GetWindow(HWND hWnd, _Window *, UINT code)
 {
-    (void)wndObj;
-    return getOhosWindow(hWnd, uCmd);
+    if (g_platformAPI.window.getWindow)
+    {
+        return g_platformAPI.window.getWindow(hWnd, code);
+    }
 }
 
 UINT SConnection::RegisterMessage(LPCSTR lpString)
@@ -975,43 +908,47 @@ UINT SConnection::RegisterClipboardFormatA(LPCSTR pszName)
     return SClipboard::RegisterClipboardFormatA(pszName);
 }
 
-BOOL SConnection::NotifyIcon(DWORD dwMessage, PNOTIFYICONDATAA lpData)
+BOOL SConnection::NotifyIcon(DWORD, PNOTIFYICONDATAA)
 {
-    return m_trayIconMgr->NotifyIcon(dwMessage, lpData);
+    return FALSE;
 }
 
 HMONITOR SConnection::GetScreen(DWORD) const
 {
-    return (HMONITOR)1;
+    return reinterpret_cast<HMONITOR>(static_cast<uintptr_t>(m_screenNum + 1));
 }
 
-void SConnection::updateWindow(HWND hWnd, const RECT &rc)
+void SConnection::updateWindow(HWND, const RECT &)
 {
-    updateOhosWindow(hWnd, rc);
 }
 
-void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
+void SConnection::commitCanvas(HWND, const RECT &)
 {
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj || !wndObj->bmp)
-        return;
-    cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(wndObj->bmp);
-    commitOhosWindow(hWnd, surface, rc);
 }
 
 void SConnection::EnableWindow(HWND hWnd, BOOL bEnable)
 {
-    enableOhosWindow(hWnd, bEnable);
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return;
+    if (g_platformAPI.window.enableWindow)
+    {
+        g_platformAPI.window.enableWindow(hWnd, bEnable);
+    }
+    if (bEnable)
+        wndObj->dwStyle &= ~WS_DISABLED;
+    else
+        wndObj->dwStyle |= WS_DISABLED;
 }
 
-BOOL SConnection::IsIconic(HWND hWnd) const
+BOOL SConnection::IsIconic(HWND) const
 {
-    return isOhosWindowMinimized(hWnd);
+    return FALSE;
 }
 
-BOOL SConnection::IsZoomed(HWND hWnd) const
+BOOL SConnection::IsZoomed(HWND) const
 {
-    return isOhosWindowMaximized(hWnd);
+    return FALSE;
 }
 
 int SConnection::ShowCursor(BOOL bShow)
@@ -1091,7 +1028,7 @@ UINT SConnection::GetCaretBlinkTime() const
 void SConnection::GetWorkArea(HMONITOR, RECT *prc)
 {
     if (prc)
-        *prc = { 0, 0, GetScreenWidth(0), GetScreenHeight(0) };
+        *prc = {0, 0, GetScreenWidth(0), GetScreenHeight(0)};
 }
 
 SClipboard *SConnection::getClipboard()
@@ -1134,11 +1071,6 @@ HANDLE SConnection::SetClipboardData(UINT uFormat, HANDLE hMem)
     return m_clipboard->setClipboardData(uFormat, hMem);
 }
 
-STrayIconMgr *SConnection::GetTrayIconMgr()
-{
-    return m_trayIconMgr;
-}
-
 void SConnection::EnableDragDrop(HWND, BOOL)
 {
 }
@@ -1150,12 +1082,39 @@ HRESULT SConnection::DoDragDrop(IDataObject *, IDropSource *, DWORD, DWORD *)
 
 HWND SConnection::OnWindowCreate(_Window *wnd, CREATESTRUCT *cs, int)
 {
-    return createOhosWindow(cs->hwndParent, cs->style, cs->dwExStyle, wnd->bAutoDblClick, cs->lpszName, cs->x, cs->y, cs->cx, cs->cy, this);
+    HWND hWnd = 0;
+    if (g_platformAPI.window.createWindow)
+    {
+        // 12 参与 Win32 CreateWindowEx / platform_api.h PlatformWindowAPI::createWindow 完全对齐。
+        // 关键：HMENU hMenu 在 WS_CHILD 子窗口语义 == 子窗口控件 ID（GetDlgCtrlID/事件映射
+        // 按 ID 匹配依赖此字段），必须原封下传到各平台实现。
+        hWnd = (HWND)g_platformAPI.window.createWindow(reinterpret_cast<UINT_PTR>(cs->hwndParent),
+                                                        cs->lpszClass,
+                                                        cs->lpszName,
+                                                        cs->style,
+                                                        cs->dwExStyle,
+                                                        cs->x, cs->y, cs->cx, cs->cy,
+                                                        reinterpret_cast<UINT_PTR>(cs->hMenu),
+                                                        reinterpret_cast<UINT_PTR>(cs->hInstance),
+                                                        cs->lpCreateParams);
+        if (!hWnd)
+        {
+            SLOG_FMTD("native window created via platform API failed: parent=%p style=0x%x cls=%s id(menu)=%p",
+                    (void*)cs->hwndParent, (unsigned)cs->style,
+                      cs->lpszClass ? cs->lpszClass : "(null)",
+                      (void*)cs->hMenu);
+        }
+    }
+    return hWnd;
 }
 
 void SConnection::OnWindowDestroy(HWND hWnd, _Window *)
 {
-    closeOhosWindow(hWnd);
+    if (g_platformAPI.window.destroyWindow)
+    {
+        g_platformAPI.window.destroyWindow(reinterpret_cast<UINT_PTR>(hWnd));
+    }
+
     if (m_hWndCapture == hWnd)
         m_hWndCapture = 0;
     if (m_hFocus == hWnd)
@@ -1164,17 +1123,22 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *)
         m_hActive = 0;
     if (m_hForeground == hWnd)
         m_hForeground = 0;
+
+    // Ensure virtual HWND unregister frees the window object
+    //UnregisterVirtualHWND(reinterpret_cast<UINT_PTR>(hWnd));
 }
 
 void SConnection::SetWindowVisible(HWND hWnd, _Window *wnd, BOOL bVisible, int nCmdShow)
 {
     if (!wnd)
         return;
-    showOhosWindow(hWnd, bVisible ? nCmdShow : SW_HIDE);
+    if (g_platformAPI.window.showWindow)
+    {
+        g_platformAPI.window.showWindow(hWnd, bVisible ? nCmdShow : SW_HIDE);
+    }
     if (bVisible)
     {
         wnd->dwStyle |= WS_VISIBLE;
-        InvalidateRect(hWnd, nullptr, TRUE);
     }
     else
     {
@@ -1182,19 +1146,21 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wnd, BOOL bVisible, int n
     }
 }
 
-void SConnection::SetParent(HWND hWnd, _Window *, HWND parent)
+void SConnection::SetParent(HWND hWnd, _Window *wnd, HWND parent)
 {
-    setOhosParent(hWnd, parent);
+    //not impl
 }
 
 void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc, BOOL)
 {
-    invalidateOhosWindow(hWnd, rc);
+    if (g_platformAPI.window.invalidRect)
+    {
+        g_platformAPI.window.invalidRect(hWnd, rc);
+    }
 }
 
-void SConnection::SetWindowMsgTransparent(HWND hWnd, _Window *, BOOL bTransparent)
+void SConnection::SetWindowMsgTransparent(HWND, _Window *, BOOL)
 {
-    setOhosMsgTransparent(hWnd, bTransparent);
 }
 
 void SConnection::AssociateHIMC(HWND, _Window *, HIMC)
@@ -1209,9 +1175,40 @@ void SConnection::sync()
 {
 }
 
+
 BOOL SConnection::IsScreenComposited() const
 {
     return TRUE;
+}
+
+UINT SConnection::GetRawInputDeviceList(
+        _Out_writes_opt_(*puiNumDevices) PRAWINPUTDEVICELIST pRawInputDeviceList,
+        _Inout_ PUINT puiNumDevices,
+        _In_ UINT cbSize)
+{
+    if(g_platformAPI.window.getRawInputDeviceList)
+        return g_platformAPI.window.getRawInputDeviceList(pRawInputDeviceList, puiNumDevices, cbSize);
+    return 0;
+}
+
+UINT SConnection::GetRawInputDeviceInfoA(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize)
+{
+    if(g_platformAPI.window.getRawInputDeviceInfoA)
+        return g_platformAPI.window.getRawInputDeviceInfoA(hDevice, uiCommand, pData,pcbSize);
+    return 0;
+}
+
+UINT SConnection::GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize)
+{
+    if(g_platformAPI.window.getRawInputDeviceInfoW)
+        return g_platformAPI.window.getRawInputDeviceInfoW(hDevice, uiCommand, pData,pcbSize);
+    return 0;
+}
+
+BOOL SConnection::ShowSoftKeyboard(HWND hWnd, BOOL bShow){
+    if(g_platformAPI.window.showSoftKeyboard)
+        return g_platformAPI.window.showSoftKeyboard(hWnd,bShow);
+    return FALSE;
 }
 
 void SConnection::BeforeProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -1238,6 +1235,10 @@ void SConnection::AfterProcMsg(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp, LRESUL
         delete lastMsg;
     }
 }
+
+//=============================================================================
+// SConnMgr Implementation
+//=============================================================================
 
 SConnMgr *SConnMgr::instance()
 {

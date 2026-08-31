@@ -1,5 +1,5 @@
-#ifndef _ANDROID_ATOMS_H_
-#define _ANDROID_ATOMS_H_
+#ifndef _SWINX_MOBILE_ATOMS_H_
+#define _SWINX_MOBILE_ATOMS_H_
 
 #include <windows.h>
 #include <map>
@@ -22,4 +22,4 @@ private:
     ATOM m_nextAtom;
 };
 
-#endif // _ANDROID_ATOMS_H_
+#endif // _SWINX_MOBILE_ATOMS_H_

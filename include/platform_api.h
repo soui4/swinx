@@ -55,6 +55,9 @@ struct PlatformWindowAPI {
     int (*getDpi)(void);
     BOOL (*getCursorPos)(LPPOINT);
 
+    /* 查询当前鼠标按键状态，返回 MK_LBUTTON/MK_RBUTTON/MK_MBUTTON 位掩码 */
+    DWORD (*getMouseButtons)(void);
+
     UINT (*getRawInputDeviceList)(PRAWINPUTDEVICELIST pRawInputDeviceList,PUINT puiNumDevices,UINT cbSize);
     UINT (*getRawInputDeviceInfoA)(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize);
     UINT (*getRawInputDeviceInfoW)(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize);

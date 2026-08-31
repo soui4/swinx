@@ -2641,7 +2641,7 @@ GetTempPathA(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return
 #if defined(__IOS__)
     // iOS：使用 NSTemporaryDirectory() 获取应用沙盒临时目录
     return swinx_iOSTempPathA(nBufferLength, lpBuffer);
-#elif defined(__ANDROID__)
+#elif defined(__ANDROID__) || defined(__OHOS__)
     // Android：优先调用平台层（Java getCacheDir）提供的临时目录
     if (g_platformAPI.path.getTempPathA)
         return g_platformAPI.path.getTempPathA(nBufferLength, lpBuffer);

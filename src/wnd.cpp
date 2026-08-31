@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <wnd.h>
 #include <map>
 #include <mutex>
@@ -19,9 +19,6 @@
 #if defined(__linux__) && !defined(__OHOS__)
 #include "SDragdrop.h"
 #endif // defined(__linux__) && !defined(__OHOS__)
-#if defined(__OHOS__)
-#include "platform/ohos/SOhosWindow.h"
-#endif
 #include "synhandle.h"
 #include "cmnctl32/builtin_classname.h"
 #define kLogTag "wnd"
@@ -111,23 +108,6 @@ static BOOL InitWndDC(HWND hwnd, int cx, int cy)
     wndObj->hdc = new _SDC(hwnd);
     SelectObject(wndObj->hdc, wndObj->bmp);
     return TRUE;
-}
-#endif
-
-#if defined(__OHOS__)
-static void RebindWndDCBitmap(WndObj &wndObj)
-{
-    if (!wndObj || !wndObj->hdc || !wndObj->bmp)
-        return;
-    cairo_antialias_t antialias = CAIRO_ANTIALIAS_GOOD;
-    if (wndObj->hdc->cairo)
-    {
-        antialias = cairo_get_antialias(wndObj->hdc->cairo);
-        cairo_destroy(wndObj->hdc->cairo);
-    }
-    wndObj->hdc->bmp = wndObj->bmp;
-    wndObj->hdc->cairo = cairo_create((cairo_surface_t *)GetGdiObjPtr(wndObj->bmp));
-    cairo_set_antialias(wndObj->hdc->cairo, antialias);
 }
 #endif
 
@@ -628,12 +608,6 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     RECT rcWnd = wndObj->rc;
     BOOL bQuit = FALSE;
     SetCapture(hWnd);
-#if defined(__OHOS__)
-    if (htCode == HTCAPTION)
-        beginOhosMainWindowMove(hWnd);
-    else
-        beginOhosMainWindowResize(hWnd);
-#endif
     SendMessageA(hWnd, WM_ENTERSIZEMOVE, 0, 0);
     for (; !bQuit;)
     {
@@ -761,12 +735,6 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
     }
 
     SendMessageA(hWnd, WM_EXITSIZEMOVE, 0, 0);
-#if defined(__OHOS__)
-    if (htCode == HTCAPTION)
-        endOhosMainWindowMove(hWnd);
-    else
-        endOhosMainWindowResize(hWnd);
-#endif
     ReleaseCapture();
 
     //SLOG_STMI() << "HandleNcTestCode,Quit";
@@ -1025,7 +993,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         POINT pt;
         wndObj->mConnection->GetCursorPos(&pt);
         wndObj->htCode = CallWindowObjProc(wndObj, proc, hWnd, WM_NCHITTEST, 0, MAKELPARAM(pt.x, pt.y));
-        CallWindowObjProc(wndObj, proc, hWnd, WM_MOUSEMOVE, wp, lp);
+        CallWindowObjProc(wndObj, proc, hWnd, WM_MOUSEMOVE, 0, lp);
     }
 #endif
         if (bSkipMsg = (0 == HandleNcTestCode(hWnd, wndObj->htCode)))
@@ -1250,24 +1218,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     case WM_SIZE:
         wp = wndObj->state;
         SIZE sz = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
-#if defined(__OHOS__)
-        int oldCx = wndObj->rc.right - wndObj->rc.left;
-        int oldCy = wndObj->rc.bottom - wndObj->rc.top;
-        wndObj->rc.right = wndObj->rc.left + sz.cx;
-        wndObj->rc.bottom = wndObj->rc.top + sz.cy;
-        if (wndObj->bmp && sz.cx > 0 && sz.cy > 0 && (sz.cx != oldCx || sz.cy != oldCy))
-        {
-            cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(wndObj->bmp);
-            int surfCx = surface ? cairo_image_surface_get_width(surface) : 0;
-            int surfCy = surface ? cairo_image_surface_get_height(surface) : 0;
-            if (sz.cx != surfCx || sz.cy != surfCy)
-            {
-                surface = wndObj->mConnection->ResizeSurface(surface, hWnd, wndObj->visualId, sz.cx, sz.cy);
-                SetGdiObjPtr(wndObj->bmp, surface);
-                RebindWndDCBitmap(wndObj);
-            }
-        }
-#elif defined(__APPLE__)
+#if defined(__APPLE__)
         if (wndObj->bmp && (sz.cx != wndObj->rc.right - wndObj->rc.left || sz.cy != wndObj->rc.bottom - wndObj->rc.top))
         {
             wndObj->rc.right = wndObj->rc.left + sz.cx;

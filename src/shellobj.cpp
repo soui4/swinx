@@ -17,12 +17,13 @@ HRESULT SHCreateStdEnumFmtEtc(UINT cfmt, const FORMATETC afmt[], IEnumFORMATETC 
 BOOL swinx_iOSSpecialFolderPathA(HWND hwndOwner, LPSTR lpszPath, int nFolder, BOOL fCreate);
 #endif
 
+
 BOOL WINAPI SHGetSpecialFolderPathA(HWND hwndOwner, LPSTR lpszPath,int nFolder,BOOL fCreate)
 {
 #if defined(__IOS__)
 	// iOS：委托 utils.mm，基于 NSSearchPathForDirectoriesInDomains 获取沙盒目录
 	return swinx_iOSSpecialFolderPathA(hwndOwner, lpszPath, nFolder, fCreate);
-#elif defined(__ANDROID__)
+#elif defined(__ANDROID__) || defined(__OHOS__)
 	// Android：优先委托平台层（Java 层 getCacheDir/getFilesDir 等）
 	if (g_platformAPI.path.getSpecialFolderPathA)
 		return g_platformAPI.path.getSpecialFolderPathA(hwndOwner, lpszPath, nFolder, fCreate);

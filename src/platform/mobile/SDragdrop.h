@@ -1,5 +1,5 @@
-#ifndef _OHOS_SDRAGDROP_H_
-#define _OHOS_SDRAGDROP_H_
+#ifndef _SWINX_MOBILE_SDRAGDROP_H_
+#define _SWINX_MOBILE_SDRAGDROP_H_
 
 #include <windows.h>
 #include <ole2.h>
@@ -12,4 +12,4 @@ class SDragDrop {
     }
 };
 
-#endif // _OHOS_SDRAGDROP_H_
+#endif // _SWINX_MOBILE_SDRAGDROP_H_
