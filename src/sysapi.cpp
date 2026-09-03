@@ -2225,8 +2225,6 @@ void WINAPI OutputDebugStringA(LPCSTR lpOutputString)
 {
 #ifdef __ANDROID__
     __android_log_print(ANDROID_LOG_INFO, "output", "%s", lpOutputString);
-#elif defined(__APPLE__)
-    os_log(OS_LOG_DEFAULT, "%{public}s", lpOutputString);
 #else
     printf("%s", lpOutputString);
     fflush(stdout);

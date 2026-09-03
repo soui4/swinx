@@ -3493,6 +3493,13 @@ BOOL Chord(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int 
 
 static void convert_xform_to_cairo_matrix(const XFORM *xform, cairo_matrix_t &cairo_matrix)
 {
+    // Windows XFORM 定义（列向量，MSDN）:
+    //   x' = eM11*x + eM21*y + eDx
+    //   y' = eM12*x + eM22*y + eDy
+    // 即 a = eM11, b = eM12, c = eM21, d = eM22, tx = eDx, ty = eDy.
+    // cairo_matrix 语义:
+    //   x' = xx * x + xy * y + x0
+    //   y' = yx * x + yy * y + y0
     cairo_matrix.xx = xform->eM11;
     cairo_matrix.xy = xform->eM21;
     cairo_matrix.yx = xform->eM12;
@@ -3503,6 +3510,7 @@ static void convert_xform_to_cairo_matrix(const XFORM *xform, cairo_matrix_t &ca
 
 static void convert_cairo_matrix_to_xform(const cairo_matrix_t *cairo_matrix, XFORM &xform)
 {
+    // convert_xform_to_cairo_matrix 的逆映射
     xform.eM11 = cairo_matrix->xx;
     xform.eM21 = cairo_matrix->xy;
     xform.eM12 = cairo_matrix->yx;

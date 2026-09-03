@@ -2621,8 +2621,8 @@ static void DrawSingleLine(HDC hdc, LPCSTR pszBuf, int iBegin, int cchText, LPRE
         CGContextSetTextMatrix(ctx, CGAffineTransformMake(1, 0, 0, -1, drawX, drawY));
         if (line)
             CTLineDraw(line, ctx);
-        CGContextRestoreGState(ctx);
         DrawTextDecLines(hdc, ascent, descent, pszBuf + iBegin, cchText, drawX, pRect->top, x_bearing, x_advance);
+        CGContextRestoreGState(ctx);
     }
     if (line)
         CFRelease(line);
@@ -4040,22 +4040,12 @@ BOOL Chord(HDC hdc, int x1, int y1, int x2, int y2, int x3, int y3, int x4, int 
     return TRUE;
 }
 
-// Compute the "total" user transform = worldMtx * T(ptOrigin).
-// This matches the cairo implementation's update_transform, which computes
-// mtx * T(ptOrigin) (matrix multiplication, NOT simple tx/ty addition).
-// The simple addition (total.tx += ptOrigin.x) is only correct when worldMtx
-// is a pure translation or identity; with rotation/scale/skew it produces
-// wrong results, causing centering errors and matrix drift/accumulation.
+
 static inline CGAffineTransform calc_total(HDC hdc)
 {
-    if (hdc->ptOrigin.x == 0 && hdc->ptOrigin.y == 0)
-        return *hdc->worldMtx;
-    // total = worldMtx * T(ox, oy)
-    // For CGAffineTransform [a,b,c,d,tx,ty] * T(ox,oy):
-    //   result = [a, b, c, d, tx + a*ox + c*oy, ty + b*ox + d*oy]
     CGAffineTransform total = *hdc->worldMtx;
-    total.tx += hdc->worldMtx->a * (CGFloat)hdc->ptOrigin.x + hdc->worldMtx->c * (CGFloat)hdc->ptOrigin.y;
-    total.ty += hdc->worldMtx->b * (CGFloat)hdc->ptOrigin.x + hdc->worldMtx->d * (CGFloat)hdc->ptOrigin.y;
+    total.tx += (CGFloat)hdc->ptOrigin.x;
+    total.ty += (CGFloat)hdc->ptOrigin.y;
     return total;
 }
 
@@ -4068,7 +4058,7 @@ static void update_transform(HDC hdc, CGAffineTransform oldTotal)
     if(!hdc->cgCtx) return;
     CGContextRef ctx = hdc->cgCtx;
     CGAffineTransform newTotal = calc_total(hdc);
-    CGAffineTransform delta = CGAffineTransformConcat(CGAffineTransformInvert(oldTotal), newTotal);
+    CGAffineTransform delta = CGAffineTransformConcat(newTotal, CGAffineTransformInvert(oldTotal));
     CGContextConcatCTM(ctx, delta);
 }
 
