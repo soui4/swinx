@@ -8,6 +8,7 @@
 #include <xcb/xcb_aux.h>
 #include <xcb/shape.h>
 #include <xcb/xfixes.h>
+#include <xcb/randr.h>
 #include <algorithm>
 #include <sstream>
 #include <string>
@@ -23,13 +24,24 @@
 #include "keyboard.h"
 #include "SClipboard.h"
 #include "SDragdrop.h"
-#include "tostring.hpp"
+#include "gdi/cairo/FontFallback.h"
+#include "tostring.h"
 #include "clsmgr.h"
 #include "wndobj.h"
+#include <fontconfig/fontconfig.h>
 #include "log.h"
 #define kLogTag "SConnection"
 
 static SConnMgr *s_connMgr = NULL;
+
+#if defined(SOUI_ENABLE_ACC) && !defined(__ANDROID__) && !defined(__OHOS__) && !defined(OHOS)
+/* AT-SPI 无障碍桥的入口（swinx/src/platform/linux/SAtSpi.cpp）。桌面 Linux 上
+ * SAtSpi.cpp 与本文件同属 swinx 目标，直接链接即可。不编译 SAtSpi.cpp 的平台
+ * （OpenHarmony 走 mobile.cmake）同时 SOUI_ENABLE_ACC 也被强制为 OFF，本段
+ * 代码整体裁掉，不存在链接问题。 */
+extern "C" void SwinxAtSpiInit(void);
+#define SWINX_CONN_ACC_EAGER_INIT 1
+#endif
 
 static std::recursive_mutex s_cs;
 typedef std::lock_guard<std::recursive_mutex> SAutoLock;
@@ -62,12 +74,27 @@ SConnMgr *SConnMgr::instance()
 {
     if (!s_connMgr)
     {
-        SAutoLock lock(s_cs);
-        if (!s_connMgr)
+        bool bCreated = false;
         {
-            static SConnMgr inst;
-            s_connMgr = &inst;
+            SAutoLock lock(s_cs);
+            if (!s_connMgr)
+            {
+                static SConnMgr inst;
+                s_connMgr = &inst;
+                bCreated = true;
+            }
         }
+#ifdef SWINX_CONN_ACC_EAGER_INIT
+        /* ACC 桥的主动初始化必须放在 inst 完整构造之后、且不持有 s_cs：
+         * 桥内 EnsureInit 会经 SetTimer(NULL,...)（wnd.cpp）回到 instance()，
+         * 若仍在 `static SConnMgr inst` 的初始化守卫（__cxa_guard）动态范围内
+         * 递归进入，对同一 guard 的第二次 acquire 将永久阻塞——C++ 静态局部
+         * 变量的初始化守卫不可重入（与 s_cs 的 recursive_mutex 无关，leak.log
+         * 曾捕获此死锁栈）。此时 s_connMgr 已就位，重入路径直接返回；桥内
+         * 还可能触发 getConnection 建连，不应在持锁状态下进行。 */
+        if (bCreated)
+            SwinxAtSpiInit();
+#endif
     }
     return s_connMgr;
 }
@@ -76,6 +103,12 @@ SConnMgr *SConnMgr::instance()
 SConnMgr::SConnMgr()
 {
     m_hHeap = HeapCreate(0, 0, 0);
+    // kick off the background system-font enumeration for glyph fallback so
+    // the first text draws never wait for a fontconfig scan
+    SwinXFontFallbackPrefetch();
+    /* 注意：不要在构造函数里调用 SwinxAtSpiInit()——见 instance() 内的注释，
+     * ACC 桥初始化会重入 instance()，与静态局部变量的初始化守卫冲突。
+     * ACC 的主动初始化已移至 instance() 首次创建完成后执行。 */
 }
 
 SConnMgr::~SConnMgr()
@@ -89,6 +122,19 @@ SConnMgr::~SConnMgr()
     }
     m_conns.clear();
     CloseHandle(m_hHeap);
+
+    // Release cairo and fontconfig global caches so valgrind does not report
+    // their one-shot allocations as leaks at process exit.
+    // Safe now: every SConnection finished its cairo device BEFORE
+    // xcb_disconnect, which closed the xcb fonts (freeing glyph sets while
+    // the X connection was valid) and detached their privates from cached
+    // scaled fonts. Resetting cairo static data therefore no longer touches
+    // the X connection.
+    // Join the font enumeration thread and free its patterns first: its
+    // FcPattern objects must be released while fontconfig is still alive.
+    SwinXFontFallbackShutdown();
+    cairo_debug_reset_static_data();
+    FcFini();
 }
 
 void SConnMgr::removeConn(SConnection *pObj)
@@ -155,13 +201,13 @@ uint32_t SConnection::GetDoubleClickSpan()
     return ret;
 }
 
-void SConnection::xim_forward_event(xcb_xim_t *im, xcb_xic_t ic, xcb_key_press_event_t *event, void *user_data)
+void SConnection::xim_forward_event(xcb_xim_t *im __attribute__((unused)), xcb_xic_t ic __attribute__((unused)), xcb_key_press_event_t *event, void *user_data)
 {
     SConnection *conn = (SConnection *)user_data;
     conn->pushEvent((xcb_generic_event_t *)event);
 }
 
-void SConnection::xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, char *str, uint32_t length, uint32_t *keysym, size_t nKeySym, void *user_data)
+void SConnection::xim_commit_string(xcb_xim_t *im, xcb_xic_t ic __attribute__((unused)), uint32_t flag __attribute__((unused)), char *str, uint32_t length, uint32_t *keysym __attribute__((unused)), size_t nKeySym __attribute__((unused)), void *user_data)
 {
     SConnection *conn = (SConnection *)user_data;
     const char *utf8 = nullptr;
@@ -180,7 +226,7 @@ void SConnection::xim_commit_string(xcb_xim_t *im, xcb_xic_t ic, uint32_t flag, 
         // SLOG_FMTI("key commit: %.*s\n", l, utf8);
         std::wstring buf;
         towstring(utf8, length, buf);
-        for (int i = 0; i < buf.length(); i++)
+        for (int i = 0; i < (int)buf.length(); i++)
         {
             SLOG_STMI() << "commit text " << i << " is " << buf.c_str()[i];
             Msg *pMsg = new Msg;
@@ -220,7 +266,6 @@ void SConnection::xim_create_ic_callback(xcb_xim_t *im, xcb_xic_t new_ic, void *
     {
         // delay set ic focus
         xcb_xim_set_ic_focus(im, new_ic);
-        //        SLOG_STMI()<<"xcb_xim_set_ic_focus set windows "<<hWnd<<" xic="<<new_ic;
     }
     ImmReleaseContext(hWnd, hIMC);
 }
@@ -254,9 +299,9 @@ void SConnection::xim_open_callback(xcb_xim_t *im, void *user_data)
 }
 
 SConnection::SConnection(int screenNum)
-    : m_keyboard(nullptr)
-    , m_hook_table(nullptr)
+    : m_hook_table(nullptr)
     , connection(nullptr)
+    , m_keyboard(nullptr)
     , m_xim(nullptr)
 {
     connection = xcb_connect(nullptr, &screenNum);
@@ -302,8 +347,6 @@ SConnection::SConnection(int screenNum)
                 }
             }
         }
-        // if (rgba_visual)
-        //     SLOG_STMI() << "32 bit visual id=" << rgba_visual->visual_id;
     }
     readXResources();
     initializeXFixes();
@@ -390,7 +433,7 @@ SConnection::SConnection(int screenNum)
     xcb_compound_text_init();
     m_xim = xcb_xim_create(connection, screenNum, NULL);
 
-    xcb_xim_im_callback xim_callback = {0};
+    xcb_xim_im_callback xim_callback = {};
     xim_callback.forward_event = &SConnection::xim_forward_event;
     xim_callback.commit_string = &SConnection::xim_commit_string;
     xcb_xim_set_im_callback(m_xim, &xim_callback, this);
@@ -444,6 +487,22 @@ SConnection::~SConnection()
     if (m_wakeupPipe[1] >= 0)
         close(m_wakeupPipe[1]);
     m_wakeupPipe[0] = m_wakeupPipe[1] = -1;
+
+    // Finish the cairo xcb device BEFORE disconnecting the X connection:
+    // cairo_device_finish runs the xcb backend's finish which closes cached
+    // xcb fonts (render_free_glyph_set) and finishes every screen (freeing
+    // glyph/pattern/solid-picture caches). Doing this while the connection
+    // is still valid is safe; doing it after xcb_disconnect is a
+    // use-after-free. Scaled fonts cached in cairo's static font map have
+    // their xcb privates detached here, so freeing them later (via
+    // cairo_debug_reset_static_data in ~SConnMgr) no longer touches the X
+    // connection.
+    if (m_cairoDevice)
+    {
+        cairo_device_finish(m_cairoDevice);
+        cairo_device_destroy(m_cairoDevice);
+        m_cairoDevice = nullptr;
+    }
     xcb_disconnect(connection);
 
     for (auto it : m_msgQueue)
@@ -497,7 +556,6 @@ void SConnection::readXResources()
 
     std::string line;
     static const char kDpiDesc[] = "Xft.dpi:\t";
-//    SLOG_STMI()<<"settings:"<<resources.str().c_str();
     while (std::getline(resources, line, '\n'))
     {
         if (line.length() > ARRAYSIZE(kDpiDesc) - 1 && strncmp(line.c_str(), kDpiDesc, ARRAYSIZE(kDpiDesc) - 1) == 0)
@@ -586,7 +644,7 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
         GetCursorPos(&pt);
         for (auto &it : m_lstTimer)
         {
-            if (it.fireRemain <= elapse2)
+            if ((int)it.fireRemain <= elapse2)
             {
                 // fire timer event
                 Msg *pMsg = new Msg;
@@ -621,7 +679,7 @@ bool SConnection::waitMsg(UINT timeOut )
     }
     bool bTimeout = WaitForSingleObject(m_evtSync, timeOut) == WAIT_TIMEOUT;
     uint64_t ts = GetTickCount64();
-    UINT elapse = m_tsLastMsg == -1 ? 0 : (ts - m_tsLastMsg);
+    UINT elapse = m_tsLastMsg == (uint64_t)-1 ? 0 : (ts - m_tsLastMsg);
     m_tsLastMsg = ts;
     event2Msg(bTimeout, elapse, ts);
     return !m_msgQueue.empty();
@@ -773,7 +831,7 @@ int SConnection::_waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD
         int ret = WaitForMultipleObjects(nCount, handles, FALSE, timeOut);
         uint64_t ts2 = GetTickCount64();
         UINT elapse = ts2 - ts1;
-        if (ret == WAIT_TIMEOUT || ret == WAIT_OBJECT_0 + nCount - 1)
+        if (ret == (int)WAIT_TIMEOUT || ret == (int)(WAIT_OBJECT_0 + nCount - 1))
         {
             // the last handle is m_evtSync
             if (m_bQuit)
@@ -823,9 +881,9 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
         {
             break;
         }
-        if (ret == WAIT_TIMEOUT || ret == WAIT_FAILED)
+        if (ret == (int)WAIT_TIMEOUT || ret == (int)WAIT_FAILED)
             break;
-        if (ret == WAIT_OBJECT_0 + nCount)
+        if (ret == (int)(WAIT_OBJECT_0 + nCount))
             hasMsg = true;
         else
         {
@@ -892,7 +950,7 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
 {
     bool bTimeout = WaitForSingleObject(m_evtSync, 0) != WAIT_OBJECT_0;
     uint64_t ts = GetTickCount64();
-    UINT elapse = m_tsLastMsg == -1 ? 0 : (ts - m_tsLastMsg);
+    UINT elapse = m_tsLastMsg == (uint64_t)-1 ? 0 : (ts - m_tsLastMsg);
     m_tsLastMsg = ts;
     event2Msg(bTimeout, elapse, ts);
 
@@ -965,7 +1023,7 @@ BOOL SConnection::peekMsg(THIS_ LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT 
             delete msg;
             return peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
         }
-        else if(msg->message == WM_TIMER && msg->wParam == TM_DELAY){
+        else if(msg->message == WM_TIMER && msg->wParam == (WPARAM)TM_DELAY){
             // delay timer for paint
             HWND hWnd = msg->hwnd;
             m_msgQueue.erase(it);
@@ -1292,32 +1350,6 @@ enum QX11EmbedInfoFlags
     XEMBED_MAPPED = (1 << 0),
 };
 
-static MotifWmHints getMotifWmHints(SConnection *c, HWND window)
-{
-    MotifWmHints hints;
-
-    xcb_get_property_cookie_t get_cookie = xcb_get_property_unchecked(c->connection, 0, window, c->atoms._MOTIF_WM_HINTS, c->atoms._MOTIF_WM_HINTS, 0, 20);
-
-    xcb_get_property_reply_t *reply = xcb_get_property_reply(c->connection, get_cookie, NULL);
-
-    if (reply && reply->format == 32 && reply->type == c->atoms._MOTIF_WM_HINTS)
-    {
-        hints = *((MotifWmHints *)xcb_get_property_value(reply));
-    }
-    else
-    {
-        hints.flags = 0L;
-        hints.functions = MWM_FUNC_ALL;
-        hints.decorations = MWM_DECOR_ALL;
-        hints.input_mode = 0L;
-        hints.status = 0L;
-    }
-
-    free(reply);
-
-    return hints;
-}
-
 static void setMotifWmHints(SConnection *c, HWND window, const MotifWmHints &hints)
 {
     if (hints.flags != 0l)
@@ -1330,7 +1362,7 @@ static void setMotifWmHints(SConnection *c, HWND window, const MotifWmHints &hin
     }
 }
 
-static void setMotifWindowFlags(SConnection *c, HWND hWnd, DWORD dwStyle, DWORD dwExStyle)
+static void setMotifWindowFlags(SConnection *c, HWND hWnd, DWORD dwStyle, DWORD dwExStyle __attribute__((unused)))
 {
     MotifWmHints mwmhints;
     mwmhints.flags = MWM_HINTS_DECORATIONS | MWM_HINTS_FUNCTIONS;
@@ -1492,7 +1524,7 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
             return; // already visible.
         RECT rc= wndObj->rc;
         BOOL bActive = nCmdShow != SW_SHOWNOACTIVATE && nCmdShow != SW_SHOWNA;
-        xcb_icccm_wm_hints_t hints = {0};
+        xcb_icccm_wm_hints_t hints = {};
         xcb_icccm_wm_hints_set_input(&hints, bActive);
         xcb_icccm_set_wm_hints(connection, hWnd, &hints);
 
@@ -1557,26 +1589,25 @@ void SConnection::SetParent(HWND hWnd, _Window *wndObj, HWND hParent)
     xcb_flush(connection);
 }
 
-void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc,BOOL bForce)
+void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc __attribute__((unused)),BOOL bForce)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if(!wndObj)
         return;
-    if(wndObj->dwStyle & WS_VISIBLE == 0)
+    if ((wndObj->dwStyle & WS_VISIBLE) == 0)
         return;
     PaintInfo *pi = (PaintInfo*)wndObj->pPrivData;
     uint64_t now = GetTickCount64();
     if(!bForce){
         const static int kMinInterval = 16; // 60 fps
         uint64_t elapsed = now - pi->tsPaint;
-        if(pi->tsPaint != -1 && elapsed < kMinInterval){
+        if(pi->tsPaint != (uint64_t)-1 && elapsed < (uint64_t)kMinInterval){
             //avoid send too many expose event in a short time.
             if(!pi->bDelayPaint)
             {
                 pi->bDelayPaint = true;
                 SetTimer(hWnd, TM_DELAY, kMinInterval-elapsed, NULL);
             }
-            //SLOG_STMI()<<"too many expose event, delay "<<elapsed<<"ms";
             return;
         }
     }
@@ -1584,7 +1615,7 @@ void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc,BOOL bForce)
     pi->bDelayPaint = false;
     pi->tsPaint = now;
 
-    xcb_expose_event_t expose_event;
+    xcb_expose_event_t expose_event = {};
     expose_event.response_type = XCB_EXPOSE;
     expose_event.window = hWnd;
     expose_event.x = 0;
@@ -1891,7 +1922,7 @@ HDC SConnection::GetDC()
     return m_deskDC;
 }
 
-BOOL SConnection::ReleaseDC(HDC hdc)
+BOOL SConnection::ReleaseDC(HDC hdc __attribute__((unused)))
 {
     // todo:hjx
     return TRUE;
@@ -1925,7 +1956,6 @@ HWND SConnection::SetCapture(HWND hCapture)
         m_hWndCapture = hCapture;
     }
     xcb_flush(connection);
-    //SLOG_STMI() << "set capture:" << hCapture << " result="<<result;
     return ret;
 }
 
@@ -1933,7 +1963,6 @@ BOOL SConnection::ReleaseCapture()
 {
     if (!m_hWndCapture)
         return FALSE;
-    //SLOG_STMI() << "release capture, oldCapture=" << m_hWndCapture;
     m_hWndCapture = 0;
     xcb_ungrab_pointer(connection, XCB_CURRENT_TIME);
     xcb_flush(connection);
@@ -1966,7 +1995,7 @@ xcb_cursor_t SConnection::createXcbCursor(HCURSOR cursor)
     }
     xcb_cursor_t xcb_cursor = XCB_NONE;
     BITMAP bm;
-    ICONINFO info = { 0 };
+    ICONINFO info = {};
     GetIconInfo(cursor, &info);
     assert(info.fIcon == 0);
     if (!info.hbmColor)
@@ -2061,7 +2090,6 @@ HCURSOR SConnection::SetCursor(HWND hWnd,HCURSOR cursor)
         xcb_change_window_attributes(connection, hWnd, XCB_CW_CURSOR, &xcbCursor);
         m_wndCursor[hWnd] = cursor; // update window cursor    
     }
-    // SLOG_STMI()<<"SetCursor, hWnd="<<hWnd<<" cursor="<<cursor<<" xcb cursor="<<xcbCursor;
     return ret;
 }
 
@@ -2320,17 +2348,6 @@ void SConnection::KillWindowTimer(HWND hWnd)
     }
 }
 
-static int CALLBACK _FindForeground(HWND hwnd, LPARAM lParam){
-    WndObj wndObj = WndMgr::fromHwnd(hwnd);
-    if(!wndObj)
-        return 1;
-    if((wndObj->dwStyle & WS_VISIBLE) && !(wndObj->dwStyle &(WS_CHILD|WS_DISABLED)) && !(wndObj->dwExStyle&(WS_EX_TOOLWINDOW|WS_EX_NOACTIVATE))){
-        xcb_window_t *pret = (xcb_window_t*)lParam;
-        *pret = hwnd;
-    }
-    return 1;
-}
-
 HWND SConnection::GetForegroundWindow()
 {
     return GetActiveWnd();
@@ -2465,7 +2482,7 @@ uint32_t SConnection::netWmStates(HWND hWnd)
     if (reply && reply->format == 32 && reply->type == XCB_ATOM_ATOM)
     {
         const xcb_atom_t *states = static_cast<const xcb_atom_t *>(xcb_get_property_value(reply));
-        for (int i = 0; i < reply->length; i++)
+        for (int i = 0; i < (int)reply->length; i++)
         {
             if (states[i] == atoms._NET_WM_STATE_ABOVE)
                 result |= NetWmStateAbove;
@@ -2484,13 +2501,16 @@ uint32_t SConnection::netWmStates(HWND hWnd)
             if (states[i] == atoms._NET_WM_STATE_FOCUSED)
                 result |= NetWMStateFocus;
         }
-        free(reply);
     }
     else
     {
 #ifdef NET_WM_STATE_DEBUG
         SLOG_FMTI("getting net wm state (%x), empty", m_window);
 #endif
+    }
+    if (reply)
+    {
+        free(reply);
     }
 
     return result;
@@ -2611,8 +2631,6 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->message = (vk < VK_NUMLOCK || (vk >= VK_OEM_1 && vk <= VK_OEM_8)) ? WM_KEYDOWN : WM_SYSKEYDOWN;
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
-        uint32_t tst = (scanCode << 16);
-        int cn = m_keyboard->getRepeatCount();
         pMsg->lParam = (scanCode << 16) | m_keyboard->getRepeatCount();
         SLOG_FMTI("onkeydown, hfocus=%u, detail=%d,vk=%d, repeat=%d", (uint32_t)m_hFocus, e2->detail, vk, (int)m_keyboard->getRepeatCount());
         break;
@@ -2645,6 +2663,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                 MsgPaint *oldMsg = (MsgPaint *)(*it);
                 CombineRgn(oldMsg->rgn, oldMsg->rgn, hrgn, RGN_OR);
                 DeleteObject(hrgn);
+                oldMsg->lParam = (LPARAM)oldMsg->rgn;//update lParam to new region
                 return true;
             }
         }
@@ -2652,7 +2671,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsgPaint->hwnd = expose->window;
         pMsgPaint->message = WM_PAINT;
         pMsgPaint->wParam = 0;
-        pMsgPaint->lParam = (LPARAM)pMsgPaint->rgn;
+        pMsgPaint->lParam = (LPARAM)hrgn;
         pMsgPaint->time = GetTickCount64();
         pMsg = pMsgPaint;
         break;
@@ -2699,7 +2718,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                     newState = SIZE_RESTORED;
                 }
             }
-            if (newState != -1)
+            if (newState != (uint32_t)-1)
             {
                 pMsg = new Msg;
                 pMsg->hwnd = e2->window;
@@ -3145,6 +3164,7 @@ void SConnection::_readProc()
         
         // Check if we were woken up by the pipe
         bool pipeWakeup = false;
+        (void)pipeWakeup;
         if (m_wakeupPipe[0] >= 0 && nfds > 1 && (fds[nfds-1].revents & POLLIN))
         {
             // Read and discard the wakeup byte
@@ -3221,9 +3241,11 @@ void SConnection::updateWorkArea()
     //SLOG_STMI() << "updateWorkArea, rc=" << m_rcWorkArea.left << "," << m_rcWorkArea.top << "," << m_rcWorkArea.right << "," << m_rcWorkArea.bottom;
 }
 
-void SConnection::GetWorkArea(HMONITOR hMonitor, RECT *prc)
+void SConnection::GetWorkArea(HMONITOR hMonitor, RECT *prc) const
 {
-    memcpy(prc, &m_rcWorkArea, sizeof(RECT));
+    // 兼容旧接口：按显示器返回工作区（_NET_WORKAREA 与显示器矩形求交）
+    if (!GetMonitorWorkRect(hMonitor, prc))
+        memcpy(prc, &m_rcWorkArea, sizeof(RECT));
 }
 
 //--------------------------------------------------------------------------
@@ -3283,11 +3305,10 @@ BOOL SConnection::IsDropTarget(HWND hWnd)
         }
         free(reply);
     }
-    //    SLOG_STMD() << "IsDropTarget for " << hWnd << " ret=" << ret;
     return ret;
 }
 
-VOID CALLBACK OnFlashWindowTimeout(HWND hWnd, UINT, UINT_PTR, DWORD)
+VOID CALLBACK OnFlashWindowTimeout(HWND hWnd __attribute__((unused)), UINT, UINT_PTR, DWORD)
 {
 }
 
@@ -3345,7 +3366,6 @@ BOOL SConnection::OnSetWindowText(HWND hWnd, _Window *wndObj, LPCSTR lpszString)
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, hWnd, atoms.WM_NAME, atoms.UTF8_STRING, 8, wndObj->title.length(), wndObj->title.c_str());
     xcb_flush(connection);
     updateWmclass(hWnd,wndObj);
-    //SLOG_STMI()<<"OnSetWindowText, hWnd="<<hWnd<<" title="<<wndObj->title.c_str();
     return TRUE;
 }
 
@@ -3398,7 +3418,7 @@ int SConnection::OnGetWindowTextA(HWND hWnd, char *buf, int bufLen)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (wndObj)
     {
-        if (bufLen < wndObj->title.length())
+        if (bufLen < (int)wndObj->title.length())
         {
             SetLastError(ERROR_INSUFFICIENT_BUFFER);
             return 0;
@@ -3479,7 +3499,6 @@ static BOOL CALLBACK CbFindWindow(HWND hWnd, LPARAM lp)
         {
             bMatch = FALSE;
         }
-        //        SLOG_STMI()<<"OnGetWindowText for "<<hWnd<<" got "<<szTxt;
     }
     if (bMatch && param->lpClassName)
     {
@@ -3531,10 +3550,12 @@ xcb_window_t SConnection::_findAppChild(xcb_window_t deco_wnd){
         }
         return ret;
     }
-    else
+    if (child_tree_reply)
     {
-        return XCB_WINDOW_NONE;
+        // reply with no children must be freed as well.
+        free(child_tree_reply);
     }
+    return XCB_WINDOW_NONE;
 }
 
 BOOL SConnection::_onEnumWindows(HWND hParent, HWND hChildAfter, WNDENUMPROC lpEnumFunc, LPARAM lParam,BOOL bIncludeDescendants,BOOL &bContinue)
@@ -3653,18 +3674,6 @@ bool SConnection::IsDecorationWindow(xcb_window_t window)
     if(IsApplicationWindow(window))
         return false;
     return true;
-    // Check for typical decoration properties
-    // Decoration windows usually have _MOTIF_WM_HINTS but no _NET_WM_PID
-    // bool bHasMotifHints = false;
-    // xcb_get_property_cookie_t cookie = xcb_get_property(connection, 0, window, atoms._MOTIF_WM_HINTS, XCB_ATOM_CARDINAL, 0, 1);
-    // xcb_get_property_reply_t *reply = xcb_get_property_reply(connection, cookie, NULL);
-    // if (reply && reply->type != XCB_NONE)
-    // {
-    //     bHasMotifHints = true;
-    // }
-    // free(reply);
-
-    // return bHasMotifHints;
 }
 
 HWND get_parent(HWND hwnd){
@@ -3737,10 +3746,20 @@ HWND SConnection::OnGetAncestor(HWND hwnd, UINT gaFlags)
 
 cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, uint32_t visualId, int cx, int cy)
 {
-    return cairo_xcb_surface_create(connection, hWnd, xcb_aux_find_visual_by_id(screen, visualId), std::max(cx, 1), std::max(cy, 1));
+    cairo_surface_t *surf = cairo_xcb_surface_create(connection, hWnd, xcb_aux_find_visual_by_id(screen, visualId), std::max(cx, 1), std::max(cy, 1));
+    if (m_cairoDevice == nullptr && surf && cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS)
+    {
+        // Keep our own reference so we can finish the device at teardown.
+        // cairo's xcb device (cairo_xcb_connection_t) is cached globally and
+        // shared by every surface on this connection.
+        m_cairoDevice = cairo_surface_get_device(surf);
+        if (m_cairoDevice)
+            cairo_device_reference(m_cairoDevice);
+    }
+    return surf;
 }
 
-cairo_surface_t * SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd, uint32_t visualId,int cx, int cy)
+cairo_surface_t * SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd __attribute__((unused)), uint32_t visualId __attribute__((unused)),int cx, int cy)
 {
     cairo_xcb_surface_set_size(surface, std::max(cx, 1), std::max(cy, 1));
     return surface;
@@ -3871,22 +3890,24 @@ void SConnection::UpdateWindowIcon(HWND hWnd, _Window * wndObj)
     
     int SConnection::GetScreenWidth(HMONITOR hMonitor) const
     {
-        if (!hMonitor)
+        RECT rc;
+        if (hMonitor && GetMonitorRect(hMonitor, &rc))
         {
-            SLOG_STMW() << "Monitor handle is NULL, returning default width";
-            return 1920; // Default width
+            return rc.right - rc.left;
         }
-        return ((xcb_screen_t *)hMonitor)->width_in_pixels;
+        SLOG_STMW() << "Monitor handle is NULL or invalid, returning default width";
+        return 1920; // Default width
     }
 
     int SConnection::GetScreenHeight(HMONITOR hMonitor) const
     {
-        if (!hMonitor)
+        RECT rc;
+        if (hMonitor && GetMonitorRect(hMonitor, &rc))
         {
-            SLOG_STMW() << "Monitor handle is NULL, returning default height";
-            return 1080; // Default height
+            return rc.bottom - rc.top;
         }
-        return ((xcb_screen_t *)hMonitor)->height_in_pixels;
+        SLOG_STMW() << "Monitor handle is NULL or invalid, returning default height";
+        return 1080; // Default height
     }
 
     HWND SConnection::GetScreenWindow() const
@@ -3949,7 +3970,7 @@ void SConnection::UpdateWindowIcon(HWND hWnd, _Window * wndObj)
             xcb_flush(wndObj->mConnection->connection);
     }
 
-    void SConnection::OnStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWORD newStyle){
+    void SConnection::OnStyleChanged(HWND hWnd __attribute__((unused)),_Window * wndObj __attribute__((unused)),DWORD oldStyle __attribute__((unused)),DWORD newStyle __attribute__((unused))){
     }
 
     void SConnection::OnExStyleChanged(HWND hWnd,_Window * wndObj,DWORD oldStyle,DWORD newStyle){
@@ -3971,7 +3992,7 @@ void SConnection::UpdateWindowIcon(HWND hWnd, _Window * wndObj)
         }
         if ((oldStyle & WS_EX_NOACTIVATE) != (newStyle & WS_EX_NOACTIVATE))
         {
-            xcb_icccm_wm_hints_t hints = {0};
+            xcb_icccm_wm_hints_t hints = {};
             xcb_icccm_wm_hints_set_input(&hints, (newStyle & WS_EX_NOACTIVATE) == 0);
             xcb_icccm_set_wm_hints(connection, hWnd, &hints);
         }
@@ -3980,13 +4001,12 @@ void SConnection::UpdateWindowIcon(HWND hWnd, _Window * wndObj)
 
     void SConnection::SendClientMessage(HWND hWnd, uint32_t type, uint32_t *data, int len)
     {
-        xcb_client_message_event_t client_msg_event = {
-            XCB_CLIENT_MESSAGE,           //.response_type
-            32,                           //.format
-            0,                            //.sequence
-            (xcb_window_t)hWnd,           //.window
-            type //.type
-        };
+        xcb_client_message_event_t client_msg_event = {};
+        client_msg_event.response_type = XCB_CLIENT_MESSAGE;
+        client_msg_event.format = 32;
+        client_msg_event.sequence = 0;
+        client_msg_event.window = (xcb_window_t)hWnd;
+        client_msg_event.type = type;
         assert(len<=5);
         memcpy(client_msg_event.data.data32, data, len * sizeof(uint32_t));
         // Send the client message event
@@ -4038,7 +4058,7 @@ HWND SConnection::GetWndSibling(HWND hParent, HWND hWnd, BOOL bNext)
     int self_pos_in_app_list = -1;
     
     // Find hWnd in the filtered app children list
-    for (int i = 0; i < app_indices.size(); i++)
+    for (int i = 0; i < (int)app_indices.size(); i++)
     {
         if (children[app_indices[i]] == hWnd)
         {
@@ -4050,7 +4070,7 @@ HWND SConnection::GetWndSibling(HWND hParent, HWND hWnd, BOOL bNext)
     HWND hRet = 0;
     if (self_pos_in_app_list != -1)
     {
-        if (bNext && self_pos_in_app_list < app_indices.size() - 1)
+        if (bNext && self_pos_in_app_list < (int)app_indices.size() - 1)
             hRet = children[app_indices[self_pos_in_app_list + 1]];
         else if (!bNext && self_pos_in_app_list > 0)
             hRet = children[app_indices[self_pos_in_app_list - 1]];
@@ -4143,18 +4163,381 @@ BOOL SConnection::NotifyIcon(DWORD dwMessage, PNOTIFYICONDATAA lpData){
     return GetTrayIconMgr()->NotifyIcon(dwMessage, lpData);
 }
 
+//--------------------------------------------------------------------------
+// 多显示器支持（XCB RANDR）
+//
+// HMONITOR = xcb_randr_crtc_t：X11 中每个正在驱动活跃显示输出的 CRTC 对应
+// 一台显示器（含位置与尺寸）。RANDR 不可用时退化为"整 X screen 视为单台
+// 显示器"，HMONITOR = xcb_screen_t*（保持旧实现语义）。
+// 坐标约定：X 根窗口坐标系即全局桌面坐标（左上为原点、y 向下），与 Win32
+// 全局坐标一致，无需翻转。
+//
+// 显示器列表在每次查询时实时枚举（一次 RANDR 往返 + 每 CRTC 一次小查询），
+// 不做缓存，热插拔/分辨率变化后下一次查询自动生效，无需监听 RANDR 事件。
+//--------------------------------------------------------------------------
+namespace
+{
+struct MonInfo
+{
+    RECT rc;
+    HMONITOR hMon;
+    bool bPrimary;
+};
+
+// 枚举当前所有活跃显示器；成功返回 true（mons 至少一项）。
+bool enumRandrMonitors(xcb_connection_t *conn, xcb_screen_t *scr, std::vector<MonInfo> &mons)
+{
+    mons.clear();
+    xcb_randr_get_screen_resources_current_cookie_t rcookie =
+        xcb_randr_get_screen_resources_current(conn, scr->root);
+    xcb_randr_get_screen_resources_current_reply_t *rreply =
+        xcb_randr_get_screen_resources_current_reply(conn, rcookie, nullptr);
+    if (!rreply)
+        return false;
+
+    const xcb_timestamp_t cfgTs = rreply->config_timestamp;
+    xcb_randr_crtc_t *crtcs = xcb_randr_get_screen_resources_current_crtcs(rreply);
+    const int nCrtc = xcb_randr_get_screen_resources_current_crtcs_length(rreply);
+
+    // 主显示器：RANDR 1.3+ 的 primary output，映射到其 CRTC
+    xcb_randr_crtc_t primaryCrtc = XCB_NONE;
+    xcb_randr_get_output_primary_cookie_t pcookie = xcb_randr_get_output_primary(conn, scr->root);
+    xcb_randr_get_output_primary_reply_t *preply =
+        xcb_randr_get_output_primary_reply(conn, pcookie, nullptr);
+    if (preply)
+    {
+        xcb_randr_output_t primaryOutput = preply->output;
+        free(preply);
+        xcb_randr_get_output_info_cookie_t ocookie =
+            xcb_randr_get_output_info(conn, primaryOutput, cfgTs);
+        xcb_randr_get_output_info_reply_t *oreply =
+            xcb_randr_get_output_info_reply(conn, ocookie, nullptr);
+        if (oreply)
+        {
+            primaryCrtc = oreply->crtc;
+            free(oreply);
+        }
+    }
+
+    for (int i = 0; i < nCrtc; i++)
+    {
+        xcb_randr_get_crtc_info_cookie_t ccookie = xcb_randr_get_crtc_info(conn, crtcs[i], cfgTs);
+        xcb_randr_get_crtc_info_reply_t *creply =
+            xcb_randr_get_crtc_info_reply(conn, ccookie, nullptr);
+        if (!creply)
+            continue;
+        // width/height 为 0 或未接输出 = 未使用的 CRTC，跳过
+        if (creply->width > 0 && creply->height > 0 && creply->num_outputs > 0)
+        {
+            MonInfo mi;
+            mi.rc.left = creply->x;
+            mi.rc.top = creply->y;
+            mi.rc.right = creply->x + creply->width;
+            mi.rc.bottom = creply->y + creply->height;
+            mi.hMon = (HMONITOR)(uintptr_t)crtcs[i];
+            mi.bPrimary = (crtcs[i] == primaryCrtc);
+            mons.push_back(mi);
+        }
+        free(creply);
+    }
+    free(rreply);
+
+    if (!mons.empty() && primaryCrtc == XCB_NONE)
+    {
+        // 无 primary output 信息（RANDR < 1.3）：回退为包含原点 (0,0) 的显示器，
+        // 再退首项
+        bool bMarked = false;
+        for (size_t i = 0; i < mons.size() && !bMarked; i++)
+        {
+            if (mons[i].rc.left <= 0 && mons[i].rc.top <= 0 && mons[i].rc.right > 0 &&
+                mons[i].rc.bottom > 0)
+            {
+                mons[i].bPrimary = true;
+                bMarked = true;
+            }
+        }
+        if (!bMarked)
+            mons[0].bPrimary = true;
+    }
+    return !mons.empty();
+}
+
+// 点到矩形的距离平方（点在矩形内为 0）
+int64_t distSqToRect(const RECT &rc, int x, int y)
+{
+    int64_t dx = 0, dy = 0;
+    if (x < rc.left)
+        dx = (int64_t)rc.left - x;
+    else if (x >= rc.right)
+        dx = (int64_t)x - rc.right + 1;
+    if (y < rc.top)
+        dy = (int64_t)rc.top - y;
+    else if (y >= rc.bottom)
+        dy = (int64_t)y - rc.bottom + 1;
+    return dx * dx + dy * dy;
+}
+
+// 两矩形不相交时的距离平方（相交为 0）
+int64_t distSqBetweenRects(const RECT &a, const RECT &b)
+{
+    int64_t dx = 0, dy = 0;
+    if (a.right <= b.left)
+        dx = (int64_t)b.left - a.right;
+    else if (b.right <= a.left)
+        dx = (int64_t)a.left - b.right;
+    if (a.bottom <= b.top)
+        dy = (int64_t)b.top - a.bottom;
+    else if (b.bottom <= a.top)
+        dy = (int64_t)a.top - b.bottom;
+    return dx * dx + dy * dy;
+}
+
+bool intersectRects(RECT *dst, const RECT &a, const RECT &b)
+{
+    dst->left = a.left > b.left ? a.left : b.left;
+    dst->top = a.top > b.top ? a.top : b.top;
+    dst->right = a.right < b.right ? a.right : b.right;
+    dst->bottom = a.bottom < b.bottom ? a.bottom : b.bottom;
+    return dst->left < dst->right && dst->top < dst->bottom;
+}
+
+// Win32 MonitorFrom* 的标志语义公共尾部
+HMONITOR monitorHitResult(const std::vector<MonInfo> &mons, const MonInfo *pHit, DWORD dwFlags)
+{
+    if (pHit)
+        return pHit->hMon;
+    if (dwFlags == MONITOR_DEFAULTTONULL)
+        return NULL;
+    const MonInfo *pPrimary = nullptr;
+    for (size_t i = 0; i < mons.size(); i++)
+    {
+        if (mons[i].bPrimary)
+        {
+            pPrimary = &mons[i];
+            break;
+        }
+    }
+    if (dwFlags == MONITOR_DEFAULTTOPRIMARY)
+        return pPrimary ? pPrimary->hMon : (mons.empty() ? NULL : mons[0].hMon);
+    // MONITOR_DEFAULTTONEAREST：未命中时也回退主屏（点/矩形完全在桌面外）
+    return pPrimary ? pPrimary->hMon : (mons.empty() ? NULL : mons[0].hMon);
+}
+// 枚举当前所有活跃显示器；成功返回 true（mons 至少一项）。
+// RANDR 不可用时退化为"整 X screen 视为单台显示器"（仍返回 true），
+// 仅在连接/屏幕无效时返回 false。
+bool getMonitorList(xcb_connection_t *conn, xcb_screen_t *scr, std::vector<MonInfo> &mons)
+{
+    mons.clear();
+    if (!conn || !scr)
+        return false;
+    if (!enumRandrMonitors(conn, scr, mons))
+    {
+        MonInfo mi;
+        mi.rc.left = 0;
+        mi.rc.top = 0;
+        mi.rc.right = scr->width_in_pixels;
+        mi.rc.bottom = scr->height_in_pixels;
+        mi.hMon = (HMONITOR)scr;
+        mi.bPrimary = true;
+        mons.push_back(mi);
+    }
+    return true;
+}
+} // namespace
+
+int SConnection::GetMonitorCount() const
+{
+    std::vector<MonInfo> mons;
+    if (!getMonitorList(connection, screen, mons))
+        return 0;
+    return (int)mons.size();
+}
+
+HMONITOR SConnection::GetMonitor(int index) const
+{
+    std::vector<MonInfo> mons;
+    if (!getMonitorList(connection, screen, mons) || index < 0 || index >= (int)mons.size())
+        return NULL;
+    return mons[index].hMon;
+}
+
+HMONITOR SConnection::GetPrimaryMonitor() const
+{
+    std::vector<MonInfo> mons;
+    if (!getMonitorList(connection, screen, mons))
+        return NULL;
+    for (size_t i = 0; i < mons.size(); i++)
+    {
+        if (mons[i].bPrimary)
+            return mons[i].hMon;
+    }
+    return mons.empty() ? NULL : mons[0].hMon;
+}
+
+bool SConnection::IsPrimaryMonitor(HMONITOR hMonitor) const
+{
+    std::vector<MonInfo> mons;
+    if (!getMonitorList(connection, screen, mons))
+        return false;
+    for (size_t i = 0; i < mons.size(); i++)
+    {
+        if (mons[i].hMon == hMonitor)
+            return mons[i].bPrimary;
+    }
+    return false;
+}
+
+bool SConnection::GetMonitorRect(HMONITOR hMonitor, RECT *prc) const
+{
+    if (!prc || !hMonitor)
+        return false;
+    std::vector<MonInfo> mons;
+    if (!getMonitorList(connection, screen, mons))
+        return false;
+    for (size_t i = 0; i < mons.size(); i++)
+    {
+        if (mons[i].hMon == hMonitor)
+        {
+            *prc = mons[i].rc;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool SConnection::GetMonitorWorkRect(HMONITOR hMonitor, RECT *prc) const
+{
+    RECT rcMon;
+    if (!prc || !GetMonitorRect(hMonitor, &rcMon))
+        return false;
+    // 全局工作区（_NET_WORKAREA，桌面级）与显示器矩形求交，得到该显示器的
+    // 工作区；无有效工作区信息时以整屏代替
+    RECT rcInter;
+    if (m_rcWorkArea.right > m_rcWorkArea.left && m_rcWorkArea.bottom > m_rcWorkArea.top &&
+        intersectRects(&rcInter, rcMon, m_rcWorkArea))
+    {
+        *prc = rcInter;
+    }
+    else
+    {
+        *prc = rcMon;
+    }
+    return true;
+}
+
+HMONITOR SConnection::MonitorFromPoint(POINT pt, DWORD dwFlags) const
+{
+    std::vector<MonInfo> mons;
+    if (!getMonitorList(connection, screen, mons) || mons.empty())
+        return NULL;
+    const MonInfo *pHit = nullptr;
+    for (size_t i = 0; i < mons.size(); i++)
+    {
+        if (pt.x >= mons[i].rc.left && pt.x < mons[i].rc.right && pt.y >= mons[i].rc.top &&
+            pt.y < mons[i].rc.bottom)
+        {
+            pHit = &mons[i];
+            break;
+        }
+    }
+    if (!pHit && dwFlags == MONITOR_DEFAULTTONEAREST)
+    {
+        int64_t distMin = -1;
+        for (size_t i = 0; i < mons.size(); i++)
+        {
+            int64_t dist = distSqToRect(mons[i].rc, pt.x, pt.y);
+            if (distMin < 0 || dist < distMin)
+            {
+                distMin = dist;
+                pHit = &mons[i];
+            }
+        }
+    }
+    return monitorHitResult(mons, pHit, dwFlags);
+}
+
+HMONITOR SConnection::MonitorFromRect(LPCRECT lprc, DWORD dwFlags) const
+{
+    if (!lprc)
+        return GetPrimaryMonitor();
+    std::vector<MonInfo> mons;
+    if (!getMonitorList(connection, screen, mons) || mons.empty())
+        return NULL;
+    const MonInfo *pHit = nullptr;
+    int64_t areaMax = 0;
+    for (size_t i = 0; i < mons.size(); i++)
+    {
+        RECT rcInter;
+        if (intersectRects(&rcInter, *lprc, mons[i].rc))
+        {
+            int64_t area = (int64_t)(rcInter.right - rcInter.left) * (rcInter.bottom - rcInter.top);
+            if (area > areaMax)
+            {
+                areaMax = area;
+                pHit = &mons[i];
+            }
+        }
+    }
+    if (!pHit && dwFlags == MONITOR_DEFAULTTONEAREST)
+    {
+        int64_t distMin = -1;
+        for (size_t i = 0; i < mons.size(); i++)
+        {
+            int64_t dist = distSqBetweenRects(*lprc, mons[i].rc);
+            if (distMin < 0 || dist < distMin)
+            {
+                distMin = dist;
+                pHit = &mons[i];
+            }
+        }
+    }
+    return monitorHitResult(mons, pHit, dwFlags);
+}
+
+HMONITOR SConnection::MonitorFromWindow(HWND hWnd, DWORD dwFlags) const
+{
+    if (!hWnd)
+        return dwFlags == MONITOR_DEFAULTTONULL ? NULL : GetPrimaryMonitor();
+    if (!connection || !screen)
+        return dwFlags == MONITOR_DEFAULTTONULL ? NULL : GetPrimaryMonitor();
+    // 窗口矩形换算到根坐标（xcb_get_geometry 返回的是相对父窗口的坐标）
+    xcb_get_geometry_cookie_t gcookie = xcb_get_geometry(connection, (xcb_window_t)hWnd);
+    xcb_get_geometry_reply_t *greply = xcb_get_geometry_reply(connection, gcookie, nullptr);
+    if (!greply)
+        return dwFlags == MONITOR_DEFAULTTONULL ? NULL : GetPrimaryMonitor();
+    int x = greply->x;
+    int y = greply->y;
+    const int w = greply->width;
+    const int h = greply->height;
+    free(greply);
+    xcb_translate_coordinates_cookie_t tcookie =
+        xcb_translate_coordinates(connection, (xcb_window_t)hWnd, screen->root, 0, 0);
+    xcb_translate_coordinates_reply_t *treply =
+        xcb_translate_coordinates_reply(connection, tcookie, nullptr);
+    if (treply)
+    {
+        x = treply->dst_x;
+        y = treply->dst_y;
+        free(treply);
+    }
+    RECT rcWnd = {x, y, x + w, y + h};
+    return MonitorFromRect(&rcWnd, dwFlags);
+}
 
 HMONITOR
 SConnection::GetScreen(DWORD dwFlags) const
 {
-    return (HMONITOR)screen;
+    // 兼容旧接口：GetSystemMetrics 等以 GetScreen(0) 取"当前屏幕"。
+    // 多显示器下返回主显示器；dwFlags 暂不参与语义（历史调用均传 0）。
+    (void)dwFlags;
+    return GetPrimaryMonitor();
 }
 
-void SConnection::updateWindow(HWND hWnd, const RECT &rc){
+void SConnection::updateWindow(HWND hWnd, const RECT &rc __attribute__((unused))){
     SendMessageA(hWnd, WM_PAINT, 0, 0);
 }
 
-void SConnection::commitCanvas(HWND hWnd, const RECT &rc){
+void SConnection::commitCanvas(HWND hWnd __attribute__((unused)), const RECT &rc __attribute__((unused))){
     flush();
 }
 

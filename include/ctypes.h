@@ -112,22 +112,22 @@ typedef BOOLEAN *PBOOLEAN;
 typedef int BOOL;
 #else
 #ifndef OBJC_BOOL_DEFINED
-    // On Apple Objective-C / Objective-C++ translation units, clang pre-defines
-    // __OBJC_BOOL_IS_BOOL to match the rule objc/objc.h will later use (bool on
-    // iOS 64-bit / modern macOS, signed char otherwise). Mirror that decision
-    // here so our typedef stays identical to the upstream objc.h typedef,
-    // which avoids a hard typedef-redefinition error when objc.h is included
-    // later (e.g. transitively via CoreGraphics / UIKit).
-    #if defined(__OBJC_BOOL_IS_BOOL) && defined(__cplusplus)
-        #if __OBJC_BOOL_IS_BOOL
-            typedef bool BOOL;
-        #else
-            typedef signed char BOOL;
-        #endif
-    #else
-        typedef int BOOL;
-    #endif
-    #define OBJC_BOOL_DEFINED
+// On Apple Objective-C / Objective-C++ translation units, clang pre-defines
+// __OBJC_BOOL_IS_BOOL to match the rule objc/objc.h will later use (bool on
+// iOS 64-bit / modern macOS, signed char otherwise). Mirror that decision
+// here so our typedef stays identical to the upstream objc.h typedef,
+// which avoids a hard typedef-redefinition error when objc.h is included
+// later (e.g. transitively via CoreGraphics / UIKit).
+#if defined(__OBJC_BOOL_IS_BOOL) && defined(__cplusplus)
+#if __OBJC_BOOL_IS_BOOL
+typedef bool BOOL;
+#else
+typedef signed char BOOL;
+#endif
+#else
+typedef int BOOL;
+#endif
+#define OBJC_BOOL_DEFINED
 #endif // OBJC_BOOL_DEFINED
 #endif
 
@@ -140,7 +140,7 @@ typedef BOOL *PBOOL;
 typedef BOOL *LPBOOL;
 typedef BYTE *PBYTE;
 typedef BYTE *LPBYTE;
-typedef CONST BYTE * LPCBYTE;
+typedef CONST BYTE *LPCBYTE;
 typedef int *PINT;
 typedef int *LPINT;
 typedef WORD *PWORD;

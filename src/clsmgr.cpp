@@ -16,7 +16,7 @@ void ClassMgr::builtin_register()
         return;
     builtin_registed = true;
     {
-        WNDCLASSEXA clsInfo = { 0 };
+        WNDCLASSEXA clsInfo = {};
         clsInfo.cbSize = sizeof(clsInfo);
         clsInfo.lpfnWndProc = DefWindowProc;
         clsInfo.lpszClassName = CLS_WINDOWA;
@@ -24,7 +24,7 @@ void ClassMgr::builtin_register()
         RegisterClassExA(&clsInfo);
     }
     {
-        WNDCLASSEXA clsInfo = { 0 };
+        WNDCLASSEXA clsInfo = {};
         clsInfo.cbSize = sizeof(clsInfo);
         clsInfo.lpfnWndProc = DefWindowProc;
         clsInfo.lpszClassName = TOOLTIPS_CLASSA;
@@ -44,7 +44,7 @@ ClassMgr *ClassMgr::instance()
     return &_thisObj;
 }
 
-CLASS *ClassMgr::_find_class(HINSTANCE module, LPCSTR clsName)
+CLASS *ClassMgr::_find_class(HINSTANCE module __attribute__((unused)), LPCSTR clsName)
 {
     for (auto &it : class_list)
     {
@@ -128,10 +128,8 @@ static ATOM get_int_atom_value(const char *name)
 
 ATOM ClassMgr::register_class(const WNDCLASSEXA *wc)
 {
-    HINSTANCE instance;
     CLASS *_class;
     ATOM atom;
-    BOOL ret;
 
     if (wc->cbSize != sizeof(*wc) || wc->cbClsExtra < 0 || wc->cbWndExtra < 0)
     {
@@ -167,14 +165,7 @@ ATOM ClassMgr::register_class(const WNDCLASSEXA *wc)
     _class->style = wc->style;
     _class->cbWndExtra = wc->cbWndExtra;
     _class->cbClsExtra = wc->cbClsExtra;
-    _class->instance = (UINT_PTR)instance;
-
-    /* Other non-null values must be set by caller */
-    // if (wc->hIcon && !wc->hIconSm)
-    //     sm_icon = CopyImage( wc->hIcon, IMAGE_ICON,
-    //                          get_system_metrics( SM_CXSMICON ),
-    //                          get_system_metrics( SM_CYSMICON ),
-    //                          LR_COPYFROMRESOURCE );
+    _class->instance = (UINT_PTR)wc->hInstance;
 
     _class->hIcon = wc->hIcon;
     _class->hIconSm = wc->hIconSm;
@@ -204,7 +195,7 @@ ATOM ClassMgr::register_class(const WNDCLASSEXA *wc)
 /***********************************************************************
  *		UnregisterClassW (USER32.@)
  */
-BOOL ClassMgr::unregister_class(LPCSTR className, HINSTANCE instance)
+BOOL ClassMgr::unregister_class(LPCSTR className, HINSTANCE instance __attribute__((unused)))
 {
     std::unique_lock<std::recursive_mutex> lock(cls_mutex);
     for (auto it = class_list.begin(); it != class_list.end(); it++)

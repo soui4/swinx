@@ -24,7 +24,7 @@ void IpcMsg::gen_suid(suid_t *uid)
 
 void IpcMsg::suid2string(const suid_t id, char *buf)
 {
-    for (int i = 0; i < sizeof(suid_t); i++)
+    for (size_t i = 0; i < sizeof(suid_t); i++)
     {
         sprintf(buf, "%02x", id[i]);
         buf += 2;
@@ -106,7 +106,7 @@ void IpcMsg::SetResult(LRESULT res)
     SetEvent(synEvt);
 }
 //-----------------------------------------------------------
-#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__) 
+#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__)
 DragEnterData::DragEnterData(XDndDataObjectProxy *_pData)
 {
     pData = _pData;
@@ -121,4 +121,4 @@ DragEnterData::~DragEnterData()
         pData = NULL;
     }
 }
-#endif // defined(__linux__) && !defined(__OHOS__)&& !defined(__ANDROID__) 
+#endif // defined(__linux__) && !defined(__OHOS__)&& !defined(__ANDROID__)

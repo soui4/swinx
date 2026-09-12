@@ -65,7 +65,7 @@ struct _SynHandle
         if (bSignal)
         {
             char buffer[2] = { 0 };
-            ssize_t len = read(fd, buffer, 1);
+            (void)read(fd, buffer, 1);
         }
         if (bLock)
             unlock();
@@ -84,14 +84,14 @@ static void FreeSynObj(void *ptr)
     delete sysHandle;
 }
 
-static HANDLE NewSynHandle(_SynHandle *synObj)
+inline static HANDLE NewSynHandle(_SynHandle *synObj)
 {
     return new _Handle(SYN_OBJ, synObj, FreeSynObj);
 }
 
 static _SynHandle *GetSynHandle(HANDLE h)
 {
-    if(h == INVALID_HANDLE_VALUE)
+    if(!h || h == INVALID_HANDLE_VALUE)
         return nullptr;
     if (h->type != SYN_OBJ)
         return nullptr;
@@ -134,7 +134,7 @@ struct PipeSynHandle : _SynHandle
         return fd[1];
     }
 
-    bool init(LPCSTR pszName, void *initData) override
+    bool init(LPCSTR pszName __attribute__((unused)), void *initData __attribute__((unused))) override
     {
         return pipe(fd) != -1;
     }

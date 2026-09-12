@@ -150,11 +150,11 @@ int GetLocal(char *lpLCData, int cchData){
             if (CFStringGetCString(localeID, buffer, sizeof(buffer), kCFStringEncodingUTF8))
             {
                 int len = (int)strlen(buffer);
-                CFRelease(localeRef);
                 if (len < cchData)
                 {
                     strncpy(lpLCData, buffer, cchData - 1);
                     lpLCData[cchData - 1] = '\0';
+                    CFRelease(localeRef);
                     return len + 1;
                 }
             }

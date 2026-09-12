@@ -32,6 +32,7 @@
  */
 
 #include <windows.h>
+#include "bstr_internal.h"
 #ifndef FADF_CREATEVECTOR
 const USHORT FADF_CREATEVECTOR = 0x2000;
 const USHORT FADF_DATADELETED = 0x4000;
@@ -352,7 +353,7 @@ static HRESULT SAFEARRAY_DestroyData(SAFEARRAY *psa, ULONG ulStartCell)
 
             while (ulCellCount--)
             {
-                HRESULT hRet = VariantClear(lpVariant);
+                (void)VariantClear(lpVariant);
 
                 lpVariant++;
             }
@@ -384,10 +385,8 @@ static HRESULT SAFEARRAY_CopyData(SAFEARRAY *psa, SAFEARRAY *dest)
 
             while (ulCellCount--)
             {
-                HRESULT hRet;
-
                 /* destination is cleared automatically */
-                hRet = VariantCopy(dest_var, src_var);
+                (void)VariantCopy(dest_var, src_var);
                 src_var++;
                 dest_var++;
             }
@@ -402,7 +401,7 @@ static HRESULT SAFEARRAY_CopyData(SAFEARRAY *psa, SAFEARRAY *dest)
                 SysFreeString(*dest_bstr);
                 if (*src_bstr)
                 {
-                    *dest_bstr = SysAllocStringByteLen((char *)*src_bstr, SysStringByteLen(*src_bstr));
+                    *dest_bstr = SysAllocStringCopy(*src_bstr);
                     if (!*dest_bstr)
                         return E_OUTOFMEMORY;
                 }
@@ -881,7 +880,7 @@ HRESULT WINAPI SafeArrayPutElement(SAFEARRAY *psa, LONG *rgIndices, void *pvData
 
                 SysFreeString(*lpDest);
 
-                *lpDest = SysAllocStringByteLen((char *)lpBstr, SysStringByteLen(lpBstr));
+                *lpDest = SysAllocStringCopy(lpBstr);
                 if (!*lpDest)
                     hRet = E_OUTOFMEMORY;
             }
@@ -963,8 +962,8 @@ HRESULT WINAPI SafeArrayGetElement(SAFEARRAY *psa, LONG *rgIndices, void *pvData
 
                 if (*lpBstr)
                 {
-                    *lpDest = SysAllocStringByteLen((char *)*lpBstr, SysStringByteLen(*lpBstr));
-                    if (!*lpBstr)
+                    *lpDest = SysAllocStringCopy(*lpBstr);
+                    if (!*lpDest)
                         hRet = E_OUTOFMEMORY;
                 }
                 else
@@ -1649,7 +1648,7 @@ HRESULT WINAPI VectorFromBstr(BSTR bstr, SAFEARRAY **ppsa)
         return E_INVALIDARG;
 
     sab.lLbound = 0;
-    sab.cElements = SysStringByteLen(bstr);
+    sab.cElements = SysBstrRawByteCount(bstr);
 
     *ppsa = SAFEARRAY_Create(VT_UI1, 1, &sab, 0);
 

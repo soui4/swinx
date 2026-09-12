@@ -3,6 +3,7 @@
 #include "sdc.h"
 #include "platform_api.h"
 #include <gdi.h>
+#include "gdi/cairo/FontFallback.h"
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -770,6 +771,46 @@ HMONITOR SConnection::MonitorFromRect(LPCRECT, DWORD)
     return GetScreen(0);
 }
 
+// ---- 多显示器支持：移动端单屏退化实现（接口见 linux/cocoa SConnection）----
+int SConnection::GetMonitorCount() const
+{
+    return 1;
+}
+
+HMONITOR SConnection::GetMonitor(int index) const
+{
+    return index == 0 ? GetScreen(0) : NULL;
+}
+
+HMONITOR SConnection::GetPrimaryMonitor() const
+{
+    return GetScreen(0);
+}
+
+bool SConnection::GetMonitorRect(HMONITOR hMonitor, RECT *prc) const
+{
+    if (!prc)
+        return false;
+    prc->left = 0;
+    prc->top = 0;
+    prc->right = GetScreenWidth(hMonitor);
+    prc->bottom = GetScreenHeight(hMonitor);
+    return true;
+}
+
+bool SConnection::GetMonitorWorkRect(HMONITOR hMonitor, RECT *prc) const
+{
+    if (!prc)
+        return false;
+    GetWorkArea(hMonitor, prc);
+    return true;
+}
+
+bool SConnection::IsPrimaryMonitor(HMONITOR) const
+{
+    return true;
+}
+
 int SConnection::GetScreenWidth(HMONITOR) const
 {
     if(g_platformAPI.window.getScreenWidth){
@@ -1025,7 +1066,7 @@ UINT SConnection::GetCaretBlinkTime() const
     return m_caretBlinkTime;
 }
 
-void SConnection::GetWorkArea(HMONITOR, RECT *prc)
+void SConnection::GetWorkArea(HMONITOR, RECT *prc) const
 {
     if (prc)
         *prc = {0, 0, GetScreenWidth(0), GetScreenHeight(0)};
@@ -1249,14 +1290,24 @@ SConnMgr *SConnMgr::instance()
 SConnMgr::SConnMgr()
     : m_hHeap(HeapCreate(0, 0, 0))
 {
+    // kick off the background system-font enumeration for glyph fallback so
+    // the first text draws never wait for a fontconfig scan
+    SwinXFontFallbackPrefetch();
 }
 
 SConnMgr::~SConnMgr()
 {
+    // destroy every connection (and with it the cairo contexts holding
+    // references to the cached font faces / fallback chains) BEFORE the font
+    // caches are released, matching the Linux teardown order
     for (auto &item : m_conns)
         delete item.second;
     m_conns.clear();
     CloseHandle(m_hHeap);
+
+    // join the font enumeration thread and release the cached font faces,
+    // fallback chains and enumerated patterns while fontconfig is still alive
+    SwinXFontFallbackShutdown();
 }
 
 SConnection *SConnMgr::getConnection(tid_t tid, int screenNum)

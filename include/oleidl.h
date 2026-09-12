@@ -2793,6 +2793,8 @@ extern "C"
     struct IDropSource : public IUnknown
     {
       public:
+        DECLARE_CLASS_SIID(IID_IDropSource)
+
         virtual HRESULT STDMETHODCALLTYPE QueryContinueDrag(
             /* [annotation][in] */
             _In_ BOOL fEscapePressed,
@@ -2904,6 +2906,8 @@ extern "C"
     struct IDropTarget : public IUnknown
     {
       public:
+        DECLARE_CLASS_SIID(IID_IDropTarget)
+
         virtual HRESULT STDMETHODCALLTYPE DragEnter(
             /* [unique][in] */ __RPC__in_opt IDataObject *pDataObj,
             /* [in] */ DWORD grfKeyState,

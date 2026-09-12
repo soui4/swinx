@@ -5,19 +5,17 @@
 #include <tchar.h>
 
 // 应用层 iOS 入口函数原型（与 Win32 WinMain 完全一致）
-typedef int (*funIosMain)(HINSTANCE hInstance,
-                          HINSTANCE hPrevInstance,
-                          LPTSTR    lpstrCmdLine,
-                          int       nCmdShow);
+typedef int (*funIosMain)(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpstrCmdLine, int nCmdShow);
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-int swinx_ios_entry(int argc, char *argv[], funIosMain iosMain);
+    int swinx_ios_entry(int argc, char *argv[], funIosMain iosMain);
 
 #ifdef __cplusplus
-}  // extern "C"
+} // extern "C"
 #endif
 
-#endif  // __SWINX_ENTRY_H__
+#endif // __SWINX_ENTRY_H__

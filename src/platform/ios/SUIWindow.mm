@@ -11,7 +11,7 @@
 #include "SUIDataObjectProxy.h"
 #include "wndobj.h"
 #include "keyboard.h"
-#include "tostring.hpp"
+#include "tostring.h"
 #include <uimsg.h>
 #include <cursorid.h>
 #include "log.h"
@@ -870,7 +870,8 @@ static UIScreen *getUiScreen(HWND hWnd){
         if(hWnd){
             SUIView *view = getUiView(hWnd);
             if(view && view.window){
-                return view.window.screen;
+                UIScreen * ret = view.window.screen;
+                if(ret) return ret;
             }
         }
         return [UIScreen mainScreen];
@@ -889,8 +890,26 @@ HWND createUiWindow(HWND hParent, DWORD dwStyle,DWORD dwExStyle, BOOL bAutoDblCl
     }
 }
 
+static BOOL createUIWindow(SUIView *view){
+     @autoreleasepool {
+    CGFloat sc = [UIScreen mainScreen].scale;
+    CGRect winRect = [UIScreen mainScreen].bounds;
+    winRect = view->m_rcPos;
+    winRect.size.width/=sc;
+    winRect.size.height/=sc;
+    winRect.origin.x/=sc;
+    winRect.origin.y/=sc;
+    UIWindow *window = [[UIWindow alloc] initWithFrame:winRect];
+    window.backgroundColor = [UIColor whiteColor];
+    window.windowLevel = UIWindowLevelNormal;
+    [window addSubview:view];
+    view.frame = window.bounds;
+    view.hostWindow = window;
+    window.hidden = YES;  // 先隐藏，等 makeKeyAndVisible 时显示
+    }
+}
+
 BOOL showUiWindow(HWND hWnd,int nCmdShow){
-    //SLOG_STMI()<<"showUiWindow enter, hWnd="<<hWnd<<" nCmdShow="<<nCmdShow;
     @autoreleasepool {
         SUIView *view = getUiView(hWnd);
         if(!view)
@@ -906,24 +925,10 @@ BOOL showUiWindow(HWND hWnd,int nCmdShow){
         }
         if(bRoot){
             if(view.hostWindow == nil){
-                CGFloat sc = [UIScreen mainScreen].scale;
-                CGRect winRect = [UIScreen mainScreen].bounds;
-                winRect = view->m_rcPos;
-                winRect.size.width/=sc;
-                winRect.size.height/=sc;
-                winRect.origin.x/=sc;
-                winRect.origin.y/=sc;
-                UIWindow *window = [[UIWindow alloc] initWithFrame:winRect];
-                window.backgroundColor = [UIColor whiteColor];
-                window.windowLevel = UIWindowLevelNormal;
-                [window addSubview:view];
-                view.frame = window.bounds;
-                view.hostWindow = window;
-                window.hidden = YES;  // 先隐藏，等 makeKeyAndVisible 时显示
+                createUIWindow(view);
             }else{
                 view.frame = view.hostWindow.bounds;
             }
-        //SLOG_STMI()<<"showUiWindow makeKeyAndVisible, hWnd="<<hWnd;
             [view.hostWindow makeKeyAndVisible];
             [view onActive:TRUE];
             [view setNeedsDisplay];
@@ -1013,17 +1018,32 @@ HWND getUiWindow(HWND hParent, int code)
         switch (code)
         {
         case GW_CHILDFIRST:
-            if(parent.subviews.count > 0){
-                SUIView *first = parent.subviews.firstObject;
-                if([first isKindOfClass:[SUIView class]])
-                    hRet = first->m_hWnd;
+            {
+                NSArray *children = parent.subviews;
+                // Walk forward over children, returning the first SUIView and
+                // skipping any UIView added by business code via native UIKit APIs
+                // so they are never mistaken for SOUI windows.
+                for(NSUInteger i = 0; i < [children count]; i++) {
+                    UIView *child = [children objectAtIndex:i];
+                    if([child isKindOfClass:[SUIView class]]) {
+                        hRet = ((SUIView*)child)->m_hWnd;
+                        break;
+                    }
+                }
             }
             break;
         case GW_CHILDLAST:
-            if(parent.subviews.count > 0){
-                SUIView *last = parent.subviews.lastObject;
-                if([last isKindOfClass:[SUIView class]])
-                    hRet = last->m_hWnd;
+            {
+                NSArray *children = parent.subviews;
+                // Walk backward over children, returning the last SUIView and
+                // skipping any non-SUIView (same reason as GW_CHILDFIRST).
+                for(NSInteger i = (NSInteger)[children count] - 1; i >= 0; i--) {
+                    UIView *child = [children objectAtIndex:i];
+                    if([child isKindOfClass:[SUIView class]]) {
+                        hRet = ((SUIView*)child)->m_hWnd;
+                        break;
+                    }
+                }
             }
             break;
         case GW_HWNDFIRST:
@@ -1038,10 +1058,15 @@ HWND getUiWindow(HWND hParent, int code)
                 if(superview){
                     NSArray *siblings = superview.subviews;
                     NSUInteger index = [siblings indexOfObject:parent];
-                    if(index > 0){
-                        UIView *prev = siblings[index-1];
-                        if([prev isKindOfClass:[SUIView class]])
-                            hRet = ((SUIView*)prev)->m_hWnd;
+                    // Walk backward over siblings, skipping any UIView that is not
+                    // a SUIView (e.g. views added by business code via native UIKit
+                    // APIs) so they are never mistaken for SOUI windows.
+                    for(NSInteger i = (NSInteger)index - 1; i >= 0; i--) {
+                        UIView *sib = [siblings objectAtIndex:i];
+                        if([sib isKindOfClass:[SUIView class]]) {
+                            hRet = ((SUIView*)sib)->m_hWnd;
+                            break;
+                        }
                     }
                 }
             }
@@ -1052,10 +1077,14 @@ HWND getUiWindow(HWND hParent, int code)
                 if(superview){
                     NSArray *siblings = superview.subviews;
                     NSUInteger index = [siblings indexOfObject:parent];
-                    if(index < siblings.count-1){
-                        UIView *next = siblings[index+1];
-                        if([next isKindOfClass:[SUIView class]])
-                            hRet = ((SUIView*)next)->m_hWnd;
+                    // Walk forward over siblings, skipping any UIView that is not
+                    // a SUIView (same reason as GW_HWNDPREV).
+                    for(NSUInteger i = index + 1; i < [siblings count]; i++) {
+                        UIView *sib = [siblings objectAtIndex:i];
+                        if([sib isKindOfClass:[SUIView class]]) {
+                            hRet = ((SUIView*)sib)->m_hWnd;
+                            break;
+                        }
                     }
                 }
             }
@@ -1573,4 +1602,20 @@ int getUiSoftKeyboardHeight(void){
         std::unique_lock<std::mutex> lk(s_kbLock);
         return s_kbHeightPhys;
     }
+}
+
+// ---------------------------------------------------------------------------
+//  getAppleHostWindow（iOS 版）：返回给定 SOUI HWND 所属的 UIWindow*（桥接为 void*）
+// ---------------------------------------------------------------------------
+extern "C" void* getAppleHostWindow(HWND hWnd){
+@autoreleasepool {
+	if(!IsWindow(hWnd))
+		return nullptr;
+    if(GetWindowLongPtr(hWnd,GWL_STYLE) & WS_CHILD)
+		hWnd = GetAncestor(hWnd,GA_ROOT);
+    SUIView *root = getUiView(hWnd);
+    if(!root.hostWindow)
+        return nullptr;
+    return (__bridge void*)root.hostWindow;
+}
 }

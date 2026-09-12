@@ -1,7 +1,7 @@
 #include "SNsDataObjectProxy.h"
 #include <shlobj.h>
 #include <log.h>
-#include <tostring.hpp>
+#include <tostring.h>
 #include "atoms.h"
 #define kLogTag "SNsDataObjectProxy"
 

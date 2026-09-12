@@ -3,9 +3,11 @@
 
 struct PlatformAPI g_platformAPI = {
     .version = PLATFORM_API_VERSION,
-    .clipboard = { 0},
-    .window = {0},
-    .ime = {0},
+    .clipboard = {},
+    .window = {},
+    .ime = {},
+    .audio = {},
+    .path = {},
 };
 
 BOOL PlatformAPI_Init(struct PlatformAPI *api)

@@ -23,7 +23,7 @@
 #include <log.h>
 #include <stdio.h>
 #include "os_state.h"
-#include "tostring.hpp"
+#include "tostring.h"
 #include "STrayIconMgr.h"
 #include "keyboard.h"
 #include "atoms.h"
@@ -320,7 +320,6 @@ DWORD SConnection::GetQueueStatus(UINT flags) {
 }
 
 bool SConnection::waitMsg(UINT timeOut) {
-    //SLOG_STMI()<<"waitMsg enter, timeOut="<<timeOut;
     if (!m_bBlockTimer) {
         std::unique_lock<CountMutex> lock(m_mutex);
         for (auto &it : m_lstTimer) {
@@ -510,13 +509,12 @@ void SConnection::updateMsgQueue(DWORD dwTimeout) {
         else
             tf = dwTimeout / 1000.0;
         SInt32 rlResult = CFRunLoopRunInMode(kCFRunLoopDefaultMode, tf, true);
-        //SLOG_STMI()<<"updateMsgQueue CFRunLoopRunInMode, dwTimeout="<<dwTimeout<<" result="<rlResult;
     }
 }
 
 bool SConnection::peekMsg(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) {
     updateMsgQueue(0);
-    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    std::unique_lock<CountMutex> lock(m_mutex);
     {
         auto it = m_lstCallbackTask.begin();
         while (it != m_lstCallbackTask.end()) {
@@ -595,7 +593,7 @@ bool SConnection::getMsg(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFi
 }
 
 void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp) {
-    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    std::unique_lock<CountMutex> lock(m_mutex);
     Msg *pMsg = new Msg;
     pMsg->hwnd = hWnd;
     pMsg->message = message;
@@ -606,7 +604,7 @@ void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp) {
 }
 
 void SConnection::postMsg2(bool bWideChar, HWND hWnd, UINT message, WPARAM wp, LPARAM lp, MsgReply *reply) {
-    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    std::unique_lock<CountMutex> lock(m_mutex);
     if (!bWideChar) {
         Msg *pMsg = new Msg(reply);
         pMsg->hwnd = hWnd;
@@ -628,7 +626,7 @@ void SConnection::postMsg2(bool bWideChar, HWND hWnd, UINT message, WPARAM wp, L
 
 UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC proc) {
     UINT ret = 0;
-    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    std::unique_lock<CountMutex> lock(m_mutex);
     if (hWnd) {
         for (auto &it : m_lstTimer) {
             if (it.hWnd != hWnd) continue;
@@ -1047,6 +1045,40 @@ int SConnection::GetScreenWidth(HMONITOR hMonitor) const {
     }
 }
 
+// ---- 多显示器支持：iOS 单屏退化实现（接口见 linux/cocoa SConnection）----
+int SConnection::GetMonitorCount() const {
+    return 1;
+}
+
+HMONITOR SConnection::GetMonitor(int index) const {
+    return index == 0 ? GetScreen(0) : NULL;
+}
+
+HMONITOR SConnection::GetPrimaryMonitor() const {
+    return GetScreen(0);
+}
+
+bool SConnection::GetMonitorRect(HMONITOR hMonitor, RECT *prc) const {
+    if (!prc)
+        return false;
+    prc->left = 0;
+    prc->top = 0;
+    prc->right = GetScreenWidth(hMonitor);
+    prc->bottom = GetScreenHeight(hMonitor);
+    return true;
+}
+
+bool SConnection::GetMonitorWorkRect(HMONITOR hMonitor, RECT *prc) const {
+    if (!prc)
+        return false;
+    GetWorkArea(hMonitor, prc);
+    return true;
+}
+
+bool SConnection::IsPrimaryMonitor(HMONITOR) const {
+    return true;
+}
+
 int SConnection::GetScreenHeight(HMONITOR hMonitor) const {
     @autoreleasepool {
         UIScreen *screen = (__bridge UIScreen *)hMonitor;
@@ -1229,7 +1261,7 @@ UINT SConnection::GetCaretBlinkTime() const {
     return m_caretBlinkTime;
 }
 
-void SConnection::GetWorkArea(HMONITOR hMonitor, RECT *prc) {
+void SConnection::GetWorkArea(HMONITOR hMonitor, RECT *prc) const{
     @autoreleasepool {
         UIScreen *screen = (__bridge UIScreen *)hMonitor;
         if (!screen) screen = [UIScreen mainScreen];
@@ -1434,7 +1466,6 @@ void SConnection::onTerminate() {
 }
 
 void SConnection::OnNsEvent(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
-    //SLOG_STMI()<<"OnNsEvent enter, hWnd="<<hWnd<<" message=0x"<<std::hex<<message<<" wParam="<<wParam<<" lParam="<<lParam<<std::dec;
     // 追踪鼠标按键状态（iOS 无 NSEvent pressedMouseButtons）
     switch (message) {
     case WM_LBUTTONDOWN:
@@ -1575,7 +1606,7 @@ UINT SConnection::GetRawInputDeviceInfoA(HRAWINPUT hDevice, UINT uiCommand, LPVO
     std::string device_path;
     DWORD device_type = RIM_TYPEMOUSE;
     {
-        std::lock_guard<std::recursive_mutex> lock(s_rawInputMutex);
+        std::unique_lock<std::recursive_mutex> lock(s_rawInputMutex);
         auto it = s_rawInputDevices.find(deviceId);
         if (it == s_rawInputDevices.end()) {
             SetLastError(ERROR_INVALID_PARAMETER);
@@ -1643,7 +1674,7 @@ UINT SConnection::GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVO
     int deviceId = (int)(intptr_t)hDevice;
     std::string device_path;
     {
-        std::lock_guard<std::recursive_mutex> lock(s_rawInputMutex);
+        std::unique_lock<std::recursive_mutex> lock(s_rawInputMutex);
         auto it = s_rawInputDevices.find(deviceId);
         if (it == s_rawInputDevices.end()) {
             SetLastError(ERROR_INVALID_PARAMETER);

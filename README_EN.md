@@ -1,22 +1,92 @@
-<!-- README_EN.md -->
 # SwinX
 
-## Introduction
-SwinX is a versatile library akin to Wine, designed to facilitate the seamless transition of Windows platform applications onto Linux and macOS environments. Initially developed to support cross-platform functionality for [SOUI5](https://github.com/soui4/soui), SwinX can also be employed by other projects seeking cross-platform compatibility.
+[中文](README_CN.md) | [English](README_EN.md)
 
-## Functionality
-By implementing essential Windows client APIs on the Linux and macOS platforms, SwinX enables Windows client code to operate on Linux and macOS as effortlessly as on Windows. Presently, SOUI5 can leverage SwinX to run nearly all its features on Linux and macOS with minimal code alterations.
+SwinX is a Windows application compatibility layer for Linux and macOS, built with a design philosophy similar to Wine. By re-implementing the core system APIs that Windows client development depends on, SwinX allows applications written against the Win32 API to be linked against SwinX and run on Linux and macOS with minimal code changes.
 
-## Features
-This project provides Linux implementations of crucial Windows elements, including HWND functionalities. Notably, only scroll bars are currently supported in the non-client area, with features such as title bars, menus, and MDI window types not yet available.
+## Background
 
-## Join Us
-SwinX is an evolving project, and we welcome interested developers to contribute and collaborate. Join our QQ groups: 229313785, 385438344.
+SwinX was originally developed to bring cross-platform support to [SOUI5](https://github.com/soui4/soui). Today, all SOUI5 features run on Linux and macOS through SwinX. Any project that relies on Win32 client APIs can likewise adopt SwinX to gain cross-platform capability.
 
-## Licensing
-While this project is open-source, it is not free. Contributors who actively participate and provide quality contributions will receive a lifetime free license for SwinX (refer to Contributors.md). Significant contributors may also receive a share of project profits based on predetermined criteria (author's discretion).
+## Key Capabilities
 
-# Version
-## 1.1 - July 7, 2025
-## 1.0 - March 11, 2025
-## 0.1 - January 12, 2025
+- **Win32 API compatibility layer**: Implements the client-facing APIs of `user32`, `gdi32`, `kernel32`, `ole32`, `shell32`, and more. Once linked, applications compile and run on Linux/macOS just as they would on Windows.
+- **Windowing system**: A complete HWND model, including window creation, message loops, message dispatching, IME support, clipboard, OLE drag & drop, and multi-monitor management.
+- **GDI drawing support**: Implements common GDI objects and drawing interfaces, with rendering handled through platform backends.
+- **Common controls infrastructure**: A built-in common controls layer (`cmnctl32`) covering dependencies such as `richedit`.
+- **COM / OLE infrastructure**: Implements the COM object model, automation (Variant, SafeArray), interface marshaling, and related fundamentals.
+- **Multi-platform backends**: On Linux, windowing and input are implemented on XCB/X11, combined with graphics and text stacks such as cairo, freetype, and fontconfig. On Apple platforms (macOS / iOS), SwinX uses the native NSView / UIView and Core Graphics instead, with no dependency on X11 or cairo. Platform-specific code is consolidated in a dedicated platform abstraction layer.
+- **Extensible platform APIs**: The platform abstraction interfaces defined in `platform_api.h` allow external implementations to supply their own platform APIs for SwinX. SOUI is built on top of this API set to support Android and HarmonyOS.
+
+## Repository Layout
+
+```
+swinx/
+├── include/        # Exposed Windows-style headers (windows.h, winuser.h, etc.)
+├── src/            # Core API implementations
+│   ├── gdi/        # GDI implementation
+│   ├── cmnctl32/   # Common controls
+│   └── platform/   # Platform abstraction layer (Linux: XCB backend; Apple: NSView / UIView backend)
+├── thirdparty/     # Bundled third-party dependencies (cairo, freetype, fontconfig, dbus, xkbcommon, etc., used by the Linux backend)
+├── linux.cmake / macos.cmake / ios.cmake   # Per-platform build configs
+└── build.md        # Detailed build & debugging guide (Chinese)
+```
+
+## Quick Start
+
+### Prerequisites
+
+- CMake ≥ 3.x, Git
+- Linux (Ubuntu / Debian):
+
+  ```bash
+  sudo apt install build-essential libxcb1-dev libxcb-render0-dev \
+      libgl1-mesa-dev freeglut3-dev uuid-dev pkg-config libasound2-dev
+  ```
+
+- Linux (CentOS / Fedora):
+
+  ```bash
+  sudo yum install build-essential libxcb-devel xcb-util-renderutil-devel \
+      mesa-libGL-devel libuuid-devel
+  ```
+
+- macOS:
+
+  ```bash
+  brew install ninja pkgconf glfw3 glew
+  ```
+
+### Building
+
+```bash
+mkdir build && cd build
+cmake ..
+make
+```
+
+For additional build details (UOS / deepin integration, VS remote debugging, Valgrind memory analysis), see [build.md](build.md) (Chinese).
+
+## Known Limitations
+
+- The non-client area currently supports scroll bars only; system-drawn title bars and menus are not yet supported.
+- MDI (multiple-document interface) windows are not yet supported.
+
+## Contributing
+
+The project is under active development, and contributions are welcome.
+
+- QQ groups: 229313785, 385438344
+- See [Contributors.md](Contributors.md): contributors with quality submissions automatically receive a lifetime free license for SwinX, and major contributors may share project revenue (at the author's discretion).
+
+## License
+
+This project is open source but **not free of charge**: the source is open for learning and evaluation, while commercial use requires a license. See [license.txt](license_EN.txt) for details.
+
+## Version History
+
+| Version | Date |
+| ------- | ---- |
+| 1.1     | 2025-07-07 |
+| 1.0     | 2025-03-11 |
+| 0.1     | 2025-01-12 |

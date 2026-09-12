@@ -9,8 +9,10 @@
 #include <resapi.h>
 #include <memory>
 #include <mutex>
+#include <string>
+#include <cstring>
 #include "coffparser.h"
-#include "tostring.hpp"
+#include "tostring.h"
 #include "log.h"
 #define kLogTag "winres"
 
@@ -418,9 +420,25 @@ int WINAPI LoadStringA(HINSTANCE hInstance, UINT uID, LPSTR lpBuffer, int cchBuf
 {
     WCHAR wbuf[1024];
     int len = LoadStringW(hInstance, uID, wbuf, 1024);
-    if (len > 0)
+    if (len > 0 && cchBufferMax > 0)
     {
-        return WideCharToMultiByte(CP_ACP, 0, wbuf, len + 1, lpBuffer, cchBufferMax, NULL, NULL) - 1;
+        /* Convert the string alone (explicit length). WideCharToMultiByte is
+           all-or-nothing, so measure first and truncate-copy when the UTF-8
+           form does not fit cchBufferMax — Win32 LoadStringA truncates and
+           null-terminates rather than failing. */
+        int need = WideCharToMultiByte(CP_ACP, 0, wbuf, len, NULL, 0, NULL, NULL);
+        if (need > 0)
+        {
+            std::string str;
+            str.resize(need);
+            if (WideCharToMultiByte(CP_ACP, 0, wbuf, len, (char *)str.data(), need, NULL, NULL) > 0)
+            {
+                int copy = need < cchBufferMax ? need : cchBufferMax - 1;
+                memcpy(lpBuffer, str.data(), copy);
+                lpBuffer[copy] = '\0';
+                return copy;
+            }
+        }
     }
     if (cchBufferMax > 0)
         lpBuffer[0] = '\0';

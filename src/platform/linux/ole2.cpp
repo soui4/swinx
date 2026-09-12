@@ -12,7 +12,7 @@ HRESULT CoInitialize(LPVOID pvReserved)
     return CoInitializeEx(pvReserved, 0);
 }
 
-HRESULT CoInitializeEx(void *pvReserved, DWORD dwCoInit)
+HRESULT CoInitializeEx(void *pvReserved __attribute__((unused)), DWORD dwCoInit __attribute__((unused)))
 {
     return S_OK;
 }

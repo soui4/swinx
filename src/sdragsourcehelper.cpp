@@ -22,7 +22,8 @@ SDragSourceHelper::~SDragSourceHelper()
 HRESULT SDragSourceHelper::GetDragImage(IDataObject *pDataObject, SHDRAGIMAGE *pshdi)
 {
     FORMATETC fmt = { CF_DRAGSOURCE_INFO, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
-    STGMEDIUM medium = { TYMED_HGLOBAL };
+    STGMEDIUM medium = {};
+    medium.tymed = TYMED_HGLOBAL;
     HRESULT hr = pDataObject->GetData(&fmt, &medium);
     if (hr != S_OK)
         return hr;
@@ -32,7 +33,8 @@ HRESULT SDragSourceHelper::GetDragImage(IDataObject *pDataObject, SHDRAGIMAGE *p
     pshdi->crColorKey = pInfo->crColorKey;
     GlobalUnlock(medium.hGlobal);
     FORMATETC fmt2 = { CF_DRAGSOURCE_IMAGE, NULL, DVASPECT_CONTENT, -1, TYMED_GDI };
-    STGMEDIUM medium2 = { TYMED_GDI };
+    STGMEDIUM medium2 = {};
+    medium2.tymed = TYMED_GDI;
     hr = pDataObject->GetData(&fmt2, &medium2);
     if (hr != S_OK)
         return hr;
@@ -55,7 +57,8 @@ HRESULT SDragSourceHelper::InitializeFromBitmap(LPSHDRAGIMAGE pshdi, IDataObject
     pInfo->crColorKey = pshdi->crColorKey;
     GlobalUnlock(hData);
     FORMATETC fmt = { CF_DRAGSOURCE_INFO, NULL, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
-    STGMEDIUM medium = { TYMED_HGLOBAL };
+    STGMEDIUM medium = {};
+    medium.tymed = TYMED_HGLOBAL;
     medium.hGlobal = hData;
     HRESULT hr = pDataObject->SetData(&fmt, &medium, TRUE);
     if (hr != S_OK)
@@ -64,7 +67,8 @@ HRESULT SDragSourceHelper::InitializeFromBitmap(LPSHDRAGIMAGE pshdi, IDataObject
         return hr;
     }
     FORMATETC fmt2 = { CF_DRAGSOURCE_IMAGE, NULL, DVASPECT_CONTENT, -1, TYMED_GDI };
-    STGMEDIUM medium2 = { TYMED_GDI };
+    STGMEDIUM medium2 = {};
+    medium2.tymed = TYMED_GDI;
     medium2.hBitmap = RefGdiObj(pshdi->hbmpDragImage);
 
     hr = pDataObject->SetData(&fmt2, &medium2, TRUE);
@@ -76,7 +80,7 @@ HRESULT SDragSourceHelper::InitializeFromBitmap(LPSHDRAGIMAGE pshdi, IDataObject
     return S_OK;
 }
 
-HRESULT SDragSourceHelper::InitializeFromWindow(HWND hwnd, POINT *ppt, IDataObject *pDataObject)
+HRESULT SDragSourceHelper::InitializeFromWindow(HWND hwnd __attribute__((unused)), POINT *ppt __attribute__((unused)), IDataObject *pDataObject __attribute__((unused)))
 {
     return E_NOTIMPL;
 }

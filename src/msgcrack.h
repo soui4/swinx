@@ -45,12 +45,12 @@
     BOOL theClass::_ProcessWindowMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult, DWORD dwMsgMapID) \
     {                                                                                                                            \
         BOOL bHandled = TRUE;                                                                                                    \
-        hWnd;                                                                                                                    \
-        uMsg;                                                                                                                    \
-        wParam;                                                                                                                  \
-        lParam;                                                                                                                  \
-        lResult;                                                                                                                 \
-        bHandled;                                                                                                                \
+        (void)hWnd;                                                                                                                    \
+        (void)uMsg;                                                                                                                    \
+        (void)wParam;                                                                                                                  \
+        (void)lParam;                                                                                                                  \
+        (void)lResult;                                                                                                                 \
+        (void)bHandled;                                                                                                                \
         switch (dwMsgMapID)                                                                                                      \
         {                                                                                                                        \
         case 0:
@@ -77,12 +77,12 @@
     BOOL _ProcessWindowMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult, DWORD dwMsgMapID)    \
     {                                                                                                                     \
         BOOL bHandled = TRUE;                                                                                             \
-        hWnd;                                                                                                             \
-        uMsg;                                                                                                             \
-        wParam;                                                                                                           \
-        lParam;                                                                                                           \
-        lResult;                                                                                                          \
-        bHandled;                                                                                                         \
+        (void)hWnd;                                                                                                             \
+        (void)uMsg;                                                                                                             \
+        (void)wParam;                                                                                                           \
+        (void)lParam;                                                                                                           \
+        (void)lResult;                                                                                                          \
+        (void)bHandled;                                                                                                         \
         switch (dwMsgMapID)                                                                                               \
         {                                                                                                                 \
         case 0:

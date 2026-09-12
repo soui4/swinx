@@ -1,5 +1,5 @@
 #include <shellapi.h>
-#include "tostring.hpp"
+#include "tostring.h"
 #include <mutex>
 #include <list>
 #include <map>
@@ -37,9 +37,9 @@ class CDropFileTarget : public SUnkImpl<IDropTarget> {
     // IDropTarget
 
     virtual HRESULT STDMETHODCALLTYPE DragEnter(
-        /* [unique][in] */ IDataObject *pDataObj,
-        /* [in] */ DWORD grfKeyState,
-        /* [in] */ POINTL pt,
+        /* [unique][in] */ IDataObject *pDataObj __attribute__((unused)),
+        /* [in] */ DWORD grfKeyState __attribute__((unused)),
+        /* [in] */ POINTL pt __attribute__((unused)),
         /* [out][in] */ DWORD *pdwEffect) override
     {
         *pdwEffect = DROPEFFECT_COPY;
@@ -47,8 +47,8 @@ class CDropFileTarget : public SUnkImpl<IDropTarget> {
     }
 
     virtual HRESULT STDMETHODCALLTYPE DragOver(
-        /* [in] */ DWORD grfKeyState,
-        /* [in] */ POINTL pt,
+        /* [in] */ DWORD grfKeyState __attribute__((unused)),
+        /* [in] */ POINTL pt __attribute__((unused)),
         /* [out][in] */ DWORD *pdwEffect) override
     {
         *pdwEffect = DROPEFFECT_COPY;
@@ -62,8 +62,8 @@ class CDropFileTarget : public SUnkImpl<IDropTarget> {
 
     virtual HRESULT STDMETHODCALLTYPE Drop(
         /* [unique][in] */ IDataObject *pDataObj,
-        /* [in] */ DWORD grfKeyState,
-        /* [in] */ POINTL pt,
+        /* [in] */ DWORD grfKeyState __attribute__((unused)),
+        /* [in] */ POINTL pt __attribute__((unused)),
         /* [out][in] */ DWORD *pdwEffect) override
     {
         FORMATETC format = { CF_HDROP, 0, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
@@ -272,7 +272,7 @@ static UINT DragQueryFileSize(HDROP hDrop)
 
 UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(cch) LPSTR lpszFile, _In_ UINT cch)
 {
-    if (iFile == -1)
+    if ((int)iFile == -1)
     {
         return DragQueryFileSize(hDrop);
     }
@@ -340,7 +340,7 @@ UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(c
 
 UINT WINAPI DragQueryFileW(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(cch) LPWSTR lpszFile, _In_ UINT cch)
 {
-    if (iFile == -1)
+    if ((int)iFile == -1)
     {
         return DragQueryFileSize(hDrop);
     }
@@ -408,7 +408,7 @@ BOOL WINAPI DragQueryPoint(_In_ HDROP hDrop, _Out_ POINT *ppt)
     return TRUE;
 }
 
-void WINAPI DragFinish(_In_ HDROP hDrop)
+void WINAPI DragFinish(_In_ HDROP hDrop __attribute__((unused)))
 {
 }
 
@@ -792,169 +792,215 @@ void WINAPI PathQuoteSpacesW(wchar_t *path)
     }
 }
 
-#define PATH_CHAR_CLASS_LETTER      0x00000001
-#define PATH_CHAR_CLASS_ASTERIX     0x00000002
-#define PATH_CHAR_CLASS_DOT         0x00000004
-#define PATH_CHAR_CLASS_BACKSLASH   0x00000008
-#define PATH_CHAR_CLASS_COLON       0x00000010
-#define PATH_CHAR_CLASS_SEMICOLON   0x00000020
-#define PATH_CHAR_CLASS_COMMA       0x00000040
-#define PATH_CHAR_CLASS_SPACE       0x00000080
-#define PATH_CHAR_CLASS_OTHER_VALID 0x00000100
-#define PATH_CHAR_CLASS_DOUBLEQUOTE 0x00000200
-
-#define PATH_CHAR_CLASS_INVALID 0x00000000
-#define PATH_CHAR_CLASS_ANY     0xffffffff
-
-static const DWORD path_charclass[] = {
-    /* 0x00 */ PATH_CHAR_CLASS_INVALID,     /* 0x01 */ PATH_CHAR_CLASS_INVALID,
-    /* 0x02 */ PATH_CHAR_CLASS_INVALID,     /* 0x03 */ PATH_CHAR_CLASS_INVALID,
-    /* 0x04 */ PATH_CHAR_CLASS_INVALID,     /* 0x05 */ PATH_CHAR_CLASS_INVALID,
-    /* 0x06 */ PATH_CHAR_CLASS_INVALID,     /* 0x07 */ PATH_CHAR_CLASS_INVALID,
-    /* 0x08 */ PATH_CHAR_CLASS_INVALID,     /* 0x09 */ PATH_CHAR_CLASS_INVALID,
-    /* 0x0a */ PATH_CHAR_CLASS_INVALID,     /* 0x0b */ PATH_CHAR_CLASS_INVALID,
-    /* 0x0c */ PATH_CHAR_CLASS_INVALID,     /* 0x0d */ PATH_CHAR_CLASS_INVALID,
-    /* 0x0e */ PATH_CHAR_CLASS_INVALID,     /* 0x0f */ PATH_CHAR_CLASS_INVALID,
-    /* 0x10 */ PATH_CHAR_CLASS_INVALID,     /* 0x11 */ PATH_CHAR_CLASS_INVALID,
-    /* 0x12 */ PATH_CHAR_CLASS_INVALID,     /* 0x13 */ PATH_CHAR_CLASS_INVALID,
-    /* 0x14 */ PATH_CHAR_CLASS_INVALID,     /* 0x15 */ PATH_CHAR_CLASS_INVALID,
-    /* 0x16 */ PATH_CHAR_CLASS_INVALID,     /* 0x17 */ PATH_CHAR_CLASS_INVALID,
-    /* 0x18 */ PATH_CHAR_CLASS_INVALID,     /* 0x19 */ PATH_CHAR_CLASS_INVALID,
-    /* 0x1a */ PATH_CHAR_CLASS_INVALID,     /* 0x1b */ PATH_CHAR_CLASS_INVALID,
-    /* 0x1c */ PATH_CHAR_CLASS_INVALID,     /* 0x1d */ PATH_CHAR_CLASS_INVALID,
-    /* 0x1e */ PATH_CHAR_CLASS_INVALID,     /* 0x1f */ PATH_CHAR_CLASS_INVALID,
-    /* ' '  */ PATH_CHAR_CLASS_SPACE,       /* '!'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '"'  */ PATH_CHAR_CLASS_DOUBLEQUOTE, /* '#'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '$'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '%'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '&'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '\'' */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '('  */ PATH_CHAR_CLASS_OTHER_VALID, /* ')'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '*'  */ PATH_CHAR_CLASS_ASTERIX,     /* '+'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* ','  */ PATH_CHAR_CLASS_COMMA,       /* '-'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '.'  */ PATH_CHAR_CLASS_DOT,         /* '/'  */ PATH_CHAR_CLASS_INVALID,
-    /* '0'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '1'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '2'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '3'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '4'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '5'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '6'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '7'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '8'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '9'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* ':'  */ PATH_CHAR_CLASS_COLON,       /* ';'  */ PATH_CHAR_CLASS_SEMICOLON,
-    /* '<'  */ PATH_CHAR_CLASS_INVALID,     /* '='  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '>'  */ PATH_CHAR_CLASS_INVALID,     /* '?'  */ PATH_CHAR_CLASS_LETTER,
-    /* '@'  */ PATH_CHAR_CLASS_OTHER_VALID, /* 'A'  */ PATH_CHAR_CLASS_ANY,
-    /* 'B'  */ PATH_CHAR_CLASS_ANY,         /* 'C'  */ PATH_CHAR_CLASS_ANY,
-    /* 'D'  */ PATH_CHAR_CLASS_ANY,         /* 'E'  */ PATH_CHAR_CLASS_ANY,
-    /* 'F'  */ PATH_CHAR_CLASS_ANY,         /* 'G'  */ PATH_CHAR_CLASS_ANY,
-    /* 'H'  */ PATH_CHAR_CLASS_ANY,         /* 'I'  */ PATH_CHAR_CLASS_ANY,
-    /* 'J'  */ PATH_CHAR_CLASS_ANY,         /* 'K'  */ PATH_CHAR_CLASS_ANY,
-    /* 'L'  */ PATH_CHAR_CLASS_ANY,         /* 'M'  */ PATH_CHAR_CLASS_ANY,
-    /* 'N'  */ PATH_CHAR_CLASS_ANY,         /* 'O'  */ PATH_CHAR_CLASS_ANY,
-    /* 'P'  */ PATH_CHAR_CLASS_ANY,         /* 'Q'  */ PATH_CHAR_CLASS_ANY,
-    /* 'R'  */ PATH_CHAR_CLASS_ANY,         /* 'S'  */ PATH_CHAR_CLASS_ANY,
-    /* 'T'  */ PATH_CHAR_CLASS_ANY,         /* 'U'  */ PATH_CHAR_CLASS_ANY,
-    /* 'V'  */ PATH_CHAR_CLASS_ANY,         /* 'W'  */ PATH_CHAR_CLASS_ANY,
-    /* 'X'  */ PATH_CHAR_CLASS_ANY,         /* 'Y'  */ PATH_CHAR_CLASS_ANY,
-    /* 'Z'  */ PATH_CHAR_CLASS_ANY,         /* '['  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '\\' */ PATH_CHAR_CLASS_BACKSLASH,   /* ']'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '^'  */ PATH_CHAR_CLASS_OTHER_VALID, /* '_'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '`'  */ PATH_CHAR_CLASS_OTHER_VALID, /* 'a'  */ PATH_CHAR_CLASS_ANY,
-    /* 'b'  */ PATH_CHAR_CLASS_ANY,         /* 'c'  */ PATH_CHAR_CLASS_ANY,
-    /* 'd'  */ PATH_CHAR_CLASS_ANY,         /* 'e'  */ PATH_CHAR_CLASS_ANY,
-    /* 'f'  */ PATH_CHAR_CLASS_ANY,         /* 'g'  */ PATH_CHAR_CLASS_ANY,
-    /* 'h'  */ PATH_CHAR_CLASS_ANY,         /* 'i'  */ PATH_CHAR_CLASS_ANY,
-    /* 'j'  */ PATH_CHAR_CLASS_ANY,         /* 'k'  */ PATH_CHAR_CLASS_ANY,
-    /* 'l'  */ PATH_CHAR_CLASS_ANY,         /* 'm'  */ PATH_CHAR_CLASS_ANY,
-    /* 'n'  */ PATH_CHAR_CLASS_ANY,         /* 'o'  */ PATH_CHAR_CLASS_ANY,
-    /* 'p'  */ PATH_CHAR_CLASS_ANY,         /* 'q'  */ PATH_CHAR_CLASS_ANY,
-    /* 'r'  */ PATH_CHAR_CLASS_ANY,         /* 's'  */ PATH_CHAR_CLASS_ANY,
-    /* 't'  */ PATH_CHAR_CLASS_ANY,         /* 'u'  */ PATH_CHAR_CLASS_ANY,
-    /* 'v'  */ PATH_CHAR_CLASS_ANY,         /* 'w'  */ PATH_CHAR_CLASS_ANY,
-    /* 'x'  */ PATH_CHAR_CLASS_ANY,         /* 'y'  */ PATH_CHAR_CLASS_ANY,
-    /* 'z'  */ PATH_CHAR_CLASS_ANY,         /* '{'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '|'  */ PATH_CHAR_CLASS_INVALID,     /* '}'  */ PATH_CHAR_CLASS_OTHER_VALID,
-    /* '~'  */ PATH_CHAR_CLASS_OTHER_VALID
-};
-
-BOOL WINAPI PathIsValidCharA(char c, DWORD _class)
+void WINAPI PathUnquoteSpacesA(char *path)
 {
-    if ((unsigned)c > 0x7e)
-        return _class & PATH_CHAR_CLASS_OTHER_VALID;
-
-    return _class & path_charclass[(unsigned)c];
+    if (path && path[0] == '\"')
+    {
+        size_t len = strlen(path);
+        // 首尾引号配对（Win32 语义：无闭合引号则原样不动）
+        if (len >= 2 && path[len - 1] == '\"')
+        {
+            path[len - 1] = '\0';
+            memmove(path, path + 1, len - 1);
+        }
+    }
 }
 
-BOOL WINAPI PathIsValidCharW(wchar_t c, DWORD _class)
+void WINAPI PathUnquoteSpacesW(wchar_t *path)
 {
-    if (c > 0x7e)
-        return _class & PATH_CHAR_CLASS_OTHER_VALID;
+    if (path && path[0] == L'\"')
+    {
+        int len = lstrlenW(path);
+        if (len >= 2 && path[len - 1] == L'\"')
+        {
+            path[len - 1] = L'\0';
+            memmove(path, path + 1, len * sizeof(wchar_t));
+        }
+    }
+}
 
-    return _class & path_charclass[c];
+// '/' 与 '\\' 均视为分隔符（Win32 shlwapi 行为）
+static BOOL path_is_separator_a(char c)
+{
+    return c == '\\' || c == '/';
+}
+
+// 规范化长度：去掉结尾冗余分隔符，但保留根（"C:\"、"\" 等）
+static unsigned int path_norm_len_a(const char *s, unsigned int len)
+{
+    while (len > 1 && path_is_separator_a(s[len - 1]))
+    {
+        if (len == 3 && s[1] == ':') // 盘根 "C:\"
+            break;
+        if (len == 2) // 根分隔符 "\\" 或 "/"
+            break;
+        len--;
+    }
+    return len;
+}
+
+// s[0..k) 内最后一个完整组件边界：
+// 普通分隔符处边界不含分隔符本身，唯独盘根 "X:\"（分隔符属根的一部分）含
+static unsigned int path_last_boundary_a(const char *s, unsigned int k)
+{
+    unsigned int i = k;
+    while (i > 0 && !path_is_separator_a(s[i - 1]))
+        i--;
+    if (i == 0)
+        return 0; // 无分隔符
+    i--;          // 分隔符下标
+    if (i == 2 && s[1] == ':')
+        return 3; // "C:\"
+    return i;
 }
 
 int WINAPI PathCommonPrefixA(const char *file1, const char *file2, char *path)
 {
-    const char *iter1 = file1;
-    const char *iter2 = file2;
-    unsigned int len = 0;
-
     if (path)
         *path = '\0';
 
     if (!file1 || !file2)
         return 0;
 
-    for (;;)
+    unsigned int len1 = path_norm_len_a(file1, (unsigned int)strlen(file1));
+    unsigned int len2 = path_norm_len_a(file2, (unsigned int)strlen(file2));
+
+    // 逐字符比较（大小写不敏感，分隔符交叉匹配），得到最长公共前缀 k
+    unsigned int k = 0;
+    while (k < len1 && k < len2)
     {
-        // 更新 len - 在路径分隔符处更新
-        if ((!*iter1 || *iter1 == '/' || *iter1 == '\\') && (!*iter2 || *iter2 == '/' || *iter2 == '\\'))
-            len = iter1 - file1; // Common to this point
-
-        if (!*iter1 || *iter1 != *iter2)
-            break; // Strings differ at this point
-
-        iter1++;
-        iter2++;
+        char c1 = file1[k], c2 = file2[k];
+        BOOL sep1 = path_is_separator_a(c1), sep2 = path_is_separator_a(c2);
+        if (sep1 != sep2)
+            break;
+        if (!sep1 && tolower((unsigned char)c1) != tolower((unsigned char)c2))
+            break;
+        k++;
     }
 
-    if (len && path)
+    unsigned int ret;
+    if (k == len1 && k == len2)
     {
-        memcpy(path, file1, len);
-        path[len] = '\0';
+        ret = k; // 两串同时耗尽
+    }
+    else if (k == len1 || k == len2)
+    {
+        // 较短串耗尽：仅当长串在 k 处跟分隔符，或短串以分隔符结尾（根 "C:\"），
+        // 公共前缀才停在完整组件边界上（真机语义，如 CP("C:\foo","C:\")==3、
+        // CP("C:\foobar","C:\foo")==3）
+        const char *ls = (k == len1) ? file2 : file1;
+        const char *ss = (k == len1) ? file1 : file2;
+        if ((ls[k] != '\0' && path_is_separator_a(ls[k])) || (k > 0 && path_is_separator_a(ss[k - 1])))
+            ret = k;
+        else
+            ret = path_last_boundary_a(file1, k); // 回退到最近组件边界
+    }
+    else
+    {
+        ret = path_last_boundary_a(file1, k); // 中途分歧，回退到最近组件边界
     }
 
+    if (ret && path)
+    {
+        memcpy(path, file1, ret);
+        path[ret] = '\0';
+    }
+
+    return ret;
+}
+
+static BOOL path_is_separator_w(wchar_t c)
+{
+    return c == L'\\' || c == L'/';
+}
+
+static wchar_t path_lower_w(wchar_t c)
+{
+    return (c >= L'A' && c <= L'Z') ? (wchar_t)(c + (L'a' - L'A')) : c;
+}
+
+// 规范化长度：去掉结尾冗余分隔符，但保留根（"C:\"、"\" 等）
+static unsigned int path_norm_len_w(const wchar_t *s, unsigned int len)
+{
+    while (len > 1 && path_is_separator_w(s[len - 1]))
+    {
+        if (len == 3 && s[1] == L':') // 盘根 "C:\"
+            break;
+        if (len == 2) // 根分隔符 "\\\\" 或 "//"
+            break;
+        len--;
+    }
     return len;
+}
+
+// s[0..k) 内最后一个完整组件边界：
+// 普通分隔符处边界不含分隔符本身，唯独盘根 "X:\"（分隔符属根的一部分）含
+static unsigned int path_last_boundary_w(const wchar_t *s, unsigned int k)
+{
+    unsigned int i = k;
+    while (i > 0 && !path_is_separator_w(s[i - 1]))
+        i--;
+    if (i == 0)
+        return 0; // 无分隔符
+    i--;          // 分隔符下标
+    if (i == 2 && s[1] == L':')
+        return 3; // "C:\"
+    return i;
 }
 
 int WINAPI PathCommonPrefixW(const wchar_t *file1, const wchar_t *file2, wchar_t *path)
 {
-    const wchar_t *iter1 = file1;
-    const wchar_t *iter2 = file2;
-    unsigned int len = 0;
-
     if (path)
-        *path = '\0';
+        *path = L'\0';
 
     if (!file1 || !file2)
         return 0;
 
-    for (;;)
+    unsigned int len1 = path_norm_len_w(file1, (unsigned int)lstrlenW(file1));
+    unsigned int len2 = path_norm_len_w(file2, (unsigned int)lstrlenW(file2));
+
+    // 逐字符比较（大小写不敏感，分隔符交叉匹配），得到最长公共前缀 k
+    unsigned int k = 0;
+    while (k < len1 && k < len2)
     {
-        // 更新 len - 在路径分隔符处更新
-        if ((!*iter1 || *iter1 == '/' || *iter1 == '\\') && (!*iter2 || *iter2 == '/' || *iter2 == '\\'))
-            len = iter1 - file1; // Common to this point
-
-        if (!*iter1 || *iter1 != *iter2)
-            break; // Strings differ at this point
-
-        iter1++;
-        iter2++;
+        wchar_t c1 = file1[k], c2 = file2[k];
+        BOOL sep1 = path_is_separator_w(c1), sep2 = path_is_separator_w(c2);
+        if (sep1 != sep2)
+            break;
+        if (!sep1 && path_lower_w(c1) != path_lower_w(c2))
+            break;
+        k++;
     }
 
-    if (len && path)
+    unsigned int ret;
+    if (k == len1 && k == len2)
     {
-        memcpy(path, file1, len * sizeof(wchar_t));
-        path[len] = '\0';
+        ret = k; // 两串同时耗尽
+    }
+    else if (k == len1 || k == len2)
+    {
+        // 较短串耗尽：仅当长串在 k 处跟分隔符，或短串以分隔符结尾（根 "C:\"），
+        // 公共前缀才停在完整组件边界上（真机语义，如 CP("C:\foo","C:\")==3、
+        // CP("C:\foobar","C:\foo")==3）
+        const wchar_t *ls = (k == len1) ? file2 : file1;
+        const wchar_t *ss = (k == len1) ? file1 : file2;
+        if ((ls[k] != L'\0' && path_is_separator_w(ls[k])) || (k > 0 && path_is_separator_w(ss[k - 1])))
+            ret = k;
+        else
+            ret = path_last_boundary_w(file1, k); // 回退到最近组件边界
+    }
+    else
+    {
+        ret = path_last_boundary_w(file1, k); // 中途分歧，回退到最近组件边界
     }
 
-    return len;
+    if (ret && path)
+    {
+        memcpy(path, file1, ret * sizeof(wchar_t));
+        path[ret] = L'\0';
+    }
+
+    return ret;
 }
 
 BOOL WINAPI PathIsPrefixA(const char *prefix, const char *path)
@@ -963,7 +1009,14 @@ BOOL WINAPI PathIsPrefixA(const char *prefix, const char *path)
         return FALSE;
 
     size_t prefixLen = strlen(prefix);
-    return PathCommonPrefixA(path, prefix, NULL) == (int)prefixLen;
+    if (prefixLen == 0 || PathCommonPrefixA(path, prefix, NULL) != (int)prefixLen)
+        return FALSE;
+
+    // Win32 语义：path 在前缀长度处必须终止或跟一个分隔符，
+    // 否则 "C:\foo" 会误判为 "C:\foobar" 的前缀。
+    // 例外：前缀自身以分隔符结尾（盘根 "C:\"，CP 已含该分隔符），path 直接续组件
+    char c = path[prefixLen];
+    return c == '\0' || c == '\\' || c == '/' || path_is_separator_a(prefix[prefixLen - 1]);
 }
 
 BOOL WINAPI PathIsPrefixW(const wchar_t *prefix, const wchar_t *path)
@@ -972,7 +1025,11 @@ BOOL WINAPI PathIsPrefixW(const wchar_t *prefix, const wchar_t *path)
         return FALSE;
 
     size_t prefixLen = lstrlenW(prefix);
-    return PathCommonPrefixW(path, prefix, NULL) == (int)prefixLen;
+    if (prefixLen == 0 || PathCommonPrefixW(path, prefix, NULL) != (int)prefixLen)
+        return FALSE;
+
+    wchar_t c = path[prefixLen];
+    return c == L'\0' || c == L'\\' || c == L'/' || path_is_separator_w(prefix[prefixLen - 1]);
 }
 
 DWORD WINAPI GetFullPathNameW(LPCWSTR lpFileName, DWORD nBufferLength, LPWSTR lpBuffer, LPWSTR *lpFilePart)
@@ -1134,7 +1191,8 @@ static bool is_probably_url(const char *str)
     return false;
 }
 
-static int mysystem(const char *cmd){
+static int mysystem(const char *cmd)
+{
 #if defined(__IOS__)
     return -1;
 #else
@@ -1142,8 +1200,7 @@ static int mysystem(const char *cmd){
 #endif
 }
 
-
-BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd)
+BOOL WINAPI ShellExecuteA(HWND hwnd __attribute__((unused)), LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters, LPCSTR lpDirectory, INT nShowCmd __attribute__((unused)))
 {
     if (!lpOperation || stricmp(lpOperation, "open") != 0)
         return FALSE;
@@ -1158,16 +1215,16 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
         {
             // 提取要选中的文件路径
             std::string filePath = lpParameters + prefixLen;
-            if(filePath.front() == '\"')
+            if (filePath.front() == '\"')
             {
                 filePath.erase(0, 1);
-                if(filePath.back() == '\"')
+                if (filePath.back() == '\"')
                     filePath.pop_back();
             }
 #ifdef __linux__
             // Linux: 使用 xdg-open 打开文件所在目录
             std::string dirPath = filePath;
-            
+
             size_t lastSlash = dirPath.find_last_of('/');
             if (lastSlash != std::string::npos)
             {
@@ -1228,7 +1285,7 @@ BOOL WINAPI ShellExecuteA(HWND hwnd, LPCSTR lpOperation, LPCSTR lpFile, LPCSTR l
     }
     else
     {
-        PROCESS_INFORMATION procInfo = { 0 };
+        PROCESS_INFORMATION procInfo = {};
         char *params = lpParameters ? strdup(lpParameters) : NULL;
         BOOL bRet = CreateProcessA(lpFile, params, NULL, NULL, FALSE, 0, NULL, lpDirectory, NULL, &procInfo);
         if (params)
@@ -1273,14 +1330,14 @@ BOOL WINAPI ShellExecuteExA(LPSHELLEXECUTEINFOA lpExecInfo)
         int len = strlen(lpFile);
         char *cmd = new char[len + 10];
         sprintf(cmd, "xdg-open %s", lpFile);
-        int ret = mysystem(cmd);
+        mysystem(cmd);
         delete[] cmd;
         return TRUE;
     }
     else
     {
         LPCSTR lpParameters = lpExecInfo->lpParameters;
-        PROCESS_INFORMATION procInfo = { 0 };
+        PROCESS_INFORMATION procInfo = {};
         char *params = lpParameters ? strdup(lpParameters) : NULL;
         BOOL bRet = CreateProcessAsUserA((HANDLE)verb, lpFile, params, NULL, NULL, FALSE, 0, NULL, lpExecInfo->lpDirectory, NULL, &procInfo);
         if (params)
@@ -1349,7 +1406,7 @@ class FileStream : public SUnkImpl<IStream> {
 
   public:
     IUNKNOWN_BEGIN(IStream)
-        IUNKNOWN_ADD_IID(ISequentialStream)
+    IUNKNOWN_ADD_IID(ISequentialStream)
     IUNKNOWN_END()
     void OnFinalRelease() override
     {
@@ -1453,12 +1510,12 @@ class FileStream : public SUnkImpl<IStream> {
         return S_OK;
     }
 
-    STDMETHOD(CopyTo)(IStream *pstm, ULARGE_INTEGER cb, ULARGE_INTEGER *pcbRead, ULARGE_INTEGER *pcbWritten) override
+    STDMETHOD(CopyTo)(IStream *pstm __attribute__((unused)), ULARGE_INTEGER cb __attribute__((unused)), ULARGE_INTEGER *pcbRead __attribute__((unused)), ULARGE_INTEGER *pcbWritten __attribute__((unused))) override
     {
         return E_NOTIMPL;
     }
 
-    STDMETHOD(Commit)(DWORD grfCommitFlags) override
+    STDMETHOD(Commit)(DWORD grfCommitFlags __attribute__((unused))) override
     {
         if (!m_file)
             return STG_E_ACCESSDENIED;
@@ -1474,12 +1531,12 @@ class FileStream : public SUnkImpl<IStream> {
         return E_NOTIMPL;
     }
 
-    STDMETHOD(LockRegion)(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType) override
+    STDMETHOD(LockRegion)(ULARGE_INTEGER libOffset __attribute__((unused)), ULARGE_INTEGER cb __attribute__((unused)), DWORD dwLockType __attribute__((unused))) override
     {
         return E_NOTIMPL;
     }
 
-    STDMETHOD(UnlockRegion)(ULARGE_INTEGER libOffset, ULARGE_INTEGER cb, DWORD dwLockType) override
+    STDMETHOD(UnlockRegion)(ULARGE_INTEGER libOffset __attribute__((unused)), ULARGE_INTEGER cb __attribute__((unused)), DWORD dwLockType __attribute__((unused))) override
     {
         return E_NOTIMPL;
     }
@@ -1517,13 +1574,13 @@ class FileStream : public SUnkImpl<IStream> {
         return S_OK;
     }
 
-    STDMETHOD(Clone)(IStream **ppstm) override
+    STDMETHOD(Clone)(IStream **ppstm __attribute__((unused))) override
     {
         return E_NOTIMPL;
     }
 };
 
-HRESULT SHCreateStreamOnFileExA(LPCSTR pszFile, DWORD grfMode, DWORD dwAttributes, BOOL fCreate, IStream *pstmTemplate, IStream **ppstm)
+HRESULT SHCreateStreamOnFileExA(LPCSTR pszFile, DWORD grfMode, DWORD dwAttributes __attribute__((unused)), BOOL fCreate, IStream *pstmTemplate, IStream **ppstm)
 {
     if (!pszFile || !ppstm)
         return E_INVALIDARG;
@@ -1773,7 +1830,6 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp)
     bool bMultiDest = (fFlags & FOF_MULTIDESTFILES) != 0;
     bool bRenameOnCollision = (fFlags & FOF_RENAMEONCOLLISION) != 0;
     bool bFilesOnly = (fFlags & FOF_FILESONLY) != 0;
-    bool bNoRecursion = (fFlags & FOF_NORECURSION) != 0;
 
     BOOL anyAborted = FALSE;
     int result = 0;

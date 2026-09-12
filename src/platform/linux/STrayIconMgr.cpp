@@ -5,7 +5,7 @@
 #include "log.h"
 #define kLogTag "traywnd"
 
-LRESULT TrayWnd::NotifyOwner(UINT uMsg, WPARAM wp, LPARAM lp)
+LRESULT TrayWnd::NotifyOwner(UINT uMsg, WPARAM wp __attribute__((unused)), LPARAM lp __attribute__((unused)))
 {
     if (m_iconData->hWnd && (m_iconData->uFlags & NIF_MESSAGE))
     {
@@ -33,7 +33,7 @@ void TrayWnd::OnPaint(HDC hdc)
     EndPaint(m_hWnd, &ps);
 }
 
-LRESULT TrayWnd::OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam)
+LRESULT TrayWnd::OnSize(UINT uMsg __attribute__((unused)), WPARAM wParam __attribute__((unused)), LPARAM lParam __attribute__((unused)))
 {
     Invalidate();
     return 0;
@@ -96,7 +96,6 @@ BOOL STrayIconMgr::AddIcon(PNOTIFYICONDATAA lpData)
     const int TRAY_ICON_SIZE = 24;
     icon->hTray->CreateWindowA(dwExStyle, CLS_WINDOWA, "trayicon", dwStyle, 0, 0, TRAY_ICON_SIZE, TRAY_ICON_SIZE, m_pConn->screen->root, 0, 0);
 
-    //SLOG_STMI()<<"Created tray window: hwnd="<<icon->hTray->m_hWnd;
 
     // Set WM_NAME for tooltip
     xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, icon->hTray->m_hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(icon->szTip), icon->szTip);

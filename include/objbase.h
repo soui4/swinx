@@ -9,6 +9,22 @@ extern "C"
 {
 #endif //__cplusplus
 
+    // COM initialization flags; passed to CoInitialize.
+
+    typedef enum tagCOINITBASE
+    {
+        COINITBASE_MULTITHREADED = 0x0, // OLE calls objects on any thread.
+    } COINITBASE;
+
+    // COM initialization flags; passed to CoInitialize.
+    typedef enum tagCOINIT
+    {
+        COINIT_APARTMENTTHREADED = 0x2, // Apartment model
+        COINIT_MULTITHREADED = COINITBASE_MULTITHREADED,
+        COINIT_DISABLE_OLE1DDE = 0x4,   // Don't use DDE for Ole1 support.
+        COINIT_SPEED_OVER_MEMORY = 0x8, // Trade memory for speed.
+    } COINIT;
+
     typedef enum tagCLSCTX
     {
         CLSCTX_INPROC_SERVER = 0x1,

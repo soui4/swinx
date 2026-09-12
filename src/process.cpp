@@ -40,7 +40,7 @@ static DWORD WINAPI StdCallProc(LPVOID lpThreadParameter)
     delete param;
     return func(arglist);
 }
-uintptr_t _beginthreadex(void *security, unsigned int stack_size, unsigned int(__stdcall *start_address)(void *), void *arglist, unsigned int initflag, tid_t *thrdaddr)
+uintptr_t _beginthreadex(void *security __attribute__((unused)), unsigned int stack_size, unsigned int(__stdcall *start_address)(void *), void *arglist, unsigned int initflag, tid_t *thrdaddr)
 {
     ThreadParam2 *param = new ThreadParam2();
     param->start_address = start_address;

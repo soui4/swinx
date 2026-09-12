@@ -11,7 +11,7 @@
 #include <libgen.h>
 
 #include "handle.h"
-#include "tostring.hpp"
+#include "tostring.h"
 #include "debug.h"
 #define kLogTag "file"
 
@@ -38,18 +38,18 @@ void FreeFileData(void *ptr)
 
 HANDLE
 WINAPI
-CreateFileA(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile)
+CreateFileA(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes __attribute__((unused)), DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes __attribute__((unused)), HANDLE hTemplateFile __attribute__((unused)))
 {
     _FileData *fd = new _FileData;
     int mode = O_RDONLY;
     DWORD dwAccess = 0;
-    if (dwDesiredAccess | GENERIC_READ)
+    if (dwDesiredAccess & GENERIC_READ)
         dwAccess |= FILE_GENERIC_READ;
-    if (dwDesiredAccess | GENERIC_WRITE)
+    if (dwDesiredAccess & GENERIC_WRITE)
         dwAccess |= FILE_GENERIC_WRITE;
-    if (dwDesiredAccess | GENERIC_EXECUTE)
+    if (dwDesiredAccess & GENERIC_EXECUTE)
         dwAccess |= FILE_GENERIC_EXECUTE;
-    if (dwDesiredAccess | GENERIC_ALL)
+    if (dwDesiredAccess & GENERIC_ALL)
         dwAccess |= FILE_GENERIC_READ | FILE_GENERIC_WRITE | FILE_GENERIC_EXECUTE;
 
     if ((dwAccess & (FILE_READ_DATA | FILE_WRITE_DATA)) == (FILE_READ_DATA | FILE_WRITE_DATA))
@@ -69,6 +69,11 @@ CreateFileA(LPCSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECUR
         {
             mode |= O_CREAT;
         }
+    }
+    else if (dwCreationDisposition == OPEN_ALWAYS)
+    {
+        // open existing or create if missing
+        mode |= O_CREAT;
     }
     else if (dwCreationDisposition == TRUNCATE_EXISTING)
         mode |= O_TRUNC;
@@ -122,30 +127,54 @@ DWORD WINAPI GetFileSize(HANDLE hFile, LPDWORD lpFileSizeHigh)
     return 0;
 }
 
+// Windows FILETIME: 100ns ticks since 1601-01-01 UTC.
+// Unix timespec: seconds + nanoseconds since 1970-01-01 UTC.
+// The epoch offset between the two is 11644473600 seconds.
+static const uint64_t kFileTimeEpochOffsetSecs = 11644473600ULL;
+static const uint64_t kTicksPerSecond = 10000000ULL;
+
 static void FileTime2TimeSpec(const LPFILETIME fts, struct timespec &ts)
 {
     if (!fts)
         return;
-    uint64_t nsec;
-    memcpy(&nsec, fts, sizeof(uint64_t));
-    ts.tv_sec = nsec / 1000000000;
-    ts.tv_nsec = nsec % 1000000000;
+    uint64_t ticks;
+    memcpy(&ticks, fts, sizeof(uint64_t));
+    uint64_t secs = ticks / kTicksPerSecond;
+    if (secs < kFileTimeEpochOffsetSecs)
+    {
+        // predates the Unix epoch; clamp to epoch (timespec can't represent
+        // it portably here)
+        ts.tv_sec = 0;
+        ts.tv_nsec = 0;
+        return;
+    }
+    ts.tv_sec = (time_t)(secs - kFileTimeEpochOffsetSecs);
+    ts.tv_nsec = (long)((ticks % kTicksPerSecond) * 100);
 }
 
 static void TimeSpec2FileTime(const struct timespec &ts, LPFILETIME fts)
 {
     if (!fts)
         return;
-    uint64_t nsec = ts.tv_nsec;
-    memcpy(fts, &nsec, sizeof(uint64_t));
+    if (ts.tv_sec < 0)
+    {
+        uint64_t zero = 0;
+        memcpy(fts, &zero, sizeof(uint64_t));
+        return;
+    }
+    uint64_t ticks = (uint64_t)ts.tv_sec * kTicksPerSecond + kFileTimeEpochOffsetSecs * kTicksPerSecond + (uint64_t)ts.tv_nsec / 100;
+    memcpy(fts, &ticks, sizeof(uint64_t));
 }
 
-BOOL WINAPI SetFileTime(HANDLE hFile, const LPFILETIME lpCreationTime, const LPFILETIME lpLastAccessTime, const LPFILETIME lpLastWriteTime)
+BOOL WINAPI SetFileTime(HANDLE hFile, const LPFILETIME lpCreationTime __attribute__((unused)), const LPFILETIME lpLastAccessTime, const LPFILETIME lpLastWriteTime)
 {
     _FileData *fd = GetFD(hFile);
     if (!fd)
         return FALSE;
-    struct timespec ts[2];
+    // Win32 semantics: a NULL time keeps the current value, which maps to
+    // UTIME_OMIT. Uninitialized entries would feed garbage nanoseconds into
+    // futimens and make the call fail with EINVAL.
+    struct timespec ts[2] = { { 0, UTIME_OMIT }, { 0, UTIME_OMIT } };
     if (lpLastAccessTime)
     {
         FileTime2TimeSpec(lpLastAccessTime, ts[0]);
@@ -155,17 +184,13 @@ BOOL WINAPI SetFileTime(HANDLE hFile, const LPFILETIME lpCreationTime, const LPF
         FileTime2TimeSpec(lpLastWriteTime, ts[1]);
     }
 
-    return 0 == utimensat(fd->fd, "", ts, 0);
+    return 0 == futimens(fd->fd, ts);
 }
 
 BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLastAccessTime, LPFILETIME lpLastWriteTime)
 {
     if (_FileData *fd = GetFD(hFile))
     {
-        struct timespec st_atim; /* Time of last access.  */
-        struct timespec st_mtim; /* Time of last modification.  */
-        struct timespec st_ctim; /* Time of last status change.  */
-
         struct stat st;
         if (0 != fstat(fd->fd, &st))
             return FALSE;
@@ -186,21 +211,29 @@ BOOL WINAPI GetFileTime(HANDLE hFile, LPFILETIME lpCreationTime, LPFILETIME lpLa
     }
 }
 
-BOOL ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped)
+BOOL ReadFile(HANDLE hFile, LPVOID lpBuffer, DWORD nNumberOfBytesToRead, LPDWORD lpNumberOfBytesRead, LPOVERLAPPED lpOverlapped __attribute__((unused)))
 {
     if (_FileData *fd = GetFD(hFile))
     {
         if (fd->fd == -1)
             return FALSE;
+        // a short read is not an error (Win32 returns TRUE with the actual
+        // byte count; FALSE only on error / broken pipe)
         int readed = read(fd->fd, lpBuffer, nNumberOfBytesToRead);
+        if (readed < 0)
+        {
+            if (lpNumberOfBytesRead)
+                *lpNumberOfBytesRead = 0;
+            return FALSE;
+        }
         if (lpNumberOfBytesRead)
             *lpNumberOfBytesRead = readed;
-        return readed == nNumberOfBytesToRead;
+        return TRUE;
     }
     return FALSE;
 }
 
-BOOL WINAPI WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped)
+BOOL WINAPI WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrite, LPDWORD lpNumberOfBytesWritten, LPOVERLAPPED lpOverlapped __attribute__((unused)))
 {
     if (_FileData *fd = GetFD(hFile))
     {
@@ -209,12 +242,12 @@ BOOL WINAPI WriteFile(HANDLE hFile, LPCVOID lpBuffer, DWORD nNumberOfBytesToWrit
         int writed = write(fd->fd, lpBuffer, nNumberOfBytesToWrite);
         if (lpNumberOfBytesWritten)
             *lpNumberOfBytesWritten = writed;
-        return writed == nNumberOfBytesToWrite;
+        return (DWORD)writed == nNumberOfBytesToWrite;
     }
     return FALSE;
 }
 
-int _open_osfhandle(HANDLE hFile, int flags)
+int _open_osfhandle(HANDLE hFile, int flags __attribute__((unused)))
 {
     _FileData *fd = GetFD(hFile);
     if (!fd)
@@ -254,7 +287,7 @@ static bool set_fd_eof(int fd, uint64_t eof)
     {
         return false;
     }
-    if (eof < st.st_size)
+    if (eof < (uint64_t)st.st_size)
     {
         return -1 != ftruncate(fd, eof);
     }
@@ -296,7 +329,7 @@ BOOL WINAPI SetFilePointerEx(HANDLE hFile, LARGE_INTEGER dist, PLARGE_INTEGER lp
         break;
     case FILE_END:
     {
-        struct stat st = { 0 };
+        struct stat st = {};
         if (fstat(fd->fd, &st) == -1)
         {
             SetLastError(INVALID_SET_FILE_POINTER);
@@ -545,21 +578,27 @@ BOOL WINAPI FileTimeToDosDateTime(const FILETIME *ft, WORD *fatdate, WORD *fatti
 
 DWORD GetFileAttributesA(LPCSTR lpFileName)
 {
+    if (!lpFileName)
+        return INVALID_FILE_ATTRIBUTES;
     struct stat st;
     if (0 != stat(lpFileName, &st))
         return INVALID_FILE_ATTRIBUTES;
     DWORD ret = 0;
     if (S_ISDIR(st.st_mode))
         ret |= FILE_ATTRIBUTE_DIRECTORY;
+    else if (!(st.st_mode & S_IWUSR))
+        ret |= FILE_ATTRIBUTE_READONLY;
     else
     {
         ret |= FILE_ATTRIBUTE_NORMAL;
     }
-    if (S_IWUSR & st.st_mode)
-    {
-        ret |= FILE_ATTRIBUTE_READONLY;
-    }
-    if (strrchr(lpFileName, '.') != nullptr)
+    // hidden files on POSIX are those whose base name starts with a dot
+    const char *base = strrchr(lpFileName, '/');
+    if (base != nullptr)
+        base++;
+    else
+        base = lpFileName;
+    if (base[0] == '.')
     {
         ret |= FILE_ATTRIBUTE_HIDDEN;
     }
@@ -672,17 +711,23 @@ DWORD WINAPI GetCurrentDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer)
     return wpath.length() + 1;
 }
 
-BOOL CreateDirectoryA(LPCSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes)
+BOOL CreateDirectoryA(LPCSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes __attribute__((unused)))
 {
     mode_t mode = 0755;
     BOOL ret = mkdir(lpPathName, mode) == 0;
-    if(!ret){
-        if(errno == EEXIST){
+    if (!ret)
+    {
+        if (errno == EEXIST)
+        {
             SetLastError(ERROR_ALREADY_EXISTS);
-        }else{
+        }
+        else
+        {
             SetLastError(ERROR_PATH_NOT_FOUND);
         }
-    }else{
+    }
+    else
+    {
         SetLastError(NOERROR);
     }
     return ret;
@@ -753,7 +798,7 @@ BOOL WINAPI FindNextFileA(_In_ HANDLE hFindFile, _Out_ LPWIN32_FIND_DATAA lpFind
             bMatch = stricmp(info->name, entry->d_name) == 0;
         if (!bMatch)
             continue;
-        struct stat fileStat = { 0 };
+        struct stat fileStat = {};
         std::stringstream path;
         path << info->path << "/" << entry->d_name;
         if (0 == stat(path.str().c_str(), &fileStat))
@@ -816,6 +861,7 @@ BOOL WINAPI FindClose(HANDLE hFindFile)
     if (info->magic != FIND_FIRST_MAGIC)
         return FALSE;
     closedir(info->dir);
+    DeleteCriticalSection(&info->cs);
     HeapFree(GetProcessHeap(), 0, info);
     return TRUE;
 }
@@ -848,7 +894,7 @@ HANDLE WINAPI FindFirstFileExW(const wchar_t *filename, FINDEX_INFO_LEVELS level
     return handle;
 }
 
-HANDLE WINAPI FindFirstFileExA(LPCSTR filename, FINDEX_INFO_LEVELS level, LPVOID data, FINDEX_SEARCH_OPS search_op, LPVOID filter, DWORD flags)
+HANDLE WINAPI FindFirstFileExA(LPCSTR filename, FINDEX_INFO_LEVELS level, LPVOID data, FINDEX_SEARCH_OPS search_op, LPVOID filter __attribute__((unused)), DWORD flags)
 {
     if (!filename)
         return INVALID_HANDLE_VALUE;
@@ -933,16 +979,18 @@ BOOL WINAPI CopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, BOOL bF
 BOOL WINAPI CopyFileA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName, BOOL bFailIfExists)
 {
     int src_fd, dest_fd;
-    size_t bytes_read, bytes_written;
+    ssize_t bytes_read, bytes_written;
     char buffer[BUFFER_SIZE];
 
     if (bFailIfExists)
     {
-        if (DWORD attr = GetFileAttributesA(lpNewFileName) != INVALID_FILE_ATTRIBUTES)
-        {
-            if (attr & FILE_ATTRIBUTE_NORMAL)
-                return FALSE;
-        }
+        // Win32: fail when the destination already exists (any attributes).
+        // NOTE: do NOT fold the comparison into the assignment —
+        // `DWORD attr = GetFileAttributesA(...) != INVALID_FILE_ATTRIBUTES`
+        // stores a 0/1 flag instead of the attribute bits.
+        DWORD attr = GetFileAttributesA(lpNewFileName);
+        if (attr != INVALID_FILE_ATTRIBUTES)
+            return FALSE;
     }
     // 打开源文件
     if ((src_fd = open(lpExistingFileName, O_RDONLY)) == -1)
@@ -1152,14 +1200,6 @@ static void generate_unique_filename(const char *trash_path, char *unique_path, 
     }
 }
 
-// 获取当前时间的 ISO 8601 格式
-static void get_iso_time(char *buffer, size_t size)
-{
-    time_t now = time(NULL);
-    struct tm *timeinfo = localtime(&now);
-    strftime(buffer, size, "%Y-%m-%dT%H:%M:%S", timeinfo);
-}
-
 // 递归复制目录树（跨文件系统），用于 rename 失败(EXDEV)时的回退
 static int copy_tree(const char *src, const char *dest)
 {
@@ -1253,6 +1293,15 @@ static int remove_tree(const char *path)
     return ret;
 }
 
+#ifndef __APPLE__
+// 获取当前时间的 ISO 8601 格式
+static void get_iso_time(char *buffer, size_t size)
+{
+    time_t now = time(NULL);
+    struct tm *timeinfo = localtime(&now);
+    strftime(buffer, size, "%Y-%m-%dT%H:%M:%S", timeinfo);
+}
+#endif //__APPLE__
 // 移动文件或目录到回收站
 static int move_to_trash(const char *path)
 {
@@ -1280,9 +1329,12 @@ static int move_to_trash(const char *path)
     // 确保目录存在
     {
         char tmp[1024];
-        snprintf(tmp, sizeof(tmp), "%s/.local", home);          mkdir(tmp, 0755);
-        snprintf(tmp, sizeof(tmp), "%s/.local/share", home);   mkdir(tmp, 0755);
-        snprintf(tmp, sizeof(tmp), "%s/.local/share/Trash", home); mkdir(tmp, 0755);
+        snprintf(tmp, sizeof(tmp), "%s/.local", home);
+        mkdir(tmp, 0755);
+        snprintf(tmp, sizeof(tmp), "%s/.local/share", home);
+        mkdir(tmp, 0755);
+        snprintf(tmp, sizeof(tmp), "%s/.local/share/Trash", home);
+        mkdir(tmp, 0755);
         mkdir(trash_files_dir, 0755);
         mkdir(trash_info_dir, 0755);
     }
@@ -1338,25 +1390,6 @@ BOOL WINAPI DeleteFileW(LPCWSTR lpFileName)
     std::string str;
     tostring(lpFileName, -1, str);
     return DeleteFileA(str.c_str());
-}
-
-// 删除文件或空目录
-static int delete_file_or_dir(const char *path)
-{
-    struct stat st;
-    if (stat(path, &st) == -1)
-    {
-        return -1;
-    }
-
-    if (S_ISDIR(st.st_mode))
-    {                       // 如果是目录
-        return rmdir(path); // 删除空目录
-    }
-    else
-    {                        // 如果是文件
-        return remove(path); // 删除文件
-    }
 }
 
 // 递归删除非空目录
@@ -1440,6 +1473,20 @@ int WINAPI DelDirW(const wchar_t *src_dir, BOOL bAllowUndo)
 BOOL WINAPI MoveFileA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName)
 {
     if (!lpExistingFileName || !lpNewFileName)
+    {
+        return FALSE;
+    }
+
+    // Win32: moving a file onto itself is a successful no-op
+    if (strcmp(lpExistingFileName, lpNewFileName) == 0)
+    {
+        return TRUE;
+    }
+
+    // Win32 MoveFile never replaces an existing destination (that behaviour
+    // belongs to MoveFileEx + MOVEFILE_REPLACE_EXISTING), while POSIX
+    // rename() silently overwrites. Guard the destination explicitly.
+    if (GetFileAttributesA(lpNewFileName) != INVALID_FILE_ATTRIBUTES)
     {
         return FALSE;
     }

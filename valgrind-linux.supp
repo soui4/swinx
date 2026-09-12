@@ -1,0 +1,35 @@
+# Valgrind suppressions for fun_test (Linux / valgrind 3.18+).
+#
+# Usage:
+#   valgrind --leak-check=full --suppressions=../swinx/valgrind-linux.supp ./fun_test
+#
+# After the swinx-side fixes (hook.cpp use-after-free, SOUI RunIdle
+# uninitialized MSG, test leaks), the remaining reports are all inside
+# third-party libraries:
+#
+# 1. libxcb writev noise: the uninitialized bytes live in the 21,168-byte
+#    connection block calloc'ed by xcb_connect_to_fd (X11 setup response
+#    padding / outbound buffer reuse). swinx-side requests (e.g.
+#    SendExposeEvent) are fully initialized.
+# 2. cairo XCB glyph cache: 520 bytes definitely lost during
+#    cairo_device_finish (SConnection destructor) - cairo teardown-order
+#    artifact, not reachable from swinx code.
+
+{
+   libxcb-writev-uninit
+   Memcheck:Param
+   writev(vector[...])
+   fun:__writev
+   ...
+   obj:*/libxcb.so.*
+   ...
+}
+
+{
+   cairo-xcb-glyph-cache-fini-leak
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   fun:_cairo_xcb_glyph_fini
+   ...
+}

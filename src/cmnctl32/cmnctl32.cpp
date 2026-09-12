@@ -40,13 +40,13 @@ BOOL CStatic::OnEraseBkgnd(HDC dc)
     return TRUE;
 }
 
-HBITMAP CStatic::SetBitmap(HBITMAP hBitmap)
+HBITMAP CStatic::SetBitmap(HBITMAP hBitmap __attribute__((unused)))
 {
     m_hIcon = NULL;
     return m_hBitMap;
 }
 
-HICON CStatic::SetIcon(HICON hIcon)
+HICON CStatic::SetIcon(HICON hIcon __attribute__((unused)))
 {
     m_hBitMap = NULL;
     return m_hIcon;
@@ -80,7 +80,7 @@ void CButton::OnPaint(HDC hdc)
     EndPaint(m_hWnd, &ps);
 }
 
-void CButton::OnLButtonUp(UINT nFlags, POINT point)
+void CButton::OnLButtonUp(UINT nFlags __attribute__((unused)), POINT point __attribute__((unused)))
 {
     WndObj pWnd = WndMgr::fromHwnd(m_hWnd);
     if (!pWnd)
@@ -89,9 +89,9 @@ void CButton::OnLButtonUp(UINT nFlags, POINT point)
     ::SendMessage(GetParent(m_hWnd), WM_COMMAND, MAKEWPARAM(id, BN_CLICKED), (LPARAM)m_hWnd);
 }
 
-void CButton::OnMouseHover(UINT nFlags, POINT point)
+void CButton::OnMouseHover(UINT nFlags __attribute__((unused)), POINT point __attribute__((unused)))
 {
-    TRACKMOUSEEVENT trackMouseEvent = { 0 };
+    TRACKMOUSEEVENT trackMouseEvent = {};
     trackMouseEvent.cbSize = sizeof(TRACKMOUSEEVENT);
     trackMouseEvent.dwFlags = TME_LEAVE;
     trackMouseEvent.hwndTrack = m_hWnd;
@@ -108,13 +108,13 @@ void CButton::OnMouseLeave()
     Invalidate();
 }
 
-void CButton::OnMouseMove(UINT nFlags, POINT point)
+void CButton::OnMouseMove(UINT nFlags __attribute__((unused)), POINT point __attribute__((unused)))
 {
     if (m_nButtonState != 1)
     {
         m_nButtonState = 1;
         Invalidate();
-        TRACKMOUSEEVENT trackMouseEvent = { 0 };
+        TRACKMOUSEEVENT trackMouseEvent = {};
         trackMouseEvent.cbSize = sizeof(TRACKMOUSEEVENT);
         trackMouseEvent.dwFlags = TME_LEAVE; // TME_HOVER;
         trackMouseEvent.hwndTrack = m_hWnd;

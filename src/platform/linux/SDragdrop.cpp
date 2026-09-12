@@ -56,7 +56,7 @@ static inline BOOL is_droptarget(HWND hwnd)
  *                  drag & drop operation that is currently
  *                  active.
  */
-LRESULT SDragDrop::TrackStateChange(UINT uMsg, WPARAM wp, LPARAM lp)
+LRESULT SDragDrop::TrackStateChange(UINT uMsg __attribute__((unused)), WPARAM wp __attribute__((unused)), LPARAM lp __attribute__((unused)))
 {
     HWND hwndNewTarget = 0;
     POINT pt;
@@ -75,7 +75,6 @@ LRESULT SDragDrop::TrackStateChange(UINT uMsg, WPARAM wp, LPARAM lp)
    pt.x = curMousePos.x;
    pt.y = curMousePos.y;
    hwndNewTarget = WindowFromPoint(pt);
-   //SLOG_STMI() << "TrackStateChange, uMsg=" << uMsg << "pt.x="<<pt.x<<" pt.y="<<pt.y<< " hwndNewTarget=" << hwndNewTarget;
    if (!is_droptarget(hwndNewTarget))
    {
        SLOG_STMI()<< hwndNewTarget << " is not a drop target";
@@ -83,7 +82,6 @@ LRESULT SDragDrop::TrackStateChange(UINT uMsg, WPARAM wp, LPARAM lp)
    }     
    returnValue = dropSource->QueryContinueDrag(escPressed, dwKeyState);
    
-   //SLOG_STMI() << "TrackStateChange, uMsg=" << uMsg << ", wp=" << wp << ", lp=" << lp<<", returnValue=" << returnValue<<", curTargetHWND=" << curTargetHWND<< " hwndNewTarget=" << hwndNewTarget;
     if (curTargetHWND != hwndNewTarget && (returnValue == S_OK || returnValue == DRAGDROP_S_DROP))
     {
         if (curTargetHWND)
@@ -117,7 +115,7 @@ LRESULT SDragDrop::TrackStateChange(UINT uMsg, WPARAM wp, LPARAM lp)
     return 0;
 }
 
-LRESULT SDragDrop::OnXdndStatus(UINT uMsg, WPARAM wp, LPARAM lp)
+LRESULT SDragDrop::OnXdndStatus(UINT uMsg __attribute__((unused)), WPARAM wp, LPARAM lp)
 {
     if (!wp)
         *pdwEffect = DROPEFFECT_NONE;
@@ -127,20 +125,18 @@ LRESULT SDragDrop::OnXdndStatus(UINT uMsg, WPARAM wp, LPARAM lp)
     return 0;
 }
 
-LRESULT SDragDrop::OnXdndFinish(UINT uMsg, WPARAM wp, LPARAM lp)
+LRESULT SDragDrop::OnXdndFinish(UINT uMsg __attribute__((unused)), WPARAM wp, LPARAM lp)
 {
     trackingDone = TRUE;
     if (!wp)
         *pdwEffect = DROPEFFECT_NONE, returnValue = DRAGDROP_S_CANCEL;
     else
         *pdwEffect = lp, returnValue = DRAGDROP_S_DROP;
-    //SLOG_STMI() << "OnXdndFinish, returnValue=" << returnValue;
     return 0;
 }
 
-LRESULT SDragDrop::OnMapNotify(UINT uMsg, WPARAM wp, LPARAM lp)
+LRESULT SDragDrop::OnMapNotify(UINT uMsg __attribute__((unused)), WPARAM wp, LPARAM lp __attribute__((unused)))
 {
-    //SLOG_STMI() << "OnMapNotify";
     if(wp){
         SetCapture();
     }
@@ -150,7 +146,6 @@ LRESULT SDragDrop::OnMapNotify(UINT uMsg, WPARAM wp, LPARAM lp)
 
 void SDragDrop::drag_leave(HWND target)
 {
-    //SLOG_STMI() << "drag_leave, target=" << target;
     xcb_client_message_event_t leave;
     leave.response_type = XCB_CLIENT_MESSAGE;
     leave.sequence = 0;
@@ -177,7 +172,6 @@ static uint32_t getXdndAction(DWORD dwEffect, SConnection *conn)
 void SDragDrop::drag_over(HWND target, int x, int y)
 {
 
-    //SLOG_STMI() << "drag_over, target=" << target << ", x=" << x << ", y=" << y;
     xcb_client_message_event_t position;
     position.response_type = XCB_CLIENT_MESSAGE;
     position.sequence = 0;
@@ -195,7 +189,6 @@ void SDragDrop::drag_over(HWND target, int x, int y)
 
 void SDragDrop::drag_enter(HWND target)
 {
-    //SLOG_STMI() << "drag_enter, target=" << target;
 
     assert(dataObject);
     std::vector<xcb_atom_t> types;
@@ -242,7 +235,6 @@ void SDragDrop::drag_enter(HWND target)
 
 void SDragDrop::drag_drop(HWND target, DWORD dwEffect)
 {
-    //SLOG_STMI() << "drag_drop, target=" << target << ", dwEffect=" << dwEffect;
     xcb_client_message_event_t drop;
     drop.response_type = XCB_CLIENT_MESSAGE;
     drop.sequence = 0;
@@ -338,7 +330,7 @@ HRESULT SDragDrop::DoDragDrop(IDataObject *pDataObject, IDropSource *pDropSource
             trackerInfo.curMousePos.y = msg.pt.y;
             trackerInfo.dwKeyState = OLEDD_GetButtonState();
 
-            if (!trackerInfo.dragEnded && ((msg.message >= WM_KEYFIRST) && (msg.message <= WM_KEYLAST) || (msg.message >= WM_MOUSEFIRST) && (msg.message <= WM_MOUSELAST)))
+            if (!trackerInfo.dragEnded && (((msg.message >= WM_KEYFIRST) && (msg.message <= WM_KEYLAST)) || ((msg.message >= WM_MOUSEFIRST) && (msg.message <= WM_MOUSELAST))))
             {
                 /*
                  * When keyboard messages are sent to windows on this thread, we
@@ -414,7 +406,7 @@ void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
                     SAtoms::getAtomName(atoms[i], szAtomName, 200);
                     SLOG_STMI() << "dragenter and receive avaiable format=" << cf<<" atom="<<atoms[i]<<" atom name="<<szAtomName;
                     BOOL bExisted = FALSE;
-                    for(int j=0;j<m_lstTypes.size();j++){
+                    for(int j=0;j<(int)m_lstTypes.size();j++){
                         if(m_lstTypes[j] == cf)
                          {
                             bExisted = TRUE;
@@ -447,7 +439,7 @@ void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
                     SAtoms::getAtomName(data32[i], szAtomName, 200);
                     SLOG_STMI() << "dragenter and receive avaiable format=" << cf<<" atom="<<data32[i]<<" atom name="<<szAtomName;
                     BOOL bExisted = FALSE;
-                    for(int j=0;j<m_lstTypes.size();j++){
+                    for(int j=0;j<(int)m_lstTypes.size();j++){
                         if(m_lstTypes[j] == cf)
                          {
                             bExisted = TRUE;

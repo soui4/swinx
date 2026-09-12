@@ -1,0 +1,135 @@
+swinx License
+===============================================================================
+
+swinx 是一套运行在 Linux 及 macOS 上的 Windows API 兼容层，目标在于帮助为 Windows
+平台开发的项目实现跨平台支持，前期目标主要是为 soui4 开源项目支持跨平台设计。
+
+非商用免费，商用收费，收费方式请联系作者。
+
+使用 swinx 请遵守以下协议：
+
+1、第三方代码条款。本软件包含第三方代码，其中包括按 GNU LGPL-2.1 授权的组件。
+    这些代码的著作权归属与使用条件见本文件"附录一：第三方代码清单"。使用者在遵守
+    本协议的同时，须一并遵守相应第三方许可证的全部条款；第三方代码不因本软件提供
+    商业授权而变更为本软件的商业许可。
+2、其它条款待定。
+
+启程软件
+
+
+===============================================================================
+附录一：第三方代码清单
+===============================================================================
+
+本软件由自有代码与第三方代码两部分构成。第三方代码分为两类：
+
+    A 类   内置的 Wine 派生源代码，位于 src/ 与 include/ 目录，按 LGPL-2.1-or-later
+           授权；
+    B 类   内置的第三方开源库，位于 thirdparty/ 目录，各按其原始许可证授权。
+
+购买商业授权时请特别注意：A 类代码与 B 类中的 LGPL 组件并不因商业授权而变更授权，
+它们始终按各自的开放源代码许可证授权，条件见下文。
+
+
+--------------------------------------------------------------------------------
+A 类：Wine 派生源代码（LGPL-2.1-or-later）
+--------------------------------------------------------------------------------
+
+下列文件取自 Wine 项目（https://www.winehq.org/），原始版权与许可声明保留在文件
+头部，按 GNU Lesser General Public License 第 2.1 版或任何更高版本授权：
+
+    #  文件                                行数  版权所有者
+  ---  --------------------------------  ------  ------------------------------
+    1  include/winerror.h                  3954  the Wine project
+    2  src/cmnctl32/listbox.cpp            3024  1996 Alexandre Julliard
+                                                 2005 Frank Richter
+    3  src/cursoricon.cpp                  2015  1995 Alexandre Julliard / 1996 Martin Von Loewis
+                                                 / 1997 Alex Korobka / 1998 Turchanov Sergey
+                                                 / 2007 Henri Verbeet / 2009 Vincent Povirk
+                                                 (CodeWeavers) / 2016 Dmitry Timoshkov
+    4  src/safearray.cpp                   1696  1999 Sylvain St-Germain / 2002-2003 Marcus Meissner
+                                                 / 2003 Jon Griffiths
+    5  src/profile.cpp                     1534  1993 Miguel de Icaza / 1996 Alexandre Julliard
+    6  src/uitools.cpp                     1442  1997 Dimitrie O. Paun / 1997 Bertho A. Stultiens
+    7  src/malloc_impl.cpp                  461  1997 Marcus Meissner
+                                                 （仅文件内 IMalloc 分配器与 CoTaskMem* 一节，行 48-461）
+    8  src/list.h                           217  2002 Alexandre Julliard
+    9  src/cmnctl32/heap.h                   59  2006 Jacek Caban (CodeWeavers)
+                                                 / 2013, 2018 Michael Stefaniuc
+  ---  --------------------------------  ------  ------
+       合计                               14402
+
+关于这批代码的说明（对应 LGPL-2.1 第 2 条、第 6 条的要求）：
+
+  (1) 修改声明。上述文件均为 Wine 原始代码的修改版本。修改由启程软件完成，内容为
+      跨平台适配（平台抽象层接入、渲染后端适配，以及为通过 swinx 单元测试所做的
+      修正），不改变各文件对外呈现的 API 语义。本清单即为对这批文件所做修改的
+      声明；各文件的最后一次修改时间见下：上表第 1 至第 7 项为 2026-09-12，
+      第 8 项为 2024-11-28，第 9 项为 2025-02-02，更早的修改记录见仓库提交历史。
+
+  (2) 源代码获取。上述文件以可读源代码形式随 swinx 源码包一并分发，不存在仅二进制
+      包含的部分。若您取得的是二进制形式的 swinx，可通过购买渠道向作者索取对应版本
+      的完整源代码，作者将以源码包或公开仓库形式提供获取途径。
+
+  (3) 授权不变与可替换性。上述文件仍按 LGPL-2.1-or-later 授权，本软件的其余部分
+      不因引用这些文件而改变授权。LGPL-2.1 允许将这批代码用于专有程序，前提是：
+      保留原始版权与许可声明、标明文件已被修改、且使用者能够将这些文件替换为修改
+      过的版本（重新链接权）。swinx 保持这批代码为独立源文件，未将其内联或合并到
+      其它文件中，以满足可替换要求。
+
+  (4) 许可证全文。LGPL-2.1 全文见"附录二"。
+
+
+--------------------------------------------------------------------------------
+B 类：thirdparty/ 目录内置的第三方库
+--------------------------------------------------------------------------------
+
+    #  组件                许可证                                  许可证文件
+  ---  ------------------  --------------------------------------  ------------------------------------------
+    1  zlib                zlib License                            thirdparty/zlib/LICENSE
+    2  libpng              libpng License                          thirdparty/libpng/LICENSE
+    3  pixman              MIT                                     thirdparty/pixman/COPYING
+    4  brotli              MIT                                     thirdparty/brotli/LICENSE
+    5  freetype            FTL 或 GPL-2.0+（本项目采用 FTL）       thirdparty/freetype/LICENSE.TXT
+    6  expat               MIT                                     thirdparty/expat/COPYING
+    7  fontconfig          MIT 类宽松许可                          thirdparty/fontconfig/COPYING
+    8  cairo               LGPL-2.1 或 MPL-1.1                     thirdparty/cairo/COPYING-LGPL-2.1
+                           （本项目采用 LGPL-2.1）                 thirdparty/cairo/COPYING-MPL-1.1
+    9  D-Bus 1.14.10       AFL-2.1 或 GPL-2.0+                     thirdparty/dbus-1.14.10/COPYING
+                           （本项目采用 AFL-2.1）
+   10  libxcb / xcb        MIT / X11                               （见各源文件头部声明）
+   11  xcb-util 系列       MIT / X11                               （见各源文件头部声明）
+   12  xcb-imdkit          LGPL-2.1-only                           thirdparty/xcb-imdkit/LICENSES/
+                                                                   LGPL-2.1-only.txt
+   13  xkbcommon           MIT / X11                               thirdparty/xkbcommon/LICENSE
+
+上表中需要特别注意的是采用 LGPL 的两个组件：
+
+    * cairo       —— 双许可（LGPL-2.1 或 MPL-1.1），本项目按 LGPL-2.1 使用；
+    * xcb-imdkit  —— 单一 LGPL-2.1-only 许可。
+
+这两个组件同样保持"可替换的库"形式：cairo 与 xcb-imdkit 均作为独立库目标编译
+（见 thirdparty/CMakeLists.txt 与 linux.cmake 中的独立 add_subdirectory 条目），
+未与 swinx 自有代码合并编译，使用者可将其替换为自行修改并重新编译的版本。
+
+上表中第 5、9 项为双许可组件，本项目已选择其中较为宽松的分支（FTL、AFL-2.1），
+不使用其 GPL 分支。
+
+
+--------------------------------------------------------------------------------
+附录二：许可证全文位置
+--------------------------------------------------------------------------------
+
+    * LGPL-2.1 全文：
+        thirdparty/cairo/COPYING-LGPL-2.1
+        thirdparty/xcb-imdkit/LICENSES/LGPL-2.1-only.txt
+    * MPL-1.1 全文：
+        thirdparty/cairo/COPYING-MPL-1.1
+    * 其余各组件的许可证全文：
+        见附录一 B 类表格"许可证文件"列所示的路径。
+
+本清单仅用于披露第三方代码的著作权与许可状况，不构成对本软件自有部分授权条款的
+修改。作者保留对本协议的解释与修订权，最新版本以本文件为准。
+
+
+启程软件

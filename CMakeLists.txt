@@ -7,6 +7,10 @@ add_compile_options(-Wno-deprecated-declarations)
 add_compile_options(-Wno-unused-result)
 
 add_subdirectory(thirdparty)
+
+if(SOUI_ENABLE_ACC)
+    add_definitions(-DSOUI_ENABLE_ACC)
+endif()
 if(CMAKE_SYSTEM_NAME MATCHES "OHOS|OpenHarmony|HarmonyOS|Android")
 include(mobile.cmake)
 elseif(CMAKE_SYSTEM_NAME MATCHES "iOS")
@@ -19,6 +23,12 @@ endif()
 
 if(SOUI_ENABLE_CORE_LIB)
 target_compile_options(swinx PRIVATE -fPIC)
+endif()
+
+# Stricter warnings for the swinx module itself (PRIVATE scope keeps
+# thirdparty unaffected). GCC/Clang only; swinx is not built with MSVC.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(swinx PRIVATE -Wall -Wextra)
 endif()
 set_target_properties (swinx PROPERTIES
     FOLDER swinx

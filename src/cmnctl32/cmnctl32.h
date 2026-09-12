@@ -12,10 +12,10 @@ class CControl : public CNativeWnd {
     {
         ::DrawTextA(dc, lpText, -1, rc, format);
     }
-    void DrawBitmap(HDC dc, HBITMAP hBitmap, RECT *rc)
+    void DrawBitmap(HDC dc __attribute__((unused)), HBITMAP hBitmap __attribute__((unused)), RECT *rc __attribute__((unused)))
     {
     }
-    void DrawIcon(HDC dc, HICON hBitmap, RECT *rc)
+    void DrawIcon(HDC dc __attribute__((unused)), HICON hBitmap __attribute__((unused)), RECT *rc __attribute__((unused)))
     {
     }
 };
@@ -36,7 +36,7 @@ LRESULT CALLBACK CtrlStartWindowProc(HWND hWnd, UINT message, WPARAM wParam, LPA
 template <class T>
 ATOM TRegisterClass(LPCSTR clsName)
 {
-    WNDCLASSEXA wcex = { sizeof(WNDCLASSEXA), 0 };
+    WNDCLASSEXA wcex = {};
     wcex.cbSize = sizeof(WNDCLASSEXA);
     wcex.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
     wcex.lpfnWndProc = CtrlStartWindowProc<T>;

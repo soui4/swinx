@@ -1,7 +1,7 @@
 #include <windows.h>
 #include <stdarg.h>
 #include "uniconv.h"
-#include "tostring.hpp"
+#include "tostring.h"
 
 using namespace swinx;
 
@@ -97,6 +97,9 @@ float _wtof(const wchar_t *src)
 
 const char *CharNextA(const char *src)
 {
+    // Win32 语义：已位于字符串终止符时返回原指针（不越过 NUL）
+    if (*src == '\0')
+        return src;
     return (const char *)_mbsinc((const uint8_t *)src);
 }
 
@@ -323,12 +326,15 @@ static WORD get_char_type(wchar_t ch, DWORD dwInfoType)
             break;
         }
     }
-    else if (ch == 0x20)
+    else if (ch == 0x20 || INRANGE(ch, 0x09, 0x0D))
     {
+        // Win32: 0x20 gets C1_SPACE|C1_BLANK; \t \n \v \f \r get C1_SPACE
         switch (dwInfoType)
         {
         case CT_CTYPE1:
-            ret = C1_BLANK;
+            ret = C1_SPACE;
+            if (ch == 0x20)
+                ret |= C1_BLANK;
             break;
         case CT_CTYPE2:
             ret = C2_ARABICNUMBER;
@@ -341,10 +347,15 @@ static WORD get_char_type(wchar_t ch, DWORD dwInfoType)
     return ret;
 }
 
-BOOL WINAPI GetStringTypeExW(_In_ LCID lcid, _In_ DWORD dwInfoType, _In_reads_(nLength) LPCWSTR pszSrc, _In_ int nLength, _Out_ LPWORD pwCharType)
+BOOL WINAPI GetStringTypeExW(_In_ LCID lcid __attribute__((unused)), _In_ DWORD dwInfoType, _In_reads_(nLength) LPCWSTR pszSrc, _In_ int nLength, _Out_ LPWORD pwCharType)
 {
 
-    if (dwInfoType != CT_CTYPE1 || dwInfoType != CT_CTYPE2 || dwInfoType != CT_CTYPE3)
+    // NB: && on purpose - the type is valid when it matches ANY of the three
+    // constants.  Using || here made the condition always true and the
+    // function always returned FALSE without touching pwCharType, which left
+    // richedit's classification buffers uninitialised (valgrind: conditional
+    // jump depends on uninitialised value(s) in BatchClassify/GetCcs).
+    if (dwInfoType != CT_CTYPE1 && dwInfoType != CT_CTYPE2 && dwInfoType != CT_CTYPE3)
         return FALSE;
     int i = 0;
     while (i < nLength)
@@ -380,10 +391,15 @@ BOOL WINAPI GetStringTypeExW(_In_ LCID lcid, _In_ DWORD dwInfoType, _In_reads_(n
     return TRUE;
 }
 
-BOOL WINAPI GetStringTypeExA(_In_ LCID lcid, _In_ DWORD dwInfoType, _In_reads_(nLength) LPCSTR pszSrc, _In_ int nLength, _Out_ LPWORD pwCharType)
+BOOL WINAPI GetStringTypeExA(_In_ LCID lcid __attribute__((unused)), _In_ DWORD dwInfoType, _In_reads_(nLength) LPCSTR pszSrc, _In_ int nLength, _Out_ LPWORD pwCharType)
 {
 
-    if (dwInfoType != CT_CTYPE1 || dwInfoType != CT_CTYPE2 || dwInfoType != CT_CTYPE3)
+    // NB: && on purpose - the type is valid when it matches ANY of the three
+    // constants.  Using || here made the condition always true and the
+    // function always returned FALSE without touching pwCharType, which left
+    // richedit's classification buffers uninitialised (valgrind: conditional
+    // jump depends on uninitialised value(s) in BatchClassify/GetCcs).
+    if (dwInfoType != CT_CTYPE1 && dwInfoType != CT_CTYPE2 && dwInfoType != CT_CTYPE3)
         return FALSE;
     int i = 0;
     while (i < nLength)
@@ -454,10 +470,10 @@ LPSTR WINAPI CharLowerA(LPSTR lpsz)
 DWORD WINAPI CharLowerBuffW(LPWSTR lpsz, DWORD cchLength)
 {
     int i = 0;
-    while (i < cchLength)
+    while ((DWORD)i < cchLength)
     {
         int charLen = WideCharLength(*lpsz);
-        if (charLen > cchLength - i)
+        if (charLen > (int)(cchLength - i))
             break;
         if (charLen == 1)
         {
@@ -472,10 +488,10 @@ DWORD WINAPI CharLowerBuffW(LPWSTR lpsz, DWORD cchLength)
 DWORD WINAPI CharLowerBuffA(LPSTR lpsz, DWORD cchLength)
 {
     int i = 0;
-    while (i < cchLength)
+    while ((DWORD)i < cchLength)
     {
         int charLen = UTF8CharLength(*lpsz);
-        if (charLen > cchLength - i)
+        if (charLen > (int)(cchLength - i))
             break;
         if (charLen == 1)
         {
@@ -490,10 +506,10 @@ DWORD WINAPI CharLowerBuffA(LPSTR lpsz, DWORD cchLength)
 DWORD WINAPI CharUpperBuffW(LPWSTR lpsz, DWORD cchLength)
 {
     int i = 0;
-    while (i < cchLength)
+    while ((DWORD)i < cchLength)
     {
         int charLen = WideCharLength(*lpsz);
-        if (charLen > cchLength - i)
+        if (charLen > (int)(cchLength - i))
             break;
         if (charLen == 1)
         {
@@ -508,10 +524,10 @@ DWORD WINAPI CharUpperBuffW(LPWSTR lpsz, DWORD cchLength)
 DWORD WINAPI CharUpperBuffA(LPSTR lpsz, DWORD cchLength)
 {
     int i = 0;
-    while (i < cchLength)
+    while ((DWORD)i < cchLength)
     {
         int charLen = UTF8CharLength(*lpsz);
-        if (charLen > cchLength - i)
+        if (charLen > (int)(cchLength - i))
             break;
         if (charLen == 1)
         {
@@ -523,7 +539,7 @@ DWORD WINAPI CharUpperBuffA(LPSTR lpsz, DWORD cchLength)
     return i;
 }
 
-void _splitpath(const char *path, char *drive, char *dir, char *fname, char *ext)
+void _splitpath(const char *path, char *drive __attribute__((unused)), char *dir, char *fname, char *ext)
 {
     if (!path)
         return;
@@ -561,12 +577,12 @@ void _splitpath(const char *path, char *drive, char *dir, char *fname, char *ext
         p++;
     }
 
-    // 提取目录部分
+    // 提取目录部分（Win32 CRT 语义：目录段包含末尾的分隔符）
     if (dir)
     {
         if (lastSlash)
         {
-            size_t dirLen = lastSlash - path;
+            size_t dirLen = lastSlash - path + 1;
             if (dirLen >= _MAX_DIR)
             {
                 dirLen = _MAX_DIR - 1;
@@ -621,7 +637,7 @@ void _splitpath(const char *path, char *drive, char *dir, char *fname, char *ext
     }
 }
 
-void _wsplitpath(const wchar_t *path, wchar_t *drive, wchar_t *dir, wchar_t *fname, wchar_t *ext)
+void _wsplitpath(const wchar_t *path, wchar_t *drive __attribute__((unused)), wchar_t *dir, wchar_t *fname, wchar_t *ext)
 {
     if (!path)
         return;
@@ -659,12 +675,12 @@ void _wsplitpath(const wchar_t *path, wchar_t *drive, wchar_t *dir, wchar_t *fna
         p++;
     }
 
-    // 提取目录部分
+    // 提取目录部分（Win32 CRT 语义：目录段包含末尾的分隔符）
     if (dir)
     {
         if (lastSlash)
         {
-            size_t dirLen = lastSlash - path;
+            size_t dirLen = lastSlash - path + 1;
             if (dirLen >= _MAX_DIR)
             {
                 dirLen = _MAX_DIR - 1;
@@ -727,12 +743,13 @@ int _wrename(const wchar_t *oldpath, const wchar_t *newpath)
     return rename(strOld.c_str(), strNew.c_str());
 }
 
-int _snprintf(char *buffer, size_t size, const char *format, ...){
+int _snprintf(char *buffer, size_t size, const char *format, ...)
+{
     va_list args;
     va_start(args, format);
     int len = vsnprintf(buffer, size, format, args);
     va_end(args);
-    return len > size? -1:len;
+    return len > (int)size ? -1 : len;
 }
 int _snwprintf(wchar_t *buffer, size_t size, const wchar_t *format, ...)
 {
@@ -740,5 +757,5 @@ int _snwprintf(wchar_t *buffer, size_t size, const wchar_t *format, ...)
     va_start(args, format);
     int len = vswprintf(buffer, size, format, args);
     va_end(args);
-    return len > size? -1:len;
+    return len > (int)size ? -1 : len;
 }

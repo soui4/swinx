@@ -41,8 +41,10 @@ namespace swinx
         SLogStream& operator<<(unsigned long long t);
         SLogStream& operator<<(float t);
         SLogStream& operator<<(double t);
+        SLogStream& operator<<(const RECT& t);
+        SLogStream& operator<<(const POINT& t);
+        SLogStream& operator<<(const SIZE& t);
         SLogStream& operator<<(const SLogBinary& binary);
-
         SLogStream &writeFormat(const char *format, ...);
         SLogStream &writeFormat(const wchar_t *format, ...);    
     private:

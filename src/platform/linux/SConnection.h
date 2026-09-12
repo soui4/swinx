@@ -82,6 +82,11 @@ class SConnection {
     const xcb_setup_t *m_setup = nullptr;
     xcb_visualtype_t * rgba_visual=nullptr;
     int  m_forceDpi=-1;
+    // cairo device (cairo_xcb_connection_t) shared by all surfaces created
+    // on this X connection; finished explicitly before xcb_disconnect so
+    // cairo's xcb fonts/screens caches are released while the connection
+    // is still valid.
+    cairo_device_t *m_cairoDevice = nullptr;
     SAtoms atoms;
   public:
     SHORT GetKeyState(int vk);
@@ -210,7 +215,22 @@ class SConnection {
         return m_caretBlinkTime;
     }
 
-    void GetWorkArea(HMONITOR hMonitor,RECT* prc);
+    void GetWorkArea(HMONITOR hMonitor,RECT* prc) const;
+
+    // ---- 多显示器支持（XCB RANDR）----
+    // HMONITOR = xcb_randr_crtc_t（驱动一个活跃显示输出的 CRTC id，恒非 0）。
+    // RANDR 不可用时退化为"整屏 = 单台显示器"，HMONITOR = xcb_screen_t*。
+    // 坐标约定：X 根窗口坐标系即全局桌面坐标（主屏左上为原点、y 向下），
+    // 与 Win32 全局坐标一致，无需翻转。
+    int GetMonitorCount() const;
+    HMONITOR GetMonitor(int index) const;
+    HMONITOR GetPrimaryMonitor() const;
+    bool GetMonitorRect(HMONITOR hMonitor, RECT *prc) const;
+    bool GetMonitorWorkRect(HMONITOR hMonitor, RECT *prc) const;
+    bool IsPrimaryMonitor(HMONITOR hMonitor) const;
+    HMONITOR MonitorFromPoint(POINT pt, DWORD dwFlags) const;
+    HMONITOR MonitorFromRect(LPCRECT lprc, DWORD dwFlags) const;
+    HMONITOR MonitorFromWindow(HWND hWnd, DWORD dwFlags) const;
 public:
     SClipboard* getClipboard() {
         return m_clipboard;
@@ -386,7 +406,7 @@ public:
     CaretInfo m_caretInfo;
     UINT m_caretBlinkTime = TS_CARET;
     BOOL m_bComposited = FALSE;
-    RECT m_rcWorkArea = { 0 };
+    RECT m_rcWorkArea = {};
     uint32_t xfixes_first_event = 0;
     int m_cursorCount = 1;//default cursor is visible
 };

@@ -2,19 +2,26 @@
 #include <sys/stat.h>
 #include <mutex>
 #include <map>
+#include <vector>
 #include <string>
 #include <atomic>
+#include <condition_variable>
+#include <chrono>
+#include <thread>
 #include <assert.h>
 #include <fcntl.h>
 #include <semaphore.h>
 #include <uuid/uuid.h>
 #include <sys/mman.h>
 #include <locale.h>
-#include "tostring.hpp"
+#include <errno.h>
+#include "tostring.h"
 #include "sharedmem.h"
 #include "handle.h"
 #include "synhandle.h"
 #include "uimsg.h"
+#include "log.h"
+#define kLogTag "sysobjs"
 using namespace swinx;
 
 #ifdef __ANDROID__
@@ -32,7 +39,8 @@ using namespace swinx;
 // 2. Use temporary files as a fallback for named shared memory
 // 3. Maintain a registry to track shared memory by name
 
-struct AndroidSharedMemEntry {
+struct AndroidSharedMemEntry
+{
     std::string name;
     int fd;
     size_t size;
@@ -40,18 +48,18 @@ struct AndroidSharedMemEntry {
 };
 
 static std::mutex s_androidShmMutex;
-static std::map<std::string, AndroidSharedMemEntry*> s_androidShmRegistry;
+static std::map<std::string, AndroidSharedMemEntry *> s_androidShmRegistry;
 
 static int android_shm_open(const char *name, int oflag, mode_t mode)
 {
     std::lock_guard<std::mutex> lock(s_androidShmMutex);
-    
+
     // Check if shared memory already exists in registry
     auto it = s_androidShmRegistry.find(name);
     if (it != s_androidShmRegistry.end())
     {
         // Open existing shared memory
-        AndroidSharedMemEntry* entry = it->second;
+        AndroidSharedMemEntry *entry = it->second;
         if (oflag & O_CREAT && !(oflag & O_EXCL))
         {
             // Open existing
@@ -71,7 +79,7 @@ static int android_shm_open(const char *name, int oflag, mode_t mode)
             return dup(entry->fd);
         }
     }
-    
+
     // Shared memory doesn't exist
     if (oflag & O_CREAT)
     {
@@ -84,41 +92,41 @@ static int android_shm_open(const char *name, int oflag, mode_t mode)
             // Fallback to temporary file
             char tempPath[256];
             snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d", name, getpid());
-            
+
             int flags = O_RDWR | O_CREAT;
             if (oflag & O_EXCL)
                 flags |= O_EXCL;
-            
+
             fd = open(tempPath, flags, mode);
             if (fd < 0)
             {
                 return -1;
             }
-            
+
             // Set default size
             ftruncate(fd, defaultSize);
         }
-        
+
         // Set protection flags
         int prot = 0;
         if (oflag & O_RDONLY)
             prot |= PROT_READ;
         if (oflag & O_RDWR)
             prot |= PROT_READ | PROT_WRITE;
-        
+
         if (prot != 0)
         {
             ASharedMemory_setProt(fd, prot);
         }
-        
+
         // Register the shared memory
-        AndroidSharedMemEntry* entry = new AndroidSharedMemEntry();
+        AndroidSharedMemEntry *entry = new AndroidSharedMemEntry();
         entry->name = name;
         entry->fd = fd;
         entry->size = defaultSize;
         entry->refCount = 1;
         s_androidShmRegistry[name] = entry;
-        
+
         return dup(fd);
     }
     else
@@ -132,31 +140,31 @@ static int android_shm_open(const char *name, int oflag, mode_t mode)
 static int android_shm_unlink(const char *name)
 {
     std::lock_guard<std::mutex> lock(s_androidShmMutex);
-    
+
     auto it = s_androidShmRegistry.find(name);
     if (it == s_androidShmRegistry.end())
     {
         errno = ENOENT;
         return -1;
     }
-    
-    AndroidSharedMemEntry* entry = it->second;
-    
+
+    AndroidSharedMemEntry *entry = it->second;
+
     // Close the original fd
     if (entry->fd >= 0)
     {
         close(entry->fd);
     }
-    
+
     // Remove from registry
     s_androidShmRegistry.erase(it);
     delete entry;
-    
+
     return 0;
 }
 
 // Redefine shm_open and shm_unlink for Android
-#define shm_open android_shm_open
+#define shm_open   android_shm_open
 #define shm_unlink android_shm_unlink
 
 // Android-specific ftruncate for ASharedMemory
@@ -173,8 +181,7 @@ static int android_ftruncate(int fd, off_t length)
 #define ftruncate android_ftruncate
 #endif
 
-#endif//__ANDROID__
-
+#endif //__ANDROID__
 
 enum
 {
@@ -248,8 +255,24 @@ struct TableHeader
     uint32_t key;
     uint32_t totalSize;
     uint32_t used;
+    uint32_t magic; // layout fingerprint, see tableMagic()
 };
 #pragma pack(pop)
+
+// Layout fingerprint stored in the table header. POSIX shm objects survive
+// the death of their creating process (a killed process never runs its
+// destructors, so the segment stays until shm_unlink or reboot). If that
+// stale segment was written by a build whose HandleData/TableHeader layout
+// differs from ours, interpreting its bytes with our layout produces bogus
+// slot types: objects get created but findExistedHandleDataIndex() never
+// finds them again (its early-break fires on garbage slots). Mixing
+// sizeof(HandleData) into the magic makes any layout change detectable, so
+// the table can discard the stale segment and recreate it from scratch.
+static const uint32_t kTableMagicBase = 0x534F5549u; // 'SOUI'
+static uint32_t tableMagic()
+{
+    return kTableMagicBase + (uint32_t)sizeof(HandleData);
+}
 
 /*--------------------------------------------------------------
 global table layout:
@@ -265,44 +288,79 @@ class GLobalHandleTable {
     uint32_t m_key;
 
   public:
-    GLobalHandleTable(const char *name, int maxObjects, uint32_t key)
+    GLobalHandleTable(const char *name, uint32_t maxObjects, uint32_t key)
         : m_header(nullptr)
         , m_table(nullptr)
     {
         setlocale(LC_ALL, "zh_CN.UTF-8"); // init locale
 
-        m_sharedMem = new SharedMemory();
-        SharedMemory::InitStat ret = m_sharedMem->init(name, maxObjects * sizeof(HandleData) + sizeof(TableHeader));
-        //assert(ret);
-        if (!ret)
+        const uint32_t dwSize = maxObjects * sizeof(HandleData) + sizeof(TableHeader);
+        for (int attempt = 0; attempt < 2; attempt++)
         {
-            delete m_sharedMem;
-            m_sharedMem = nullptr;
-        }
-        else
-        {
+            m_sharedMem = new SharedMemory();
+            SharedMemory::InitStat ret = m_sharedMem->init(name, dwSize);
+            if (!ret)
+            {
+                delete m_sharedMem;
+                m_sharedMem = nullptr;
+                return;
+            }
             getRwLock()->lockExclusive();
             m_header = (TableHeader *)m_sharedMem->buffer();
             m_table = (HandleData *)(m_header + 1);
             if (ret == SharedMemory::Existed)
             {
-                if (m_header->key != key || m_header->totalSize != maxObjects)
+                // census: how many slots actually hold an object
+                uint32_t actual = 0;
+                for (uint32_t i = 0; i < maxObjects; i++)
                 {
+                    if (m_table[i].type != HUnknown)
+                        actual++;
+                }
+                const bool layoutMismatch = m_header->key != key || m_header->totalSize != maxObjects || m_header->used > maxObjects || m_header->magic != tableMagic();
+                const bool countMismatch = m_header->used != actual;
+                if (layoutMismatch)
+                {
+                    // stale segment from an incompatible build (see
+                    // tableMagic()): drop it and retry once with a fresh,
+                    // zero-initialized one
                     getRwLock()->unlockExclusive();
                     delete m_sharedMem;
                     m_sharedMem = nullptr;
-                    assert(false);
-                    return;
+                    m_header = nullptr;
+                    m_table = nullptr;
+                    if (shm_unlink(name) != 0 && errno != ENOENT)
+                    {
+                        perror("shm_unlink(stale global table)");
+                    }
+                    printf("[swinx] global handle table: discarded stale shm segment "
+                           "written by an incompatible build, recreating (%s)\n",
+                           name);
+                    continue;
+                }
+                if (countMismatch)
+                {
+                    // used drifted from the slot bytes (crash mid
+                    // create/destroy). used < actual is what once made
+                    // findExistedHandleDataIndex's early break skip live
+                    // entries; used > actual is harmless but drifts. Repair
+                    // instead of discarding so objects of concurrently
+                    // running processes stay intact.
+                    printf("[swinx] global handle table: inconsistent used counter "
+                           "(used=%u, actual=%u), repaired (%s)\n",
+                           m_header->used, actual, name);
+                    m_header->used = actual;
                 }
             }
-            else
+            if (ret == SharedMemory::Created)
             {
                 // init global table
                 m_header->key = key;
                 m_header->totalSize = maxObjects;
                 m_header->used = 0;
+                m_header->magic = tableMagic();
                 HandleData *tbl = m_table;
-                for (int i = 0; i < maxObjects; i++)
+                for (uint32_t i = 0; i < maxObjects; i++)
                 {
                     tbl->type = HUnknown;
                     tbl++;
@@ -310,6 +368,7 @@ class GLobalHandleTable {
             }
             m_key = key;
             getRwLock()->unlockExclusive();
+            return;
         }
     }
     ~GLobalHandleTable()
@@ -334,18 +393,22 @@ class GLobalHandleTable {
 
     int findExistedHandleDataIndex(const char *name, int type)
     {
+        // Deliberately scans EVERY slot - no early break on header->used.
+        // The old early break (objs == used) was only correct while "used"
+        // exactly equaled the number of live slots. A process killed mid
+        // create/destroy leaves "used" transiently out of sync with the
+        // slot bytes; an overshoot just made lookups slow, but an undershoot
+        // made the break fire BEFORE the live entry - the entry was in the
+        // table yet never found (Create succeeded, Open returned NULL).
+        // Scanning 65535 int-sized type fields costs microseconds, so the
+        // counter is not worth the fragility.
         HandleData *data = getHandleData(0);
-        int objs = 0;
         for (uint32_t i = 0, maxObj = getHeader()->totalSize; i < maxObj; i++, data++)
         {
             if (data->type == type && strcmp(data->szNick, name) == 0)
             {
                 return i;
             }
-            if (data->type != HUnknown)
-                objs++;
-            if (objs == getTableUsed())
-                break;
         }
         return -1;
     }
@@ -425,7 +488,7 @@ struct NoNameWaitbleObj : _SynHandle
         return fd[1];
     }
 
-    bool init(LPCSTR pszName, void *initData) override
+    bool init(LPCSTR pszName __attribute__((unused)), void *initData) override
     {
         bool bRet = pipe(fd) != -1;
         if (!bRet)
@@ -447,8 +510,8 @@ struct NamedWaitbleObj : _SynHandle
     GlobalMutex mutex;
     int fifo;
     NamedWaitbleObj()
-        : fifo(-1)
-        , index(-1)
+        : index(-1)
+        , fifo(-1)
     {
     }
 
@@ -526,6 +589,7 @@ struct NamedWaitbleObj : _SynHandle
     {
         s_globalHandleTable.getRwLock()->lockExclusive();
         bool bExisted = true;
+        (void)bExisted;
         int index = s_globalHandleTable.findExistedHandleDataIndex(pszName, type);
         if (index == -1)
         {
@@ -579,7 +643,7 @@ struct NoNameEvent
     {
         type = HEvent;
     }
-    void onInit(HandleData *pData, void *initData) override
+    void onInit(HandleData *pData __attribute__((unused)), void *initData) override
     {
         memcpy((EventData *)this, initData, sizeof(EventData));
     }
@@ -613,7 +677,7 @@ struct NoNameSemaphore
     {
         type = HSemaphore;
     }
-    void onInit(HandleData *pData, void *initData) override
+    void onInit(HandleData *pData __attribute__((unused)), void *initData) override
     {
         memcpy((SemaphoreData *)this, initData, sizeof(SemaphoreData));
     }
@@ -649,7 +713,7 @@ struct NoNameMutex
     {
         type = HMutex;
     }
-    void onInit(HandleData *pData, void *initData) override
+    void onInit(HandleData *pData __attribute__((unused)), void *initData) override
     {
         memcpy((MutexData *)this, initData, sizeof(MutexData));
     }
@@ -753,7 +817,7 @@ struct NoNameTimer
     {
         type = HTimer;
     }
-    void onInit(HandleData *pData, void *initData) override
+    void onInit(HandleData *pData __attribute__((unused)), void *initData) override
     {
         memcpy((TimerData *)this, initData, sizeof(TimerData));
     }
@@ -801,12 +865,12 @@ typedef TimerOp<NamedTimer> NamedTimerObj;
 //------------------------------------------------------------
 // Timer related APIs
 
-HANDLE WINAPI CreateWaitableTimerA(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL bManualReset, LPCSTR lpTimerName)
+HANDLE WINAPI CreateWaitableTimerA(LPSECURITY_ATTRIBUTES lpTimerAttributes __attribute__((unused)), BOOL bManualReset, LPCSTR lpTimerName)
 {
     if (lpTimerName && *lpTimerName)
     {
         NamedTimerObj *timer = new NamedTimerObj();
-        TimerData data = { bManualReset, FALSE, { 0 }, 0, NULL, NULL, NULL, FALSE };
+        TimerData data = { bManualReset, FALSE, {}, 0, NULL, NULL, NULL, FALSE };
         if (!timer->init(lpTimerName, &data))
         {
             delete timer;
@@ -817,7 +881,7 @@ HANDLE WINAPI CreateWaitableTimerA(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL
     else
     {
         NoNameTimerObj *timer = new NoNameTimerObj();
-        TimerData data = { bManualReset, FALSE, { 0 }, 0, NULL, NULL, NULL, FALSE };
+        TimerData data = { bManualReset, FALSE, {}, 0, NULL, NULL, NULL, FALSE };
         if (!timer->init(NULL, &data))
         {
             delete timer;
@@ -827,14 +891,14 @@ HANDLE WINAPI CreateWaitableTimerA(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL
     }
 }
 
-HANDLE WINAPI CreateWaitableTimerW(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL bManualReset, LPCWSTR lpTimerName)
+HANDLE WINAPI CreateWaitableTimerW(LPSECURITY_ATTRIBUTES lpTimerAttributes __attribute__((unused)), BOOL bManualReset, LPCWSTR lpTimerName)
 {
     if (lpTimerName && *lpTimerName)
     {
         std::string strName;
         tostring(lpTimerName, -1, strName);
         NamedTimerObj *timer = new NamedTimerObj();
-        TimerData data = { bManualReset, FALSE, { 0 }, 0, NULL, NULL, NULL, FALSE };
+        TimerData data = { bManualReset, FALSE, {}, 0, NULL, NULL, NULL, FALSE };
         if (!timer->init(strName.c_str(), &data))
         {
             delete timer;
@@ -845,7 +909,7 @@ HANDLE WINAPI CreateWaitableTimerW(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL
     else
     {
         NoNameTimerObj *timer = new NoNameTimerObj();
-        TimerData data = { bManualReset, FALSE, { 0 }, 0, NULL, NULL, NULL, FALSE };
+        TimerData data = { bManualReset, FALSE, {}, 0, NULL, NULL, NULL, FALSE };
         if (!timer->init(NULL, &data))
         {
             delete timer;
@@ -854,6 +918,140 @@ HANDLE WINAPI CreateWaitableTimerW(LPSECURITY_ATTRIBUTES lpTimerAttributes, BOOL
         return NewSynHandle(timer);
     }
 }
+
+//------------------------------------------------------------------------
+// Waitable-timer real scheduling.
+//
+// A single background thread owns all armed timers. SetWaitableTimer
+// registers the handle with its deadline; when the deadline is reached the
+// timer's pipe is signalled once and periodic timers are re-armed at
+// due+period. Entries hold a reference on the handle (AddHandleRef) so a
+// timer closed by its owner before the deadline stays alive until the
+// scheduler drops it. APC completion routines are not supported (swinx has
+// no alertable-wait infrastructure); they are logged and ignored.
+//------------------------------------------------------------------------
+struct TimerSchedEntry
+{
+    // the outer handle (ref-counted via AddHandleRef), NOT the _SynHandle:
+    // AddHandleRef/CloseHandle only accept HANDLE.
+    HANDLE hTimer;
+    std::chrono::steady_clock::time_point due;
+    LONG periodMs;
+};
+
+static std::mutex s_timerSchedMutex;
+static std::condition_variable s_timerSchedCv;
+static std::map<HANDLE, TimerSchedEntry> s_timerSched;
+static bool s_timerSchedStarted = false;
+static bool s_timerSchedStop = false;
+static std::thread s_timerSchedThread;
+
+static void timer_sched_loop()
+{
+    std::unique_lock<std::mutex> lock(s_timerSchedMutex);
+    for (;;)
+    {
+        if (s_timerSchedStop)
+        {
+            // process is exiting: drop the scheduler's references on timers
+            // that never fired, then leave (the guard below joins us)
+            std::vector<HANDLE> abandoned;
+            for (auto &e : s_timerSched)
+                abandoned.push_back(e.second.hTimer);
+            s_timerSched.clear();
+            lock.unlock();
+            for (HANDLE h : abandoned)
+                CloseHandle(h);
+            lock.lock();
+            return;
+        }
+        if (s_timerSched.empty())
+        {
+            s_timerSchedCv.wait(lock);
+            continue;
+        }
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::steady_clock::time_point earliest = s_timerSched.begin()->second.due;
+        for (auto &e : s_timerSched)
+        {
+            if (e.second.due < earliest)
+                earliest = e.second.due;
+        }
+        if (earliest > now)
+            s_timerSchedCv.wait_until(lock, earliest);
+
+        now = std::chrono::steady_clock::now();
+        std::vector<HANDLE> firedOnce;
+        for (auto it = s_timerSched.begin(); it != s_timerSched.end();)
+        {
+            if (it->second.due <= now)
+            {
+                // the scheduler holds a reference, so the handle is alive;
+                // re-resolve the _SynHandle each time ( HANDLE <-> _SynHandle
+                // are different types and must not be mixed ).
+                _SynHandle *syn = GetSynHandle(it->second.hTimer);
+                if (syn)
+                    syn->writeSignal();
+                if (it->second.periodMs > 0)
+                {
+                    // catch up on missed periods, keep at least one period gap
+                    do
+                    {
+                        it->second.due += std::chrono::milliseconds(it->second.periodMs);
+                    } while (it->second.due <= now);
+                    ++it;
+                }
+                else
+                {
+                    firedOnce.push_back(it->second.hTimer);
+                    it = s_timerSched.erase(it);
+                }
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        // release the scheduler's references outside the lock: CloseHandle
+        // only takes the handle's own mutex, but keep the nesting trivial.
+        lock.unlock();
+        for (HANDLE h : firedOnce)
+            CloseHandle(h);
+        lock.lock();
+    }
+}
+
+static void timer_sched_start()
+{
+    std::lock_guard<std::mutex> lock(s_timerSchedMutex);
+    if (s_timerSchedStarted || s_timerSchedStop)
+        return;
+    s_timerSchedStarted = true;
+    // keep the thread object so the process can join it at exit
+    s_timerSchedThread = std::thread(timer_sched_loop);
+}
+
+// Stops and joins the scheduler thread at process exit. Declared after the
+// mutex/cv/thread statics above, so during static destruction it runs first
+// and the thread is gone before its synchronization primitives are destroyed
+// (a detached thread still blocked in cv.wait at that point is undefined
+// behaviour and can hang or crash the exit path).
+class TimerSchedGuard {
+  public:
+    ~TimerSchedGuard()
+    {
+        {
+            std::lock_guard<std::mutex> lock(s_timerSchedMutex);
+            s_timerSchedStop = true;
+        }
+        s_timerSchedCv.notify_all();
+        if (s_timerSchedThread.joinable())
+        {
+            s_timerSchedThread.join();
+        }
+    }
+};
+static TimerSchedGuard s_timerSchedGuard;
 
 BOOL WINAPI SetWaitableTimer(HANDLE hTimer, const LARGE_INTEGER *lpDueTime, LONG lPeriod, PTIMERAPCROUTINE lpCompletionRoutine, LPVOID lpArgToCompletionRoutine, BOOL fResume)
 {
@@ -872,10 +1070,49 @@ BOOL WINAPI SetWaitableTimer(HANDLE hTimer, const LARGE_INTEGER *lpDueTime, LONG
     data->lpCompletionRoutine = (PVOID)lpCompletionRoutine;
     data->lpArgToCompletionRoutine = lpArgToCompletionRoutine;
     data->fResume = fResume;
+    if (lpCompletionRoutine)
+        SLOG_STMW() << "SetWaitableTimer: completion routines (APC) are not supported, ignored";
 
-    // For simplicity, we just signal the timer immediately
-    // In a real implementation, we would use a thread or timerfd to handle the actual timing
-    synHandle->writeSignal();
+    // Compute the absolute deadline.
+    //   lpDueTime.QuadPart < 0 : relative time, 100ns units
+    //   lpDueTime.QuadPart > 0 : absolute FILETIME (1601 epoch, 100ns units)
+    LONGLONG q = lpDueTime ? lpDueTime->QuadPart : 0;
+    auto now = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point due = now;
+    if (q < 0)
+    {
+        due = now + std::chrono::nanoseconds(-q * 100);
+    }
+    else if (q > 0)
+    {
+        // FILETIME (1601) to UNIX epoch offset, expressed in 100ns units.
+        LONGLONG delta = q - 116444736000000000LL;
+        if (delta > 0)
+            due = now + std::chrono::nanoseconds(delta * 100);
+    }
+
+    timer_sched_start();
+    {
+        std::lock_guard<std::mutex> lock(s_timerSchedMutex);
+        if (s_timerSchedStop) // scheduler already shut down (process exiting)
+            return FALSE;
+        auto it = s_timerSched.find(hTimer);
+        if (it != s_timerSched.end())
+        {
+            it->second.due = due;
+            it->second.periodMs = lPeriod;
+        }
+        else
+        {
+            // hold a scheduler reference (on the HANDLE, not the _SynHandle)
+            // so the handle stays alive even if the owner closes it before
+            // the deadline
+            AddHandleRef(hTimer);
+            TimerSchedEntry entry = { hTimer, due, lPeriod };
+            s_timerSched[hTimer] = entry;
+        }
+    }
+    s_timerSchedCv.notify_all();
 
     return TRUE;
 }
@@ -895,7 +1132,21 @@ BOOL WINAPI CancelWaitableTimer(HANDLE hTimer)
     data->lpCompletionRoutine = NULL;
     data->lpArgToCompletionRoutine = NULL;
 
-    // Clear any pending signals
+    // disarm the scheduled entry, then clear any pending signals
+    bool wasScheduled = false;
+    {
+        std::lock_guard<std::mutex> lock(s_timerSchedMutex);
+        auto it = s_timerSched.find(hTimer);
+        if (it != s_timerSched.end())
+        {
+            s_timerSched.erase(it);
+            wasScheduled = true;
+        }
+    }
+    s_timerSchedCv.notify_all();
+    if (wasScheduled)
+        CloseHandle(hTimer); // drop the scheduler's reference (HANDLE, not _SynHandle)
+
     while (synHandle->readSignal())
         ;
 
@@ -960,7 +1211,7 @@ class TimerQueue {
         return SetWaitableTimer(it->second.hTimer, &liDueTime, Period, NULL, NULL, FALSE);
     }
 
-    BOOL DeleteTimer(HANDLE hTimer, HANDLE hCompletionEvent)
+    BOOL DeleteTimer(HANDLE hTimer, HANDLE hCompletionEvent __attribute__((unused)))
     {
         UINT timerId = (UINT)(UINT_PTR)hTimer;
         auto it = m_timers.find(timerId);
@@ -1197,7 +1448,7 @@ struct FileMapObject
             flag = O_RDWR;
             break;
         }
-        
+
 #ifdef __ANDROID__
         // Android-specific: Use ASharedMemory_create for new shared memory
         // First try to open existing from registry
@@ -1207,7 +1458,7 @@ struct FileMapObject
             if (it != s_androidShmRegistry.end())
             {
                 // Open existing shared memory
-                AndroidSharedMemEntry* entry = it->second;
+                AndroidSharedMemEntry *entry = it->second;
                 this->fd = dup(entry->fd);
                 if (this->fd >= 0)
                 {
@@ -1220,7 +1471,7 @@ struct FileMapObject
                 }
             }
         }
-        
+
         // Create new shared memory with correct size
         size_t memSize = fmData.size.QuadPart > 0 ? fmData.size.QuadPart : 4096;
         int fd = ASharedMemory_create(pData->szName, memSize);
@@ -1229,14 +1480,14 @@ struct FileMapObject
             // Fallback to temporary file
             char tempPath[256];
             snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d", pData->szName, getpid());
-            
+
             int flags = O_RDWR | O_CREAT | O_TRUNC;
             fd = open(tempPath, flags, 0666);
             if (fd < 0)
             {
                 return false;
             }
-            
+
             // Set size
             if (ftruncate(fd, memSize) == -1)
             {
@@ -1252,22 +1503,22 @@ struct FileMapObject
                 prot |= PROT_READ;
             if (flag & O_RDWR)
                 prot |= PROT_READ | PROT_WRITE;
-            
+
             if (prot != 0)
             {
                 ASharedMemory_setProt(fd, prot);
             }
-            
+
             // Register the shared memory
             std::lock_guard<std::mutex> lock(s_androidShmMutex);
-            AndroidSharedMemEntry* entry = new AndroidSharedMemEntry();
+            AndroidSharedMemEntry *entry = new AndroidSharedMemEntry();
             entry->name = pData->szName;
             entry->fd = fd;
             entry->size = memSize;
             entry->refCount = 1;
             s_androidShmRegistry[pData->szName] = entry;
         }
-        
+
         this->fd = fd;
 #else
         // Non-Android platforms use shm_open
@@ -1298,6 +1549,7 @@ struct FileMapObject
     {
         s_globalHandleTable.getRwLock()->lockExclusive();
         bool bExisted = true;
+        (void)bExisted;
         int index = s_globalHandleTable.findExistedHandleDataIndex(pszName, HFileMap);
         if (index == -1)
         {
@@ -1388,13 +1640,39 @@ static HANDLE OpenExistObject(LPCSTR name, int type)
     }
     else
     {
+        // Normal "no such object" (e.g. Create*'s internal existence probe
+        // for a fresh name) must stay silent. But since
+        // findExistedHandleDataIndex now scans every slot, a miss can only
+        // mean the entry is genuinely absent - dump the table state if that
+        // state looks anomalous (stale entry under the same name with a
+        // different type, or a used counter that still disagrees with the
+        // slot bytes), so leak.log pinpoints the corruption if it recurs.
+        uint32_t actual = 0;
+        int sameNameOtherType = -1;
+        HandleData *data = s_globalHandleTable.getHandleData(0);
+        uint32_t maxObj = s_globalHandleTable.getHeader()->totalSize;
+        for (uint32_t i = 0; i < maxObj; i++, data++)
+        {
+            if (data->type != HUnknown)
+            {
+                actual++;
+                if (sameNameOtherType == -1 && strcmp(data->szNick, name) == 0)
+                    sameNameOtherType = (int)i;
+            }
+        }
+        if (s_globalHandleTable.getTableUsed() != actual || sameNameOtherType != -1)
+        {
+            printf("[swinx] OpenExistObject: '%s' (type %d) not found; "
+                   "used=%u actual=%u sameNameOtherType=%d\n",
+                   name, type, s_globalHandleTable.getTableUsed(), actual, sameNameOtherType);
+        }
         SetLastError(ERROR_INVALID_PARAMETER);
     }
     s_globalHandleTable.getRwLock()->unlockExclusive();
     return ret;
 }
 
-HANDLE WINAPI CreateSemaphoreA(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG lInitialCount, LONG lMaximumCount, LPCSTR name)
+HANDLE WINAPI CreateSemaphoreA(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes __attribute__((unused)), LONG lInitialCount, LONG lMaximumCount, LPCSTR name)
 {
     _SynHandle *ret = 0;
     if (name)
@@ -1430,12 +1708,12 @@ HANDLE WINAPI CreateSemaphoreW(LPSECURITY_ATTRIBUTES lpSemaphoreAttributes, LONG
     return CreateSemaphoreA(lpSemaphoreAttributes, lInitialCount, lMaximumCount, szName);
 }
 
-HANDLE WINAPI OpenSemaphoreA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName)
+HANDLE WINAPI OpenSemaphoreA(DWORD dwDesiredAccess __attribute__((unused)), BOOL bInheritHandle __attribute__((unused)), LPCSTR lpName)
 {
     return OpenExistObject(lpName, HNamedSemaphore);
 }
 
-HANDLE WINAPI OpenSemaphoreW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName)
+HANDLE WINAPI OpenSemaphoreW(DWORD dwDesiredAccess __attribute__((unused)), BOOL bInheritHandle __attribute__((unused)), LPCWSTR lpName)
 {
     char szName[MAX_PATH] = { 0 };
     if (0 == WideCharToMultiByte(CP_ACP, 0, lpName, -1, szName, MAX_PATH, nullptr, nullptr))
@@ -1473,12 +1751,12 @@ BOOL WINAPI ReleaseSemaphore(HANDLE h, LONG lReleaseCount, LPLONG lpPreviousCoun
     return TRUE;
 }
 
-HANDLE WINAPI OpenEventA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName)
+HANDLE WINAPI OpenEventA(DWORD dwDesiredAccess __attribute__((unused)), BOOL bInheritHandle __attribute__((unused)), LPCSTR lpName)
 {
     return OpenExistObject(lpName, HNamedEvent);
 }
 
-HANDLE WINAPI OpenEventW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName)
+HANDLE WINAPI OpenEventW(DWORD dwDesiredAccess __attribute__((unused)), BOOL bInheritHandle __attribute__((unused)), LPCWSTR lpName)
 {
     char szName[MAX_PATH] = { 0 };
     if (0 == WideCharToMultiByte(CP_ACP, 0, lpName, -1, szName, MAX_PATH, nullptr, nullptr))
@@ -1486,7 +1764,7 @@ HANDLE WINAPI OpenEventW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpN
     return OpenExistObject(szName, HNamedEvent);
 }
 
-HANDLE WINAPI CreateEventA(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManualReset, BOOL bInitialState, LPCSTR lpName)
+HANDLE WINAPI CreateEventA(LPSECURITY_ATTRIBUTES lpEventAttributes __attribute__((unused)), BOOL bManualReset, BOOL bInitialState, LPCSTR lpName)
 {
     _SynHandle *ret = 0;
     if (lpName)
@@ -1526,7 +1804,7 @@ HANDLE WINAPI CreateEventW(LPSECURITY_ATTRIBUTES lpEventAttributes, BOOL bManual
     return CreateEventA(lpEventAttributes, bManualReset, bInitialState, szName);
 }
 
-HANDLE WINAPI CreateMutexA(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitialOwner, LPCSTR lpName)
+HANDLE WINAPI CreateMutexA(LPSECURITY_ATTRIBUTES lpMutexAttributes __attribute__((unused)), BOOL bInitialOwner, LPCSTR lpName)
 {
     _SynHandle *ret = 0;
     if (lpName)
@@ -1548,6 +1826,12 @@ HANDLE WINAPI CreateMutexA(LPSECURITY_ATTRIBUTES lpMutexAttributes, BOOL bInitia
         SetLastError(ERROR_INVALID_PARAMETER);
         FreeSynObj(ret);
         return 0;
+    }
+    // a mutex in released state is signaled: put the initial token into the
+    // pipe so WaitForSingleObject can acquire it (same as SemaphoreOp::init).
+    if (!bInitialOwner)
+    {
+        ret->writeSignal();
     }
     return NewSynHandle(ret);
 }
@@ -1572,15 +1856,22 @@ BOOL WINAPI ReleaseMutex(HANDLE h)
     MutexData *data = (MutexData *)hMutex->getData();
     if (data->tid_owner != GetCurrentThreadId())
         return FALSE;
-    return hMutex->writeSignal();
+    BOOL bRet = hMutex->writeSignal();
+    if (bRet)
+    {
+        hMutex->lock();
+        data->tid_owner = 0;
+        hMutex->unlock();
+    }
+    return bRet;
 }
 
-HANDLE WINAPI OpenMutexA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName)
+HANDLE WINAPI OpenMutexA(DWORD dwDesiredAccess __attribute__((unused)), BOOL bInheritHandle __attribute__((unused)), LPCSTR lpName)
 {
     return OpenExistObject(lpName, HNamedMutex);
 }
 
-HANDLE WINAPI OpenMutexW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpName)
+HANDLE WINAPI OpenMutexW(DWORD dwDesiredAccess __attribute__((unused)), BOOL bInheritHandle __attribute__((unused)), LPCWSTR lpName)
 {
     char szName[MAX_PATH] = { 0 };
     if (0 == WideCharToMultiByte(CP_ACP, 0, lpName, -1, szName, MAX_PATH, nullptr, nullptr))
@@ -1617,28 +1908,55 @@ BOOL WINAPI SetEvent(HANDLE h)
 
 static int selectfds(int *fds, int nCount, DWORD timeoutMs, bool *states)
 {
+    // select() is NEVER restarted automatically after a signal handler
+    // returns, even when the handler is installed with SA_RESTART
+    // (see signal(7)). Thread suspend/resume parks threads inside a signal
+    // handler (sysapi.cpp), so EINTR is a normal occurrence here: retry
+    // until the deadline instead of failing the whole wait.
+    uint64_t deadline = (timeoutMs == INFINITE) ? 0 : GetTickCount64() + timeoutMs;
+
     fd_set read_fds;
-    FD_ZERO(&read_fds);
-    int max_fd = -1;
-    for (int i = 0; i < nCount; i++)
+    int ret = 0;
+    for (;;)
     {
-        if ((fds[i] != -1) && (!states || !states[i]))
+        // rebuild the wait set on every attempt: select() may scribble on it
+        FD_ZERO(&read_fds);
+        int max_fd = -1;
+        for (int i = 0; i < nCount; i++)
         {
-            FD_SET(fds[i], &read_fds);
-            max_fd = std::max(max_fd, fds[i]);
+            if ((fds[i] != -1) && (!states || !states[i]))
+            {
+                FD_SET(fds[i], &read_fds);
+                max_fd = std::max(max_fd, fds[i]);
+            }
         }
+
+        if (timeoutMs == INFINITE)
+            ret = select(max_fd + 1, &read_fds, NULL, NULL, NULL);
+        else
+        {
+            timeval val;
+            val.tv_sec = timeoutMs / 1000;
+            val.tv_usec = (timeoutMs % 1000) * 1000;
+            ret = select(max_fd + 1, &read_fds, NULL, NULL, &val);
+        }
+
+        if (ret < 0 && errno == EINTR)
+        {
+            if (timeoutMs == INFINITE)
+                continue;
+            uint64_t now = GetTickCount64();
+            if (now >= deadline)
+            {
+                ret = 0;
+                break;
+            }
+            timeoutMs = (DWORD)(deadline - now);
+            continue;
+        }
+        break;
     }
 
-    int ret = 0;
-    if (timeoutMs == INFINITE)
-        ret = select(max_fd + 1, &read_fds, NULL, NULL, NULL);
-    else
-    {
-        timeval val;
-        val.tv_sec = timeoutMs / 1000;
-        val.tv_usec = (timeoutMs % 1000) * 1000;
-        ret = select(max_fd + 1, &read_fds, NULL, NULL, &val);
-    }
     if (ret > 0 && states)
     {
         for (int i = 0; i < nCount; i++)
@@ -1711,7 +2029,7 @@ DWORD WINAPI WaitForMultipleObjects(DWORD nCount, const HANDLE *lpHandles, BOOL 
     bool states[MAXIMUM_WAIT_OBJECTS] = { false };
     HANDLE tmpHandles[MAXIMUM_WAIT_OBJECTS] = { 0 };
     s_globalHandleTable.getRwLock()->lockShared();
-    for (int i = 0; i < nCount; i++)
+    for (DWORD i = 0; i < nCount; i++)
     {
         if (lpHandles[i] != INVALID_HANDLE_VALUE)
         {
@@ -1731,7 +2049,7 @@ DWORD WINAPI WaitForMultipleObjects(DWORD nCount, const HANDLE *lpHandles, BOOL 
 start_wait:
     DWORD dwToInit = dwMilliseconds;
     uint64_t ts1_all = GetTickCount64();
-    int nRet = 0;
+    DWORD nRet = 0;
     for (;;)
     {
         uint64_t ts1 = GetTickCount64();
@@ -1743,7 +2061,7 @@ start_wait:
         }
         if (!bWaitAll)
         {
-            for (int i = 0; i < nCount; i++)
+            for (DWORD i = 0; i < nCount; i++)
             {
                 if (states[i])
                 {
@@ -1757,7 +2075,7 @@ start_wait:
         {
             // wait for all objects.
             bool bAllReady = true;
-            for (int i = 0; i < nCount; i++)
+            for (DWORD i = 0; i < nCount; i++)
             {
                 if (!states[i])
                 {
@@ -1786,7 +2104,7 @@ start_wait:
     {
         // check for state again
         bool bValid = true;
-        for (int i = 0; i < nCount; i++)
+        for (DWORD i = 0; i < nCount; i++)
         {
             if (states[i] && tmpHandles[i] != INVALID_HANDLE_VALUE)
             {
@@ -1817,7 +2135,7 @@ start_wait:
         }
     }
 
-    for (int i = 0; i < nCount; i++)
+    for (DWORD i = 0; i < nCount; i++)
     {
         CloseHandle(tmpHandles[i]);
     }
@@ -1825,7 +2143,7 @@ start_wait:
     return nRet;
 }
 
-HANDLE OpenFileMappingA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpName)
+HANDLE OpenFileMappingA(DWORD dwDesiredAccess __attribute__((unused)), BOOL bInheritHandle __attribute__((unused)), LPCSTR lpName)
 {
     return OpenExistObject(lpName, HFileMap);
 }
@@ -1838,7 +2156,7 @@ HANDLE OpenFileMappingW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpNa
     return OpenFileMappingA(dwDesiredAccess, bInheritHandle, szPath);
 }
 
-HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCSTR lpName)
+HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes __attribute__((unused)), DWORD flProtect, DWORD dwMaximumSizeHigh, DWORD dwMaximumSizeLow, LPCSTR lpName)
 {
     if (hFile != INVALID_HANDLE_VALUE)
     {
@@ -1848,11 +2166,11 @@ HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes, DWOR
             SetLastError(ERROR_INVALID_PARAMETER);
             return INVALID_HANDLE_VALUE;
         }
-        LARGE_INTEGER fsize = { 0 };
+        LARGE_INTEGER fsize = {};
         GetFileSizeEx(hFile, &fsize);
         if (dwMaximumSizeHigh != 0 || dwMaximumSizeLow != 0)
         {
-            if (fsize.LowPart != dwMaximumSizeLow || fsize.HighPart != dwMaximumSizeHigh)
+            if (fsize.LowPart != dwMaximumSizeLow || (DWORD)fsize.HighPart != dwMaximumSizeHigh)
             {
                 fsize.LowPart = dwMaximumSizeLow;
                 fsize.HighPart = dwMaximumSizeHigh;
@@ -1971,7 +2289,7 @@ LPVOID WINAPI MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DW
     offset.HighPart = dwFileOffsetHigh;
     offset.LowPart = dwFileOffsetLow;
     int flag = 0;
-    if (offset.QuadPart + dwNumberOfBytesToMap > fmData.size.QuadPart)
+    if ((LONGLONG)(offset.QuadPart + dwNumberOfBytesToMap) > fmData.size.QuadPart)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         goto end;
@@ -2049,12 +2367,12 @@ BOOL GetHandleName(HANDLE h, char szName[1001])
     return TRUE;
 }
 
-HANDLE WINAPI OpenWaitableTimerA(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCSTR lpTimerName)
+HANDLE WINAPI OpenWaitableTimerA(DWORD dwDesiredAccess __attribute__((unused)), BOOL bInheritHandle __attribute__((unused)), LPCSTR lpTimerName)
 {
     return OpenExistObject(lpTimerName, HNamedTimer);
 }
 
-HANDLE WINAPI OpenWaitableTimerW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpTimerName)
+HANDLE WINAPI OpenWaitableTimerW(DWORD dwDesiredAccess __attribute__((unused)), BOOL bInheritHandle __attribute__((unused)), LPCWSTR lpTimerName)
 {
     char szName[MAX_PATH] = { 0 };
     if (0 == WideCharToMultiByte(CP_ACP, 0, lpTimerName, -1, szName, MAX_PATH, nullptr, nullptr))

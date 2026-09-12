@@ -35,7 +35,6 @@
     // 应用程序启动完成后的处理
     NSLog(@"Application finished launching");
     [NSApp activateIgnoringOtherApps:YES];
-    //[[NSRunningApplication currentApplication] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender {
@@ -43,11 +42,11 @@
 }
 
 -(void) applicationDidResignActive:(NSNotification *)notification {
-   SLOG_STMI()<<"hjx applicationDidResignActive";
+   //SLOG_STMI()<<"hjx applicationDidResignActive";
 }
 
 -(void) applicationDidBecomeActive:(NSNotification *)notification {
-   SLOG_STMI()<<"hjx applicationDidBecomeActive";
+   //SLOG_STMI()<<"hjx applicationDidBecomeActive";
 }
 
 - (NSMenu *)applicationDockMenu:(NSApplication *)sender {

@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <list>
 #include <algorithm>
+#include <atomic>
 #include <assert.h>
 #include "hook.h"
 #include "SRwLock.hpp"
@@ -21,7 +22,24 @@ struct hook
     tid_t tid;
     BOOL unicode;
     char module[MAX_PATH];
+    std::atomic<int> refs;
 };
+
+// Reference counting keeps a hook object alive while its callback is running:
+// the hook lists own one reference, and call_hook holds an extra reference for
+// the duration of the hook proc, so UnhookWindowsHookEx from another thread
+// only removes the hook from the chain and frees it once no callback is in
+// flight (same observable behavior as Win32).
+static void hook_acquire(hook *h)
+{
+    h->refs++;
+}
+
+static void hook_release(hook *h)
+{
+    if (--h->refs == 0)
+        delete h;
+}
 
 static const char *const hook_names[WH_MAXHOOK - WH_MINHOOK] = { "WH_MSGFILTER", "WH_KEYBOARD", "WH_GETMESSAGE", "WH_CALLWNDPROC", "WH_SYSMSGFILTER", "WH_MOUSE", "WH_CALLWNDPROCRET" };
 
@@ -34,7 +52,7 @@ class HookMgr {
     ~HookMgr()
     {
         s_mutex.LockExclusive();
-        for (int i = 0; i < WH_MAXHOOK - WH_MINHOOK - 1; i++)
+        for (int i = 0; i < WH_MAXHOOK - WH_MINHOOK + 1; i++)
         {
             for (auto &it : s_hooks[i])
             {
@@ -78,12 +96,12 @@ UINT HookMgr::get_hook_timeout(void)
  */
 HHOOK HookMgr::set_windows_hook(INT id, HOOKPROC proc, HINSTANCE inst, tid_t tid, BOOL unicode)
 {
-    char module[MAX_PATH];
+    char module[MAX_PATH] = "";
     DWORD len;
 
-    if (!proc)
+    if (!proc || id < WH_MINHOOK || id >= WH_MAXHOOK)
     {
-        SetLastError(ERROR_INVALID_FILTER_PROC);
+        SetLastError(ERROR_INVALID_PARAMETER);
         return 0;
     }
     if (inst && (!(len = GetModuleFileNameA(inst, module, MAX_PATH)) || len >= MAX_PATH))
@@ -98,37 +116,57 @@ HHOOK HookMgr::set_windows_hook(INT id, HOOKPROC proc, HINSTANCE inst, tid_t tid
     info->tid = tid;
     info->unicode = unicode;
     strcpy(info->module, module);
+    info->refs = 1; // one reference owned by the hook list
     s_mutex.LockExclusive();
     auto &lstHook = s_hooks[id];
     lstHook.push_front(info);
     s_mutex.UnlockExclusive();
-    SLOG_FMTI("%s %p %ld -> %p", hook_names[id - WH_MINHOOK], proc, tid, info);
     return info;
 }
 
 BOOL HookMgr::unhook(HHOOK hHook)
 {
+    if (!hHook)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
     BOOL bRet = FALSE;
     s_mutex.LockExclusive();
-    auto &lstHook = s_hooks[hHook->id];
-    auto it = std::find(lstHook.begin(), lstHook.end(), hHook);
-    if (it != lstHook.end())
+    // hHook is a caller-supplied pointer that may be stale: unhooking an
+    // already-unhooked handle passes a freed object here (valgrind reports
+    // invalid reads). Win32 treats it as an invalid handle, so never
+    // dereference it — search every hook list by pointer value instead,
+    // exactly like a handle table lookup.
+    for (int i = WH_MINHOOK; i < WH_MAXHOOK && !bRet; i++)
     {
-        lstHook.erase(it);
-        delete hHook;
-        bRet = TRUE;
+        auto &lstHook = s_hooks[i];
+        auto it = std::find(lstHook.begin(), lstHook.end(), hHook);
+        if (it != lstHook.end())
+        {
+            lstHook.erase(it);
+            // Drop the list's own reference. If a callback is still in flight
+            // (call_hook holds a reference), the object is freed once it returns.
+            hook_release(hHook);
+            bRet = TRUE;
+        }
     }
     s_mutex.UnlockExclusive();
+    if (!bRet)
+        SetLastError(ERROR_INVALID_HANDLE);
     return bRet;
 }
 
 HHOOK HookMgr::get_first_hook(INT id)
 {
     HHOOK ret = NULL;
+    if (id < WH_MINHOOK || id >= WH_MAXHOOK)
+        return NULL;
     s_mutex.LockShared();
     if (!s_hooks[id].empty())
     {
         ret = s_hooks[id].front();
+        hook_acquire(ret); // returned reference, consumed by call_hook
     }
     s_mutex.UnlockShared();
     return ret;
@@ -140,10 +178,18 @@ HHOOK HookMgr::get_next_hook(HHOOK hhk)
         return NULL;
     HHOOK ret = NULL;
     s_mutex.LockShared();
-    auto it = std::find(s_hooks[hhk->id].begin(), s_hooks[hhk->id].end(), hhk);
-    if (it != s_hooks[hhk->id].end())
-        it++;
-    ret = it == s_hooks[hhk->id].end() ? nullptr : (*it);
+    // hhk is guaranteed alive by the reference held for the in-flight callback.
+    INT id = hhk->id;
+    if (id >= WH_MINHOOK && id < WH_MAXHOOK)
+    {
+        auto &lstHook = s_hooks[id];
+        auto it = std::find(lstHook.begin(), lstHook.end(), hhk);
+        if (it != lstHook.end() && ++it != lstHook.end())
+        {
+            ret = *it;
+            hook_acquire(ret); // returned reference, consumed by call_hook
+        }
+    }
     s_mutex.UnlockShared();
     return ret;
 }
@@ -153,6 +199,9 @@ LRESULT HookMgr::call_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
     if (!hhk)
         return 0;
     LRESULT ret = 0;
+    // The reference on hhk (acquired by the caller through get_first_hook /
+    // get_next_hook) keeps the hook object alive for the whole callback, even
+    // if another thread unhooks it meanwhile. The reference is consumed here.
     if (hhk->proc)
     {
         tid_t tid = GetCurrentThreadId();
@@ -163,8 +212,9 @@ LRESULT HookMgr::call_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
             SConnection *conn = SConnMgr::instance()->getConnection(hhk->tid);
             if (!conn)
             {
-                hhk = get_next_hook(hhk);
-                return call_hook(hhk, nCode, wParam, lParam);
+                HHOOK next = get_next_hook(hhk);
+                hook_release(hhk);
+                return call_hook(next, nCode, wParam, lParam);
             }
             else
             {
@@ -180,6 +230,7 @@ LRESULT HookMgr::call_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
             }
         }
     }
+    hook_release(hhk);
     return ret;
 }
 
@@ -222,12 +273,15 @@ BOOL WINAPI UnhookWindowsHookEx(HHOOK hhk)
 
 LRESULT WINAPI CallNextHookEx(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
 {
-    hhk = s_hookMgr.get_next_hook(hhk);
-    return s_hookMgr.call_hook(hhk, nCode, wParam, lParam);
+    // hhk stays valid because the in-flight call_hook holds a reference for
+    // the duration of the hook proc. get_next_hook returns a referenced hook
+    // whose reference is consumed by call_hook.
+    HHOOK next = s_hookMgr.get_next_hook(hhk);
+    return s_hookMgr.call_hook(next, nCode, wParam, lParam);
 }
 
 BOOL WINAPI CallHook(INT id, int nCode, WPARAM wParam, LPARAM lParam)
 {
-    HHOOK hhk = s_hookMgr.get_first_hook(id);
+    HHOOK hhk = s_hookMgr.get_first_hook(id); // referenced, consumed by call_hook
     return s_hookMgr.call_hook(hhk, nCode, wParam, lParam);
 }

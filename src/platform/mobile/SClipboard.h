@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <map>
 #include <mutex>
+#include <atomic>
 #include <string>
 #include <objidl.h>
 
@@ -32,7 +33,7 @@ public:
 private:
     std::recursive_mutex m_mutex;
     HWND m_hOwner;
-    bool m_bOpen;
+    std::atomic<bool> m_bOpen;
     SAndroidClipboardDataObject *m_clipDataObject;
     IDataObject *m_externalDataObject;
 };

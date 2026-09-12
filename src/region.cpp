@@ -41,7 +41,7 @@ static inline const WINEREGION *get_wine_region(HRGN rgn)
 {
     return (WINEREGION *)GetGdiObjPtr(rgn);
 }
-static inline void release_wine_region(HRGN rgn)
+static inline void release_wine_region(HRGN rgn __attribute__((unused)))
 {
     // GDI_ReleaseObj(rgn);
 }
@@ -77,8 +77,6 @@ static inline int region_find_pt(const WINEREGION *rgn, int x, int y, BOOL *hit)
         *hit = h;
     return h ? i : start;
 }
-
-static BOOL REGION_DeleteObject(HGDIOBJ handle);
 
 /* Check if two RECTs overlap. */
 static inline BOOL overlapping(const RECT *r1, const RECT *r2)
@@ -359,16 +357,6 @@ static inline INT get_region_type(const WINEREGION *obj)
  *            REGION_DumpRegion
  *            Outputs the contents of a WINEREGION
  */
-static void REGION_DumpRegion(WINEREGION *pReg)
-{
-    RECT *pRect, *pRectEnd = pReg->rects + pReg->numRects;
-
-    TRACE("Region %p: %s %d rects\n", pReg, wine_dbgstr_rect(&pReg->extents), pReg->numRects);
-    for (pRect = pReg->rects; pRect < pRectEnd; pRect++)
-        TRACE("\t%s\n", wine_dbgstr_rect(pRect));
-    return;
-}
-
 /***********************************************************************
  *            init_region
  *
@@ -380,7 +368,7 @@ static BOOL init_region(WINEREGION *pReg, INT n)
 
     if (n > RGN_DEFAULT_RECTS)
     {
-        if (n > INT_MAX / sizeof(RECT))
+        if (n > (INT)(INT_MAX / sizeof(RECT)))
             return FALSE;
         if (!(pReg->rects = (RECT *)malloc(n * sizeof(RECT))))
             return FALSE;
@@ -454,7 +442,7 @@ static void *GDI_GetObjPtr(HGDIOBJ handle, int type)
     return GetGdiObjPtr(handle);
 }
 
-static void GDI_ReleaseObj(HGDIOBJ handle)
+static void GDI_ReleaseObj(HGDIOBJ handle __attribute__((unused)))
 {
 }
 
@@ -565,7 +553,8 @@ INT WINAPI GetRgnBox(HRGN hrgn, RECT *rect)
     if (obj)
     {
         INT ret;
-        if(rect){
+        if (rect)
+        {
             rect->left = obj->extents.left;
             rect->top = obj->extents.top;
             rect->right = obj->extents.right;

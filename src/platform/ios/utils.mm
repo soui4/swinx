@@ -3,8 +3,10 @@
 //////////////////////////////////////////////////////////////////////
 
 #import <Foundation/Foundation.h>
+#import <AudioToolbox/AudioToolbox.h>
 #include <windows.h>
 #include <shlobj.h>
+#include "SwinxUtils.h"
 #include <string.h>
 
 // 返回值约定与 Win32 GetTempPathA 一致：
@@ -95,4 +97,20 @@ BOOL swinx_iOSSpecialFolderPathA(HWND hwndOwner, LPSTR lpszPath, int nFolder, BO
         }
         return TRUE;
     }
+}
+
+// Windows MessageBeep 在 iOS 上的实现（契约见 SwinxUtils.h）。
+//
+// iOS 没有 AppKit（因此没有 NSBeep），也没有公开的"用户首选提示音"接口
+// （kSystemSoundID_UserPreferredAlert 仅 macOS 可用），所以只能使用系统内置提示音。
+// 用 AudioServicesPlayAlertSound 而不是 AudioServicesPlaySystemSound：后者只发声，
+// 前者在设备处于静音模式时会转为振动提示，更接近 Windows"提示音"的语义。
+// iOS 没有与 MB_ICON* 一一对应的提示音集合，因此所有 uType 统一播放同一个提示音。
+static const SystemSoundID kSwinxAlertTone = 1005; // 系统内置提示音（AlertTone）
+
+int swinx_messageBeep(UINT uType)
+{
+    (void)uType;
+    AudioServicesPlayAlertSound(kSwinxAlertTone);
+    return TRUE;
 }

@@ -8,11 +8,12 @@
 #include "handle.h"
 #include "sdc.h"
 #include "SConnection.h"
-#include "tostring.hpp"
+#include "tostring.h"
 #include "uniconv.h"
 #include "log.h"
 #include <CoreGraphics/CoreGraphics.h>
 #include <CoreText/CoreText.h>
+#include <fontconfig/fontconfig.h>
 
 #ifndef kCTStrikethroughStyleAttributeName
 #define kCTStrikethroughStyleAttributeName CFSTR("NSStrikethroughStyle")
@@ -987,60 +988,8 @@ static BOOL ApplyFont(HDC hdc)
             return FALSE;
         CGContextRef ctx = hdc->cgCtx;
         const char *fontName = lf->lfFaceName;
-        bool needResolve = false;
-        for (const char *p = lf->lfFaceName; *p; ++p)
-        {
-            if ((*p) & 0x80)
-            {
-                needResolve = true;
-                break;
-            }
-        }
-        if (needResolve)
-        {
-            static std::mutex mutex;
-            static std::map<std::string, std::string> fontMap;
-            std::lock_guard<std::mutex> lock(mutex);
-            auto it = fontMap.find(lf->lfFaceName);
-            if (it != fontMap.end())
-            {
-                fontName = it->second.c_str();
-            }
-            else
-            {
-                //todo: hjx
-
-                // FcPattern *pat = FcPatternCreate();
-                // FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)lf->lfFaceName);
-                // FcConfigSubstitute(NULL, pat, FcMatchPattern);
-                // FcDefaultSubstitute(pat);
-                // FcResult result;
-                // FcPattern *font = FcFontMatch(NULL, pat, &result);
-                // if (font)
-                // {
-                //     FcChar8 *family = NULL;
-                //     if (FcPatternGetString(font, FC_FAMILY, 0, &family) == FcResultMatch && family)
-                //     {
-                //         char szFaceName[LF_FACESIZE];
-                //         strncpy(szFaceName, (const char *)family, LF_FACESIZE - 1);
-                //         szFaceName[LF_FACESIZE - 1] = '\0';
-                //         auto res = fontMap.insert(std::make_pair(lf->lfFaceName, szFaceName));
-                //         assert(res.second);
-                //         fontName = res.first->second.c_str();
-                //     }
-                //     FcPatternDestroy(font);
-                // }
-                // if (fontName == lf->lfFaceName)
-                // {
-                //     fontMap.insert(std::make_pair(lf->lfFaceName, fontName));
-                // }
-                // FcPatternDestroy(pat);
-            }
-        }
+        //todo: hjx: resolve non-ASCII face names to an available CG font
         CGContextSelectFont(ctx, fontName[0] ? fontName : "Helvetica", abs(lf->lfHeight), kCGEncodingMacRoman);
-        if (lf->lfWeight > 400)
-        {
-        }
         return TRUE;
     }
     return FALSE;
@@ -1054,55 +1003,7 @@ static CTFontRef CreateCTFontFromDC(HDC hdc)
     if (!lf)
         return NULL;
     const char *fontName = lf->lfFaceName;
-    bool needResolve = false;
-    for (const char *p = lf->lfFaceName; *p; ++p)
-    {
-        if ((*p) & 0x80)
-        {
-            needResolve = true;
-            break;
-        }
-    }
-    if (needResolve)
-    {
-        static std::mutex mutex;
-        static std::map<std::string, std::string> fontMap;
-        std::lock_guard<std::mutex> lock(mutex);
-        auto it = fontMap.find(lf->lfFaceName);
-        if (it != fontMap.end())
-        {
-            fontName = it->second.c_str();
-        }
-        else
-        {
-            //todo:hjx
-            // FcPattern *pat = FcPatternCreate();
-            // FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)lf->lfFaceName);
-            // FcConfigSubstitute(NULL, pat, FcMatchPattern);
-            // FcDefaultSubstitute(pat);
-            // FcResult result;
-            // FcPattern *font = FcFontMatch(NULL, pat, &result);
-            // if (font)
-            // {
-            //     FcChar8 *family = NULL;
-            //     if (FcPatternGetString(font, FC_FAMILY, 0, &family) == FcResultMatch && family)
-            //     {
-            //         char szFaceName[LF_FACESIZE];
-            //         strncpy(szFaceName, (const char *)family, LF_FACESIZE - 1);
-            //         szFaceName[LF_FACESIZE - 1] = '\0';
-            //         auto res = fontMap.insert(std::make_pair(lf->lfFaceName, szFaceName));
-            //         assert(res.second);
-            //         fontName = res.first->second.c_str();
-            //     }
-            //     FcPatternDestroy(font);
-            // }
-            // if (fontName == lf->lfFaceName)
-            // {
-            //     fontMap.insert(std::make_pair(lf->lfFaceName, fontName));
-            // }
-            // FcPatternDestroy(pat);
-        }
-    }
+    //todo: hjx: resolve non-ASCII face names to an available CT font
     CFStringRef cfFontName = CFStringCreateWithCString(NULL, fontName[0] ? fontName : "Helvetica", kCFStringEncodingUTF8);
     CGFloat fontSize = abs(lf->lfHeight) > 0 ? (CGFloat)abs(lf->lfHeight) : 12.0;
     CTFontSymbolicTraits traits = 0;
@@ -1192,7 +1093,16 @@ static CTLineRef CreateCTLineWithDC(HDC hdc, LPCSTR str, int c, CGFloat *outAsce
 static void ApplyRegion(CGContextRef ctx, HRGN hRgn)
 {
     CGContextResetClip(ctx);
+    if (!hRgn)
+        return; // NULL region: remove clipping entirely (SelectClipRgn(hdc,NULL))
     DWORD dwCount = GetRegionData(hRgn, 0, nullptr);
+    if (dwCount == 0)
+    {
+        // NULL/empty region: clip everything out (avoids malloc(0) and
+        // reading a garbage rdh.nCount below).
+        CGContextClipToRect(ctx, CGRectMake(0, 0, 0, 0));
+        return;
+    }
     RGNDATA *pData = (RGNDATA *)malloc(dwCount);
     GetRegionData(hRgn, dwCount, pData);
     RECT *pRc = (RECT *)pData->Buffer;
@@ -1207,9 +1117,23 @@ static void ApplyRegion(CGContextRef ctx, HRGN hRgn)
     free(pData);
 }
 
+static inline CGAffineTransform calc_total(HDC hdc);
+
+// Clip coordinate-space contract of this backend (mirrors the cairo backend):
+// the clip API works in the CURRENT LOGICAL space, not raw device space.
+// Real Win32 GDI keeps SelectClipRgn/ExtSelectClipRgn/GetClipRgn regions in
+// raw device coordinates (verified empirically on Windows), and SOUI's
+// Windows render layer compensates by offsetting rects/regions with its
+// mirrored m_ptOrg. SOUI's Linux/macOS render layer performs NO such
+// compensation, so this backend must interpret pushed rects/regions in the
+// current logical space (the CG CTM composes worldMtx + ptOrigin, see
+// calc_total) and report GetClipRgn/GetClipBox in that same space. With an
+// identity transform this coincides with Win32 device coordinates. Getting
+// this wrong blanks every org-offset item panel (mc list controls blank).
+
 HPEN ExtCreatePen(DWORD iPenStyle, DWORD cWidth, const LOGBRUSH *plbrush, DWORD cStyle, const DWORD *pstyle)
 {
-    if(!plbrush)
+    if (!plbrush)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return 0;
@@ -1407,7 +1331,7 @@ HFONT CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, in
     char facename[LF_FACESIZE];
     if (WideCharToMultiByte(CP_UTF8, 0, pszFaceName, -1, facename, LF_FACESIZE, nullptr, nullptr) == 0)
         return 0;
-    return CreateFontA(cHeight, cWeight, cEscapement, cOrientation, cWeight, bItalic, bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision, iQuality, iPitchAndFamily, facename);
+    return CreateFontA(cHeight, cWidth, cEscapement, cOrientation, cWeight, bItalic, bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision, iQuality, iPitchAndFamily, facename);
 }
 
 HBITMAP CreateDIBitmap(HDC hdc, const BITMAPINFOHEADER *pbmih, DWORD flInit, const VOID *pjBits, const BITMAPINFO *pbmi, UINT iUsage)
@@ -1725,9 +1649,15 @@ HGDIOBJ SelectObject(HDC hdc, HGDIOBJ h)
             unsigned char *data = surf->data;
             CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
             
-            if (colorSpace && data && width >= 0 && height >= 0 && bm.bmBitsPixel==32)
+            if (colorSpace && data && width >= 0 && height >= 0 &&
+                (bm.bmBitsPixel==32 || bm.bmBitsPixel==24))
             {
-                CGBitmapInfo bmi = kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little;
+                // 24bpp 位图内部同样按 4B/px BGRX 存储（见 GdiBitmapCreate），
+                // 唯一区别是 skip 字节无意义——必须用 AlphaNoneSkipFirst：
+                // 若按 premultiplied 解读，calloc 出的 skip 字节=0 会把整图当全透明
+                CGBitmapInfo bmi = (bm.bmBitsPixel == 24)
+                    ? (kCGImageAlphaNoneSkipFirst | kCGBitmapByteOrder32Little)
+                    : (kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little);
                 if(width==0 || height==0){
                     static char emptyCanvas[4];
                     hdc->cgCtx = CGBitmapContextCreate(emptyCanvas, 1, 1, 8, 4, colorSpace, bmi);
@@ -1773,16 +1703,28 @@ BOOL RestoreDC(HDC hdc, int nSavedDC)
     return hdc->RestoreState(nSavedDC);
 }
 
+// CGContextGetClipBoundingBox reports the clip bounding box in USER
+// coordinates; report it unchanged so the region stays in the current
+// logical space (see the clip semantics note above calc_total).
+// Note: CG cannot enumerate the exact clip, so a non-rectangular clip is
+// approximated by its bounding box.
+static inline bool clip_box_unbounded(const CGRect &bb)
+{ // an unset (infinite) clip reports a null or astronomically large box
+    return CGRectIsNull(bb) || bb.origin.x <= -1e18 || bb.origin.y <= -1e18 || bb.size.width >= 1e18 || bb.size.height >= 1e18;
+}
+
 int GetClipRgn(HDC hdc, HRGN hrgn)
 {
     if (!hdc->cgCtx)
         return 0;
     CGRect bb = CGContextGetClipBoundingBox(hdc->cgCtx);
+    if (clip_box_unbounded(bb))
+        return 0; // no clip set: Win32 GetClipRgn reports "no clipping region"
     RECT rcClip;
-    rcClip.left = bb.origin.x;
-    rcClip.top = bb.origin.y;
-    rcClip.right = bb.origin.x + bb.size.width;
-    rcClip.bottom = bb.origin.y + bb.size.height;
+    rcClip.left = (LONG)floor(bb.origin.x + 0.5);
+    rcClip.top = (LONG)floor(bb.origin.y + 0.5);
+    rcClip.right = (LONG)floor(bb.origin.x + bb.size.width + 0.5);
+    rcClip.bottom = (LONG)floor(bb.origin.y + bb.size.height + 0.5);
     HRGN rgnSrc = CreateRectRgnIndirect(&rcClip);
     CombineRgn(hrgn, rgnSrc, nullptr, RGN_COPY);
     DeleteObject(rgnSrc);
@@ -1793,16 +1735,23 @@ int SelectClipRgn(HDC hdc, HRGN hrgn)
 {
     if (!hdc->cgCtx)
         return 0;
+    // apply with the active CTM so the region is interpreted in the current
+    // logical space (see the clip semantics note above calc_total)
     ApplyRegion(hdc->cgCtx, hrgn);
     return RgnComplexity(hrgn);
 }
 
-// 将区域作为交集应用到 CG context（不 reset clip，直接 CGContextClipToRects）
+// 将区域作为交集应用到 CG context（不 reset clip，直接 CGContextClipToRects）。
 // CGContextClipToRects 的语义是：result = current_clip ∩ rects，正好等于 RGN_AND。
-static void ApplyRegionIntersect(CGContextRef ctx, HRGN hRgn)
+// hRgn 是当前逻辑坐标区域，在当前 CTM 下直接应用即可（CG 在 CTM 下解释 rect）。
+static void ApplyRegionIntersect(HDC hdc, HRGN hRgn)
 {
+    CGContextRef ctx = hdc->cgCtx;
+    if (!ctx)
+        return;
     DWORD dwCount = GetRegionData(hRgn, 0, nullptr);
-    if (dwCount == 0) return;
+    if (dwCount == 0)
+        return;
     RGNDATA *pData = (RGNDATA *)malloc(dwCount);
     GetRegionData(hRgn, dwCount, pData);
     RECT *pRc = (RECT *)pData->Buffer;
@@ -1819,10 +1768,10 @@ static void ApplyRegionIntersect(CGContextRef ctx, HRGN hRgn)
 
 int ExtSelectClipRgn(HDC hdc, HRGN hrgn, int mode)
 {
+    if (!hdc->cgCtx)
+        return 0;
     if (mode == RGN_COPY)
     {
-        if (!hdc->cgCtx)
-            return 0;
         ApplyRegion(hdc->cgCtx, hrgn);
         return 0;
     }
@@ -1833,18 +1782,18 @@ int ExtSelectClipRgn(HDC hdc, HRGN hrgn, int mode)
         // GetClipRgn 只返回包围盒（CGContextGetClipBoundingBox），当 current_clip
         // 是非矩形时，包围盒大于实际 clip，导致结果 clip 过大。
         // CGContextClipToRects 的语义本身就是交集，直接使用即可。
-        if (!hdc->cgCtx)
-            return 0;
-        ApplyRegionIntersect(hdc->cgCtx, hrgn);
+        ApplyRegionIntersect(hdc, hrgn);
         return 0;
     }
     else
     {
+        // combine in the current logical space: GetClipRgn exports the clip
+        // bounding box in user coordinates and ApplyRegion maps it back
+        // through the CTM (see the clip semantics note above calc_total)
         HRGN rgnNow = CreateRectRgn(0, 0, 0, 0);
         GetClipRgn(hdc, rgnNow);
         int ret = CombineRgn(rgnNow, rgnNow, hrgn, mode);
-        if (hdc->cgCtx)
-            ApplyRegion(hdc->cgCtx, rgnNow);
+        ApplyRegion(hdc->cgCtx, rgnNow);
         DeleteObject(rgnNow);
         return ret;
     }
@@ -1852,6 +1801,9 @@ int ExtSelectClipRgn(HDC hdc, HRGN hrgn, int mode)
 
 int ExcludeClipRect(HDC hdc, int left, int top, int right, int bottom)
 {
+    // the rect is in logical coordinates; the clip API applies it under the
+    // active CTM, matching Win32 where Intersect/ExcludeClipRect take
+    // logical units
     HRGN hrgn = CreateRectRgn(left, top, right, bottom);
     int ret = ExtSelectClipRgn(hdc, hrgn, RGN_DIFF);
     DeleteObject(hrgn);
@@ -1884,7 +1836,73 @@ HGDIOBJ GetCurrentObject(HDC hdc, UINT type)
 
 int GetDIBits(HDC hdc, HBITMAP hbm, UINT start, UINT cLines, LPVOID lpvBits, LPBITMAPINFO lpbmi, UINT usage)
 {
-    return 0;
+    if (!hbm || !lpbmi)
+        return 0;
+    BITMAP bm = { 0 };
+    if (!GetObject(hbm, sizeof(bm), &bm))
+        return 0;
+    GdiBitmap *gb = (GdiBitmap *)GetGdiObjPtr(hbm);
+    if (!gb || !gb->data)
+        return 0;
+    // only 4-byte-per-pixel formats are supported for conversion
+    if (gb->format != GDI_BMP_ARGB32 && gb->format != GDI_BMP_RGB24)
+        return 0;
+    const unsigned char *data = gb->data;
+    int wid = bm.bmWidth;
+    int hei = bm.bmHeight;
+    int srcStride = gb->stride;
+
+    if (!lpvBits)
+    {
+        // query mode: fill the header describing the bitmap
+        BITMAPINFOHEADER &h = lpbmi->bmiHeader;
+        h.biSize = sizeof(BITMAPINFOHEADER);
+        h.biWidth = wid;
+        h.biHeight = hei; // positive => bottom-up, like a Win32 DDB
+        h.biPlanes = 1;
+        h.biBitCount = bm.bmBitsPixel;
+        h.biCompression = BI_RGB;
+        h.biSizeImage = ((wid * h.biBitCount / 8) + 3) / 4 * 4 * hei;
+        h.biXPelsPerMeter = 0;
+        h.biYPelsPerMeter = 0;
+        h.biClrUsed = 0;
+        h.biClrImportant = 0;
+        return 1;
+    }
+
+    // copy mode: convert into the caller-requested format
+    int outBpp = lpbmi->bmiHeader.biBitCount;
+    if (outBpp != 24 && outBpp != 32)
+        return 0;
+    bool topDown = lpbmi->bmiHeader.biHeight < 0;
+    if (start >= (UINT)hei)
+        return 0;
+    UINT lines = (cLines < (UINT)(hei - start)) ? cLines : (UINT)(hei - start);
+    int outStride = ((wid * outBpp / 8) + 3) / 4 * 4;
+    unsigned char *dstBase = (unsigned char *)lpvBits;
+    for (UINT j = 0; j < lines; j++)
+    {
+        // scan lines are counted from the bottom of a bottom-up DIB
+        int srcRow = topDown ? (int)(start + j) : (hei - 1 - (int)(start + j));
+        const unsigned char *src = data + (size_t)srcRow * srcStride;
+        unsigned char *dst = dstBase + (size_t)j * outStride;
+        // internal storage of both GDI_BMP_ARGB32 and GDI_BMP_RGB24 is
+        // 4-byte premultiplied BGRA
+        if (outBpp == 32)
+        {
+            memcpy(dst, src, (size_t)wid * 4);
+        }
+        else
+        {
+            for (int x = 0; x < wid; x++)
+            {
+                dst[x * 3 + 0] = src[x * 4 + 0];
+                dst[x * 3 + 1] = src[x * 4 + 1];
+                dst[x * 3 + 2] = src[x * 4 + 2];
+            }
+        }
+    }
+    return (int)lines;
 }
 
 // 检查矩阵是否是单位矩阵
@@ -1899,7 +1917,6 @@ static bool matrix_inverse(double A[3][3], double A_inv[3][3])
 
     if (det == 0)
     {
-        // printf("矩阵不可逆，因为行列式为零。\n");
         return false;
     }
 
@@ -1948,11 +1965,28 @@ int GetClipBox(HDC hdc, LPRECT lprect)
         SetRectEmpty(lprect);
         return NULLREGION;
     }
+    // CGContextGetClipBoundingBox reports extents in USER (logical)
+    // coordinates; Win32 GetClipBox also returns logical coordinates, so no
+    // transform is needed (see the clip semantics note above calc_total).
     CGRect bb = CGContextGetClipBoundingBox(hdc->cgCtx);
-    lprect->left = bb.origin.x;
-    lprect->top = bb.origin.y;
-    lprect->right = bb.origin.x + bb.size.width;
-    lprect->bottom = bb.origin.y + bb.size.height;
+    if (clip_box_unbounded(bb))
+    { // no clip set: the effective Win32 clip is the whole bitmap surface
+        GdiBitmap *bmp = (GdiBitmap *)GetGdiObjPtr(hdc->bmp);
+        if (bmp)
+        {
+            lprect->left = 0;
+            lprect->top = 0;
+            lprect->right = bmp->width;
+            lprect->bottom = bmp->height;
+            return COMPLEXREGION;
+        }
+        SetRectEmpty(lprect);
+        return NULLREGION;
+    }
+    lprect->left = (LONG)floor(bb.origin.x + 0.5);
+    lprect->top = (LONG)floor(bb.origin.y + 0.5);
+    lprect->right = (LONG)floor(bb.origin.x + bb.size.width + 0.5);
+    lprect->bottom = (LONG)floor(bb.origin.y + bb.size.height + 0.5);
     if (IsRectEmpty(lprect))
         return NULLREGION;
     return COMPLEXREGION;
@@ -2081,7 +2115,7 @@ BOOL AlphaBlend(HDC hdc, int x, int y, int wDst, int hDst, HDC hdcSrc, int x1, i
     drawImage(ctx, dstRect, srcImg,srcRect);
     CGContextRestoreGState(ctx);
     CGImageRelease(srcImg);
-    return 0;
+    return TRUE;
 }
 
 static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, CGImageRef src, int x1, int y1, int wSrc, int hSrc, BLENDFUNCTION ftn, int filterLevel)
@@ -2115,7 +2149,7 @@ static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, CGImageRef s
     ApplyRop2(ctx, hdc->rop2);
     drawImage(ctx, dstRect, src, srcRect);
     CGContextRestoreGState(ctx);
-    return 0;
+    return TRUE;
 }
 
 BOOL DrawBitmapEx(HDC hdc, LPCRECT pRcDest, HBITMAP bmp, LPCRECT pRcSrc, UINT expendMode, BYTE byAlpha /*=0xFF*/)
@@ -2242,6 +2276,128 @@ BOOL DrawBitmap9Patch(HDC hdc, LPCRECT pRcDest, HBITMAP hBmp, LPCRECT pRcSrc, LP
     return TRUE;
 }
 
+/* GDI 逐位光栅操作（SRCAND=dest&src / SRCPAINT=dest|src / SRCINVERT=dest^src）。
+ * CG 的 blend 模式只做 alpha 混合——DestinationIn/Normal/XOR 在不透明源下分别
+ * 退化为"无操作/SRCCOPY/|d-s|"，与 Windows 的按位语义不符（drawgroup11 实测），
+ * 必须逐像素运算。
+ * 存储布局：GdiBitmap 的 ARGB32/RGB24 均为 4B/px BGRX（little-endian
+ * premultiplied BGRA；RGB24 的 X 字节无意义，见 GdiBitmapCreate 的 stride=width*4
+ * 与 UpdateDIBPixmap 的 3→4B 转换），bpp 恒为 4。逐位运算只作用于 B/G/R 三个
+ * 字节；第 4 字节保留目标原值——不透明像素上 premultiplied==straight，逐位结果
+ * 与真 GDI 一致，且避免 SRCINVERT 把 alpha 异或成 0 在 ARGB32 目标上凿出透明洞。
+ * src 坐标已由调用方折算为源位图像素坐标；目标矩形经 calc_total（worldMtx+
+ * ptOrigin，与 cgCtx CTM 经 update_transform 保持同步）折算为像素坐标，取轴对齐
+ * 包围盒（平移/缩放精确，旋转场景 GDI BitBlt 本身亦未定义）。
+ * 源越界像素跳过（保留目标，GDI 裁剪语义）。写后 markDirty 使 CGImage 缓存失效。
+ * srcSpanX/srcSpanY 为源矩形跨度（BitBlt 传 cx/cy，StretchBlt 传 cx1/cy1）。 */
+static BOOL BitBltRasterOp(HDC hdcDst, int x, int y, int cx, int cy,
+                           GdiBitmap *src, int sx, int sy,
+                           int srcSpanX, int srcSpanY, DWORD rop)
+{
+    if (cx <= 0 || cy <= 0 || srcSpanX <= 0 || srcSpanY <= 0)
+        return FALSE;
+    if (!hdcDst || !hdcDst->worldMtx || !src || !src->data)
+        return FALSE;
+    GdiBitmap *dst = (GdiBitmap *)GetGdiObjPtr(hdcDst->bmp);
+    if (!dst || !dst->data)
+        return FALSE;
+    /* 窗口 DC 在 WM_PAINT 期间 cgCtx 是窗口系统传入的 NSView 上下文
+     * (cgCtxOwned=FALSE)，hdc->bmp 只是占位位图、并非显示目标——此时
+     * 逐像素直写是不可见的，必须返回 FALSE 让调用方走 CG 混合模式回退。
+     * cgCtxOwned=TRUE 时 cgCtx 必是 SelectObject 创建的、覆盖 bmp data
+     * 的 CGBitmapContext，直写有效（内存 DC 即此情形）。 */
+    if (!hdcDst->cgCtxOwned)
+        return FALSE;
+    if ((dst->format != GDI_BMP_ARGB32 && dst->format != GDI_BMP_RGB24) ||
+        (src->format != GDI_BMP_ARGB32 && src->format != GDI_BMP_RGB24))
+        return FALSE;
+
+    /* 目标 DC 用户矩形 -> 像素矩形：两角经当前变换，取轴对齐包围盒 */
+    CGAffineTransform totalDst = *hdcDst->worldMtx;
+    totalDst.tx += hdcDst->ptOrigin.x;
+    totalDst.ty += hdcDst->ptOrigin.y;
+    CGPoint p0 = CGPointApplyAffineTransform(CGPointMake((CGFloat)x, (CGFloat)y), totalDst);
+    CGPoint p1 = CGPointApplyAffineTransform(CGPointMake((CGFloat)(x + cx), (CGFloat)(y + cy)), totalDst);
+    int px = (int)floor(p0.x < p1.x ? p0.x : p1.x);
+    int py = (int)floor(p0.y < p1.y ? p0.y : p1.y);
+    int pw = (int)ceil(p0.x < p1.x ? p1.x : p0.x) - px;
+    int ph = (int)ceil(p0.y < p1.y ? p1.y : p0.y) - py;
+    if (pw <= 0 || ph <= 0)
+        return TRUE; /* 目标矩形为空：无事可做 */
+
+    const unsigned char *sdata = src->data;
+    int sstride = src->stride, sw = src->width, sh = src->height;
+    /* 快照是紧凑缓冲（行宽 cw*4），有效区域 [snapX0, snapX0+svw) x
+     * [snapY0, snapY0+svh)，采样时按 snap 原点换算 */
+    std::vector<unsigned char> snap;
+    int snapX0 = 0, snapY0 = 0; /* 源视图 (0,0) 对应的全局像素坐标 */
+    int svw = sw, svh = sh;     /* 源视图有效宽高 */
+    if (dst == src)
+    {
+        /* self-blit：先把源矩形快照出来，避免同位图读写重叠互相破坏
+         * （真实 GDI 对重叠 blit 亦按"先读后写"处理） */
+        int cx0 = sx < 0 ? 0 : sx;
+        int cy0 = sy < 0 ? 0 : sy;
+        int cx1 = sx + srcSpanX > sw ? sw : sx + srcSpanX;
+        int cy1 = sy + srcSpanY > sh ? sh : sy + srcSpanY;
+        int cw = cx1 > cx0 ? cx1 - cx0 : 0;
+        int ch = cy1 > cy0 ? cy1 - cy0 : 0;
+        if (cw > 0 && ch > 0)
+        {
+            snap.resize((size_t)cw * ch * 4);
+            for (int r = 0; r < ch; r++)
+                memcpy(&snap[(size_t)r * cw * 4],
+                       src->data + (size_t)(cy0 + r) * sstride + (size_t)cx0 * 4,
+                       (size_t)cw * 4);
+            sdata = &snap[0];
+            sstride = cw * 4;
+            snapX0 = cx0;
+            snapY0 = cy0;
+            svw = cw;
+            svh = ch;
+        }
+        else
+            sdata = nullptr; /* 源矩形完全越界 */
+    }
+
+    for (int j = 0; j < ph; j++)
+    {
+        int dy = py + j;
+        if (dy < 0 || dy >= dst->height)
+            continue;
+        unsigned char *drow = dst->data + (size_t)dy * dst->stride;
+        int syj = sy + (int)((double)j * srcSpanY / ph);
+        const unsigned char *srow = (sdata && syj >= snapY0 && syj - snapY0 < svh)
+                                        ? sdata + (size_t)(syj - snapY0) * sstride
+                                        : nullptr;
+        for (int i = 0; i < pw; i++)
+        {
+            int dx = px + i;
+            if (dx < 0 || dx >= dst->width || !srow)
+                continue;
+            int sxi = sx + (int)((double)i * srcSpanX / pw);
+            if (sxi < snapX0 || sxi - snapX0 >= svw)
+                continue; /* 源位图之外：保留目标 */
+            unsigned char *d = drow + (size_t)dx * 4;
+            const unsigned char *s = srow + (size_t)(sxi - snapX0) * 4;
+            switch (rop)
+            {
+            case SRCAND:
+                d[0] &= s[0]; d[1] &= s[1]; d[2] &= s[2];
+                break;
+            case SRCPAINT:
+                d[0] |= s[0]; d[1] |= s[1]; d[2] |= s[2];
+                break;
+            case SRCINVERT:
+                d[0] ^= s[0]; d[1] ^= s[1]; d[2] ^= s[2];
+                break;
+            }
+        }
+    }
+    dst->markDirty();
+    return TRUE;
+}
+
 BOOL BitBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, DWORD rop)
 {
     assert(hdc && hdcSrc);
@@ -2249,6 +2405,16 @@ BOOL BitBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, D
     CGContextRef ctx = hdc->cgCtx;
     CGImageRef src = CreateCGImageFromBitmap(hdcSrc->bmp);
     if(!src) return FALSE;
+    if (hdc == hdcSrc)
+    {
+        // self-blit: the CGImage aliases the source bitmap's live memory,
+        // which is also the draw destination — snapshot it first (same guard
+        // as the cairo backend's surface copy)
+        CGImageRef snap = CGImageCreateCopy(src);
+        CGImageRelease(src);
+        src = snap;
+        if (!src) return FALSE;
+    }
 
     // Convert x1/y1 from source-DC user (logical) coordinates to image
     // coordinates.  totalSrc maps logical → image (logical + ptOrigin + worldMtx),
@@ -2267,19 +2433,37 @@ BOOL BitBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, D
     CGRect srcRect = CGRectMake(x1,y1, cx,cy);
     CGRect dstRect = CGRectMake(x, y, cx, cy);
     CGContextClipToRect(ctx, dstRect);
+    /* SRCAND/SRCPAINT/SRCINVERT 是逐位运算，CG blend 模式无法表达——走逐像素
+     * 路径；helper 无法处理的目标（无位图/ exotic 格式）回退旧的近似混合。 */
+    BOOL rasterDone = FALSE;
+    if (rop == SRCAND || rop == SRCPAINT || rop == SRCINVERT)
+        rasterDone = BitBltRasterOp(hdc, x, y, cx, cy,
+                                    (GdiBitmap *)GetGdiObjPtr(hdcSrc->bmp), x1, y1, cx, cy, rop);
     switch (rop)
     {
     case SRCCOPY:
         CGContextSetBlendMode(ctx, kCGBlendModeCopy);
         break;
     case SRCINVERT:
+        if (rasterDone)
+            break;
         CGContextSetBlendMode(ctx, kCGBlendModeXOR);
         break;
     case SRCPAINT:
-        CGContextSetBlendMode(ctx, kCGBlendModeNormal);
+        if (rasterDone)
+            break;
+        /* CG 无法逐位 OR；PlusLighter（分量相加后截断）对单色遮罩源
+         * （黑/白）与逐位 OR 结果一致，一般彩色也比 Normal 更接近
+         * OR（d|s ≤ min(255, d+s)，Normal 则完全覆盖目标）。 */
+        CGContextSetBlendMode(ctx, kCGBlendModePlusLighter);
         break;
     case SRCAND:
-        CGContextSetBlendMode(ctx, kCGBlendModeDestinationIn);
+        if (rasterDone)
+            break;
+        /* CG 无法逐位 AND；Multiply 对单色遮罩源（黑/白）与逐位 AND
+         * 结果一致（d*1=d，d*0=0），是 AND 的标准近似。
+         * 原 DestinationIn 只看源 alpha，对不透明源等于空操作。 */
+        CGContextSetBlendMode(ctx, kCGBlendModeMultiply);
         break;
     case DSTINVERT:
         CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
@@ -2287,7 +2471,8 @@ BOOL BitBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, D
         CGContextFillRect(ctx, dstRect);
         goto bl_done;
     }
-    drawImage(ctx, dstRect, src,srcRect);
+    if (!rasterDone)
+        drawImage(ctx, dstRect, src, srcRect);
 bl_done:
     CGContextRestoreGState(ctx);
     CGImageRelease(src);
@@ -2301,6 +2486,15 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
     CGContextRef ctx = hdc->cgCtx;
     CGImageRef src = CreateCGImageFromBitmap(hdcSrc->bmp);
     if(!src) return FALSE;
+    if (hdc == hdcSrc)
+    {
+        // self-blit: snapshot the source image first (aliases live bitmap
+        // memory, same guard as BitBlt / the cairo backend)
+        CGImageRef snap = CGImageCreateCopy(src);
+        CGImageRelease(src);
+        src = snap;
+        if (!src) return FALSE;
+    }
 
     // 1. 应用源 DC transform（与 BitBlt 一致，对齐 cairo 的 mtxSrc.x0/y0 应用）
     CGAffineTransform totalSrc = *hdcSrc->worldMtx;
@@ -2316,6 +2510,12 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
     // 2. clip 到目标矩形（标准化负 w/h，对齐 cairo_rectangle+cairo_clip 行为）
     CGRect dstRect = CGRectStandardize(CGRectMake(x, y, cx, cy));
     CGContextClipToRect(ctx, dstRect);
+    /* SRCAND/SRCPAINT/SRCINVERT 逐位运算走逐像素路径（见 BitBltRasterOp）；
+     * 源跨度为负（镜像）时 helper 不支持，回退近似混合路径。 */
+    BOOL rasterDone = FALSE;
+    if (cx1 > 0 && cy1 > 0 && (rop == SRCAND || rop == SRCPAINT || rop == SRCINVERT))
+        rasterDone = BitBltRasterOp(hdc, x, y, cx, cy,
+                                    (GdiBitmap *)GetGdiObjPtr(hdcSrc->bmp), x1, y1, cx1, cy1, rop);
     // 5. 设置混合模式（对齐 cairo 的 operator 设置）
     switch (rop)
     {
@@ -2323,13 +2523,25 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
         CGContextSetBlendMode(ctx, kCGBlendModeCopy);
         break;
     case SRCINVERT:
+        if (rasterDone)
+            break;
         CGContextSetBlendMode(ctx, kCGBlendModeXOR);
         break;
     case SRCPAINT:
-        CGContextSetBlendMode(ctx, kCGBlendModeNormal);
+        if (rasterDone)
+            break;
+        /* CG 无法逐位 OR；PlusLighter（分量相加后截断）对单色遮罩源
+         * （黑/白）与逐位 OR 结果一致，一般彩色也比 Normal 更接近
+         * OR（d|s ≤ min(255, d+s)，Normal 则完全覆盖目标）。 */
+        CGContextSetBlendMode(ctx, kCGBlendModePlusLighter);
         break;
     case SRCAND:
-        CGContextSetBlendMode(ctx, kCGBlendModeDestinationIn);
+        if (rasterDone)
+            break;
+        /* CG 无法逐位 AND；Multiply 对单色遮罩源（黑/白）与逐位 AND
+         * 结果一致（d*1=d，d*0=0），是 AND 的标准近似。
+         * 原 DestinationIn 只看源 alpha，对不透明源等于空操作。 */
+        CGContextSetBlendMode(ctx, kCGBlendModeMultiply);
         break;
     case DSTINVERT:
         CGContextSetRGBFillColor(ctx, 1.0, 1.0, 1.0, 1.0);
@@ -2337,6 +2549,7 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
         CGContextFillRect(ctx, dstRect);
         goto sb_done;
     }
+    if (!rasterDone)
     {
         CGRect srcRect = CGRectStandardize(CGRectMake(x1, y1, cx1, cy1));
         BOOL bXFlip = (cx < 0) ^ (cx1<0);
@@ -2368,19 +2581,97 @@ INT StretchDIBits(HDC hdc, INT x_dst, INT y_dst, INT width_dst, INT height_dst, 
     return height_src;
 }
 
+// 把 premultiplied BGRA 缓冲包装成 CGImage（provider NULL release callback，
+// buf 生命周期由调用方保证：必须存活到绘制完成之后再释放）
+static CGImageRef CreateCGImageFromPremultipliedBGRA(unsigned char *buf, int w, int h)
+{
+    CGDataProviderRef provider = CGDataProviderCreateWithData(NULL, buf, (size_t)w * (size_t)h * 4, NULL);
+    if (!provider)
+        return nullptr;
+    CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+    CGImageRef img = CGImageCreate(w, h, 8, 32, w * 4, cs,
+                                   kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Little,
+                                   provider, NULL, false, kCGRenderingIntentDefault);
+    CGColorSpaceRelease(cs);
+    CGDataProviderRelease(provider); // 图像内部 retain provider；buf 须在绘制后释放
+    return img;
+}
+
 BOOL TransparentBlt(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, int hDest, HDC hdcSrc, int xoriginSrc, int yoriginSrc, int wSrc, int hSrc, UINT crTransparent)
 {
-    if(!hdcDest->cgCtx || !hdcSrc->cgCtx) return FALSE;
+    // Win32 TransparentBlt：源区中 RGB 等于 crTransparent 的像素不绘制（目标
+    // 保留原内容），其余像素拉伸拷贝。CG 的蒙版/blend 模式只消费 alpha、没有
+    // 颜色比较算子（GDI 的 SetBkColor 掩码 blit 是把比较藏在驱动 blitter 内部），
+    // 键控比较无论如何都要做一次逐像素扫描——所以扫描时直接生成"keyed 像素
+    // alpha=0"的 premultiplied BGRA 拷贝，最后用 Normal blend 一次绘制到位：
+    //   - keyed 像素（alpha=0）不改动目标；
+    //   - 非 keyed 像素 alpha=255 时精确覆盖（RGB24/不透明 32bpp 源与真 GDI
+    //     逐位一致；带部分 alpha 的 32bpp 源按 source-over 混合，符合实际用途）。
+    if (!hdcDest || !hdcSrc || !hdcDest->cgCtx || !hdcSrc->cgCtx)
+        return FALSE;
+    if (wSrc <= 0 || hSrc <= 0 || wDest <= 0 || hDest <= 0)
+        return FALSE;
+
     CGContextRef ctx = hdcDest->cgCtx;
-    CGImageRef srcImg = CreateCGImageFromBitmap(hdcSrc->bmp);
-    if(!srcImg) return FALSE;
+    GdiBitmap *surf = (GdiBitmap *)GetGdiObjPtr(hdcSrc->bmp);
+    if (!surf || !surf->data)
+        return FALSE;
+    if (surf->format != GDI_BMP_ARGB32 && surf->format != GDI_BMP_RGB24)
+        return FALSE;
+
+    // source origin: source-DC logical coords -> bitmap pixel coords (BitBlt-style)
+    CGAffineTransform totalSrc = *hdcSrc->worldMtx;
+    totalSrc.tx += hdcSrc->ptOrigin.x;
+    totalSrc.ty += hdcSrc->ptOrigin.y;
+    CGPoint ptSrc = CGPointApplyAffineTransform(CGPointMake((CGFloat)xoriginSrc, (CGFloat)yoriginSrc), totalSrc);
+    int sx = (int)round(ptSrc.x);
+    int sy = (int)round(ptSrc.y);
+
+    // 逐像素键控：keyed → 全透明（alpha=0），其余原样保留 premultiplied BGRA
+    //（含 32bpp 源的 per-pixel alpha；RGB24 源补 alpha=255）。扫描只读源、
+    // 先于任何目标写入，自拷贝（hdcDest==hdcSrc）天然安全。
+    int kB = GetBValue(crTransparent), kG = GetGValue(crTransparent), kR = GetRValue(crTransparent);
+    unsigned char *buf = (unsigned char *)calloc((size_t)wSrc * (size_t)hSrc, 4);
+    if (!buf)
+        return FALSE;
+    for (int j = 0; j < hSrc; j++)
+    {
+        int bmpY = sy + j; // 数据行 row0=顶部，与 BitBlt 的 srcRect 映射一致
+        const unsigned char *srow = (bmpY >= 0 && bmpY < surf->height) ? surf->data + (size_t)bmpY * surf->stride : nullptr;
+        unsigned char *drow = buf + (size_t)j * (size_t)wSrc * 4;
+        for (int i = 0; i < wSrc; i++)
+        {
+            int bmpX = sx + i;
+            if (!srow || bmpX < 0 || bmpX >= surf->width)
+                continue; // 源位图之外：保持全透明，保留目标
+            /* GdiBitmap 的 ARGB32/RGB24 均为 4B/px BGRX（RGB24 的 X 字节无意义，
+             * stride 恒为 width*4），不能按 3B/px 索引——否则 RGB24 源从第 2 列
+             * 起全部错位 */
+            const unsigned char *s = srow + (size_t)bmpX * 4;
+            if (s[0] == kB && s[1] == kG && s[2] == kR) // 只比 RGB，忽略 alpha（与真 GDI 一致）
+                continue;
+            unsigned char *d = drow + (size_t)i * 4;
+            d[0] = s[0]; d[1] = s[1]; d[2] = s[2];
+            d[3] = (surf->format == GDI_BMP_ARGB32) ? s[3] : 0xFF;
+        }
+    }
+    CGImageRef keyed = CreateCGImageFromPremultipliedBGRA(buf, wSrc, hSrc);
+    if (!keyed)
+    {
+        free(buf);
+        return FALSE;
+    }
+
+    // 一次 Normal blend 绘制到位（keyed 像素 alpha=0 不改动目标，非 keyed 精确覆盖）。
+    // 必须显式 Normal：若外层残留 Copy 类混合模式，alpha=0 的 keyed 像素会把目标擦掉。
     CGContextSaveGState(ctx);
-    CGRect srcRect = CGRectMake(xoriginSrc,yoriginSrc, wSrc,hSrc);
-    CGRect dstRect = CGRectMake(xoriginDest, yoriginDest, wDest, hDest);
-    CGContextClipToRect(ctx, dstRect);
-    drawImage(ctx, dstRect, srcImg,srcRect);
+    CGContextClipToRect(ctx, CGRectMake(xoriginDest, yoriginDest, wDest, hDest));
+    CGContextSetBlendMode(ctx, kCGBlendModeNormal);
+    drawImage(ctx, CGRectMake(xoriginDest, yoriginDest, wDest, hDest), keyed, CGRectMake(0, 0, wSrc, hSrc));
     CGContextRestoreGState(ctx);
-    CGImageRelease(srcImg);
+
+    CGImageRelease(keyed);
+    free(buf);
     return TRUE;
 }
 
@@ -2518,7 +2809,11 @@ static LPCSTR nextChar(LPCSTR p)
     return p + len;
 }
 
-static SIZE OnMeasureText(HDC hdc, LPCSTR pszBuf, int cchText)
+// 宽度全程浮点累加（CoreText 的 advance 是小数），最后输出时才转整数；
+// 逐字符 (LONG) 截断累加会使测量偏小，与 GetTextExtentPoint32A 的整行
+// 测量不一致。pFracWid 非空时输出未取整的浮点宽度，供 DrawMultiLine
+// 做无精度损失的折行/extent 累加。
+static SIZE OnMeasureText(HDC hdc, LPCSTR pszBuf, int cchText, double *pFracWid = NULL)
 {
     int i = 0;
     char word[6];
@@ -2527,6 +2822,7 @@ static SIZE OnMeasureText(HDC hdc, LPCSTR pszBuf, int cchText)
     SIZE ret = { 0, 0 };
     CGFloat ascent = 0, descent = 0;
     bool gotMetrics = false;
+    double cx = 0;
     while (p < pEnd)
     {
         LPCSTR next = nextChar(p);
@@ -2543,11 +2839,14 @@ static SIZE OnMeasureText(HDC hdc, LPCSTR pszBuf, int cchText)
                 descent = chDescent;
                 gotMetrics = true;
             }
-            ret.cx += (LONG)chWid;
+            cx += chWid;
             CFRelease(line);
         }
         p = next;
     }
+    ret.cx = (LONG)cx;
+    if (pFracWid)
+        *pFracWid = cx;
     ret.cy = (LONG)(ascent + descent);
     if (!gotMetrics)
         ret.cy = 16;
@@ -2696,10 +2995,18 @@ void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uForm
         cchText = (int)strlen(pszBuf);
     LPCSTR p1 = pszBuf;
     POINT pt = { pRect->left, pRect->top };
+    double ptX = (double)pRect->left; // 行内 x 全程浮点累加，仅输出 extent 时转整数
     SIZE szWord = OnMeasureText(hdc, "A", 1);
     int nLineHei = szWord.cy;
     int nRight = pRect->right;
     int nLineWid = pRect->right - pRect->left;
+    if ((uFormat & DT_CALCRECT) && nLineWid < 1)
+    {
+        // 与 cairo TextLayoutEx::buildLines 一致：DT_CALCRECT 且矩形无有效宽度时
+        // 不折行（视宽度为无界），矩形将被撑开为整段文本的 extent
+        nRight = pRect->left + 10000;
+        nLineWid = 10000;
+    }
     pRect->right = pRect->left;
 
     LPCSTR pLineHead = p1, pLineTail = p1;
@@ -2717,14 +3024,14 @@ void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uForm
                 DrawSingleLine(hdc, pszBuf, (int)(pLineHead - pszBuf), (int)(pLineTail - pLineHead), &rcText, uFormat);
             }
             pt.y += nLineHei + kDrawText_LineInterval;
-            pt.x = pRect->left;
+            ptX = pRect->left;
             nLine++;
             i += (int)(p2 - p1);
             p1 = p2;
             pLineHead = p2;
             continue;
         }
-        if (uFormat & DT_WORDBREAK && *p1 == 0x20 && pt.x == pRect->left && (!pPrev || *pPrev != 0x20))
+        if (uFormat & DT_WORDBREAK && *p1 == 0x20 && ptX == pRect->left && (!pPrev || *pPrev != 0x20))
         { // skip the first space for a new line.
             i += (int)(p2 - p1);
             pPrev = p1;
@@ -2732,8 +3039,9 @@ void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uForm
             pLineTail = pLineHead = p2;
             continue;
         }
-        szWord = OnMeasureText(hdc, p1, (int)(p2 - p1));
-        if (pt.x + szWord.cx > nRight)
+        double szWordFrac = 0;
+        szWord = OnMeasureText(hdc, p1, (int)(p2 - p1), &szWordFrac);
+        if (ptX + szWordFrac > nRight)
         { //检测到一行超过边界时还要保证当前行不为空
 
             if (pLineTail > pLineHead)
@@ -2758,7 +3066,7 @@ void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uForm
                 pLineHead = p1;
 
                 pt.y += nLineHei + kDrawText_LineInterval;
-                pt.x = pRect->left;
+                ptX = pRect->left;
                 nLine++;
 
                 continue;
@@ -2767,17 +3075,20 @@ void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uForm
             { // word is too long to draw in a single line
                 LPCSTR p3 = p1;
                 SIZE szChar;
+                double fracWid = 0;
                 szWord.cx = 0;
                 while (p3 < p2)
                 {
                     LPCSTR p4 = CharNextA(p3);
-                    szChar = OnMeasureText(hdc, p3, (int)(p4 - p3));
-                    if (szWord.cx + szChar.cx > nLineWid)
+                    double chFrac = 0;
+                    szChar = OnMeasureText(hdc, p3, (int)(p4 - p3), &chFrac);
+                    if (fracWid + chFrac > nLineWid)
                     {
                         if (p3 == p1)
                         { // a line will contain at least one char.
                             p2 = p4;
                             szWord.cx = szChar.cx;
+                            fracWid = chFrac;
                         }
                         else
                         {
@@ -2785,14 +3096,16 @@ void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uForm
                         }
                         break;
                     }
+                    fracWid += chFrac;
                     szWord.cx += szChar.cx;
                     p3 = p4;
                 }
+                szWordFrac = fracWid;
             }
         }
-        pt.x += szWord.cx;
-        if (pt.x > pRect->right && uFormat & DT_CALCRECT)
-            pRect->right = pt.x;
+        ptX += szWordFrac;
+        if (ptX > pRect->right && (uFormat & DT_CALCRECT))
+            pRect->right = (LONG)ptX;
         i += (int)(p2 - p1);
         pPrev = p1;
         pLineTail = p1 = p2;
@@ -2800,8 +3113,8 @@ void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uForm
 
     if (uFormat & DT_CALCRECT)
     {
-        if (pRect->bottom > pt.y + nLineHei)
-            pRect->bottom = pt.y + nLineHei;
+        // Win32 DT_CALCRECT：矩形被改写为文本 extent（高度=可见行数*行高）
+        pRect->bottom = pt.y + nLineHei;
     }
     else if (pLineTail > pLineHead)
     {
@@ -2833,10 +3146,39 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
     BOOL bCalc = (uFormat & DT_CALCRECT)==DT_CALCRECT;
     if (hdc->bkMode == OPAQUE && !bCalc)
     {
+        // Win32: a single-line DrawText fills the background of the text
+        // extent only (like TextOut), not the whole format rectangle.
+        // Measure the laid-out text first, then place the fill rect the same
+        // way the real draw positions the line.
+        RECT rcFill = rc;
+        if (uFormat & DT_SINGLELINE)
+        {
+            RECT rcMeasure = rc;
+            if (uFormat & DT_ELLIPSIS)
+                DrawSingleLineWithEllipsis(hdc, pszBuf, 0, cchText, &rcMeasure, uFormat | DT_CALCRECT | DT_NOCLIP);
+            else
+                DrawSingleLine(hdc, pszBuf, 0, cchText, &rcMeasure, uFormat | DT_CALCRECT | DT_NOCLIP);
+            int w = rcMeasure.right - rcMeasure.left;
+            int h = rcMeasure.bottom - rcMeasure.top;
+            int left = rc.left, top = rc.top;
+            if (uFormat & DT_RIGHT)
+                left += (rc.right - rc.left) - w;
+            else if (uFormat & DT_CENTER)
+                left += ((rc.right - rc.left) - w) / 2;
+            if (uFormat & DT_BOTTOM)
+                top += (rc.bottom - rc.top) - h;
+            else if (uFormat & DT_VCENTER)
+                top += ((rc.bottom - rc.top) - h) / 2;
+            rcFill.left = left;
+            rcFill.top = top;
+            rcFill.right = left + w;
+            rcFill.bottom = top + h;
+        }
         CGContextSaveGState(ctx);
         COLORREF crBk = hdc->crBk;
         CGContextSetRGBFillColor(ctx, GetRValue(crBk)/255.0, GetGValue(crBk)/255.0, GetBValue(crBk)/255.0, GetAValue(crBk)/255.0);
-        CGContextFillRect(ctx, CGRectMake(pRect->left, pRect->top, pRect->right - pRect->left, pRect->bottom - pRect->top));
+        CGContextFillRect(ctx, CGRectMake((CGFloat)rcFill.left, (CGFloat)rcFill.top,
+            (CGFloat)(rcFill.right - rcFill.left), (CGFloat)(rcFill.bottom - rcFill.top)));
         CGContextRestoreGState(ctx);
     }
     CGContextSaveGState(ctx);
@@ -2983,6 +3325,17 @@ BOOL TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c)
 
     if(!hdc->cgCtx) return FALSE;
     CGContextRef ctx = hdc->cgCtx;
+    // Win32: with TA_UPDATECP the x/y parameters are ignored and drawing
+    // starts at the current position, which is then advanced by the text
+    // width. Without it, the current position is left untouched.
+    if (hdc->textAlign & TA_UPDATECP)
+    {
+        CGPoint cur = CGPointMake(0, 0);
+        if (!CGContextIsPathEmpty(ctx))
+            cur = CGContextGetPathCurrentPoint(ctx);
+        x = (int)cur.x;
+        y = (int)cur.y;
+    }
     CGFloat ascent = 0, descent = 0, x_advance = 0;
     CTLineRef line = CreateCTLineWithDC(hdc, lpString, c, &ascent, &descent, &x_advance);
     switch (hdc->textAlign & (TA_LEFT | TA_RIGHT | TA_CENTER))
@@ -3019,7 +3372,10 @@ BOOL TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c)
         CGContextMoveToPoint(ctx, x, y);
         if (line)
             AddGlyphsToCtxPath(hdc, line, x, y, x_advance);
-        if (hdc->textAlign & TA_NOUPDATECP)
+        // Restore the current point unless TA_UPDATECP (Win32 semantics:
+        // text output only updates the current position under TA_UPDATECP).
+        // Note: TA_NOUPDATECP == 0, so testing it directly is always false.
+        if (!(hdc->textAlign & TA_UPDATECP))
         {
             if (hasOldPt)
                 CGContextMoveToPoint(ctx, oldPt.x, oldPt.y);
@@ -3051,6 +3407,11 @@ BOOL TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c)
             CTLineDraw(line, ctx);
         DrawTextDecLines(hdc, ascent, descent, lpString, c, x, y - ascent, 0, x_advance);
         CGContextRestoreGState(ctx);
+        // TA_UPDATECP: advance the current position to the end of the text.
+        // Without TA_UPDATECP the save/restore above already leaves the
+        // current point untouched, matching Win32.
+        if (hdc->textAlign & TA_UPDATECP)
+            CGContextMoveToPoint(ctx, x + x_advance, y);
     }
     if (line)
         CFRelease(line);
@@ -3071,6 +3432,24 @@ static LONG TEXT_TabbedTextOut(HDC hdc, INT x, INT y, LPCSTR lpstr, INT count, I
         count = strlen(lpstr);
     if (!lpTabPos)
         cTabStops = 0;
+
+    // Win32: with TA_UPDATECP TabbedTextOut ignores x/y, starts at the
+    // current position and updates it to the end of the text when done.
+    // (GetTabbedTextExtent passes fDisplayText=FALSE and must not touch CP.)
+    UINT oldAlign = 0;
+    if (fDisplayText && (hdc->textAlign & TA_UPDATECP))
+    {
+        CGPoint cur = CGPointMake(0, 0);
+        if (hdc->cgCtx && !CGContextIsPathEmpty(hdc->cgCtx))
+            cur = CGContextGetPathCurrentPoint(hdc->cgCtx);
+        x = (int)cur.x;
+        y = (int)cur.y;
+        start = x;
+        // draw each substring at its computed x0: suspend UPDATECP while
+        // emitting chunks, the CP is advanced once at the end
+        oldAlign = hdc->textAlign;
+        hdc->textAlign = oldAlign & ~TA_UPDATECP;
+    }
 
     GetTextMetricsA(hdc, &tm);
 
@@ -3157,6 +3536,14 @@ static LONG TEXT_TabbedTextOut(HDC hdc, INT x, INT y, LPCSTR lpstr, INT count, I
         }
         count -= j;
         lpstr += j;
+    }
+
+    if (oldAlign)
+    {
+        // restore UPDATECP and advance the current position to the text end
+        hdc->textAlign = oldAlign;
+        if (hdc->cgCtx)
+            CGContextMoveToPoint(hdc->cgCtx, x, y);
     }
 
     return MAKELONG(x - start, extent.cy);
@@ -3455,6 +3842,8 @@ class SysColorPen {
 HPEN GetSysColorPen(int i)
 {
     static SysColorPen sysColorPens;
+    if (i < 0 || i > COLOR_MENUBAR)
+        return nullptr;
     return sysColorPens.hSysColorPen[i];
 }
 
@@ -3573,7 +3962,17 @@ BOOL Rectangle(HDC hdc, int left, int top, int right, int bottom)
 
     // Build path in user coordinates (save/restore for CTM-isolation, path survives)
     CGContextSaveGState(ctx);
-    CGContextAddRect(ctx, CGRectMake(left, top, wid, hei));
+    if (hdc->pathRecording)
+    {
+        // Win32 Rectangle() records the path with the right/bottom edges
+        // excluded: PathToRegion(Rectangle(100,100,200,200)) yields the
+        // region box (100,100,199,199) (verified on real Windows)
+        CGContextAddRect(ctx, CGRectMake(left, top, wid - 1, hei - 1));
+    }
+    else
+    {
+        CGContextAddRect(ctx, CGRectMake(left, top, wid, hei));
+    }
     CGContextRestoreGState(ctx);
 
     if (hdc->pathRecording)
@@ -3883,18 +4282,15 @@ BOOL LineTo(HDC hdc, int nXEnd, int nYEnd)
 {
     if(!hdc->cgCtx) return FALSE;
     CGContextRef ctx = hdc->cgCtx;
+    CGContextAddLineToPoint(ctx, nXEnd, nYEnd);
     if (hdc->pathRecording)
     {
-        CGContextAddLineToPoint(ctx, nXEnd, nYEnd);
         return TRUE;
     }
-    CGContextAddLineToPoint(ctx, nXEnd, nYEnd);
-    CGRect bb = CGContextGetPathBoundingBox(ctx);
-    double x1=bb.origin.x, y1=bb.origin.y, x2=bb.origin.x+bb.size.width, y2=bb.origin.y+bb.size.height;
     CGContextSaveGState(ctx);
-    DrawPathStroke(ctx, hdc, x2-x1, y2-y1, x1, y1);
+    CGRect rcBox = CGContextGetPathBoundingBox(ctx);
+    DrawPathStroke(ctx, hdc, rcBox.size.width,rcBox.size.height,rcBox.origin.x,rcBox.origin.y);
     CGContextRestoreGState(ctx);
-    // Restore current point (DrawPathStroke consumed the path)
     CGContextMoveToPoint(ctx, nXEnd, nYEnd);
     return TRUE;
 }
@@ -4391,10 +4787,35 @@ HICON CreateIconIndirect(PICONINFO piconinfo)
 {
     _IconObj *icon = new _IconObj;
     icon->fIcon = piconinfo->fIcon;
-    icon->xHotspot = piconinfo->xHotspot;
-    icon->yHotspot = piconinfo->yHotspot;
     icon->hbmColor = RefGdiObj(piconinfo->hbmColor);
     icon->hbmMask = RefGdiObj(piconinfo->hbmMask);
+    /* real Windows ignores the requested hotspot for icons (fIcon=TRUE)
+       and forces it to the bitmap centre; only cursors keep the caller's
+       hotspot (verified on real Windows: an 8x8 icon always reports 4,4) */
+    if (piconinfo->fIcon)
+    {
+        BITMAP bm = {};
+        if (icon->hbmColor && GetObject(icon->hbmColor, sizeof(bm), &bm))
+        {
+            icon->xHotspot = bm.bmWidth / 2;
+            icon->yHotspot = bm.bmHeight / 2;
+        }
+        else if (icon->hbmMask && GetObject(icon->hbmMask, sizeof(bm), &bm))
+        {
+            icon->xHotspot = bm.bmWidth / 2;
+            icon->yHotspot = (bm.bmHeight / 2) / 2;
+        }
+        else
+        {
+            icon->xHotspot = piconinfo->xHotspot;
+            icon->yHotspot = piconinfo->yHotspot;
+        }
+    }
+    else
+    {
+        icon->xHotspot = piconinfo->xHotspot;
+        icon->yHotspot = piconinfo->yHotspot;
+    }
     return icon;
 }
 
@@ -4516,6 +4937,10 @@ BOOL WINAPI GetTextMetricsW(HDC hdc, TEXTMETRICW *txtMetric)
     return TRUE;
 }
 
+// Real Win32 GetTextFace semantics (probed on Windows): with a NULL buffer it
+// returns the required size *including* the NUL; with a buffer it copies at
+// most nCount-1 characters plus the NUL and returns the number of characters
+// copied *excluding* the NUL (truncation instead of failure).
 int GetTextFaceA(HDC hdc, int nCount, LPSTR lpFaceName)
 {
     assert(hdc->hfont);
@@ -4523,17 +4948,31 @@ int GetTextFaceA(HDC hdc, int nCount, LPSTR lpFaceName)
     int len = strlen(lf->lfFaceName);
     if (!lpFaceName)
         return len + 1;
-    if (nCount < len + 1)
+    if (nCount <= 0)
         return 0;
-    strcpy(lpFaceName, lf->lfFaceName);
-    return len + 1;
+    int copy = len < nCount - 1 ? len : nCount - 1;
+    memcpy(lpFaceName, lf->lfFaceName, copy);
+    lpFaceName[copy] = '\0';
+    return copy;
 }
 
 int GetTextFaceW(HDC hdc, int nCount, LPWSTR lpFaceName)
 {
     assert(hdc->hfont);
     LOGFONTA *lf = (LOGFONTA *)GetGdiObjPtr(hdc->hfont);
-    return MultiByteToWideChar(CP_UTF8, 0, lf->lfFaceName, -1, lpFaceName, nCount);
+    wchar_t face[LF_FACESIZE];
+    int len = MultiByteToWideChar(CP_UTF8, 0, lf->lfFaceName, -1, face, LF_FACESIZE);
+    if (len <= 0)
+        return 0;
+    len -= 1; // exclude the NUL
+    if (!lpFaceName)
+        return len + 1;
+    if (nCount <= 0)
+        return 0;
+    int copy = len < nCount - 1 ? len : nCount - 1;
+    memcpy(lpFaceName, face, copy * sizeof(wchar_t));
+    lpFaceName[copy] = 0;
+    return copy;
 }
 
 BOOL Polygon_Priv(HDC hdc, const POINT *apt, int cpt)
@@ -4597,9 +5036,161 @@ BOOL WINAPI ExtTextOutA(HDC hdc,          // handle to DC
     CGContextRef ctx = hdc->cgCtx;
     if (cbCount < 0)
         cbCount = (UINT)strlen(lpString);
+
+    /* lpDx 非空：逐字符间距路径（Win32 语义：lpDx[i] 为第 i 个字符原点到第
+     * i+1 个字符原点的距离）。与 cairo.gdi 的 ExtTextOutA 保持一致：
+     *   - lpDx 按 UTF-8 字符索引（跨多字节字符时一个字符对应一个 lpDx 项）；
+     *   - 总宽 = Σ lpDx[i]，TA_RIGHT/TA_CENTER 据此对齐；
+     *   - 逐字符绘制，每画完一个字符 x += lpDx[i]。 */
+    if (lpDx)
+    {
+        CGContextSaveGState(ctx);
+        if (lprc && (fuOptions & ETO_CLIPPED))
+            CGContextClipToRect(ctx, CGRectMake(lprc->left, lprc->top, lprc->right - lprc->left, lprc->bottom - lprc->top));
+        if (lprc && (fuOptions & ETO_OPAQUE))
+        {
+            CairoColor cr(hdc->crBk);
+            CGContextSetRGBFillColor(ctx, cr.r, cr.g, cr.b, cr.a);
+            CGContextFillRect(ctx, CGRectMake(lprc->left, lprc->top, lprc->right - lprc->left, lprc->bottom - lprc->top));
+        }
+
+        // 按字符累加总宽，并统计字符数
+        int cChars = 0;
+        int wid = 0;
+        {
+            const char *p = lpString;
+            int remaining = (int)cbCount;
+            while (remaining > 0)
+            {
+                int chLen = swinx::UTF8CharLength(*p);
+                if (chLen > remaining) chLen = remaining;
+                wid += lpDx[cChars];
+                p += chLen;
+                remaining -= chLen;
+                cChars++;
+            }
+        }
+
+        // ascent/descent 用字体度量（对应 cairo 的 cairo_font_extents）
+        CGFloat ascent = 0, descent = 0;
+        CTFontRef ctFont = CreateCTFontFromDC(hdc);
+        if (ctFont)
+        {
+            ascent = CTFontGetAscent(ctFont);
+            descent = CTFontGetDescent(ctFont);
+            CFRelease(ctFont);
+        }
+
+        double x = X, y = Y;
+        // Win32: with TA_UPDATECP the x/y parameters are ignored and drawing
+        // starts at the current position (see TextOutA).
+        if (hdc->textAlign & TA_UPDATECP)
+        {
+            CGPoint cur = CGPointMake(0, 0);
+            if (!CGContextIsPathEmpty(ctx))
+                cur = CGContextGetPathCurrentPoint(ctx);
+            x = (int)cur.x;
+            y = (int)cur.y;
+        }
+        switch (hdc->textAlign & (TA_RIGHT | TA_CENTER))
+        {
+        case TA_RIGHT:
+            x -= wid;
+            break;
+        case TA_CENTER:
+            x -= wid / 2;
+            break;
+        }
+        switch (hdc->textAlign & (TA_BASELINE | TA_BOTTOM | TA_TOP))
+        {
+        case TA_TOP:
+            y += ascent;
+            break;
+        case TA_BASELINE:
+            break;
+        case TA_BOTTOM:
+            y -= descent;
+            break;
+        }
+
+        if (hdc->pathRecording)
+        {
+            // Path mode: 逐字符把字形轮廓加进 ctx path（与 AddGlyphsToCtxPath
+            // 的绝对坐标一致，无需逐字符 move_to）
+            CGPoint oldPt;
+            bool hasOldPt = !CGContextIsPathEmpty(ctx);
+            if (hasOldPt)
+                oldPt = CGContextGetPathCurrentPoint(ctx);
+            CGContextMoveToPoint(ctx, x, y);
+            const char *p = lpString;
+            int remaining = (int)cbCount;
+            int i = 0;
+            while (remaining > 0)
+            {
+                int chLen = swinx::UTF8CharLength(*p);
+                if (chLen > remaining) chLen = remaining;
+                CTLineRef chLine = CreateCTLineWithDC(hdc, p, chLen, NULL, NULL, NULL);
+                if (chLine)
+                {
+                    AddGlyphsToCtxPath(hdc, chLine, x, y, 0);
+                    CFRelease(chLine);
+                }
+                x += lpDx[i];
+                p += chLen;
+                remaining -= chLen;
+                i++;
+            }
+            if (!(hdc->textAlign & TA_UPDATECP))
+            {
+                if (hasOldPt)
+                    CGContextMoveToPoint(ctx, oldPt.x, oldPt.y);
+                else
+                    CGContextMoveToPoint(ctx, 0, 0);
+            }
+        }
+        else
+        {
+            // Non-path mode: 逐字符设置 text matrix 并绘制
+            const char *p = lpString;
+            int remaining = (int)cbCount;
+            int i = 0;
+            while (remaining > 0)
+            {
+                int chLen = swinx::UTF8CharLength(*p);
+                if (chLen > remaining) chLen = remaining;
+                CTLineRef chLine = CreateCTLineWithDC(hdc, p, chLen, NULL, NULL, NULL);
+                if (chLine)
+                {
+                    CGContextSetTextMatrix(ctx, CGAffineTransformMake(1, 0, 0, -1, x, y));
+                    CTLineDraw(chLine, ctx);
+                    CFRelease(chLine);
+                }
+                x += lpDx[i];
+                p += chLen;
+                remaining -= chLen;
+                i++;
+            }
+            // TA_UPDATECP: advance the current position to the end of the text
+            if (hdc->textAlign & TA_UPDATECP)
+                CGContextMoveToPoint(ctx, x, y);
+        }
+        CGContextRestoreGState(ctx);
+        return TRUE;
+    }
+
     CGFloat ascent = 0, descent = 0, lineWid = 0;
     CTLineRef line = CreateCTLineWithDC(hdc, lpString, (int)cbCount, &ascent, &descent, &lineWid);
     double x = X, y = Y;
+    // Win32: with TA_UPDATECP the x/y parameters are ignored and drawing
+    // starts at the current position (see TextOutA).
+    if (hdc->textAlign & TA_UPDATECP)
+    {
+        CGPoint cur = CGPointMake(0, 0);
+        if (!CGContextIsPathEmpty(ctx))
+            cur = CGContextGetPathCurrentPoint(ctx);
+        x = (int)cur.x;
+        y = (int)cur.y;
+    }
     switch (hdc->textAlign & (TA_RIGHT | TA_CENTER))
     {
     case TA_RIGHT:
@@ -4630,7 +5221,10 @@ BOOL WINAPI ExtTextOutA(HDC hdc,          // handle to DC
         CGContextMoveToPoint(ctx, x, y);
         if (line)
             AddGlyphsToCtxPath(hdc, line, x, y, lineWid);
-        if (hdc->textAlign & TA_NOUPDATECP)
+        // Restore the current point unless TA_UPDATECP (Win32 semantics:
+        // text output only updates the current position under TA_UPDATECP).
+        // Note: TA_NOUPDATECP == 0, so testing it directly is always false.
+        if (!(hdc->textAlign & TA_UPDATECP))
         {
             if (hasOldPt)
                 CGContextMoveToPoint(ctx, oldPt.x, oldPt.y);
@@ -4659,6 +5253,10 @@ BOOL WINAPI ExtTextOutA(HDC hdc,          // handle to DC
         if (line)
             CTLineDraw(line, ctx);
         CGContextRestoreGState(ctx);
+        // TA_UPDATECP: advance the current position to the end of the text
+        // (without it the save/restore above leaves the current point alone).
+        if (hdc->textAlign & TA_UPDATECP)
+            CGContextMoveToPoint(ctx, x + lineWid, y);
     }
     if (line)
         CFRelease(line);
@@ -4706,16 +5304,19 @@ static unsigned char *getPixelData(HDC hdc, int x, int y)
         return nullptr;
     CGPoint pt = CGPointMake(x, y);
     pt = CGPointApplyAffineTransform(pt, *hdc->worldMtx);
+    pt.x += hdc->ptOrigin.x;
+    pt.y += hdc->ptOrigin.y;
     GdiBitmap *surface = (GdiBitmap *)GetGdiObjPtr(hdc->bmp);
     int fmt = surface->format;
     if (fmt != GDI_BMP_ARGB32)
         return nullptr;
     int wid = surface->width;
     int hei = surface->height;
-    if (pt.x >= wid || pt.y >= hei)
+    if (pt.x < 0 || pt.y < 0 || pt.x >= wid || pt.y >= hei)
         return nullptr;
     unsigned char *data = surface->data;
-    int offset = ((int)pt.y * wid + (int)pt.x) * 4;
+    // Use the bitmap stride (CreateDIBSectionEx allows stride != width*4).
+    int offset = (int)pt.y * surface->stride + (int)pt.x * 4;
     return data + offset;
 }
 
@@ -4724,10 +5325,21 @@ COLORREF GetPixel(IN HDC hdc, IN int x, IN int y)
     const unsigned char *data = getPixelData(hdc, x, y);
     if (!data)
         return 0;
-    unsigned char r = data[0];
-    unsigned char g = data[1];
-    unsigned char b = data[2];
-    unsigned char a = data[3];
+    // GDI_BMP_ARGB32 is created with kCGImageAlphaPremultipliedFirst |
+    // kCGBitmapByteOrder32Little, i.e. premultiplied BGRA in memory;
+    // un-premultiply to get the straight COLORREF back.
+    unsigned int b = data[0];
+    unsigned int g = data[1];
+    unsigned int r = data[2];
+    unsigned int a = data[3];
+    if (a != 0xFF)
+    {
+        if (a == 0)
+            return 0;
+        r = r * 255 / a;
+        g = g * 255 / a;
+        b = b * 255 / a;
+    }
     return RGBA(r, g, b, a);
 }
 
@@ -4760,7 +5372,18 @@ BOOL WINAPI DPtoLP(HDC hdc,          // handle to device context
                    int nCount        // count of points in array
 )
 {
-    // todo:hjx
+    if (!hdc || !lpPoints || nCount <= 0)
+        return FALSE;
+    CGAffineTransform total = calc_total(hdc); // logical -> device
+    if (!CGAffineTransformIsInvertible(total))
+        return FALSE; // non-invertible transform
+    CGAffineTransform inv = CGAffineTransformInvert(total);
+    for (int i = 0; i < nCount; i++)
+    {
+        CGPoint p = CGPointApplyAffineTransform(CGPointMake((CGFloat)lpPoints[i].x, (CGFloat)lpPoints[i].y), inv);
+        lpPoints[i].x = (LONG)floor(p.x + 0.5);
+        lpPoints[i].y = (LONG)floor(p.y + 0.5);
+    }
     return TRUE;
 }
 
@@ -4769,29 +5392,57 @@ BOOL WINAPI LPtoDP(HDC hdc,          // handle to device context
                    int nCount        // count of points in array
 )
 {
-    // todo:hjx
+    if (!hdc || !lpPoints || nCount <= 0)
+        return FALSE;
+    CGAffineTransform total = calc_total(hdc); // logical -> device
+    for (int i = 0; i < nCount; i++)
+    {
+        CGPoint p = CGPointApplyAffineTransform(CGPointMake((CGFloat)lpPoints[i].x, (CGFloat)lpPoints[i].y), total);
+        lpPoints[i].x = (LONG)floor(p.x + 0.5);
+        lpPoints[i].y = (LONG)floor(p.y + 0.5);
+    }
     return TRUE;
 }
 
 BOOL WINAPI GetCharWidthA(_In_ HDC hdc, _In_ UINT iFirst, _In_ UINT iLast, _Out_writes_(iLast + 1 - iFirst) LPINT lpBuffer)
 {
-    *lpBuffer = 0;
-    for (char c = (char)iFirst; c <= (char)iLast; c++)
+    if (!hdc || !lpBuffer || iFirst > iLast || iLast > 0x10FFFF)
+        return FALSE;
+    for (UINT c = iFirst; c <= iLast; c++)
     {
-        SIZE sz;
-        GetTextExtentPoint32A(hdc, &c, 1, &sz);
-        *lpBuffer += sz.cx;
+        // swinx's "A" APIs treat strings as UTF-8 (see TextOutA/
+        // GetTextExtentPoint32A): encode the code point to a whole UTF-8
+        // character via uniconv before measuring it.
+        uint32_t uch = c;
+        char buf[4];
+        /* the NUL code point has no glyph; guard it explicitly since
+           UTF8FromUTF32 now converts embedded NULs like Win32 does */
+        size_t len = (uch == 0) ? 0 : swinx::UTF8FromUTF32(&uch, 1, buf, 4);
+        int width = 0;
+        if (len > 0)
+        {
+            SIZE sz;
+            if (!GetTextExtentPoint32A(hdc, buf, (int)len, &sz))
+                return FALSE;
+            width = sz.cx;
+        }
+        // len == 0 only for the NUL code point, which has no glyph.
+        lpBuffer[c - iFirst] = width;
     }
     return TRUE;
 }
+
 BOOL WINAPI GetCharWidthW(_In_ HDC hdc, _In_ UINT iFirst, _In_ UINT iLast, _Out_writes_(iLast + 1 - iFirst) LPINT lpBuffer)
 {
-    *lpBuffer = 0;
-    for (wchar_t c = (wchar_t)iFirst; c <= (wchar_t)iLast; c++)
+    if (!hdc || !lpBuffer || iFirst > iLast)
+        return FALSE;
+    for (UINT c = iFirst; c <= iLast; c++)
     {
         SIZE sz;
-        GetTextExtentPoint32W(hdc, &c, 1, &sz);
-        *lpBuffer += sz.cx;
+        WCHAR ch = (WCHAR)c;
+        if (!GetTextExtentPoint32W(hdc, &ch, 1, &sz))
+            return FALSE;
+        lpBuffer[c - iFirst] = sz.cx;
     }
     return TRUE;
 }
@@ -4826,19 +5477,64 @@ int AddFontResourceExA(LPCSTR lpszFilename, // font file name
                        PVOID pdv            // reserved
 )
 {
-    CFStringRef cfName = CFStringCreateWithCString(kCFAllocatorDefault, lpszFilename, kCFStringEncodingUTF8);
-    if (!cfName) return FALSE;
-    CFURLRef url = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, cfName, kCFURLPOSIXPathStyle, false);
-    CFRelease(cfName);
-    if (!url) return FALSE;
+    // The font file is registered in two independent font subsystems:
+    //
+    // 1. CoreText (process scope): makes the font visible to CoreGraphics /
+    //    CoreText based text rendering, which is what the apple gdi backend
+    //    itself uses.
+    //
+    // 2. fontconfig (application fonts): SOUI's skia renderer resolves
+    //    typefaces with SkTypeface::CreateFromName, which on non-Windows
+    //    platforms goes through fontconfig (linked via swinx).  Without this
+    //    registration a font added at runtime is invisible to skia rendering.
+    //
+    // A font that at least one of the two accepted is reported as success.
     BOOL ok = FALSE;
-    CFErrorRef err = NULL;
-    if (CTFontManagerRegisterFontsForURL(url, kCTFontManagerScopeProcess, &err)) {
-        ok = TRUE;
-    } else {
-        if (err) CFRelease(err);
+
+    // --- 1. CoreText registration -------------------------------------
+    CFStringRef cfName = CFStringCreateWithCString(kCFAllocatorDefault, lpszFilename, kCFStringEncodingUTF8);
+    if (cfName)
+    {
+        CFURLRef url = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, cfName, kCFURLPOSIXPathStyle, false);
+        CFRelease(cfName);
+        if (url)
+        {
+            CFErrorRef err = NULL;
+            if (CTFontManagerRegisterFontsForURL(url, kCTFontManagerScopeProcess, &err))
+            {
+                ok = TRUE;
+            }
+            else
+            {
+                SLOG_STMW() << "CTFontManagerRegisterFontsForURL failed for " << lpszFilename;
+                if (err)
+                    CFRelease(err);
+            }
+            CFRelease(url);
+        }
     }
-    CFRelease(url);
+
+    // --- 2. fontconfig registration -----------------------------------
+    FcConfig *config = FcConfigGetCurrent();
+    if (!config)
+    {
+        SLOG_STMW() << "Failed to get current Fontconfig configuration";
+        return ok ? TRUE : FALSE;
+    }
+
+    if (FcConfigAppFontAddFile(config, (const FcChar8 *)lpszFilename))
+    {
+        ok = TRUE;
+    }
+    else if (FcConfigAppFontAddDir(config, (const FcChar8 *)lpszFilename))
+    {
+        // tolerate a directory path as well
+        ok = TRUE;
+    }
+    else
+    {
+        SLOG_STMW() << "fontconfig rejected font file: " << lpszFilename;
+    }
     return ok ? TRUE : FALSE;
 }
 

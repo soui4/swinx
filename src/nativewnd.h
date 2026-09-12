@@ -14,10 +14,10 @@ class CNativeWnd {
 
   public:
     CNativeWnd(BOOL bAutoFree = FALSE)
-        : m_hWnd(0)
-        , m_bDestroyed(FALSE)
+        : m_bDestroyed(FALSE)
         , m_msgRecursiveCount(0)
-        , m_bAutoFree(bAutoFree)        
+        , m_bAutoFree(bAutoFree)
+        , m_hWnd(0)        
     {
     }
 
@@ -49,7 +49,7 @@ class CNativeWnd {
 
     virtual BOOL ProcessWindowMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult, DWORD dwMsgMapID = 0);
  protected:
-    virtual void OnFinalMessage(HWND hWnd) {
+    virtual void OnFinalMessage(HWND hWnd __attribute__((unused))) {
         if (m_bAutoFree)
             delete this;
     }

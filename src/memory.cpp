@@ -118,7 +118,7 @@ HeapAlloc(HANDLE hHeap, DWORD dwFlags, size_t dwBytes)
     return block.ptr;
 }
 
-BOOL HeapFree(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem)
+BOOL HeapFree(HANDLE hHeap, DWORD dwFlags __attribute__((unused)), LPVOID lpMem)
 {
     if (!hHeap || hHeap->type != HEAP_OBJ)
         return FALSE;
@@ -203,7 +203,7 @@ LPVOID WINAPI HeapReAlloc(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBy
     return nullptr;
 }
 
-SIZE_T WINAPI HeapSize(HANDLE hHeap, DWORD dwFlags, LPCVOID lpMem)
+SIZE_T WINAPI HeapSize(HANDLE hHeap, DWORD dwFlags __attribute__((unused)), LPCVOID lpMem)
 {
     if (!hHeap || hHeap->type != HEAP_OBJ)
         return 0;
@@ -221,7 +221,7 @@ SIZE_T WINAPI HeapSize(HANDLE hHeap, DWORD dwFlags, LPCVOID lpMem)
     return 0;
 }
 
-BOOL WINAPI HeapValidate(HANDLE hHeap, DWORD dwFlags, LPCVOID lpMem)
+BOOL WINAPI HeapValidate(HANDLE hHeap, DWORD dwFlags __attribute__((unused)), LPCVOID lpMem)
 {
     const char *pBuf = (const char *)lpMem;
     pBuf -= sizeof(HANDLE);
@@ -232,7 +232,7 @@ BOOL WINAPI HeapValidate(HANDLE hHeap, DWORD dwFlags, LPCVOID lpMem)
     return hHeap2 == hHeap;
 }
 
-BOOL FlushInstructionCache(HANDLE hProcess, LPCVOID lpMem, size_t dwSize)
+BOOL FlushInstructionCache(HANDLE hProcess __attribute__((unused)), LPCVOID lpMem, size_t dwSize)
 {
     const char *pBuf = (const char *)lpMem;
     pBuf -= sizeof(HANDLE);
@@ -642,7 +642,7 @@ HLOCAL LocalHandle(LPCVOID pmem)
         return 0;
     }
 
-    HeapUnlock(GetProcessHeap());
+    HeapLock(GetProcessHeap());
     do
     {
         /* note that if pmem is a pointer to a block allocated by        */

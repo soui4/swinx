@@ -5,7 +5,7 @@
 #include "debug.h"
 #define kLogTag "SClipboard"
 #include <vector>
-#include "tostring.hpp"
+#include "tostring.h"
 
 class SMimeEnumFORMATETC : public SUnkImpl<IEnumFORMATETC> {
     SMimeData *m_mimeData;
@@ -65,7 +65,7 @@ class SMimeEnumFORMATETC : public SUnkImpl<IEnumFORMATETC> {
         return S_OK;
     }
 
-    virtual HRESULT STDMETHODCALLTYPE Clone(/* [out] */ __RPC__deref_out_opt IEnumFORMATETC **ppenum) override
+    virtual HRESULT STDMETHODCALLTYPE Clone(/* [out] */ __RPC__deref_out_opt IEnumFORMATETC **ppenum __attribute__((unused))) override
     {
         return E_NOTIMPL;
     }
@@ -426,7 +426,7 @@ class INCRTransaction {
     UINT_PTR abort_timer;
 };
 
-static VOID CALLBACK OnClipboardTimeout(HWND hWnd, UINT msg, UINT_PTR timerId, DWORD ts)
+static VOID CALLBACK OnClipboardTimeout(HWND hWnd __attribute__((unused)), UINT msg __attribute__((unused)), UINT_PTR timerId, DWORD ts __attribute__((unused)))
 {
     for (auto it : (*transactions))
     {
@@ -438,14 +438,14 @@ static VOID CALLBACK OnClipboardTimeout(HWND hWnd, UINT msg, UINT_PTR timerId, D
 
 SClipboard::SClipboard(SConnection *conn)
     : m_conn(conn)
+    , m_ts(XCB_CURRENT_TIME)
     , m_requestor(XCB_NONE)
     , m_owner(XCB_NONE)
     , m_bOpen(FALSE)
     , m_bModified(FALSE)
-    , m_ts(XCB_CURRENT_TIME)
+    , m_doExClip(NULL)
     , m_doSel(NULL)
     , m_incr_active(FALSE)
-    , m_doExClip(NULL)
 {
     m_doClip = new SMimeData();
     if(conn->screen == NULL)
@@ -540,7 +540,7 @@ bool SClipboard::clipboardReadProperty(xcb_window_t win, xcb_atom_t property, bo
     int newSize = bytes_left;
     buffer->resize(newSize);
 
-    bool ok = (buffer->size() == newSize);
+    bool ok = (buffer->size() == (size_t)newSize);
 
     if (ok && newSize)
     {
@@ -566,7 +566,7 @@ bool SClipboard::clipboardReadProperty(xcb_window_t win, xcb_atom_t property, bo
             // Here we check if we get a buffer overflow and tries to
             // recover -- this shouldn't normally happen, but it doesn't
             // hurt to be defensive
-            if ((int)(buffer_offset + length) > buffer->size())
+            if ((int)(buffer_offset + length) > (int)buffer->size())
             {
                 SLOG_STMW() << "SClipboard: buffer overflow";
                 length = buffer->size() - buffer_offset;
@@ -636,6 +636,7 @@ xcb_atom_t SClipboard::sendSelection(IDataObject *d, xcb_atom_t target, xcb_wind
     IEnumFORMATETC *enumFmt;
     HGLOBAL hData = NULL;
     int dataFormat = 0;
+    (void)dataFormat;
     if (d->EnumFormatEtc(DATADIR_GET, &enumFmt) == S_OK)
     {
         FORMATETC fmt;
@@ -643,13 +644,13 @@ xcb_atom_t SClipboard::sendSelection(IDataObject *d, xcb_atom_t target, xcb_wind
         {
             if (fmt.tymed == TYMED_HGLOBAL && m_conn->clipFormat2Atom(fmt.cfFormat) == target)
             {
-                STGMEDIUM medium = { 0 };
+                STGMEDIUM medium = {};
                 d->GetData(&fmt, &medium);
                 hData = medium.hGlobal;
                 dataFormat = fmt.cfFormat;
                 break;
             }else if(fmt.tymed==TYMED_HGLOBAL && fmt.cfFormat==CF_HDROP && target==m_conn->atoms.CLIPF_TEXT){
-                STGMEDIUM medium = { 0 };
+                STGMEDIUM medium = {};
                 fmt.cfFormat = CF_TEXT;
                 d->GetData(&fmt, &medium);
                 hData = medium.hGlobal;
@@ -670,7 +671,7 @@ xcb_atom_t SClipboard::sendSelection(IDataObject *d, xcb_atom_t target, xcb_wind
     // X_ChangeProperty protocol request is 24 bytes
     const int increment = (xcb_get_maximum_request_length(xcb_connection()) * 4) - 24;
     size_t len = GlobalSize(hData);
-    if (len > increment && allow_incr)
+    if (len > (size_t)increment && allow_incr)
     {
         uint32_t bytes = increment;
         std::shared_ptr<std::vector<char>> data = std::make_shared<std::vector<char>>(bytes);
@@ -684,7 +685,7 @@ xcb_atom_t SClipboard::sendSelection(IDataObject *d, xcb_atom_t target, xcb_wind
     }
 
     // make sure we can perform the XChangeProperty in a single request
-    if (len > increment)
+    if (len > (size_t)increment)
     {
         GlobalFree(hData);
         return XCB_NONE; // ### perhaps use several XChangeProperty calls w/ PropModeAppend?
@@ -883,7 +884,6 @@ BOOL SClipboard::emptyClipboard()
 {
     if(!m_bOpen)
         return FALSE;
-    //SLOG_STMI()<<"emptyClipboard";
     std::unique_lock<std::recursive_mutex> lock(m_mutex);
     if (m_doExClip)
     {
@@ -983,7 +983,7 @@ void SClipboard::flushClipboard()
         FORMATETC fmt;
         while (enum_fmt->Next(1, &fmt, NULL) == S_OK)
         {
-            STGMEDIUM storage = { 0 };
+            STGMEDIUM storage = {};
             hr = m_doExClip->GetData(&fmt, &storage);//GetData will copy data to storage.
             if (hr == S_OK)
             {
@@ -1102,7 +1102,7 @@ HANDLE SClipboard::setClipboardData(UINT uFormat, HANDLE hMem)
         uFormat = CF_TEXT;
     }
     FORMATETC formatetc = { (CLIPFORMAT)uFormat, nullptr, 0, 0, TYMED_HGLOBAL }; // Pointer to the FORMATETC structure
-    STGMEDIUM medium={0};
+    STGMEDIUM medium= {};
     medium.hGlobal = hMem;
     medium.tymed = TYMED_HGLOBAL;
     m_doClip->SetData(&formatetc, &medium, TRUE);
@@ -1121,7 +1121,10 @@ BOOL SClipboard::openClipboard(HWND hWndNewOwner)
     }
     m_mutex.lock();
     if (m_bOpen)
+    {
+        m_mutex.unlock();
         return FALSE;
+    }
     m_bOpen = TRUE;
     m_bModified = FALSE;
     return TRUE;
@@ -1129,12 +1132,12 @@ BOOL SClipboard::openClipboard(HWND hWndNewOwner)
 
 BOOL SClipboard::closeClipboard()
 {
-    m_mutex.unlock();
     if (!m_bOpen)
         return FALSE;
     flushClipboard();
     m_bOpen = FALSE;
     m_bModified=FALSE;
+    m_mutex.unlock();
     return TRUE;
 }
 
@@ -1170,7 +1173,7 @@ static std::shared_ptr<std::vector<char>> _getSelectionFromThis(SConnection *pCo
     {
         // read data from this process
         FORMATETC fmt = { (CLIPFORMAT)pConn->atom2ClipFormat(fmtAtom), nullptr, 0, 0, TYMED_HGLOBAL };
-        STGMEDIUM medium = { 0 };
+        STGMEDIUM medium = {};
         if (S_OK == pDo->GetData(&fmt, &medium))
         {
             const char *src = (const char *)GlobalLock(medium.hGlobal);
@@ -1336,7 +1339,7 @@ xcb_generic_event_t *SClipboard::waitForClipboardEvent(xcb_window_t win, int typ
         m_conn->flush();
         uint64_t ts2 = GetTickCount64();
         uint64_t cost = ts2 - ts1;
-        if (cost >= timeout)
+        if (cost >= (uint64_t)timeout)
             break;
         Sleep(std::min(50, timeout - (int)cost));
     }
@@ -1344,7 +1347,7 @@ xcb_generic_event_t *SClipboard::waitForClipboardEvent(xcb_window_t win, int typ
     return nullptr;
 }
 
-void SClipboard::clipboardReadIncrementalProperty(xcb_window_t win, xcb_atom_t property, xcb_atom_t selection, int nbytes, bool nullterm, std::shared_ptr<std::vector<char>> bufOut)
+void SClipboard::clipboardReadIncrementalProperty(xcb_window_t win, xcb_atom_t property, xcb_atom_t selection, int nbytes __attribute__((unused)), bool nullterm __attribute__((unused)), std::shared_ptr<std::vector<char>> bufOut)
 {
     std::vector<char> tmp_buf;
     xcb_timestamp_t prev_time = m_incr_receive_time;

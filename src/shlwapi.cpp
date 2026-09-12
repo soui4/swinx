@@ -1,10 +1,15 @@
 #include <fileapi.h>
 #include <shlwapi.h>
-#include "tostring.hpp"
+#include "tostring.h"
 
 BOOL WINAPI PathIsDirectoryA(LPCSTR pszPath)
 {
-    return GetFileAttributesA(pszPath) & FILE_ATTRIBUTE_DIRECTORY;
+    // INVALID_FILE_ATTRIBUTES (0xFFFFFFFF) would AND with every flag,
+    // so a non-existent path must be rejected explicitly
+    DWORD attr = GetFileAttributesA(pszPath);
+    if (attr == INVALID_FILE_ATTRIBUTES)
+        return FALSE;
+    return attr & FILE_ATTRIBUTE_DIRECTORY;
 }
 
 BOOL WINAPI PathIsDirectoryW(LPCWSTR pszPath)

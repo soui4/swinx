@@ -103,7 +103,8 @@ BOOL PtInRect(const RECT *lprc, POINT pt)
 {
     return pt.x >= lprc->left && pt.x < lprc->right && pt.y >= lprc->top && pt.y < lprc->bottom;
 }
-int ShowCursor(BOOL bShow){
+int ShowCursor(BOOL bShow)
+{
     SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->ShowCursor(bShow);
 }
@@ -120,20 +121,20 @@ UINT GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUI
     return conn->GetRawInputDeviceInfoW(hDevice, uiCommand, pData, pcbSize);
 }
 
-UINT GetRawInputDeviceList(
-        _Out_writes_opt_(*puiNumDevices) PRAWINPUTDEVICELIST pRawInputDeviceList,
-        _Inout_ PUINT puiNumDevices,
-        _In_ UINT cbSize)
+UINT GetRawInputDeviceList(_Out_writes_opt_(*puiNumDevices) PRAWINPUTDEVICELIST pRawInputDeviceList, _Inout_ PUINT puiNumDevices, _In_ UINT cbSize)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->GetRawInputDeviceList(pRawInputDeviceList, puiNumDevices, cbSize);
 }
 
-BOOL ShowSoftKeyboard(HWND hWnd,BOOL bShow){
-#if defined(__ANDROID__) || defined(__IOS__) || defined(__OHOS__) 
+BOOL ShowSoftKeyboard(HWND hWnd, BOOL bShow)
+{
+#if defined(__ANDROID__) || defined(__IOS__) || defined(__OHOS__)
     SConnection *conn = SConnMgr::instance()->getConnection();
     return conn->ShowSoftKeyboard(hWnd, bShow);
 #else
+    (void)hWnd;
+    (void)bShow;
     return FALSE;
-#endif//__ANDROID__
+#endif //__ANDROID__
 }

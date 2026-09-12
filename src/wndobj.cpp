@@ -2,32 +2,36 @@
 #include "log.h"
 #define kLogTag "_Window"
 
-_Window::_Window(size_t extraLen)
+_Window::_Window(uint32_t extraLen)
     : cRef(1)
+    , objOpaque(0)
+    , hdc(0)
+    , bmp(0)
+    , iconBig(0)
+    , iconSmall(0)
     , nPainting(0)
-    , cbWndExtra(extraLen)
     , nSizing(0)
-    , crKey(CR_INVALID)
-    , byAlpha(0xff)
-    , flags(0)
     , msgRecusiveCount(0)
     , bDestroyed(FALSE)
     , bCaretVisible(FALSE)
-    , showSbFlags(0)
-    , hdc(0)
-    , bmp(0)
-    , iconSmall(0)
-    , iconBig(0)
-    , objOpaque(0)
     , htCode(HTNOWHERE)
+    , crKey(CR_INVALID)
+    , byAlpha(0xff)
+    , showSbFlags(0)
+    , parent(0)
+    , owner(0)
+    , wIDmenu(0)
+    , helpContext(0)
+    , flags(0)
     , visualId(0)
+    , cmap(0)
     , dropTarget(NULL)
     , dragData(NULL)
     , userdata(0)
-    , cmap(0)
     , hIMC(NULL)
     , hSysMenu(0)
     , pPrivData(nullptr)
+    , cbWndExtra(extraLen)
 {
     invalid.hRgn = CreateRectRgn(0, 0, 0, 0);
     invalid.bErase = TRUE;
@@ -99,10 +103,7 @@ WndObj::WndObj(_Window *pWnd)
 
 WndObj::~WndObj()
 {
-    if (wnd)
-    {
-        wnd->Unlock();
-    }
+    reset();
 }
 
 void WndObj::operator=(const WndObj &src)
@@ -119,6 +120,15 @@ void WndObj::operator=(const WndObj &src)
     }
 }
 
+void WndObj::reset()
+{
+    if (wnd)
+    {
+        wnd->Unlock();
+        wnd = nullptr;
+    }
+}
+
 //---------------------------------------------------------
 static std::map<HWND, _Window *> s_wndMap;
 static std::recursive_mutex s_wndMapMutex;
@@ -126,7 +136,7 @@ static std::recursive_mutex s_wndMapMutex;
 static _Window *get_win_ptr_and_lock(HWND hWnd)
 {
     _Window *wnd = nullptr;
-    {//重要：这里必须及时释放全局锁s_wndMapMutex防止死锁。调用wnd->AddRef防止wnd被释放掉。
+    { //重要：这里必须及时释放全局锁s_wndMapMutex防止死锁。调用wnd->AddRef防止wnd被释放掉。
         std::unique_lock<std::recursive_mutex> lock(s_wndMapMutex);
         auto it = s_wndMap.find(hWnd);
         if (it == s_wndMap.end())
@@ -134,7 +144,8 @@ static _Window *get_win_ptr_and_lock(HWND hWnd)
         wnd = it->second;
         wnd->AddRef();
     }
-    if(wnd){
+    if (wnd)
+    {
         wnd->Lock();
         wnd->Release();
     }

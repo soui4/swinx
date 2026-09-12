@@ -134,9 +134,11 @@ int GetLocal(char *lpLCData, int cchData){
                 {
                     strncpy(lpLCData, buffer, cchData - 1);
                     lpLCData[cchData - 1] = '\0';
+                    CFRelease(localeRef);
                     return len + 1;
                 }
             }
+            CFRelease(localeRef);
         }else {
             // Fallback to LANG environment variable
             const char* locale = getenv("LANG");
@@ -160,6 +162,7 @@ wchar_t scanCodeToChar(uint16_t scanCode,uint32_t modifierFlags) {
     TISInputSourceRef keyboardLayout = TISCopyCurrentKeyboardLayoutInputSource();
     CFDataRef layoutData = (CFDataRef)TISGetInputSourceProperty(keyboardLayout, kTISPropertyUnicodeKeyLayoutData);
     if (!layoutData) {
+        CFRelease(keyboardLayout);
         return 0;
     }
 

@@ -1,6 +1,6 @@
 #include <windows.h>
 #include <commdlg.h>
-#include "tostring.hpp"
+#include "tostring.h"
 #include "log.h"
 #define kLogTag "commondlg"
 
@@ -100,8 +100,8 @@ BOOL WINAPI PickFolderA(_In_ LPBROWSEINFOA lpbi)
 {
     if (!lpbi->nMaxPath || !lpbi->lpszPath)
         return FALSE;
-    OPENFILENAMEA of = { 0 };
-    ;
+    OPENFILENAMEA of = {};
+
     of.nMaxFile = lpbi->nMaxPath;
     of.lpstrFile = lpbi->lpszPath;
     of.hwndOwner = lpbi->hwndOwner;
@@ -113,7 +113,7 @@ BOOL WINAPI PickFolderW(_In_ LPBROWSEINFOW lpbi)
 {
     if (!lpbi->nMaxPath || !lpbi->lpszPath)
         return FALSE;
-    OPENFILENAMEW of = { 0 };
+    OPENFILENAMEW of = {};
     of.nMaxFile = lpbi->nMaxPath;
     of.lpstrFile = lpbi->lpszPath;
     of.hwndOwner = lpbi->hwndOwner;

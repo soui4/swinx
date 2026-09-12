@@ -130,32 +130,36 @@ extern "C"
     wchar_t *WINAPI PathFindExtensionW(const wchar_t *path);
     BOOL WINAPI PathCanonicalizeA(char *buffer, const char *path);
     BOOL WINAPI PathCanonicalizeW(wchar_t *buffer, const wchar_t *path);
-    BOOL WINAPI PathIsValidCharA(char c, DWORD _class);
-    BOOL WINAPI PathIsValidCharW(wchar_t c, DWORD _class);
     int WINAPI PathCommonPrefixA(const char *file1, const char *file2, char *path);
     int WINAPI PathCommonPrefixW(const wchar_t *file1, const wchar_t *file2, wchar_t *path);
     BOOL WINAPI PathIsPrefixA(const char *prefix, const char *path);
     BOOL WINAPI PathIsPrefixW(const wchar_t *prefix, const wchar_t *path);
     DWORD WINAPI GetFullPathNameW(LPCWSTR lpFileName, DWORD nBufferLength, LPWSTR lpBuffer, LPWSTR *lpFilePart);
     DWORD WINAPI GetFullPathNameA(LPCSTR lpFileName, DWORD nBufferLength, LPSTR lpBuffer, LPSTR *lpFilePart);
+    void WINAPI PathQuoteSpacesA(char *path);
+    void WINAPI PathQuoteSpacesW(wchar_t *path);
+    void WINAPI PathUnquoteSpacesA(char *path);
+    void WINAPI PathUnquoteSpacesW(wchar_t *path);
 #ifdef UNICODE
 #define PathIsRelative    PathIsRelativeW
 #define PathFindFileName  PathFindFileNameW
 #define PathFindExtension PathFindExtensionW
 #define PathCanonicalize  PathCanonicalizeW
-#define PathIsValidChar   PathIsValidCharW
 #define PathCommonPrefix  PathCommonPrefixW
 #define PathIsPrefix      PathIsPrefixW
 #define GetFullPathName   GetFullPathNameW
+#define PathQuoteSpaces   PathQuoteSpacesW
+#define PathUnquoteSpaces PathUnquoteSpacesW
 #else
 #define PathIsRelative    PathIsRelativeA
 #define PathFindFileName  PathFindFileNameA
 #define PathFindExtension PathFindExtensionA
 #define PathCanonicalize  PathCanonicalizeA
-#define PathIsValidChar   PathIsValidCharA
 #define PathCommonPrefix  PathCommonPrefixA
 #define PathIsPrefix      PathIsPrefixA
 #define GetFullPathName   GetFullPathNameA
+#define PathQuoteSpaces   PathQuoteSpacesA
+#define PathUnquoteSpaces PathUnquoteSpacesA
 #endif // !UNICODE
 
 // Note CLASSKEY overrides CLASSNAME

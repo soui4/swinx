@@ -4,6 +4,7 @@
 #include <shlobj.h>
 #include <uuid/uuid.h>
 #include <sdragsourcehelper.h>
+#include "bstr_internal.h"
 static inline void *AllocateForBSTR(size_t cb)
 {
     return ::malloc(cb);
@@ -31,22 +32,33 @@ static inline void FreeForBSTR(void *pv)
 typedef uint32_t CBstrSizeType;
 
 #define k_BstrSize_Max 0xFFFFFFFF
-// #define k_BstrSize_Max UINT_MAX
-// #define k_BstrSize_Max ((UINT)(INT)-1)
+
+/* swinx maps OLECHAR to the platform wchar_t (4 bytes on POSIX, 2 bytes on
+   Win32), but the BSTR header must report the Win32 UTF-16 byte length
+   (2 bytes per char) — that is the documented SysStringByteLen value.
+   BSTRs created by SysAllocStringByteLen hold raw (non-OLECHAR) bytes
+   instead; they are marked with the flag below so the internal deep-copy
+   helpers can preserve their layout. */
+static const CBstrSizeType k_Bstr_ByteAlloc_Flag = 0x40000000u;
+
+static inline CBstrSizeType bstr_stored_len(BSTR bstr)
+{
+    return *((CBstrSizeType *)bstr - 1) & ~k_Bstr_ByteAlloc_Flag;
+}
 
 BSTR SysAllocStringByteLen(LPCSTR s, UINT len)
 {
     /* Original SysAllocStringByteLen in Win32 maybe fills only unaligned null OLECHAR at the end.
        We provide also aligned null OLECHAR at the end. */
 
-    if (len >= (k_BstrSize_Max - sizeof(OLECHAR) - sizeof(OLECHAR) - sizeof(CBstrSizeType)))
+    if (len >= k_Bstr_ByteAlloc_Flag - sizeof(OLECHAR) * 2)
         return NULL;
 
     UINT size = (len + sizeof(OLECHAR) + sizeof(OLECHAR) - 1) & ~(sizeof(OLECHAR) - 1);
     void *p = AllocateForBSTR(size + sizeof(CBstrSizeType));
     if (!p)
         return NULL;
-    *(CBstrSizeType *)p = (CBstrSizeType)len;
+    *(CBstrSizeType *)p = (CBstrSizeType)(len | k_Bstr_ByteAlloc_Flag);
     BSTR bstr = (BSTR)((CBstrSizeType *)p + 1);
     if (s)
         memcpy(bstr, s, len);
@@ -57,14 +69,16 @@ BSTR SysAllocStringByteLen(LPCSTR s, UINT len)
 
 BSTR SysAllocStringLen(const OLECHAR *s, UINT len)
 {
-    if (len >= (k_BstrSize_Max - sizeof(OLECHAR) - sizeof(CBstrSizeType)) / sizeof(OLECHAR))
+    /* the header stores the Win32 UTF-16 byte length (len * 2) even though
+       the buffer itself holds len * sizeof(OLECHAR) bytes */
+    if (len >= k_Bstr_ByteAlloc_Flag / 2 / sizeof(OLECHAR))
         return NULL;
 
     UINT size = len * sizeof(OLECHAR);
     void *p = AllocateForBSTR(size + sizeof(CBstrSizeType) + sizeof(OLECHAR));
     if (!p)
         return NULL;
-    *(CBstrSizeType *)p = (CBstrSizeType)size;
+    *(CBstrSizeType *)p = (CBstrSizeType)(len * 2);
     BSTR bstr = (BSTR)((CBstrSizeType *)p + 1);
     if (s)
         memcpy(bstr, s, size);
@@ -92,14 +106,35 @@ UINT SysStringByteLen(BSTR bstr)
 {
     if (!bstr)
         return 0;
-    return *((CBstrSizeType *)bstr - 1);
+    return bstr_stored_len(bstr);
 }
 
 UINT SysStringLen(BSTR bstr)
 {
     if (!bstr)
         return 0;
-    return *((CBstrSizeType *)bstr - 1) / sizeof(OLECHAR);
+    /* Win32 semantics: SysStringByteLen / 2 (BSTR content is UTF-16);
+       for SysAllocStringByteLen blobs this yields the same floor(len / 2)
+       character count real Windows reports */
+    return bstr_stored_len(bstr) / 2;
+}
+
+BSTR SysAllocStringCopy(BSTR src)
+{
+    if (!src)
+        return NULL;
+    if (*((CBstrSizeType *)src - 1) & k_Bstr_ByteAlloc_Flag)
+        return SysAllocStringByteLen((LPCSTR)src, bstr_stored_len(src));
+    return SysAllocStringLen(src, bstr_stored_len(src) / 2);
+}
+
+UINT SysBstrRawByteCount(BSTR bstr)
+{
+    if (!bstr)
+        return 0;
+    if (*((CBstrSizeType *)bstr - 1) & k_Bstr_ByteAlloc_Flag)
+        return bstr_stored_len(bstr); /* raw byte blob */
+    return bstr_stored_len(bstr) / 2 * sizeof(OLECHAR);
 }
 
 static inline BOOL is_valid_hex(WCHAR c)
@@ -189,20 +224,19 @@ HRESULT WINAPI CLSIDFromProgID(LPCOLESTR progid, CLSID *clsid)
     return guid_from_string(progid, clsid);
 }
 
-HRESULT WINAPI CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter, DWORD dwClsContext, REFIID riid, LPVOID FAR *ppv)
+HRESULT WINAPI CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter __attribute__((unused)), DWORD dwClsContext __attribute__((unused)), REFIID riid, LPVOID FAR *ppv)
 {
     if (IsEqualGUID(rclsid, CLSID_DragDropHelper))
     {
-        if (IsEqualGUID(riid, IID_IDragSourceHelper))
-        {
-            SDragSourceHelper *pDragSourceHelper = new SDragSourceHelper();
-            return pDragSourceHelper->QueryInterface(riid, ppv);
-        }
+        SDragSourceHelper *pDragSourceHelper = new SDragSourceHelper();
+        HRESULT hr = pDragSourceHelper->QueryInterface(riid, ppv);
+        pDragSourceHelper->Release();
+        return hr;
     }
     return E_NOTIMPL;
 }
 
-HRESULT WINAPI OleInitialize(LPVOID reserved)
+HRESULT WINAPI OleInitialize(LPVOID reserved __attribute__((unused)))
 {
     // todo:hjx
     return S_OK;

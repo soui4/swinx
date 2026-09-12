@@ -1,5 +1,5 @@
 #include "../nativewnd.h"
-#include "../tostring.hpp"
+#include "../tostring.h"
 #include "cmnctl32.h"
 #include <unordered_map>
 #include <algorithm>
@@ -97,7 +97,8 @@ class CMessageBox : public CNativeWnd {
         RECT rcWnd;
         GetClientRect(m_hWnd, &rcWnd);
         // GetSystemMetrics 的SM_CXFULLSCREEN未实现
-        MONITORINFO info{ sizeof(MONITORINFO) };
+        MONITORINFO info{};
+        info.cbSize = sizeof(MONITORINFO);
         GetMonitorInfo(MonitorFromWindow(m_hWnd, MONITOR_DEFAULTTONEAREST), &info);
 
         int nScreenWid = info.rcWork.right - info.rcWork.left;
@@ -167,7 +168,7 @@ class CMessageBox : public CNativeWnd {
         return { 10, 10, 59, 59 };
     }
 
-    void OnPaint(HDC hdc)
+    void OnPaint(HDC hdc __attribute__((unused)))
     {
         PAINTSTRUCT ps;
         BeginPaint(m_hWnd, &ps);
@@ -180,7 +181,7 @@ class CMessageBox : public CNativeWnd {
         EndPaint(m_hWnd, &ps);
     }
 
-    void OnCommand(UINT uNotifyCode, int nID, HWND wndCtl)
+    void OnCommand(UINT uNotifyCode __attribute__((unused)), int nID, HWND wndCtl __attribute__((unused)))
     {
         m_retCode = nID;
         PostMessage(m_hWnd, WM_CLOSE, 0, 0);

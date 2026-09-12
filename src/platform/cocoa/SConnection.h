@@ -133,11 +133,20 @@ class SConnection : public SConnBase{
     HWND OnFindWindowEx(HWND hParent, HWND hChildAfter, LPCSTR lpClassName, LPCSTR lpWindowName);
     bool OnEnumWindows(HWND hParent, HWND hChildAfter,WNDENUMPROC lpEnumFunc, LPARAM lParam);
     HWND OnGetAncestor(HWND hwnd,UINT gaFlags);
-    HMONITOR MonitorFromWindow(HWND hWnd, DWORD dwFlags);
-    HMONITOR MonitorFromPoint(POINT pt,  DWORD dwFlags );
-    HMONITOR MonitorFromRect(LPCRECT lprc, // rectangle
-                             DWORD dwFlags // determine return value
-    );
+    // ---- 多显示器支持 ----
+    // HMONITOR = NSScreen*（bridge 转换）。
+    // 坐标约定：swinx 全局坐标以"主显示器左上角"为原点、y 向下（与 Win32
+    // 一致）；Cocoa 全局坐标以主屏左下为原点、y 向上，两者仅 y 以主屏高度
+    // 为常数翻转，见 SConnection.mm 的 cocoaRectToWin/winRectToCocoa。
+    int GetMonitorCount() const;
+    HMONITOR GetMonitor(int index) const;
+    HMONITOR GetPrimaryMonitor() const;
+    bool GetMonitorRect(HMONITOR hMonitor, RECT *prc) const;
+    bool GetMonitorWorkRect(HMONITOR hMonitor, RECT *prc) const;
+    bool IsPrimaryMonitor(HMONITOR hMonitor) const;
+    HMONITOR MonitorFromWindow(HWND hWnd, DWORD dwFlags) const;
+    HMONITOR MonitorFromPoint(POINT pt, DWORD dwFlags) const;
+    HMONITOR MonitorFromRect(LPCRECT lprc, DWORD dwFlags) const;
     int GetScreenWidth(HMONITOR hMonitor) const;
     int GetScreenHeight(HMONITOR hMonitor) const;
     HWND GetScreenWindow() const;
@@ -194,7 +203,7 @@ class SConnection : public SConnBase{
     void SetCaretBlinkTime(UINT blinkTime);
     UINT GetCaretBlinkTime() const ;
 
-    void GetWorkArea(HMONITOR hMonitor, RECT* prc);
+    void GetWorkArea(HMONITOR hMonitor, RECT* prc) const;
 public:
     SClipboard* getClipboard() ;
 

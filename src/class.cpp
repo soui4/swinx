@@ -7,7 +7,7 @@
 #include <mutex>
 #include <gdi.h>
 #include "clsmgr.h"
-#include "tostring.hpp"
+#include "tostring.h"
 #include "debug.h"
 #define kLogTag "class"
 
@@ -71,7 +71,7 @@ ATOM WINAPI RegisterClassExW(const WNDCLASSEXW *wc)
 
 ATOM WINAPI RegisterClassA(const WNDCLASSA *lpWndClass)
 {
-    WNDCLASSEXA wca = { 0 };
+    WNDCLASSEXA wca = {};
     wca.cbSize = sizeof(wca);
     wca.style = lpWndClass->style;
     wca.cbClsExtra = lpWndClass->cbClsExtra;
@@ -87,7 +87,7 @@ ATOM WINAPI RegisterClassA(const WNDCLASSA *lpWndClass)
 
 ATOM WINAPI RegisterClassW(const WNDCLASSW *lpWndClass)
 {
-    WNDCLASSEXW wca = { 0 };
+    WNDCLASSEXW wca = {};
     wca.cbSize = sizeof(wca);
     wca.style = lpWndClass->style;
     wca.cbClsExtra = lpWndClass->cbClsExtra;

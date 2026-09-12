@@ -19,28 +19,35 @@
 #include <os/log.h>
 #endif
 #include <fcntl.h>
+#include <sched.h>
 #include <signal.h>
 #include <assert.h>
 #include <iconv.h>
 #include <setjmp.h>
+#include <poll.h>
 #include <dirent.h>
+
+extern char **environ; // POSIX 约定的环境指针（execve 备用）
 #include <map>
 #include <vector>
 #include <set>
 #include <string>
+#include <atomic>
+#include <mutex>
 #include "SConnection.h"
 #include "wnd.h"
 #include "uimsg.h"
 #include "uniconv.h"
 #include "synhandle.h"
-#include "tostring.hpp"
+#include "tostring.h"
 #include "debug.h"
 #include "sysapi.h"
 #include "platform_api.h"
+#include "SwinxUtils.h"
 #include "cursormgr.h"
 #ifdef __ANDROID__
 #include <android/log.h>
-#endif//__ANDROID__
+#endif //__ANDROID__
 // 声明外部函数
 extern void UnloadModuleResources(HMODULE hModule);
 
@@ -271,7 +278,7 @@ static int to_mb(const wchar_t *input, size_t input_len, int codePage, std::stri
     size_t outbytesleft = output_len;
 
     size_t ret = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
-    if (ret != -1)
+    if (ret != (size_t)-1)
     {
         out.resize(output_len - outbytesleft);
     }
@@ -308,10 +315,9 @@ int to_unicode(const char *input, size_t input_len, int codePage, std::wstring &
     size_t outbytesleft = output_len;
 
     size_t ret = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
-    if (ret != -1)
+    if (ret != (size_t)-1)
     {
         out.resize((output_len - outbytesleft) / sizeof(wchar_t));
-        // out=out.substr(0,(output_len-outbytesleft)/sizeof(wchar_t));
     }
     else
     {
@@ -347,8 +353,28 @@ int GetLastError()
 
 int MulDiv(int a, int b, int c)
 {
-    int64_t t = int64_t(a) * b;
-    return (int)(t / c);
+    if (c == 0)
+    {
+        SetLastError(ERROR_INT_DIVIDE_BY_ZERO);
+        return -1;
+    }
+    LONGLONG ret;
+    /* We want to deal with a positive divisor to simplify the logic. */
+    if (c < 0)
+    {
+        a = -a;
+        c = -c;
+    }
+
+    /* If the result is positive, we "add" to round. else, we subtract to round. */
+    if ((a < 0 && b < 0) || (a >= 0 && b >= 0))
+        ret = (((LONGLONG)a * b) + (c / 2)) / c;
+    else
+        ret = (((LONGLONG)a * b) - (c / 2)) / c;
+
+    if (ret > 2147483647 || ret < -2147483647)
+        return -1;
+    return ret;
 }
 
 tid_t GetCurrentThreadId()
@@ -447,14 +473,14 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
 #endif
 }
 
-int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *dst, int dstLen, LPCSTR p1, BOOL *p2)
+int WideCharToMultiByte(int cp, int flags __attribute__((unused)), const wchar_t *src, int len, char *dst, int dstLen, LPCSTR p1 __attribute__((unused)), BOOL *p2 __attribute__((unused)))
 {
     assert(src);
-    const wchar_t *ptr = src;
+    // a NUL-terminated source (len == -1) must include the terminator in the
+    // returned size, like Win32 does.
+    bool nullTerminated = len < 0;
     if (len < 0)
-        len = wcslen(src) + 1;
-    const wchar_t *stop = src + len;
-    size_t i = 0;
+        len = wcslen(src);
     if (cp == CP_OEMCP)
         cp = CP_UTF8; // todo:hjx
     if (cp != CP_ACP && cp != CP_UTF8)
@@ -477,6 +503,8 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
 #if (WCHAR_SIZE == 2)
     assert(sizeof(wchar_t) == 2);
     int bufRequire = UTF16toUTF8Length((const uint16_t *)src, len);
+    if (nullTerminated)
+        bufRequire++;
     if (!dst)
     {
         return bufRequire;
@@ -489,11 +517,14 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
     else
     {
         SetLastError(NO_ERROR);
-        return UTF8FromUTF16((const uint16_t *)src, len, dst, dstLen);
+        int ret = UTF8FromUTF16((const uint16_t *)src, len, dst, dstLen);
+        return nullTerminated ? ret + 1 : ret;
     }
 #else
     assert(sizeof(wchar_t) == 4);
     int bufRequire = UTF32toUTF8Length((const uint32_t *)src, len);
+    if (nullTerminated)
+        bufRequire++;
     if (!dst)
         return bufRequire;
     else if (bufRequire > dstLen)
@@ -504,7 +535,8 @@ int WideCharToMultiByte(int cp, int flags, const wchar_t *src, int len, char *ds
     else
     {
         SetLastError(NO_ERROR);
-        return UTF8FromUTF32((const uint32_t *)src, len, dst, dstLen);
+        int ret = UTF8FromUTF32((const uint32_t *)src, len, dst, dstLen);
+        return nullTerminated ? ret + 1 : ret;
     }
 #endif
 }
@@ -719,7 +751,7 @@ HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
             // add lib prefix to szPath;
             char szTmp[MAX_PATH];
             strcpy(szTmp, szPath);
-            sprintf(szPath, "lib%s", szTmp);
+            snprintf(szPath, sizeof(szPath), "lib%s", szTmp);
         }
         ret = s_dllLoader.LoadDll(szPath, RTLD_NOW);
     } while (false);
@@ -746,7 +778,8 @@ BOOL WINAPI FreeLibrary(HMODULE hModule)
 {
     // 卸载模块资源
     UnloadModuleResources(hModule);
-    return dlclose(hModule);
+    // dlclose returns 0 on success, Win32 wants TRUE
+    return dlclose(hModule) == 0;
 }
 
 DWORD WINAPI GetDllDirectoryA(DWORD nBufferLength, LPSTR lpBuffer)
@@ -893,58 +926,35 @@ void GetSystemTime(SYSTEMTIME *pSysTime)
     pSysTime->wMilliseconds = tvNow.tv_usec / 1000;
 }
 
-static const int64_t EPOCH = ((int64_t)116444736000000000LL); //  1601-01-01 00:00:00
-static void TimeT2FileTime(time_t t, FILETIME *pft)
+// Current timezone bias in seconds east of UTC (e.g. +28800 for UTC+8).
+// Win32's FileTimeToLocalFileTime / LocalFileTimeToFileTime apply the
+// current bias as a plain arithmetic offset; DST history is not involved.
+static int64_t get_local_utc_bias_seconds()
 {
-    long long int ll = (long long int)t * 10000000LL + EPOCH;
-    pft->dwLowDateTime = (uint32_t)ll;
-    pft->dwHighDateTime = (uint32_t)(ll >> 32);
-}
-
-static time_t FileTime2TimeT(const FILETIME &ft)
-{
-    ULARGE_INTEGER uli;
-    uli.LowPart = ft.dwLowDateTime;
-    uli.HighPart = ft.dwHighDateTime;
-    // 减去偏移量并转换为秒
-    ULARGE_INTEGER qwFileTime;
-    qwFileTime.QuadPart = uli.QuadPart - EPOCH;
-    return qwFileTime.QuadPart / 10000000;
+    time_t now = time(NULL);
+    struct tm *lt = localtime(&now);
+    return lt ? (int64_t)lt->tm_gmtoff : 0;
 }
 
 BOOL LocalFileTimeToFileTime(const FILETIME *lpLocalFileTime, LPFILETIME lpFileTime)
 {
-    time_t localTime = FileTime2TimeT(*lpLocalFileTime);
-    // 转换为UTC time_t
-    struct tm *utcTm = gmtime(&localTime);
-    if (!utcTm)
-    {
+    if (!lpLocalFileTime || !lpFileTime)
         return FALSE;
-    }
-    time_t utcTime = mktime(utcTm);
-    if (utcTime == (time_t)-1)
-    {
-        return FALSE;
-    }
-
-    TimeT2FileTime(utcTime, lpFileTime);
+    ULONGLONG local = ((ULONGLONG)lpLocalFileTime->dwHighDateTime << 32) | lpLocalFileTime->dwLowDateTime;
+    ULONGLONG utc = local - (ULONGLONG)(get_local_utc_bias_seconds() * 10000000LL);
+    lpFileTime->dwLowDateTime = (DWORD)utc;
+    lpFileTime->dwHighDateTime = (DWORD)(utc >> 32);
     return TRUE;
 }
 
 BOOL FileTimeToLocalFileTime(const FILETIME *lpFileTime, LPFILETIME lpLocalFileTime)
 {
-    time_t utcTime = FileTime2TimeT(*lpFileTime);
-    struct tm *utcTm = localtime(&utcTime);
-    if (!utcTm)
-    {
+    if (!lpFileTime || !lpLocalFileTime)
         return FALSE;
-    }
-    time_t localTime = mktime(utcTm);
-    if (localTime == (time_t)-1)
-    {
-        return FALSE;
-    }
-    TimeT2FileTime(localTime, lpLocalFileTime);
+    ULONGLONG utc = ((ULONGLONG)lpFileTime->dwHighDateTime << 32) | lpFileTime->dwLowDateTime;
+    ULONGLONG local = utc + (ULONGLONG)(get_local_utc_bias_seconds() * 10000000LL);
+    lpLocalFileTime->dwLowDateTime = (DWORD)local;
+    lpLocalFileTime->dwHighDateTime = (DWORD)(local >> 32);
     return TRUE;
 }
 
@@ -1083,7 +1093,21 @@ LONG InterlockedIncrement(LONG volatile *v)
 
 LONG InterlockedCompareExchange(LONG volatile *v, LONG Exchange, LONG Comparand)
 {
-    return __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    // Win32 semantics: return the ORIGINAL value of *v.
+    // On failure __atomic_compare_exchange_n stores the original into
+    // Comparand; on success Comparand already holds it (it matched).
+    __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    return Comparand;
+}
+
+LONG InterlockedExchangeAdd(LONG volatile *v, LONG Increment)
+{
+    return __sync_add_and_fetch(v, Increment);
+}
+
+int64_t InterlockedExchangeAdd64(int64_t volatile *v, int64_t Increment)
+{
+    return __sync_add_and_fetch(v, Increment);
 }
 
 int64_t InterlockedDecrement64(int64_t volatile *v)
@@ -1098,7 +1122,9 @@ int64_t InterlockedIncrement64(int64_t volatile *v)
 
 int64_t InterlockedCompareExchange64(int64_t volatile *v, int64_t Exchange, int64_t Comparand)
 {
-    return __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    // Win32 semantics: return the ORIGINAL value (see 32-bit version)
+    __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    return Comparand;
 }
 
 void qsort_s(void *base, size_t num, size_t width, int(__cdecl *comp)(void *, const void *, const void *), void *context)
@@ -1439,10 +1465,16 @@ DWORD MsgWaitForMultipleObjects(DWORD nCount, const HANDLE *pHandles, BOOL fWait
     return conn->waitMutliObjectAndMsg(pHandles, nCount, dwMilliseconds, fWaitAll, dwWakeMask);
 }
 
+/* WinEvent 异步派发（实现位于 src/oleacc.cpp，所有平台变体均在编译）：
+ * OUTOFCONTEXT 钩子的回调与 user32 一致，在消息泵里投递。 */
+extern "C" void WINAPI SwinxDispatchPendingWinEvents(void);
+
 BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
 {
+    SwinxDispatchPendingWinEvents();
     SConnection *conn = SConnMgr::instance()->getConnection();
     BOOL bRet = conn->getMsg(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
+    SwinxDispatchPendingWinEvents();
     if (bRet)
     {
         if (CallHook(WH_GETMESSAGE, HC_ACTION, 1, (LPARAM)lpMsg))
@@ -1453,10 +1485,12 @@ BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
 
 BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
 {
+    SwinxDispatchPendingWinEvents();
     SConnection *conn = SConnMgr::instance()->getConnection();
     if (!conn)
         return FALSE;
     BOOL bRet = conn->peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
+    SwinxDispatchPendingWinEvents();
     if (bRet)
     {
         if (CallHook(WH_GETMESSAGE, HC_ACTION, wRemoveMsg & PM_REMOVE, (LPARAM)pMsg))
@@ -1572,20 +1606,53 @@ class ChildStatusMgr {
     std::mutex m_mutex;
 } s_child_status_mgr;
 
-static void sigchld_handler(int signo)
+// ---- SIGCHLD self-pipe 方案 ----
+// 信号处理器只允许 async-signal-safe 操作（man 7 signal-safety）。旧实现把
+// setPidCode(std::mutex)、sprintf、CreateEventA（全局句柄表写锁 = sem_wait）
+// 全部放在信号上下文里：SIGCHLD 打断持有上述任一锁的线程会自死锁。
+// 现在 handler 只向 self-pipe 写一个唤醒字节（write 是安全的，写端
+// O_NONBLOCK 保证永不阻塞），收尸与登记移到排水线程的普通上下文完成。
+// 等待方（proc_event 命名事件的 FIFO select）零改动。
+static int s_sigchld_pipe[2] = { -1, -1 }; // [0]=排水线程阻塞读, [1]=handler 非阻塞写
+
+static void sigchld_handler(int signo __attribute__((unused)))
 {
-    pid_t pid;
-    int status;
-    while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+    // 唤醒字节允许被合并甚至丢弃（管道满时 EAGAIN）：排水线程每次醒来
+    // 都会把 waitpid 清到无子进程可收，不会漏掉任何一次退出。
+    char b = 1;
+    ssize_t nRet = write(s_sigchld_pipe[1], &b, 1);
+    (void)nRet;
+}
+
+static void *sigchld_drain_thread(void * /*unused*/)
+{
+    for (;;)
     {
-        // notify child process was stopped.
-        s_child_status_mgr.setPidCode(pid, status);
-        char szName[100];
-        sprintf(szName, PROC_EVENT_FMT, pid);
-        HANDLE hEvent = CreateEventA(NULL, TRUE, FALSE, szName);
-        SetEvent(hEvent);
-        CloseHandle(hEvent);
+        char b;
+        ssize_t nRet;
+        do
+        {
+            nRet = read(s_sigchld_pipe[0], &b, 1); // 阻塞等待唤醒
+        } while (nRet == -1 && errno == EINTR);
+        if (nRet <= 0)
+            break; // 写端被关闭/管道异常：线程退出，不再收尸（仅进程收尾期可能发生）
+
+        // 普通上下文：可安全取 std::mutex / 句柄表写锁 / 分配内存。
+        // SIGCHLD 是合并型信号，循环收尸保证多个子进程退出一个不漏；
+        // 剩余唤醒字节会在下一轮 read 立即返回，waitpid 空转一次无害。
+        pid_t pid;
+        int status;
+        while ((pid = waitpid(-1, &status, WNOHANG)) > 0)
+        {
+            s_child_status_mgr.setPidCode(pid, status);
+            char szName[100];
+            sprintf(szName, PROC_EVENT_FMT, pid);
+            HANDLE hEvent = CreateEventA(NULL, TRUE, FALSE, szName);
+            SetEvent(hEvent);
+            CloseHandle(hEvent);
+        }
     }
+    return nullptr;
 }
 
 static std::mutex s_mutex_sigchild;
@@ -1596,6 +1663,38 @@ int install_sigchld_handler()
     if (s_sigchild_flag)
         return 0;
     s_sigchild_flag = true;
+
+    if (pipe(s_sigchld_pipe) == -1)
+    {
+        s_sigchld_pipe[0] = s_sigchld_pipe[1] = -1;
+        SLOG_STMW() << "sigchld self-pipe create failed, errno=" << errno;
+        return -1;
+    }
+    // 写端非阻塞：信号处理器内绝不允许阻塞（排水线程卡死时 EAGAIN 丢弃）
+    int flags = fcntl(s_sigchld_pipe[1], F_GETFL, 0);
+    if (flags != -1)
+        fcntl(s_sigchld_pipe[1], F_SETFL, flags | O_NONBLOCK);
+    // CLOEXEC：同步管道不泄露给 fork 出的子进程
+    fcntl(s_sigchld_pipe[0], F_SETFD, FD_CLOEXEC);
+    fcntl(s_sigchld_pipe[1], F_SETFD, FD_CLOEXEC);
+
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_t tid;
+    int nRet = pthread_create(&tid, &attr, sigchld_drain_thread, nullptr);
+    pthread_attr_destroy(&attr);
+    if (nRet != 0)
+    {
+        // 排水线程建不起来时收尸将无人执行（子进程会变僵尸），干脆不装
+        // handler，保持与未安装时一致的行为（仅丢失退出通知）。
+        close(s_sigchld_pipe[0]);
+        close(s_sigchld_pipe[1]);
+        s_sigchld_pipe[0] = s_sigchld_pipe[1] = -1;
+        SLOG_STMW() << "sigchld drain thread create failed, errno=" << nRet;
+        return -1;
+    }
+
     struct sigaction sa;
     sa.sa_handler = sigchld_handler;
     sigemptyset(&sa.sa_mask);
@@ -1650,19 +1749,19 @@ int WINAPI get_process_uid(int pid)
     return uid;
 }
 
-pid_t WINAPI GetCurrentProcessId()
+DWORD WINAPI GetCurrentProcessId()
 {
-    return getpid();
+    return (DWORD)getpid();
 }
 
-pid_t WINAPI GetProcessId(HANDLE hProcess)
+DWORD WINAPI GetProcessId(HANDLE hProcess)
 {
     if (hProcess == INVALID_HANDLE_VALUE)
         return getpid();
     char szName[1001];
     if (!GetHandleName(hProcess, szName))
         return 0;
-    pid_t pid;
+    DWORD pid;
     if (1 != sscanf(szName, PROC_EVENT_FMT, &pid))
         return 0;
     return pid;
@@ -1683,7 +1782,7 @@ static void RedirectFd(HANDLE h, int fd2)
     dup2(fd, fd2);
 }
 
-BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)
+BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes __attribute__((unused)), LPSECURITY_ATTRIBUTES lpThreadAttributes __attribute__((unused)), BOOL bInheritHandles __attribute__((unused)), DWORD dwCreationFlags, LPVOID lpEnvironment, LPCSTR lpCurrentDirectory, LPSTARTUPINFOA lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)
 {
     if (!lpApplicationName)
     {
@@ -1741,111 +1840,120 @@ BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR 
     }
     if (lstArg.size() > 1000)
         return FALSE; // 子进程退出
+
+    // ---- 一切需要取锁/分配内存的准备都在 fork 之前完成 ----
+    // 多线程进程 fork 只继承调用线程，其它线程（如 SIGCHLD 排水线程）在
+    // fork 瞬间持有的锁——包括 shm 中的进程共享句柄表锁、malloc 锁——会被
+    // 冻结在"已加锁"状态；子进程若在 exec 前调用任何取锁的 CRT/swinx API
+    // 就会永久卡死，且卡死的子进程会永久占住 shm 锁、连带阻塞父进程
+    // （macOS 快速连续 spawn 时实测触发）。因此子进程路径只允许系统调用。
+    std::vector<char *> args;
+    std::string strHost;
+    if ((UINT_PTR)hToken == Verb_RunAs)
+    {
+        // 提权宿主在父进程内探测（原实现在子进程内调 swinx API，fork 不安全）
+        const char *hosts[] = { "/usr/bin/pkexec", "/usr/bin/kdesu", "/usr/bin/gksu" };
+        for (int j = 0; j < (int)(sizeof(hosts) / sizeof(hosts[0])); j++)
+        {
+            if (access(hosts[j], F_OK) == 0)
+            {
+                strHost = hosts[j];
+                break;
+            }
+        }
+        if (strHost.empty())
+            return FALSE;
+    }
+    // argv 直接取 lstArg（其首元素即 lpApplicationName，勿重复 push：
+    // 重复会让 sh 把 "/bin/sh" 当作脚本文件名，退出码全错）。
+    for (auto it = lstArg.begin(); it != lstArg.end(); it++)
+    {
+        args.push_back(*it);
+    }
+    // execve 语义要求 argv/envp 都是以 NULL 指针结尾的数组：内核 count()
+    // 依赖 NULL 终止符，缺失会越界扫描（典型结果 EFAULT，execve 失败）。
+    args.push_back(nullptr);
+
+    // env 组成保持与原实现一致：DISPLAY/XAUTHORITY（非 RunAs）+ lpEnvironment
+    std::vector<std::string> envStore;
+    if ((UINT_PTR)hToken != Verb_RunAs)
+    {
+        const char *szDisplay = getenv("DISPLAY");
+        const char *szAuth = getenv("XAUTHORITY");
+        if (szDisplay)
+            envStore.push_back(std::string("DISPLAY=") + szDisplay);
+        if (szAuth)
+            envStore.push_back(std::string("XAUTHORITY=") + szAuth);
+    }
+    else
+    {
+        // RunAs 走 pkexec："env DISPLAY=... XAUTHORITY=..." 作为参数注入
+        const char *szDisplay = getenv("DISPLAY");
+        const char *szAuth = getenv("XAUTHORITY");
+        envStore.push_back(std::string("DISPLAY=") + (szDisplay ? szDisplay : ""));
+        envStore.push_back(std::string("XAUTHORITY=") + (szAuth ? szAuth : ""));
+    }
+    if (lpEnvironment)
+    {
+        if (dwCreationFlags & CREATE_UNICODE_ENVIRONMENT)
+        {
+            LPCWSTR pszEnv = (LPCWSTR)lpEnvironment;
+            while (*pszEnv)
+            {
+                size_t len = wcslen(pszEnv);
+                std::string strEnv;
+                tostring(pszEnv, -1, strEnv);
+                envStore.push_back(strEnv);
+                pszEnv += len + 1;
+            }
+        }
+        else
+        {
+            LPCSTR pszEnv = (LPCSTR)lpEnvironment;
+            while (*pszEnv)
+            {
+                size_t len = strlen(pszEnv);
+                envStore.push_back(std::string(pszEnv, len));
+                pszEnv += len + 1;
+            }
+        }
+    }
+    std::vector<char *> envs;
+    for (auto it = envStore.begin(); it != envStore.end() && envs.size() < 1000; it++)
+    {
+        envs.push_back((char *)it->c_str());
+    }
+    // NULL 结尾（见 args 处说明）。注意无 DISPLAY/XAUTHORITY 的会话
+    // （SSH/纯终端）envStore 可能为空：空环境 = 仅一个 nullptr，合法；
+    // 若不补 nullptr，envs.data() 为 nullptr，execve 直接 EFAULT。
+    envs.push_back(nullptr);
+
+    // CLOEXEC 同步管道：execve 成功时写端被自动关闭 -> 父进程读到 EOF；
+    // execve 失败时子进程把 errno 写回（4 字节）后 _exit
+    int fds[2] = { -1, -1 };
+    if (pipe(fds) == -1)
+        return FALSE;
+    fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+    fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+
     pid_t pid = fork();
     if (pid == -1)
     {
         // fork 失败
+        close(fds[0]);
+        close(fds[1]);
         perror("fork failed");
         exit(EXIT_FAILURE);
     }
     else if (pid == 0)
     {
-        // prepare env
-        std::list<std::string> lstEnv;
-        char szDisplay[200];
-        char szAuth[200];
-        GetEnvironmentVariableA("DISPLAY", szDisplay, 200);
-        GetEnvironmentVariableA("XAUTHORITY", szAuth, 200);
-        std::string strDisplay, strAuth;
-        {
-            std::stringstream ss;
-            ss << "DISPLAY=" << szDisplay;
-            strDisplay = ss.str();
-        }
-        {
-            std::stringstream ss;
-            ss << "XAUTHORITY=" << szAuth;
-            strAuth = ss.str();
-        }
-
-        if (lpCurrentDirectory)
-        {
-            SetCurrentDirectoryA(lpCurrentDirectory);
-        }
-        if (lpEnvironment)
-        {
-            if (dwCreationFlags & CREATE_UNICODE_ENVIRONMENT)
-            {
-                LPCWSTR pszEnv = (LPCWSTR)lpEnvironment;
-                while (*pszEnv)
-                {
-                    size_t len = wcslen(pszEnv);
-                    std::string strEnv;
-                    tostring(pszEnv, -1, strEnv);
-                    lstEnv.push_back(strEnv);
-                    pszEnv += len + 1;
-                }
-            }
-            else
-            {
-                LPCSTR pszEnv = (LPCSTR)lpEnvironment;
-                while (*pszEnv)
-                {
-                    size_t len = strlen(pszEnv);
-                    lstEnv.push_back(pszEnv);
-                    pszEnv += len + 1;
-                }
-            }
-        }
-        // notify parent that child process
-        char szName[100];
-        sprintf(szName, PROC_EVENT_FMT, getpid());
-        HANDLE hProcess = CreateEventA(NULL, TRUE, FALSE, szName);
-        SetEvent(hProcess);
-        CloseHandle(hProcess);
-
-        char *args[1024] = { 0 };
-        size_t i = 0;
-        std::string command;
-        if ((UINT_PTR)hToken == Verb_RunAs)
-        {
-            const char *hosts[] = { "/usr/bin/pkexec", "/usr/bin/kdesu", "/usr/bin/gksu" };
-            for (int j = 0; j < ARRAYSIZE(hosts); j++)
-            {
-                if (GetFileAttributesA(hosts[j]) != INVALID_FILE_ATTRIBUTES)
-                {
-                    command = hosts[j];
-                    break;
-                }
-            }
-            if (command.empty())
-            {
-                perror("no host found!");
-                exit(EXIT_FAILURE);
-            }
-            args[i++] = (char *)command.c_str();
-            static char szEnv[] = "env";
-            args[i++] = szEnv;
-            args[i++] = (char *)strDisplay.c_str();
-            args[i++] = (char *)strAuth.c_str();
-        }
-        for (auto it = lstArg.begin(); it != lstArg.end(); it++)
-        {
-            args[i++] = *it;
-        }
-        char *envs[1001] = { 0 };
-        i = 0;
-        if ((UINT_PTR)hToken != Verb_RunAs)
-        {
-            envs[i++] = (char *)strDisplay.c_str();
-            envs[i++] = (char *)strAuth.c_str();
-        }
-        for (auto it = lstEnv.begin(); it != lstEnv.end(); it++)
-        {
-            envs[i++] = (char *)(*it).c_str();
-            if (i >= 1000)
-                break;
-        }
+        // ============================================================
+        // exec 前只允许系统调用（chdir/dup2/execve/write/_exit）：
+        // 任何 CRT/swinx API 都可能踩到 fork 时被冻结的锁。
+        // "已启动"事件不再由子进程创建/置位（改由父进程负责）。
+        // ============================================================
+        if (lpCurrentDirectory && chdir(lpCurrentDirectory) != 0)
+            _exit(126);
         if (lpStartupInfo)
         {
             // redirect stdin/out/err
@@ -1853,33 +1961,69 @@ BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR 
             RedirectFd(lpStartupInfo->hStdOutput, STDOUT_FILENO);
             RedirectFd(lpStartupInfo->hStdError, STDERR_FILENO);
         }
-
-        // child process
-        execve(args[0], args, envs); // 替换子进程的代码为新程序
-        perror("execvp failed");     // 如果 execvp 失败，打印错误信息
-        exit(EXIT_FAILURE);          // 子进程退出
+        if ((UINT_PTR)hToken == Verb_RunAs)
+        {
+            // pkexec 的参数式环境注入："env DISPLAY=... XAUTHORITY=..." 放在最前
+            size_t nIns = envStore.size() < 2 ? envStore.size() : 2;
+            for (size_t k = 0; k < nIns; k++)
+            {
+                args.insert(args.begin() + 2 + k, (char *)envStore[k].c_str());
+            }
+            args.insert(args.begin() + 1, (char *)"env");
+        }
+        execve(args[0], args.data(), envs.data()); // 替换子进程的代码为新程序
+        int err = errno;
+        ssize_t nRet = write(fds[1], &err, sizeof(err)); // exec 失败：errno 回传父进程
+        (void)nRet;
+        _exit(127); // 不能用 exit()：会踩到可能被冻结的 atexit/malloc 锁
     }
     else
     {
+        close(fds[1]); // 父进程只读
+
         char szName[100];
-        sprintf(szName, "proc_event_%u", pid);
+        // must match the name the PARENT creates/signals after fork
+        // (PROC_EVENT_FMT) — the child no longer touches swinx objects
+        sprintf(szName, PROC_EVENT_FMT, pid);
         HANDLE hProcess = CreateEventA(NULL, TRUE, FALSE, szName);
-        BOOL bRet = WaitForSingleObject(hProcess, 100) == WAIT_OBJECT_0;
-        if (bRet)
+
+        // 等待 exec 结果：EOF = execve 已执行（CLOEXEC 自动关闭写端）；
+        // 读到 4 字节 = execve 失败（errno 由子进程回传）；超时 = 子进程
+        // 存活但尚未 exec（极端负载），按已启动处理
+        int err = 0;
+        bool bExecFailed = false;
+        struct pollfd pfd = { fds[0], POLLIN, 0 };
+        int nPoll;
+        do
         {
-            if (lpProcessInformation)
-            {
-                lpProcessInformation->hProcess = hProcess;
-                lpProcessInformation->hThread = INVALID_HANDLE_VALUE;
-                lpProcessInformation->dwProcessId = pid;
-                lpProcessInformation->dwThreadId = 0;
-            }
+            nPoll = poll(&pfd, 1, 2000);
+        } while (nPoll == -1 && errno == EINTR);
+        if (nPoll > 0)
+        {
+            ssize_t nRet = read(fds[0], &err, sizeof(err)); // EOF -> 0, errno -> 4
+            if (nRet == (ssize_t)sizeof(err))
+                bExecFailed = true;
         }
-        else
+        close(fds[0]);
+
+        if (bExecFailed)
         {
             CloseHandle(hProcess);
+            SetLastError(ERROR_FILE_NOT_FOUND);
+            return FALSE;
         }
-        return bRet;
+        if (!hProcess)
+            return FALSE;
+        // 子进程已 exec（或超时仍存活）："已启动"事件由父进程置位
+        SetEvent(hProcess);
+        if (lpProcessInformation)
+        {
+            lpProcessInformation->hProcess = hProcess;
+            lpProcessInformation->hThread = INVALID_HANDLE_VALUE;
+            lpProcessInformation->dwProcessId = pid;
+            lpProcessInformation->dwThreadId = 0;
+        }
+        return TRUE;
     }
 }
 
@@ -1955,7 +2099,7 @@ UINT MapVirtualKey(UINT uCode, UINT uMapType)
     return conn->MapVirtualKey(uCode, uMapType);
 }
 
-UINT MapVirtualKeyEx(UINT uCode, UINT uMapType, HKL dwhkl)
+UINT MapVirtualKeyEx(UINT uCode, UINT uMapType, HKL dwhkl __attribute__((unused)))
 {
     // todo:hjx
     return MapVirtualKey(uCode, uMapType);
@@ -1998,7 +2142,7 @@ __time64_t _time64(__time64_t *_Time)
 #endif //__x86_64
 }
 
-HCURSOR LoadCursorA(HINSTANCE hInstance, LPCSTR lpCursorName)
+HCURSOR LoadCursorA(HINSTANCE hInstance __attribute__((unused)), LPCSTR lpCursorName)
 {
     return CursorMgr::loadCursor(lpCursorName);
 }
@@ -2035,9 +2179,8 @@ HCURSOR GetCursor(VOID)
 
 static __thread sigjmp_buf jump_buffer;
 
-static void sigsegv_handler(int sig)
+static void sigsegv_handler(int sig __attribute__((unused)))
 {
-    //    printf("Caught signal %d\n", sig);
     siglongjmp(jump_buffer, 1);
 }
 
@@ -2124,7 +2267,6 @@ BOOL IsBadWritePtr(const void *ptr, size_t size)
     {
         perror("sigaction");
     }
-    // printf("IsBadWritePtr %p,len=%d,ret=%d\n",ptr,(int)size,bRet);
     return bRet; // Invalid pointer
 }
 
@@ -2228,7 +2370,7 @@ void WINAPI OutputDebugStringA(LPCSTR lpOutputString)
 #else
     printf("%s", lpOutputString);
     fflush(stdout);
-#endif//__ANDROID__
+#endif //__ANDROID__
 }
 void WINAPI OutputDebugStringW(LPCWSTR lpOutputString)
 {
@@ -2242,10 +2384,46 @@ void WINAPI set_error(int e)
 
 VOID WINAPI Sleep(DWORD dwMilliseconds)
 {
-    struct timeval usleep_tv;
-    usleep_tv.tv_sec = 0;
-    usleep_tv.tv_usec = dwMilliseconds * 1000;
-    select(0, 0, 0, 0, &usleep_tv);
+    // Win32 语义：至少睡满 dwMilliseconds（允许因调度过冲而更久），永不提前返回；
+    // 0 表示只让出剩余时间片，INFINITE 表示永不返回。
+    //
+    // 老写法（把毫秒数乘 1000 直接塞进 timeval::tv_usec，并忽略 select 的返回值）有两个缺陷：
+    //   1) tv_usec 的合法范围是 [0, 999999]。请求 >= 1000ms 时会构造出越界的 timeval，
+    //      POSIX 未定义：musl、macOS 会直接返回 -1/EINVAL（glibc 2.32 也是），于是
+    //      Sleep(1000) 变成"立即返回"，一点都没睡。必须拆成 tv_sec + tv_usec。
+    //   2) select() 会被信号打断（EINTR；SA_RESTART 对它无效，见 sysobjs.cpp 里 selectfds
+    //      的同类注释。本进程装了 SIGCHLD 处理器，线程挂起/唤醒也用信号），老写法忽略
+    //      返回值，Sleep 就被截断成更短的睡眠。
+    // 这两点都会让"靠 Sleep 定序"的多线程代码（包括单元测试）随机失败。
+    if (dwMilliseconds == 0)
+    {
+        sched_yield(); // Win32 的 Sleep(0) 让出剩余时间片
+        return;
+    }
+    if (dwMilliseconds == INFINITE)
+    {
+        for (;;)
+        {
+            select(0, NULL, NULL, NULL, NULL); // 与 Win32 一致：永不返回
+        }
+    }
+
+    const uint64_t deadline = GetTickCount64() + dwMilliseconds;
+    for (;;)
+    {
+        const uint64_t now = GetTickCount64();
+        if (now >= deadline)
+            break;
+
+        const uint64_t remain = deadline - now;
+        struct timeval tv;
+        tv.tv_sec = remain / 1000;
+        tv.tv_usec = (remain % 1000) * 1000; // 恒在 [0, 999000]，不再越界
+
+        const int ret = select(0, NULL, NULL, NULL, &tv);
+        if (ret < 0 && errno != EINTR)
+            break; // 其它错误（EBADF/EINVAL…）无法继续等待，直接返回以免死循环
+    }
 }
 
 LONG CompareFileTime(const FILETIME *ft1, const FILETIME *ft2)
@@ -2261,7 +2439,7 @@ LONG CompareFileTime(const FILETIME *ft1, const FILETIME *ft2)
     return 0;
 }
 
-BOOL WINAPI SystemParametersInfoA(UINT action, UINT val, void *ptr, UINT winini)
+BOOL WINAPI SystemParametersInfoA(UINT action, UINT val __attribute__((unused)), void *ptr, UINT winini __attribute__((unused)))
 {
     // todo:hjx
     switch (action)
@@ -2406,9 +2584,6 @@ VOID WINAPI GetSystemInfo(LPSYSTEM_INFO lpSystemInfo)
     lpSystemInfo->dwNumberOfProcessors = 1;
 #endif
 
-    // 设置处理器类型
-    // lpSystemInfo->dwProcessorType = PROCESSOR_INTEL_PENTIUM;
-
     // 设置分配粒度
     lpSystemInfo->dwAllocationGranularity = 65536; // 默认值
 
@@ -2481,12 +2656,14 @@ BOOL WINAPI GetComputerNameA(LPSTR lpBuffer, LPDWORD nSize)
     size_t len = strlen(hostname);
     if (len >= *nSize)
     {
+        // buffer too small: report the required size INCLUDING the NUL
         *nSize = len + 1;
         return FALSE;
     }
 
     strcpy(lpBuffer, hostname);
-    *nSize = len + 1;
+    // Win32: on success nSize is the length WITHOUT the terminating NUL
+    *nSize = len;
 
     return TRUE;
 }
@@ -2511,7 +2688,8 @@ BOOL WINAPI GetComputerNameW(LPWSTR lpBuffer, LPDWORD nSize)
     }
 
     wcscpy(lpBuffer, wHostname.c_str());
-    *nSize = len + 1;
+    // Win32: on success nSize is the length WITHOUT the terminating NUL
+    *nSize = len;
 
     return TRUE;
 }
@@ -2570,7 +2748,12 @@ BOOL WINAPI GetUserNameW(LPWSTR lpBuffer, LPDWORD nSize)
 //---------------------------------------------------
 // 虚拟内存相关 API
 
-LPVOID WINAPI VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect)
+// Track VirtualAlloc regions so VirtualFree(MEM_RELEASE) can release the
+// whole region (Win32 requires dwSize == 0 for MEM_RELEASE).
+static std::mutex s_virtualMemMutex;
+static std::map<LPVOID, SIZE_T> s_virtualAllocs;
+
+LPVOID WINAPI VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType __attribute__((unused)), DWORD flProtect)
 {
     if (dwSize == 0)
         return NULL;
@@ -2589,6 +2772,10 @@ LPVOID WINAPI VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationTy
     if (addr == MAP_FAILED)
         return NULL;
 
+    {
+        std::unique_lock<std::mutex> lock(s_virtualMemMutex);
+        s_virtualAllocs[addr] = dwSize;
+    }
     return addr;
 }
 
@@ -2597,11 +2784,36 @@ BOOL WINAPI VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType)
     if (!lpAddress)
         return FALSE;
 
-    int flags = 0;
-    if (dwFreeType == MEM_RELEASE)
-        flags = MAP_FIXED;
+    if (dwFreeType & MEM_RELEASE)
+    {
+        // Win32: MEM_RELEASE must not be combined with MEM_DECOMMIT
+        // and requires dwSize == 0.
+        if ((dwFreeType & MEM_DECOMMIT) || dwSize != 0)
+            return FALSE;
 
-    return munmap(lpAddress, dwSize) == 0;
+        SIZE_T len = 0;
+        {
+            std::unique_lock<std::mutex> lock(s_virtualMemMutex);
+            auto it = s_virtualAllocs.find(lpAddress);
+            if (it != s_virtualAllocs.end())
+            {
+                len = it->second;
+                s_virtualAllocs.erase(it);
+            }
+        }
+        if (len == 0)
+            return FALSE;
+        return munmap(lpAddress, len) == 0;
+    }
+
+    if (dwFreeType & MEM_DECOMMIT)
+    {
+        // anonymous mmap memory has no separate commit state;
+        // decommit is approximated as a no-op (pages stay accessible)
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 HANDLE
@@ -2621,10 +2833,12 @@ SetClipboardData(_In_ UINT uFormat, _In_opt_ HANDLE hMem)
 }
 
 //------------------------------------------------------------
+// MessageBeep：播放系统提示音。
+//   实现按平台分别放在 src/platform/<平台>/utils.*，构建时只有当前平台目录进入源文件
+//   列表，由链接器解析同一个符号 swinx_messageBeep（契约见 SwinxUtils.h）
 BOOL WINAPI MessageBeep(_In_ UINT uType)
 {
-    // todo:hjx
-    return FALSE;
+    return swinx_messageBeep(uType);
 }
 
 #if defined(__IOS__)
@@ -2643,16 +2857,20 @@ GetTempPathA(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return
     // Android：优先调用平台层（Java getCacheDir）提供的临时目录
     if (g_platformAPI.path.getTempPathA)
         return g_platformAPI.path.getTempPathA(nBufferLength, lpBuffer);
-	return 0;
+    return 0;
 #else
     // Linux/macOS 及其它 POSIX 平台：优先 TMPDIR，回退到 /tmp
-    const char* tmp = getenv("TMPDIR");
+    // Win32 语义：返回值不含结尾 '\0'，且路径保证以分隔符结尾
+    const char *tmp = getenv("TMPDIR");
     if (!tmp || !*tmp)
         tmp = "/tmp";
-    DWORD nLen = (DWORD)strlen(tmp) + 1; // 含结尾 '\0'
-    if (nBufferLength < nLen)
+    DWORD nLen = (DWORD)strlen(tmp);
+    if (nBufferLength < nLen + 2) // path + 分隔符 + '\0'
         return 0;
     memcpy(lpBuffer, tmp, nLen);
+    if (nLen == 0 || (lpBuffer[nLen - 1] != '/' && lpBuffer[nLen - 1] != '\\'))
+        lpBuffer[nLen++] = '/';
+    lpBuffer[nLen] = '\0';
     return nLen;
 #endif
 }
@@ -2743,18 +2961,18 @@ UINT WINAPI GetTempFileNameA(LPCSTR lpPathName, LPCSTR lpPrefixString, UINT uniq
     return unique;
 }
 
-BOOL IsValidCodePage(UINT CodePage)
+BOOL IsValidCodePage(UINT CodePage __attribute__((unused)))
 {
     // todo:hjx
     return TRUE;
 }
 
-UINT WINAPI GetKeyboardLayoutList(int nBuff, HKL *lpList)
+UINT WINAPI GetKeyboardLayoutList(int nBuff __attribute__((unused)), HKL *lpList __attribute__((unused)))
 {
     return 0;
 }
 
-HKL ActivateKeyboardLayout(HKL hkl, UINT Flags)
+HKL ActivateKeyboardLayout(HKL hkl __attribute__((unused)), UINT Flags __attribute__((unused)))
 {
     return 0;
 }
@@ -2793,7 +3011,6 @@ HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName)
         char pathexe[MAX_PATH];
         GetModuleFileNameA(NULL, pathexe, MAX_PATH);
         FILE *fp;
-        char path[1024];
         char line[1024];
         void *module_addr = NULL;
 
@@ -2834,7 +3051,8 @@ HMODULE WINAPI GetModuleHandleW(LPCWSTR lpModuleName)
 
 BOOL WINAPI SetEnvironmentVariableA(LPCSTR lpName, LPCSTR lpValue)
 {
-    return setenv(lpName, lpValue, 1);
+    // setenv returns 0 on success, Win32 wants TRUE
+    return setenv(lpName, lpValue, 1) == 0;
 }
 
 BOOL WINAPI SetEnvironmentVariableW(LPCWSTR lpName, LPCWSTR lpValue)
@@ -2903,7 +3121,7 @@ struct FdHandle : _SynHandle
         return fd;
     }
 
-    bool init(LPCSTR pszName, void *initData) override
+    bool init(LPCSTR pszName __attribute__((unused)), void *initData __attribute__((unused))) override
     {
         return false;
     }
@@ -3013,10 +3231,17 @@ LPSTR WINAPI GetCommandLineA(void)
     if (cmdline[0] != 0)
         return cmdline;
 #ifdef __APPLE__
+    // 注意：googletest 解析参数时会从 argv 数组中左移剔除 gtest 开关，但只
+    // 递减 main 收到的 argc 副本；macOS 上 *_NSGetArgc() 指向的 NXArgc 全局
+    // 变量不会同步更新，导致它大于 argv 数组中实际有效的元素个数、数组尾部
+    // 出现 NULL（googletest issue #1346）。因此不能只信 argc，需同时校验
+    // NULL 终止符，否则传过 gtest 参数后调用本函数会 strlen(NULL) 崩溃。
     int argc = *_NSGetArgc();
     char ***argv = _NSGetArgv();
+    if (!argv || !*argv)
+        return cmdline;
     char *p = cmdline;
-    for (int i = 0; i < argc; i++)
+    for (int i = 0; i < argc && (*argv)[i] != nullptr; i++)
     {
         size_t arg_len = strlen((*argv)[i]);
 
@@ -3052,16 +3277,16 @@ LPSTR WINAPI GetCommandLineA(void)
         perror("Failed to open cmdline file");
         return cmdline;
     }
-    
+
     // Read the entire cmdline file which contains null-separated arguments
     size_t bytes_read = fread(cmdline, 1, sizeof(cmdline) - 1, file);
     fclose(file);
-    
+
     if (bytes_read > 0)
     {
         // Null-terminate the string
         cmdline[bytes_read] = '\0';
-        
+
         // Replace null separators with spaces
         for (size_t i = 0; i < bytes_read; i++)
         {
@@ -3073,7 +3298,7 @@ LPSTR WINAPI GetCommandLineA(void)
     {
         cmdline[0] = '\0';
     }
-    
+
     return cmdline;
 #endif
 }
@@ -3689,8 +3914,14 @@ struct ThreadObj
     , ThreadInfo
 {
     pthread_t thread;
+    std::atomic<DWORD> nSuspend;
+    std::atomic<bool> bExited; // user routine has returned
+    bool bCreateSuspended;
     ThreadObj()
         : thread(0)
+        , nSuspend(0)
+        , bExited(false)
+        , bCreateSuspended(false)
     {
         type = HThread;
         init(NULL, NULL);
@@ -3726,25 +3957,104 @@ struct ThreadParam
 
 static __thread UINT_PTR tls_exitCode = 0;
 
+#ifdef __linux__
+// ---------------------------------------------------------------------------
+// Per-thread suspension without SIGSTOP/SIGCONT.
+//
+// SIGSTOP is PROCESS-wide on Linux (group-stop): pthread_kill(tid, SIGSTOP)
+// freezes every thread in the process, not just the target. It also stops the
+// process in a way debuggers catch and present as a "crash", and it is nothing
+// like Win32 SuspendThread. Instead we park the target thread inside a signal
+// handler using two queued realtime signals (RT signals are never coalesced,
+// which keeps the park/wake race free):
+//
+//   SIGPARK: handler loops in sigsuspend() while the thread's suspend count
+//            is > 0. The thread is parked inside the handler (any syscall it
+//            was in is interrupted and restarted on return).
+//   SIGWAKE: empty handler; its only job is to interrupt the sigsuspend()
+//            above so the loop can re-check the (now decremented) count.
+//
+// Only swinx-created threads register themselves in tls_parkObj; the handler
+// returns immediately on any other thread, so stray signals can never park
+// foreign threads (main thread, timer scheduler, host app threads).
+// ---------------------------------------------------------------------------
+static __thread ThreadObj *tls_parkObj = nullptr;
+
+static int Swinx_SigPark()
+{
+    static int s_sig = SIGRTMIN + 4; // glibc reserves SIGRTMIN..+2 internally
+    return s_sig;
+}
+static int Swinx_SigWake()
+{
+    static int s_sig = SIGRTMIN + 5;
+    return s_sig;
+}
+
+static void Swinx_ThreadWakeHandler(int)
+{
+    // empty on purpose: interrupting the sigsuspend() in the park handler
+    // is the whole effect
+}
+
+static void Swinx_ThreadParkHandler(int, siginfo_t *, void *)
+{
+    ThreadObj *self = tls_parkObj;
+    if (!self)
+        return; // not a swinx thread: nothing to park
+    sigset_t mask;
+    sigfillset(&mask);
+    sigdelset(&mask, Swinx_SigPark());
+    sigdelset(&mask, Swinx_SigWake());
+    while (self->nSuspend.load(std::memory_order_acquire) > 0)
+        sigsuspend(&mask);
+}
+
+static void Swinx_InstallThreadParkSignals()
+{
+    static std::once_flag s_once;
+    std::call_once(s_once, [] {
+        struct sigaction saPark;
+        memset(&saPark, 0, sizeof(saPark));
+        saPark.sa_sigaction = Swinx_ThreadParkHandler;
+        saPark.sa_flags = SA_SIGINFO | SA_RESTART;
+        sigemptyset(&saPark.sa_mask);
+        sigaction(Swinx_SigPark(), &saPark, NULL);
+
+        struct sigaction saWake;
+        memset(&saWake, 0, sizeof(saWake));
+        saWake.sa_handler = Swinx_ThreadWakeHandler;
+        saWake.sa_flags = SA_RESTART;
+        sigemptyset(&saWake.sa_mask);
+        sigaction(Swinx_SigWake(), &saWake, NULL);
+    });
+}
+#endif // __linux__
+
 static void *Swinx_ThreadProc(void *p)
 {
     ThreadParam *param = (ThreadParam *)p;
+#ifdef __linux__
+    tls_parkObj = param->info; // allow SuspendThread to park this thread
+#endif
     if (param->lpThreadId)
         *param->lpThreadId = GetCurrentThreadId();
     SetEvent(param->info->hEvent);
     if (param->dwCreationFlags & CREATE_SUSPENDED)
     {
-        // SLOG_STMI() << "waiting for resume";
         WaitForSingleObject(param->info->hEventResume, INFINITE);
-        // SLOG_STMI() << "waiting for resume done";
     }
     tls_exitCode = param->lpStartAddress(param->lpParameter);
-    delete param;
+    param->info->bExited.store(true, std::memory_order_release);
     param->info->writeSignal(); // wakeup waitings for the thread object.
+    delete param;
+#ifdef __linux__
+    tls_parkObj = nullptr;
+#endif
     return &tls_exitCode;
 }
 
-HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, tid_t *lpThreadId)
+HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes __attribute__((unused)), SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress, LPVOID lpParameter, DWORD dwCreationFlags, tid_t *lpThreadId)
 {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -3755,6 +4065,7 @@ HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwSt
 
     ThreadParam *param = new ThreadParam(lpStartAddress, lpParameter, dwCreationFlags, lpThreadId);
     ThreadObj *trdObj = new ThreadObj();
+    trdObj->bCreateSuspended = (dwCreationFlags & CREATE_SUSPENDED) != 0;
     param->info = trdObj;
     if (pthread_create(&trdObj->thread, &attr, Swinx_ThreadProc, param) != 0)
     {
@@ -3767,27 +4078,67 @@ HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes, SIZE_T dwSt
     return NewSynHandle(trdObj);
 }
 
-// only support resume thread that was created with flag CREATE_SUSPENDED
+// Resume thread: first call resumes a thread created with CREATE_SUSPENDED
+// (via the hEventResume bootstrap), later calls decrement the suspend count.
+// Real suspension parks the target thread inside the SIGPARK signal handler
+// (see Swinx_ThreadParkHandler); ResumeThread decrements the count and sends
+// SIGWAKE to interrupt the park loop. SIGSTOP/SIGCONT are NOT used: SIGSTOP
+// is process-wide on Linux (group-stop of all threads) and is caught by
+// debuggers, which looks like a crash. On Apple no real per-thread suspension
+// exists here, so the count is tracked but the thread keeps running.
 DWORD WINAPI ResumeThread(HANDLE hThread)
 {
     if (hThread == INVALID_HANDLE_VALUE)
-        return -1;
+        return (DWORD)-1;
     _SynHandle *synHandle = GetSynHandle(hThread);
     if (!synHandle || synHandle->getType() != HThread)
-        return -1;
+        return (DWORD)-1;
     ThreadObj *threadObj = (ThreadObj *)synHandle;
-    SetEvent(threadObj->hEventResume);
-    // SLOG_STMI() << "resume thread done";
-    return 0;
+    if (threadObj->bCreateSuspended)
+    {
+        threadObj->bCreateSuspended = false;
+        SetEvent(threadObj->hEventResume);
+        return 0;
+    }
+    DWORD prev = threadObj->nSuspend.load();
+    // decrement the suspend count (platform-independent bookkeeping); only
+    // the wake signal delivery is Linux-specific (see comment above).
+    while (prev > 0 && !threadObj->nSuspend.compare_exchange_weak(prev, prev - 1))
+        ;
+#ifdef __linux__
+    if (prev == 1)
+    {
+        Swinx_InstallThreadParkSignals();
+        // queued RT signal: safe even if the thread has not entered the park
+        // loop yet -- the park handler re-checks the count (now 0) and skips
+        // parking; if it is parked, sigsuspend() returns and the loop exits.
+        pthread_kill(threadObj->thread, Swinx_SigWake());
+    }
+#endif
+    // Win32 returns the previous suspend count (0 when the thread was running)
+    return prev;
 }
 
 DWORD WINAPI SuspendThread(HANDLE hThread)
 {
-    // not support
-    return 0;
+    if (hThread == INVALID_HANDLE_VALUE)
+        return (DWORD)-1;
+    _SynHandle *synHandle = GetSynHandle(hThread);
+    if (!synHandle || synHandle->getType() != HThread)
+        return (DWORD)-1;
+    ThreadObj *threadObj = (ThreadObj *)synHandle;
+    DWORD prev = threadObj->nSuspend.fetch_add(1);
+#ifdef __linux__
+    if (prev == 0 && !threadObj->bExited.load(std::memory_order_acquire))
+    {
+        Swinx_InstallThreadParkSignals();
+        pthread_kill(threadObj->thread, Swinx_SigPark());
+    }
+#endif
+    return prev;
 }
 
-BOOL WINAPI TerminateThread(HANDLE hThread, DWORD dwExitCode)
+BOOL WINAPI TerminateThread(HANDLE hThread __attribute__((unused)), DWORD dwExitCode __attribute__((unused)))
 {
     // not support
     return 0;
@@ -3798,52 +4149,115 @@ VOID WINAPI ExitThread(DWORD dwExitCode)
     tls_exitCode = dwExitCode;
 }
 
-BOOL WINAPI GetModuleHandleExA(
-        _In_ DWORD dwFlags,
-        _In_opt_ LPCSTR lpModuleName,
-        _Out_ HMODULE* phModule
-        ){
-            if (!phModule)
-                return FALSE;
+BOOL WINAPI GetModuleHandleExA(_In_ DWORD dwFlags, _In_opt_ LPCSTR lpModuleName, _Out_ HMODULE *phModule)
+{
+    if (!phModule)
+        return FALSE;
 
-            if (dwFlags & GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
-            {
-                const void *addr = lpModuleName;
-                Dl_info info;
-                if (dladdr(addr, &info) != 0 && info.dli_fbase != NULL)
-                {
-                    *phModule = (HMODULE)info.dli_fbase;
-                    return TRUE;
-                }
-                return FALSE;
-            }
-
-            HMODULE hMod = GetModuleHandleA(lpModuleName);
-            if (hMod)
-            {
-                *phModule = hMod;
-                return TRUE;
-            }
-            return FALSE;
+    if (dwFlags & GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
+    {
+        const void *addr = lpModuleName;
+        Dl_info info;
+        if (dladdr(addr, &info) != 0 && info.dli_fbase != NULL)
+        {
+            *phModule = (HMODULE)info.dli_fbase;
+            return TRUE;
         }
+        return FALSE;
+    }
 
-BOOL WINAPI GetModuleHandleExW(
-        _In_ DWORD dwFlags,
-        _In_opt_ LPCWSTR lpModuleName,
-        _Out_ HMODULE* phModule
-        ){
-            if (!phModule)
-                return FALSE;
+    HMODULE hMod = GetModuleHandleA(lpModuleName);
+    if (hMod)
+    {
+        *phModule = hMod;
+        return TRUE;
+    }
+    return FALSE;
+}
 
-            if (dwFlags & GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
-            {
-                return GetModuleHandleExA(dwFlags, (LPCSTR)lpModuleName, phModule);
-            }
+BOOL WINAPI GetModuleHandleExW(_In_ DWORD dwFlags, _In_opt_ LPCWSTR lpModuleName, _Out_ HMODULE *phModule)
+{
+    if (!phModule)
+        return FALSE;
 
-            if (!lpModuleName)
-                return GetModuleHandleExA(dwFlags, NULL, phModule);
+    if (dwFlags & GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS)
+    {
+        return GetModuleHandleExA(dwFlags, (LPCSTR)lpModuleName, phModule);
+    }
 
-            std::string str;
-            tostring(lpModuleName, -1, str);
-            return GetModuleHandleExA(dwFlags, str.c_str(), phModule);
+    if (!lpModuleName)
+        return GetModuleHandleExA(dwFlags, NULL, phModule);
+
+    std::string str;
+    tostring(lpModuleName, -1, str);
+    return GetModuleHandleExA(dwFlags, str.c_str(), phModule);
+}
+
+//========================================================================
+// Thread Local Storage (TLS)
+//
+// Win32 semantics: TlsAlloc hands out indices in [0, TLS_MINIMUM_AVAILABLE)
+// process-wide; per-thread slot values default to NULL and are kept in
+// thread_local storage. TlsFree marks the index reusable (values in other
+// threads are NOT cleared, matching Win32; a reusing owner must set the
+// value before reading it).
+//========================================================================
+
+static std::mutex s_tlsMutex;
+static uint64_t s_tlsUsedMask = 0; // bit i set => slot i allocated
+
+static thread_local void *s_tlsSlots[TLS_MINIMUM_AVAILABLE] = {};
+
+DWORD WINAPI TlsAlloc(VOID)
+{
+    std::lock_guard<std::mutex> lock(s_tlsMutex);
+    for (int i = 0; i < TLS_MINIMUM_AVAILABLE; i++)
+    {
+        if (!(s_tlsUsedMask & (1ULL << i)))
+        {
+            s_tlsUsedMask |= (1ULL << i);
+            return (DWORD)i;
         }
+    }
+    SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+    return TLS_OUT_OF_INDEXES;
+}
+
+BOOL WINAPI TlsFree(DWORD dwTlsIndex)
+{
+    if (dwTlsIndex >= TLS_MINIMUM_AVAILABLE)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    std::lock_guard<std::mutex> lock(s_tlsMutex);
+    if (!(s_tlsUsedMask & (1ULL << dwTlsIndex)))
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    s_tlsUsedMask &= ~(1ULL << dwTlsIndex);
+    return TRUE;
+}
+
+LPVOID WINAPI TlsGetValue(DWORD dwTlsIndex)
+{
+    // Win32: TlsGetValue does not report failure via GetLastError; an
+    // invalid index simply yields NULL.
+    if (dwTlsIndex >= TLS_MINIMUM_AVAILABLE)
+        return NULL;
+    return s_tlsSlots[dwTlsIndex];
+}
+
+BOOL WINAPI TlsSetValue(DWORD dwTlsIndex, LPVOID lpTlsValue)
+{
+    if (dwTlsIndex >= TLS_MINIMUM_AVAILABLE)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    // Not locked on purpose: s_tlsSlots is thread-local, so only the
+    // owning thread ever touches this slot.
+    s_tlsSlots[dwTlsIndex] = lpTlsValue;
+    return TRUE;
+}

@@ -13,13 +13,20 @@
 #include "wndobj.h"
 #include "keyboard.h"
 #include "sdragsourcehelper.h"
-#include "tostring.hpp"
+#include "tostring.h"
 #include <uimsg.h>
 #include <cursorid.h>
 #include "log.h"
 
 #undef interface    //interface is keyword usedd in macos sdk.
 #define kLogTag "SNsWindow"
+
+// 多显示器坐标辅助函数（定义在文件后部 hwndFromPoint 附近），供
+// scrollWheel 等位于 @implementation 早期的方法使用。实现见同文件后部，
+// 声明由 SNsCoord.h 提供（无障碍桥接复用同一套换算）。
+#include "SNsCoord.h"
+// swinx MSAA (IAccessible) -> NSAccessibility 桥接入口
+#include "SNsAccessibility.h"
 
 static NSString *kDragTypeSwinxMark = @"com.swinx.internal.drag.marker";
 
@@ -275,22 +282,31 @@ static RECT NSRect2Rect(NSRect r)
     return ret;
 }
 
-static void ConvertNSRect(NSScreen *screen, BOOL fullscreen, NSRect *r)
+// ---- swinx 全局坐标 <-> Cocoa 全局坐标 翻转 ----
+// swinx 全局坐标为物理像素（主屏左上为原点、y 向下）；Cocoa 全局坐标为
+// point（主屏左下为原点、y 向上）。两者 x 相同，y 以主屏高度 H1（point）
+// 为常数翻转：对任意显示器上的点均有 winY_px = (H1 - cocoaY) * k（k 为该
+// 点所在屏的 scale，单位换算由调用方完成）。
+// 因此这里必须以主屏高度翻转，不能用矩形所在屏的高度：副屏与主屏高度
+// 不同（或上下排列）时，按所在屏高度翻转会产生 (H1 - hS)*k 像素的垂直
+// 错位（单屏时两者相等，历史上未暴露）。screen 参数保留仅为兼容签名，
+// 翻转不再依赖它。
+static void ConvertNSRect(NSScreen *screen __attribute__((unused)), BOOL fullscreen __attribute__((unused)), NSRect *r)
 {
-    size_t screen_height = screen?screen.frame.size.height:CGDisplayPixelsHigh(kCGDirectMainDisplay);
-    r->origin.y = screen_height - r->origin.y - r->size.height;
+    CGFloat h1 = swinxNsPrimaryHeight();
+    r->origin.y = h1 - r->origin.y - r->size.height;
 }
 
-static void ConvertNSPoint(NSScreen *screen, NSSize wndSize, NSPoint *pt)
+static void ConvertNSPoint(NSScreen *screen __attribute__((unused)), NSSize wndSize, NSPoint *pt)
 {
-    size_t screen_height = screen?screen.frame.size.height:CGDisplayPixelsHigh(kCGDirectMainDisplay);
-    pt->y = screen_height - pt->y - wndSize.height;
+    CGFloat h1 = swinxNsPrimaryHeight();
+    pt->y = h1 - pt->y - wndSize.height;
 }
 
-static void RevertNSRect(NSScreen *screen, BOOL fullscreen, NSRect *r)
+static void RevertNSRect(NSScreen *screen __attribute__((unused)), BOOL fullscreen __attribute__((unused)), NSRect *r)
 {
-    size_t screen_height = screen?screen.frame.size.height:CGDisplayPixelsHigh(kCGDirectMainDisplay);
-    r->origin.y = screen_height - r->origin.y - r->size.height;
+    CGFloat h1 = swinxNsPrimaryHeight();
+    r->origin.y = h1 - r->origin.y - r->size.height;
 }
 
 
@@ -419,7 +435,6 @@ defer:(BOOL)flag;
     m_hWnd = (HWND)(__bridge_retained void *)self;
     s_hWndMgr.add(m_hWnd);
 
-    //SLOG_STMI()<<"hjx SNsWindow initWithFrame, m_hWnd="<<m_hWnd;
     m_pListener = listener;
     m_bAutoDblClick = bAutoDblClick;
     m_byAlpha = 255;
@@ -510,7 +525,6 @@ defer:(BOOL)flag;
     if (!cgContext || !m_pListener) return;
     float scale = [self.window backingScaleFactor];
     CGContextSaveGState(cgContext);
-    //CGContextTranslateCTM(cgContext, 0, self.bounds.size.height);
     CGContextScaleCTM(cgContext, 1.0 / scale, 1.0 / scale);
     // 以物理像素构造裁剪矩形传入 OnDrawRect
     const NSRect physRect = NSMakeRect(dirtyRect.origin.x * scale,
@@ -677,20 +691,21 @@ defer:(BOOL)flag;
 - (void)scrollWheel:(NSEvent *)event{
     CGFloat deltaY = [event scrollingDeltaY];  // 垂直滚动量
     CGFloat deltaX = [event scrollingDeltaX];  // 水平滚动量
+    // WM_MOUSEWHEEL 的 lParam 为屏幕坐标（Win32 约定，与 linux 后端一致）：
+    // swinx 全局坐标 = 主屏左上为原点、y 向下、物理像素，与窗口/显示器矩形
+    // 同一坐标系。旧实现按"鼠标所在屏"的高度翻转并乘 backingScaleFactor，
+    // 多屏时高度取错；现统一以主屏高度 H1 为全局翻转基准。
     NSPoint location = [NSEvent mouseLocation];
-    location.y = [self.window.screen frame].size.height - location.y;//convert to ns coordinate
-    float scale = [self.window backingScaleFactor];
-    location.x *= scale;
-    location.y *= scale;
+    POINT ptWin;
+    swinxNsWinPointFromCocoa(location, &ptWin);
     WPARAM wParam = MAKEWPARAM([self getKeyModifiers], (short)(deltaY * 120));
-    LPARAM lParam = MAKELPARAM(float2int(location.x),float2int(location.y));    
+    LPARAM lParam = MAKELPARAM(ptWin.x, ptWin.y);
     // 发送到 Windows 窗口
     m_pListener->OnNsEvent(m_hWnd, WM_MOUSEWHEEL, wParam, lParam);
 }
 
 - (void)onKeyDown:(NSEvent *)event{ 
     NSUInteger keyCode = [event keyCode];     // 物理键码
-    //SLOG_STMI()<<"hjx onkeyDown:"<<keyCode;
     UINT vkCode = convertKeyCodeToVK(keyCode);
     Keyboard::instance().setKeyState(vkCode, 1);
     SHORT repCount=[event isARepeat]?1:0;
@@ -726,7 +741,6 @@ defer:(BOOL)flag;
 
 - (void)onKeyUp:(NSEvent *)event{
     NSUInteger keyCode = [event keyCode];     // 物理键码
-    //SLOG_STMI()<<"hjx onkeyUp:"<<keyCode;
     UINT vkCode = convertKeyCodeToVK(keyCode);
     Keyboard::instance().setKeyState(vkCode, 0);
     SHORT repCount=[event isARepeat]?1:0;
@@ -810,7 +824,6 @@ defer:(BOOL)flag;
 }
 
 - (void)onActive: (BOOL)isActive{
-    //SLOG_STMI()<<"hjx onActive:"<<isActive<<" hWnd="<<m_hWnd;
     m_pListener->OnNsActive(m_hWnd, isActive);
 }
 
@@ -923,7 +936,6 @@ defer:(BOOL)flag;
 #pragma mark - NSTextInputClient Protocol
 -(void)onFunctionKey{
     NSEvent *currentEvent = [NSApp currentEvent];
-    //SLOG_STMI()<<"hjx onFunctionKey: hWnd="<<m_hWnd;
     if(currentEvent.type==NSEventTypeKeyDown){
         [self onKeyDown:currentEvent];
     }else{
@@ -1093,25 +1105,86 @@ defer:(BOOL)flag;
     return 0;
 }
 
+#pragma mark - NSAccessibility（swinx MSAA 桥接）
+
+// 视图整体是一个"组"容器：真正的控件树由 swinx 侧的 IAccessible 提供，
+// 见 SNsAccessibility.mm。这里只负责把根元素挂到视图下，元素按需惰性展开。
+- (BOOL)isAccessibilityElement
+{
+    return YES;
+}
+
+- (NSString *)accessibilityRole
+{
+    return NSAccessibilityGroupRole;
+}
+
+- (NSString *)accessibilityRoleDescription
+{
+    return NSAccessibilityRoleDescription(NSAccessibilityGroupRole, nil);
+}
+
+- (NSArray *)accessibilityChildren
+{
+    return SwinxNsAccChildrenForHwnd(m_hWnd, self);
+}
+
+/* VoiceOver 鼠标跟随朗读：系统沿 app -> window -> view 链调用
+ * accessibilityHitTest（point 为 Cocoa 屏幕坐标），默认实现只能定位到
+ * 视图自身的元素。转交 swinx 的 IAccessible 树逐级下钻，返回鼠标下的
+ * 最深层元素。 */
+- (id)accessibilityHitTest:(NSPoint)point
+{
+    /* 关键：先把 self 挂为根壳的 AXParent。hit test 可能是本进程首次 AX 查询
+     * （先于 -accessibilityChildren），若根壳 parent 为 nil，VoiceOver 拿到
+     * 命中元素后沿 parent 上溯找不到 AppKit 锚点，会无限重试属性查询把主
+     * 线程钉死（AX 查询洪水）。 */
+    SwinxNsAccAttachRootParent(m_hWnd, self);
+    id el = SwinxNsAccHitTest(m_hWnd, point);
+    if (el)
+        return el;
+    return [super accessibilityHitTest:point];
+}
+
 @end
+
+/* 窗口层 AX 命中转发（SNsWindowHost / SNsPanelHost 共用）：内容区内的查询
+ * 显式交给 contentView（SNsWindow，其 -accessibilityHitTest: 下钻 swinx 的
+ * IAccessible 树）。不依赖 AppKit 窗口层默认转发——自定义窗口/视图结构下
+ * 默认转发可能被截断。point 为 Cocoa 屏幕坐标。返回 nil 时调用方走 super。 */
+static id SwinxNsHostAccHitTest(NSWindow *window, NSPoint point)
+{
+    NSView *content = window.contentView;
+    if ([content respondsToSelector:@selector(accessibilityHitTest:)])
+    {
+        NSRect contentScreen =
+            [window convertRectToScreen:[content convertRect:content.bounds toView:nil]];
+        if (NSPointInRect(point, contentScreen))
+            return [content accessibilityHitTest:point];
+    }
+    return nil; /* 内容区外（标题栏/边框）或 contentView 不支持：走默认实现 */
+}
 
 // SNsWindowHost 实现
 @implementation SNsWindowHost{
         id eventMonitor;
         BOOL m_bSizing;
+        BOOL m_bInFsTransition; // 原生全屏过渡动画进行中，抑制窗口矩形回写
+        BOOL m_bFsAnimPending;  // 自定义全屏动画未完成：didEnter/didExit 通知提前到达时不做最终同步
+        NSRect m_fsRestoreFrame; // 进入原生全屏前的 frame，退出时恢复
         BOOL m_bZoomed;
         NSRect m_defSize;
         SNsWindow *m_pCapture;
         NSView * m_pHover;
 }
 
-- (instancetype)initWithContentRect : (NSRect)contentRect 
-styleMask:(NSWindowStyleMask)styleMask 
-backing:(NSBackingStoreType)backingType 
+- (instancetype)initWithContentRect : (NSRect)contentRect
+styleMask:(NSWindowStyleMask)styleMask
+backing:(NSBackingStoreType)backingType
 defer:(BOOL)flag
 {
     self = [super initWithContentRect:contentRect
-                            styleMask:styleMask 
+                            styleMask:styleMask
                               backing:backingType
                                 defer:flag];
     [self setAcceptsMouseMovedEvents:YES];
@@ -1121,6 +1194,9 @@ defer:(BOOL)flag
     self.movableByWindowBackground = NO;
     eventMonitor=nil;
     m_bSizing = FALSE;
+    m_bInFsTransition = FALSE;
+    m_bFsAnimPending = FALSE;
+    m_fsRestoreFrame = NSZeroRect;
     m_bZoomed = FALSE;
     m_pCapture = nil;
     m_pHover = nil;
@@ -1139,7 +1215,6 @@ defer:(BOOL)flag
         return TRUE;    
     if (eventMonitor || m_pCapture) 
         return FALSE;
-//    SLOG_STMI()<<"setCapture hWnd="<<pWin->m_hWnd;
     m_pCapture = pWin;
 
     __weak typeof(self) weakSelf = self;
@@ -1214,7 +1289,6 @@ defer:(BOOL)flag
         return FALSE;
     if (!eventMonitor) 
         return FALSE;
-//    SLOG_STMI()<<"releaseCapture hWnd="<<pWin->m_hWnd;
     [NSEvent removeMonitor:eventMonitor];
     eventMonitor = nil;
     m_pCapture = nil;
@@ -1322,9 +1396,6 @@ defer:(BOOL)flag
     [self setDelegate:nil];
     [self orderOut:nil];
     [self update];
-    //[self setReleasedWhenClosed:YES];
-    //[super close];
-    //SLOG_STMI()<<"window close, hwnd="<<root->m_hWnd;
 }
 
 - (void)windowDidDeminiaturize:(NSNotification *)notification {
@@ -1345,7 +1416,6 @@ defer:(BOOL)flag
 - (void)updateWindowPosition:(BOOL)bResize {
     SNsWindow * root = self.contentView;
     NSRect contentRect = [self contentRectForFrameRect:[self frame]];
-    //SLOG_STMI()<<"++++updateWindowPosition, resize="<<bResize<<" x="<<contentRect.origin.x<<" y="<<contentRect.origin.y<<" w="<<contentRect.size.width<<" h="<<contentRect.size.height;
     NSScreen *screen = [self screen];
     ConvertNSRect(screen, FALSE, &contentRect);
     float scale = [screen backingScaleFactor];
@@ -1355,13 +1425,15 @@ defer:(BOOL)flag
     contentRect.size.height *= scale;
     m_bSizing=TRUE;
     RECT rc = NSRect2Rect(contentRect);
-    //SLOG_STMI()<<"----updateWindowPosition normal rect, resize="<<bResize<<" x="<<rc.left<<" y="<<rc.top<<" w="<<(rc.right-rc.left)<<" h="<<(rc.bottom-rc.top);
     SetWindowPos(root->m_hWnd,0,rc.left,rc.top,rc.right-rc.left,rc.bottom-rc.top,SWP_NOZORDER|SWP_NOACTIVATE|(bResize?0:SWP_NOSIZE));
     m_bSizing=FALSE;  
 }
 
 - (void)windowDidResize:(NSNotification *)notification{
-    if(m_bSizing)
+    // 原生全屏过渡动画期间 AppKit 逐帧改 frame，此时回写 SetWindowPos 会经
+    // setNsWindowPos/setNsWindowSize 反向改窗口（setFrameOrigin 不受 m_bSizing
+    // 保护），与动画互相干扰导致最终矩形丢失，故过渡结束后统一同步。
+    if(m_bSizing || m_bInFsTransition)
         return;
     [self updateWindowPosition: YES];
     SNsWindow * root = self.contentView;
@@ -1374,7 +1446,7 @@ defer:(BOOL)flag
 }
 
 - (void)windowDidMove:(NSNotification *)notification {
-    if(m_bSizing)
+    if(m_bSizing || m_bInFsTransition)
         return;
     [self updateWindowPosition: NO];
 }
@@ -1412,18 +1484,110 @@ defer:(BOOL)flag
         return NO;
     return YES;
 }
+
+/* VoiceOver 鼠标跟随的命中查询到达窗口层：显式转发给内容视图 */
+- (id)accessibilityHitTest:(NSPoint)point
+{
+    id el = SwinxNsHostAccHitTest(self, point);
+    if (el)
+        return el;
+    return [super accessibilityHitTest:point];
+}
 - (BOOL)acceptsFirstResponder {
     return YES;
+}
+
+- (void) windowWillEnterFullScreen:(NSNotification *)notification {
+    m_bInFsTransition = TRUE;
 }
 
 - (void) windowDidEnterFullScreen:(NSNotification *)notification {
     SNsWindow * root = self.contentView;
     SLOG_STMI()<<"windowDidEnterFullScreen,hWnd="<<root->m_hWnd;
+    if(m_bFsAnimPending)
+        return; // 自定义进入动画未结束：完成后在 completionHandler 中统一同步
+    m_bInFsTransition = FALSE;
+    // 过渡结束、frame 已定型：borderless 窗口有时不会被 AppKit 自动放大到
+    // 满屏，这里显式铺满所在屏，再强制把最终矩形同步给 SOUI（WM_SIZE）。
+    @autoreleasepool {
+        NSScreen *screen = [self screen] ?: [NSScreen mainScreen];
+        NSRect sf = [screen frame];
+        if (fabs(sf.size.width - [self frame].size.width) > 0.5 ||
+            fabs(sf.size.height - [self frame].size.height) > 0.5) {
+            [self setFrame:sf display:YES];
+        }
+        [self updateWindowPosition:YES];
+    }
+}
+
+- (void) windowWillExitFullScreen:(NSNotification *)notification {
+    m_bInFsTransition = TRUE;
 }
 
 - (void) windowDidExitFullScreen:(NSNotification *)notification {
     SNsWindow * root = self.contentView;
     SLOG_STMI()<<"windowDidExitFullScreen,hWnd="<<root->m_hWnd;
+    if(m_bFsAnimPending)
+        return; // 自定义退出动画未结束：完成后在 completionHandler 中统一同步
+    m_bInFsTransition = FALSE;
+    // AppKit 已恢复全屏前的 frame，强制同步最终矩形给 SOUI
+    [self updateWindowPosition:YES];
+}
+
+#pragma mark - 原生全屏自定义动画（NSWindowDelegate）
+// borderless 窗口走系统默认全屏过渡时是两段式（先进 Space 再放大），且退出
+// 恢复的 frame 不可靠。按 Apple FullScreenWindow 示例的做法，通过
+// customWindowsToEnter/ExitFullScreenForWindow: 接管窗口自身的动画：
+// 进入时记录原始 frame 并一段动画铺满屏幕（与系统 Space 切换同步），
+// 退出时一段动画还原到记录的 frame。
+
+- (NSArray<NSWindow *> *)customWindowsToEnterFullScreenForWindow:(NSWindow *)window {
+    return @[self];
+}
+
+- (void)window:(NSWindow *)window startCustomAnimationToEnterFullScreenWithDuration:(NSTimeInterval)duration {
+    m_fsRestoreFrame = [self frame];
+    m_bFsAnimPending = TRUE;
+    NSScreen *screen = [self screen] ?: [NSScreen mainScreen];
+    NSRect target = [screen frame];
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
+        context.duration = duration;
+        context.allowsImplicitAnimation = YES;
+        [[self animator] setFrame:target display:YES];
+    } completionHandler:^{
+        // 动画真正结束后才解除抑制并同步最终矩形。didEnter/didExit 通知可能
+        // 早于动画完成到达，若在中间帧回写 setFrameOrigin 会与 animator 剩余
+        // 动画抢窗口，导致窗口闪跳一帧。
+        dispatch_async(dispatch_get_main_queue(), ^{
+            m_bFsAnimPending = FALSE;
+            m_bInFsTransition = FALSE;
+            if (!m_bSizing)
+                [self updateWindowPosition:YES];
+        });
+    }];
+}
+
+- (NSArray<NSWindow *> *)customWindowsToExitFullScreenForWindow:(NSWindow *)window {
+    return @[self];
+}
+
+- (void)window:(NSWindow *)window startCustomAnimationToExitFullScreenWithDuration:(NSTimeInterval)duration {
+    NSRect restore = m_fsRestoreFrame;
+    if (NSIsEmptyRect(restore))
+        restore = [self frame]; // 兜底：没有记录时保持系统恢复的结果
+    m_bFsAnimPending = TRUE;
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext *context) {
+        context.duration = duration;
+        context.allowsImplicitAnimation = YES;
+        [[self animator] setFrame:restore display:YES];
+    } completionHandler:^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            m_bFsAnimPending = FALSE;
+            m_bInFsTransition = FALSE;
+            if (!m_bSizing)
+                [self updateWindowPosition:YES];
+        });
+    }];
 }
 
 -(void)unzoom{
@@ -1455,6 +1619,7 @@ defer:(BOOL)flag
 @implementation SNsPanelHost{
         id eventMonitor;
         BOOL m_bSizing;
+        BOOL m_bInFsTransition; // 原生全屏过渡动画进行中，抑制窗口矩形回写
         BOOL m_bZoomed;
         NSRect m_defSize;
         SNsWindow *m_pCapture;
@@ -1477,6 +1642,7 @@ defer:(BOOL)flag
     self.movableByWindowBackground = NO;
     eventMonitor=nil;
     m_bSizing = FALSE;
+    m_bInFsTransition = FALSE;
     m_bZoomed = FALSE;
     m_pCapture = nil;
     m_pHover = nil;
@@ -1496,7 +1662,6 @@ defer:(BOOL)flag
         return FALSE;
     if(m_pCapture!=nil)
         return FALSE;
-//    SLOG_STMI()<<"setCapture hWnd="<<pWin->m_hWnd;
     m_pCapture = pWin;
 
     __weak typeof(self) weakSelf = self;
@@ -1677,8 +1842,6 @@ defer:(BOOL)flag
     [self setDelegate:nil];
     [self orderOut:nil];
     [self update];
-    //[super close];
-    //SLOG_STMI()<<"window close, hwnd="<<root->m_hWnd;
 }
 
 - (void)windowDidDeminiaturize:(NSNotification *)notification {
@@ -1697,7 +1860,9 @@ defer:(BOOL)flag
 }
 
 - (void)windowDidResize:(NSNotification *)notification{
-    if(m_bSizing)
+    // 原生全屏过渡动画期间抑制回写（与 SNsWindowHost 同理），结束后在
+    // windowDidEnter/ExitFullScreen 中统一同步。
+    if(m_bSizing || m_bInFsTransition)
         return;
     SNsWindow * root = self.contentView;
     NSRect contentRect = [self contentRectForFrameRect:[self frame]];
@@ -1721,7 +1886,7 @@ defer:(BOOL)flag
 }
 
 - (void)windowDidMove:(NSNotification *)notification {
-    if(m_bSizing)
+    if(m_bSizing || m_bInFsTransition)
         return;
     NSRect contentRect = [self contentRectForFrameRect:[self frame]];
     NSScreen *screen = [self screen];
@@ -1748,18 +1913,49 @@ defer:(BOOL)flag
 - (BOOL)canBecomeKeyWindow {
     return NO;
 }
+
+/* VoiceOver 鼠标跟随的命中查询到达窗口层：显式转发给内容视图 */
+- (id)accessibilityHitTest:(NSPoint)point
+{
+    id el = SwinxNsHostAccHitTest(self, point);
+    if (el)
+        return el;
+    return [super accessibilityHitTest:point];
+}
 - (BOOL)acceptsFirstResponder {
     return YES;
+}
+
+- (void) windowWillEnterFullScreen:(NSNotification *)notification {
+    m_bInFsTransition = TRUE;
 }
 
 - (void) windowDidEnterFullScreen:(NSNotification *)notification {
     SNsWindow * root = self.contentView;
     SLOG_STMI()<<"windowDidEnterFullScreen,hWnd="<<root->m_hWnd;
+    m_bInFsTransition = FALSE;
+    if(m_bSizing)
+        return;
+    NSScreen *screen = [self screen] ?: [NSScreen mainScreen];
+    NSRect sf = [screen frame];
+    if (fabs(sf.size.width - [self frame].size.width) > 0.5 ||
+        fabs(sf.size.height - [self frame].size.height) > 0.5) {
+        [self setFrame:sf display:YES];
+    }
+    [self windowDidResize:nil]; // 复用内联同步逻辑把最终矩形同步给 SOUI
+}
+
+- (void) windowWillExitFullScreen:(NSNotification *)notification {
+    m_bInFsTransition = TRUE;
 }
 
 - (void) windowDidExitFullScreen:(NSNotification *)notification {
     SNsWindow * root = self.contentView;
     SLOG_STMI()<<"windowDidExitFullScreen,hWnd="<<root->m_hWnd;
+    m_bInFsTransition = FALSE;
+    if(m_bSizing)
+        return;
+    [self windowDidResize:nil];
 }
 
 -(void)unzoom{
@@ -1789,7 +1985,9 @@ static NSScreen * getNsScreen(HWND hWnd){
         if(hWnd){
             SNsWindow * nswindow = getNsWindow(hWnd);
             if(nswindow && nswindow.window){
-                return [nswindow.window screen];
+                NSScreen *ret = [nswindow.window screen];
+                if(ret)
+                    return ret;
             }
         }
         return [NSScreen mainScreen];
@@ -1820,13 +2018,105 @@ static BOOL IsRootView(SNsWindow *pView){
     }
 }
 
+// Create the backing NSWindow for a root SNsWindow view if it doesn't exist yet.
+// This mirrors the window-creation branch of showNsWindow(); it is used by
+// getAppleHostWindow() so the NSWindow is available before ShowWindow() is called
+// (e.g. for SDL3 external-window integration, which needs the NSWindow pointer
+// during OnHostCreate while the SWINX window is not yet shown). It intentionally
+// does NOT order the window to front / make it key — that is left to showNsWindow().
+static void createNsHostWindow(SNsWindow *nswindow, HWND hWnd){
+    if(!nswindow || nswindow.window != nil)
+        return;
+    if(!IsRootView(nswindow))
+        return;
+    DWORD dwStyle = GetWindowLongPtrA(hWnd,GWL_STYLE);
+    DWORD dwExStyle = GetWindowLongPtrA(hWnd,GWL_EXSTYLE);
+    NSWindowStyleMask styleMask = 0;
+    if(dwStyle & WS_DLGFRAME)
+    {
+        styleMask |= NSWindowStyleMaskTitled;
+        if(dwStyle & WS_THICKFRAME)//keep resize only for window with caption
+            styleMask |= NSWindowStyleMaskResizable;
+    }
+    if(dwStyle & WS_MAXIMIZEBOX)
+        styleMask |= NSWindowStyleMaskMiniaturizable;
+    if(dwStyle & WS_SYSMENU)
+        styleMask |= NSWindowStyleMaskClosable;
+    if(dwExStyle & (WS_EX_NOACTIVATE))
+        styleMask |= NSWindowStyleMaskNonactivatingPanel|NSWindowStyleMaskUtilityWindow;
+    NSScreen *screen = getNsScreen(hWnd);
+    NSRect rect = nswindow->m_rcPos;
+    float scale = [screen backingScaleFactor];
+    rect.origin.x /= scale;
+    rect.origin.y /= scale;
+    rect.size.width /= scale;
+    rect.size.height /= scale;
+
+    ConvertNSRect(screen, FALSE, &rect);
+    NSWindow *host=nil;
+    if(dwExStyle & WS_EX_NOACTIVATE)
+        host = [[SNsPanelHost alloc] initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
+    else
+        host = [[SNsWindowHost alloc] initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
+    [host setContentView:nswindow];
+    [host setAnimationBehavior:NSWindowAnimationBehaviorNone];
+    assert(nswindow.window != nil);
+    if(dwExStyle & WS_EX_TOPMOST){
+        [host setLevel:NSFloatingWindowLevel];
+    }
+    host.backgroundColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.0];
+    if(dwExStyle & WS_EX_COMPOSITED){
+        [host setOpaque:NO];
+    }else{
+        [host setOpaque:YES];
+    }
+    if(dwExStyle & WS_EX_TRANSPARENT){
+        [host setIgnoresMouseEvents:TRUE];
+    }
+    //update alpha and msg transparent
+    [nswindow setAlpha:[nswindow getAlpha]];
+
+    HWND hParent = GetParent(hWnd);
+    if(hParent){
+        SNsWindow * pParent = getNsWindow(hParent);
+        if(pParent){
+            [pParent.window addChildWindow:host ordered:NSWindowAbove];
+        }
+    }
+}
+
+// Returns the NSWindow* (as void*) that hosts the given SOUI HWND on macOS.
+
+extern "C" void* getAppleHostWindow(HWND hWnd){
+@autoreleasepool {
+	if(!IsWindow(hWnd))
+		return nullptr;
+    if(GetWindowLongPtr(hWnd,GWL_STYLE) & WS_CHILD)
+		hWnd = GetAncestor(hWnd, GA_ROOT);
+    SNsWindow *root = getNsWindow(hWnd);
+    NSWindow *win = root.window;
+    if(!win)
+        return nullptr;
+    return (__bridge void*)win;
+}
+}
+
+// 取给定 SOUI 窗口自己的宿主 NSWindow（不向 GA_ROOT 解析）。
+// 供 SConnection 的 MonitorFromWindow 等使用：SNsWindow 类定义在本文件内，
+// 外部 ObjC++ 文件无法直接访问其 window 属性。
+NSWindow *getNsHostWindow(HWND hWnd){
+    @autoreleasepool {
+        SNsWindow *nsw = getNsWindow(hWnd);
+        return nsw ? nsw.window : nil;
+    }
+}
+
 BOOL showNsWindow(HWND hWnd,int nCmdShow){
     @autoreleasepool {
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return FALSE;
     BOOL bRoot = IsRootView(nswindow);
-    //SLOG_STMI()<<"hjx showNsWindow: hWnd="<<hWnd<<" nCmdShow="<<nCmdShow;
     if(nCmdShow == SW_HIDE)
     {
         if(bRoot)
@@ -1839,65 +2129,13 @@ BOOL showNsWindow(HWND hWnd,int nCmdShow){
     }else{
         if(bRoot)
         {
-            DWORD dwStyle = GetWindowLongPtrA(hWnd,GWL_STYLE);
             DWORD dwExStyle = GetWindowLongPtrA(hWnd,GWL_EXSTYLE);
             if(nswindow.window == nil){
-                NSWindowStyleMask styleMask = 0;
-                if(dwStyle & WS_DLGFRAME)
-                {
-                    styleMask |= NSWindowStyleMaskTitled;
-                    if(dwStyle & WS_THICKFRAME)//keep resize only for window with caption 
-                        styleMask |= NSWindowStyleMaskResizable;
-                }
-                if(dwStyle & WS_MAXIMIZEBOX)
-                    styleMask |= NSWindowStyleMaskMiniaturizable;
-                if(dwStyle & WS_SYSMENU)
-                    styleMask |= NSWindowStyleMaskClosable;
-                if(dwExStyle & (WS_EX_NOACTIVATE))
-                    styleMask |= NSWindowStyleMaskNonactivatingPanel|NSWindowStyleMaskUtilityWindow;
-                NSScreen *screen = getNsScreen(hWnd);
-                NSRect rect = nswindow->m_rcPos;
-                float scale = [screen backingScaleFactor];
-                rect.origin.x /= scale;
-                rect.origin.y /= scale;
-                rect.size.width /= scale;
-                rect.size.height /= scale;
-
-                ConvertNSRect(screen, FALSE, &rect);
-                NSWindow *host=nil;
-                if(dwExStyle & WS_EX_NOACTIVATE)
-                    host = [[SNsPanelHost alloc] initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
-                else
-                    host = [[SNsWindowHost alloc] initWithContentRect:rect styleMask:styleMask backing:NSBackingStoreBuffered defer:NO];
-                [host setContentView:nswindow];
-                [host setAnimationBehavior:NSWindowAnimationBehaviorNone];
-                assert(nswindow.window != nil);
-                if(dwExStyle & WS_EX_TOPMOST){
-                    [host setLevel:NSFloatingWindowLevel];
-                }
-                host.backgroundColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.0];
-                if(dwExStyle & WS_EX_COMPOSITED){
-                    [host setOpaque:NO];
-                }else{
-                    [host setOpaque:YES];
-                }
-                if(dwExStyle & WS_EX_TRANSPARENT){
-                    [host setIgnoresMouseEvents:TRUE];
-                }
-                //update alpha and msg transparent
-                [nswindow setAlpha:[nswindow getAlpha]];
-
-                HWND hParent = GetParent(hWnd);
-                if(hParent){
-                    SNsWindow * pParent = getNsWindow(hParent);
-                    if(pParent){
-                        [pParent.window addChildWindow:host ordered:NSWindowAbove];
-                    }
-                }
-            }else{
-                if(dwExStyle & WS_EX_TRANSPARENT){
-                    [nswindow setMsgTransparent:TRUE];
-                }
+                // Reuse the shared helper so the window-creation logic lives in one place.
+                createNsHostWindow(nswindow, hWnd);
+            }
+            else if(dwExStyle & WS_EX_TRANSPARENT){
+                [nswindow setMsgTransparent:TRUE];
             }
             assert(nswindow.window != nil);
             if(nCmdShow == SW_SHOWMINIMIZED){
@@ -1939,10 +2177,13 @@ BOOL setNsWindowPos(HWND hWnd, int x, int y){
     if(IsRootView(nswindow)){
         if(nswindow.window != nil){
             ConvertNSRect(screen, FALSE, &rect);
-
-            [(id<SizeingMark>)nswindow.window setSizeingMark:TRUE];
-            [nswindow.window setFrameOrigin:rect.origin];
-            [(id<SizeingMark>)nswindow.window setSizeingMark:FALSE];
+            // 用受 m_bSizing 保护的 setFrame: 携带完整矩形（origin+size）。
+            // 不能用 setFrameOrigin：宿主发起的同步(updateWindowPosition)中
+            // m_rcPos 的 size 尚未更新（仍是全屏旧高度），ConvertNSRect 翻转
+            // 出错误的 y 会把窗口推到屏幕左下角，产生一帧闪现；
+            // setFrame:display: 在 m_bSizing=TRUE（宿主回写）时被覆写跳过，
+            // SOUI 主动调用（m_bSizing=FALSE）时正常执行。
+            [nswindow.window setFrame:rect display:YES];
         }
     }else{
         [nswindow setFrameOrigin:rect.origin];
@@ -1957,7 +2198,6 @@ BOOL setNsWindowSize(HWND hWnd, int cx, int cy){
     SNsWindow * nswindow = getNsWindow(hWnd);
     if(!nswindow)
         return FALSE;
-    //SLOG_STMI()<<"setNsWindowSize, hWnd="<<hWnd<<" cx="<<cx<<" cy="<<cy;
     NSRect rect = nswindow->m_rcPos;
     rect.size.width = cx;
     rect.size.height = cy;
@@ -2002,6 +2242,8 @@ void closeNsWindow(HWND hWnd)
             }
         }
         [pWin destroy];
+        // 丢弃该窗口的无障碍元素树缓存（否则下次查询会用到已释放的 IAccessible）
+        SwinxNsAccInvalidate(hWnd);
 	}else{
         SLOG_STMW()<<"hjx closeNsWindow: hWnd="<<hWnd<<" not found";
     }
@@ -2018,15 +2260,29 @@ HWND getNsWindow(HWND hParent, int code)
     switch (code)
     {
     case GW_CHILDFIRST:
-        if([nsParent.subviews count] > 0) {
-            SNsWindow *firstChild = [nsParent.subviews objectAtIndex:0];
-            hRet = firstChild->m_hWnd;
+        if(int nChilds = [nsParent.subviews count] > 0) {
+            for(int i=0;i<nChilds;i++){
+                NSView *child = [nsParent.subviews objectAtIndex:0];
+                if([child isKindOfClass:[SNsWindow class]])
+                {
+                    SNsWindow* p = (SNsWindow*)child;
+                    hRet = p->m_hWnd;
+                    break;
+                }
+            }
         }
         break;
     case GW_CHILDLAST:
-        if([nsParent.subviews count] > 0) {
-            SNsWindow *lastChild = [nsParent.subviews lastObject];
-            hRet = lastChild->m_hWnd;
+        if(int nChilds = [nsParent.subviews count] > 0) {
+            for(int i=nChilds-1;i>=0;i--){
+                NSView *child = [nsParent.subviews objectAtIndex:0];
+                if([child isKindOfClass:[SNsWindow class]])
+                {
+                    SNsWindow* p = (SNsWindow*)child;
+                    hRet = p->m_hWnd;
+                    break;
+                }
+            }
         }
         break;
     case GW_HWNDFIRST:
@@ -2041,9 +2297,16 @@ HWND getNsWindow(HWND hParent, int code)
             if(superview) {
                 NSArray *siblings = [superview subviews];
                 NSUInteger index = [siblings indexOfObject:nsParent];
-                if(index > 0) {
-                    SNsWindow *prev = [siblings objectAtIndex:index-1];
-                    hRet = prev->m_hWnd;
+                // Walk backward over siblings, skipping any NSView that is not an
+                // SNsWindow (e.g. views created by business code via native Cocoa
+                // APIs) so they are never mistaken for SOUI windows.
+                for(NSInteger i = (NSInteger)index - 1; i >= 0; i--) {
+                    NSView *sib = [siblings objectAtIndex:i];
+                    if([sib isKindOfClass:[SNsWindow class]]) {
+                        SNsWindow *prev = (SNsWindow*)sib;
+                        hRet = prev->m_hWnd;
+                        break;
+                    }
                 }
             }
         }
@@ -2054,9 +2317,15 @@ HWND getNsWindow(HWND hParent, int code)
             if(superview) {
                 NSArray *siblings = [superview subviews];
                 NSUInteger index = [siblings indexOfObject:nsParent];
-                if(index < [siblings count]-1) {
-                    SNsWindow *next = [siblings objectAtIndex:index+1];
-                    hRet = next->m_hWnd;
+                // Walk forward over siblings, skipping any NSView that is not an
+                // SNsWindow (same reason as GW_HWNDPREV).
+                for(NSUInteger i = index + 1; i < [siblings count]; i++) {
+                    NSView *sib = [siblings objectAtIndex:i];
+                    if([sib isKindOfClass:[SNsWindow class]]) {
+                        SNsWindow *next = (SNsWindow*)sib;
+                        hRet = next->m_hWnd;
+                        break;
+                    }
                 }
             }
         }
@@ -2182,50 +2451,88 @@ BOOL getNsWindowRect(HWND hWnd, RECT *rc){
     }
 }
 
-static NSScreen *screenForPoint(NSPoint point) {
-    @autoreleasepool {
-    // 获取包含该点的显示器ID
-    CGDirectDisplayID displayID;
-    uint32_t displayCount = 0;
-    CGGetDisplaysWithPoint(NSPointToCGPoint(point), 1, &displayID, &displayCount);
-    
-    if (displayCount > 0) {
-        // 将 CGDirectDisplayID 转换为 NSScreen
-        for (NSScreen *screen in [NSScreen screens]) {
-            NSDictionary *deviceDescription = [screen deviceDescription];
-            NSNumber *screenNumber = deviceDescription[@"NSScreenNumber"];
-            if ([screenNumber unsignedIntValue] == displayID) {
-                return screen;
-            }
-        }
+// 主屏高度 H1（Cocoa 全局坐标原点 (0,0) 所在屏）：swinx 全局坐标（主屏左上
+// 为原点、y 向下）与 Cocoa 全局坐标（主屏左下为原点、y 向上）之间的常数翻转：
+// cocoaY = H1 - winY（point 单位）。
+CGFloat swinxNsPrimaryHeight() {
+    NSArray<NSScreen *> *screens = [NSScreen screens];
+    for (NSScreen *s in screens) {
+        NSRect f = [s frame];
+        if (f.origin.x == 0 && f.origin.y == 0)
+            return f.size.height;
     }
-    return [NSScreen mainScreen];
-    }
+    return [screens count] ? [[screens objectAtIndex:0] frame].size.height : 0;
 }
 
-static NSWindow *windowAtPoint(NSPoint screenPoint) {
+// 找包含 Cocoa 全局点的屏；找不到（如菜单栏/Dock 边缘）回退 mainScreen
+NSScreen *swinxNsScreenForCocoaPoint(NSPoint gp) {
+    for (NSScreen *s in [NSScreen screens]) {
+        if (NSPointInRect(gp, [s frame]))
+            return s;
+    }
+    return [NSScreen mainScreen];
+}
+
+// Cocoa 全局点（point）-> swinx 全局点（物理像素）：用包含该点的屏的
+// backingScaleFactor 乘上并按主屏高度翻转，与窗口矩形（像素）同一坐标系。
+void swinxNsWinPointFromCocoa(NSPoint gp, POINT *ppt) {
+    NSScreen *screen = swinxNsScreenForCocoaPoint(gp);
+    CGFloat k = screen ? [screen backingScaleFactor] : 1.f;
+    CGFloat h1 = swinxNsPrimaryHeight();
+    ppt->x = (int)(gp.x * k);
+    ppt->y = (int)((h1 - gp.y) * k);
+}
+
+// swinx 全局点（物理像素）-> Cocoa 全局点（point）：先按各屏的 swinx 像素
+// 矩形找到包含该点的屏，再用其 scale 反推；找不到时用 screens[0] 的 scale。
+NSPoint swinxNsCocoaPointFromWin(POINT pt) {
+    NSArray<NSScreen *> *screens = [NSScreen screens];
+    CGFloat h1 = swinxNsPrimaryHeight();
+    for (NSScreen *s in screens) {
+        NSRect f = [s frame];
+        CGFloat k = [s backingScaleFactor];
+        double left = f.origin.x * k;
+        double right = (f.origin.x + f.size.width) * k;
+        double top = (h1 - (f.origin.y + f.size.height)) * k;
+        double bottom = (h1 - f.origin.y) * k;
+        if (pt.x >= left && pt.x < right && pt.y >= top && pt.y < bottom)
+            return NSMakePoint(pt.x / k, h1 - pt.y / k);
+    }
+    CGFloat k = [screens count] ? [[screens objectAtIndex:0] backingScaleFactor] : 1.f;
+    return NSMakePoint(pt.x / k, h1 - pt.y / k);
+}
+
+static NSWindow *windowAtPoint(NSPoint cocoaGlobalPt) {
     @autoreleasepool {
-    NSScreen *screen = screenForPoint(screenPoint);
-    // 将点转换为屏幕坐标系
-    NSPoint windowPoint = screenPoint;
-    windowPoint.y = screen.frame.size.height - windowPoint.y;
-    // 获取位于该点的窗口编号
-    NSInteger windowNumber = [NSWindow windowNumberAtPoint:windowPoint belowWindowWithWindowNumber:0];
+    // windowNumberAtPoint 接受 Cocoa 全局屏幕坐标（y 向上），无需再按屏翻转；
+    // 多显示器下同一全局坐标系覆盖所有屏幕。非本进程窗口返回 nil。
+    NSInteger windowNumber = [NSWindow windowNumberAtPoint:cocoaGlobalPt
+                               belowWindowWithWindowNumber:0];
     return [NSApp windowWithWindowNumber:windowNumber];
     }
 }
 
 HWND hwndFromPoint(HWND hWnd,POINT pt){
     @autoreleasepool{
-    NSPoint nspt = {(CGFloat)pt.x,(CGFloat)pt.y};
-    SNsWindow *nswindow = nil;
-    if(hWnd){
-        NSWindow *host = windowAtPoint(nspt);
-        nswindow = (SNsWindow *)host.contentView;
+    // pt 为 swinx 全局坐标（主屏左上为原点、y 向下、物理像素），先换算成
+    // Cocoa 全局坐标（point）再查询该点最上层的窗口。
+    NSPoint cocoaPt = swinxNsCocoaPointFromWin(pt);
+    NSWindow *host = nil;
+    if (hWnd) {
+        SNsWindow *hint = getNsWindow(hWnd);
+        host = hint ? hint.window : windowAtPoint(cocoaPt);
+    } else {
+        host = windowAtPoint(cocoaPt);
     }
-    if(!nswindow)
+    if (!host)
         return 0;
-    NSView *view = [nswindow hitTest:nspt];
+    SNsWindow *nswindow = (SNsWindow *)host.contentView;
+    if (![nswindow isKindOfClass:[SNsWindow class]])
+        return 0;
+    // -[NSView hitTest:] 的入点位于接收者的 superview（即窗口基坐标系）下，
+    // 需先将 Cocoa 全局点转换到窗口坐标系，不能用 swinx 全局点直接判定。
+    NSPoint ptInHost = [host convertPointFromScreen:cocoaPt];
+    NSView *view = [nswindow hitTest:ptInHost];
     if(!view)
         return 0;
     if([view isKindOfClass:[SNsWindow class]]){
@@ -2308,7 +2615,6 @@ HWND getNsForegroundWindow() {
         if(topWindow && topWindow.contentView != nil){
             SNsWindow *nswindow = (SNsWindow *)topWindow.contentView;
             if(nswindow){
-                //SLOG_STMI()<<"getNsForegroundWindow: hWnd="<<nswindow->m_hWnd;
                 return nswindow->m_hWnd;
             }
         }
@@ -2367,6 +2673,11 @@ BOOL sendNsSysCommand(HWND hWnd, int nCmd){
         if(nswindow.window == nil)
             return FALSE;
         if(nCmd == SC_RESTORE){
+            // 处于原生全屏(Space)时先退出全屏
+            if([nswindow.window styleMask] & NSWindowStyleMaskFullScreen){
+                [nswindow.window toggleFullScreen:nil];
+                return TRUE;
+            }
             if([nswindow.window isMiniaturized])
                 [nswindow.window deminiaturize:nil];
             if([nswindow.window isZoomed])
@@ -2384,6 +2695,23 @@ BOOL sendNsSysCommand(HWND hWnd, int nCmd){
         }
         if(nCmd == SC_MAXIMIZE && ![nswindow.window isZoomed]){
             [nswindow.window zoom:nil];
+            return TRUE;
+        }
+        if(nCmd == SC_FULLSCREEN){
+            // macOS 原生全屏：窗口独占一个新桌面（Space）。toggleFullScreen:
+            // 为切换语义，再次发送 SC_FULLSCREEN 即退出全屏。
+            // 全屏作用于根窗口的宿主 NSWindow；子窗口先解析到根。
+            HWND hRoot = GetAncestor(hWnd, GA_ROOT);
+            SNsWindow * rootView = getNsWindow(hRoot);
+            NSWindow * host = (rootView && rootView.window) ? rootView.window : nswindow.window;
+            // SOUI 窗口多为 borderless(WS_POPUP)，默认集合行为下全屏会退化为
+            // "当前 Space 内铺满"(FullScreenAuxiliary)。必须显式声明为
+            // FullScreenPrimary，窗口才会进入独立桌面的原生全屏。
+            NSWindowCollectionBehavior behavior = [host collectionBehavior];
+            behavior |= NSWindowCollectionBehaviorFullScreenPrimary;
+            behavior &= ~NSWindowCollectionBehaviorFullScreenAuxiliary;
+            [host setCollectionBehavior:behavior];
+            [host toggleFullScreen:nil];
             return TRUE;
         }
         return FALSE;
@@ -2754,7 +3082,6 @@ extern POINT GetIconHotSpot(HICON hIcon);
 static NSCursor *cursorFromHCursor(HCURSOR cursor){
     @autoreleasepool {
     WORD cursorID = GetCursorID(cursor);
-    //SLOG_STMI()<<"hjx, cursorID: "<<cursorID;
     switch(cursorID){
         case CIDC_ARROW:
             return [NSCursor arrowCursor];
@@ -2813,24 +3140,13 @@ BOOL setNsWindowCursor(HWND hWnd, HCURSOR cursor){
 BOOL getNsCursorPos(LPPOINT ppt) {
     @autoreleasepool {
     NSPoint mouseLocation = [NSEvent mouseLocation];
-    ppt->x = mouseLocation.x;
-    ppt->y = mouseLocation.y;
-
-    NSScreen *screen = nil;
-    for (NSScreen *currentScreen in [NSScreen screens]) {
-      if (NSPointInRect(mouseLocation, [currentScreen frame])) {
-        screen = currentScreen;
-        break;
-      }
-    }
-    if(screen == nil)
-        screen = [NSScreen mainScreen];
-    NSRect rect = [screen frame];
-    //convert to ns coordinate
-    ppt->y = rect.size.height - ppt->y;
-    float scale = [screen backingScaleFactor];
-    ppt->x *= scale;
-    ppt->y *= scale;
+    // swinx 全局坐标 = 主屏左上为原点、y 向下（Win32 约定），单位为物理像素，
+    // 与窗口矩形/显示器矩形同一坐标系（SOUI 全程使用物理坐标）。
+    // Cocoa 全局坐标（point）按"包含光标的屏"的 backingScaleFactor 换算：
+    //   swinxX = cocoaX * k;  swinxY = (H1 - cocoaY) * k
+    // 单屏时与旧实现（所在屏翻转+乘 scale）完全一致，多屏时以主屏高度 H1
+    // 为全局翻转基准，保证与显示器矩形（像素）衔接。
+    swinxNsWinPointFromCocoa(mouseLocation, ppt);
     return TRUE;
     }
 }
@@ -2923,7 +3239,9 @@ BOOL setNsWindowRgn(HWND hWnd, const RECT *prc, int nCount){
             }
 
             CAShapeLayer *maskLayer = [CAShapeLayer layer];
-            maskLayer.path = CGPathCreateFromNSBezierPath(path);  // 转换为CGPath
+            CGPathRef cgPath = CGPathCreateFromNSBezierPath(path);  // 转换为CGPath
+            maskLayer.path = cgPath;      // CAShapeLayer 会拷贝一份 path
+            CGPathRelease(cgPath);        // 释放创建引用，避免每次调用泄漏
             win.wantsLayer = YES;
             win.layer.mask = maskLayer;
             win.layer.masksToBounds = YES;

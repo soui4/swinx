@@ -1,9 +1,7 @@
 #include <windows.h>
 #include <gdi.h>
 #include <cairo.h>
-#ifdef __OHOS__
 #include <cairo-ft.h>
-#endif
 #include <fontconfig/fontconfig.h>
 #include <math.h>
 #include <png.h>
@@ -14,7 +12,8 @@
 #include "SConnection.h"
 #include "cairo_show_text2.h"
 #include "drawtext.h"
-#include "tostring.hpp"
+#include "FontFallback.h"
+#include "tostring.h"
 #include "uniconv.h"
 #include "log.h"
 #define kLogTag "gdi"
@@ -355,12 +354,6 @@ HGDIOBJ RefGdiObj(HGDIOBJ hgdiObj)
     return AddHandleRef(hgdiObj);
 }
 
-static bool IsNullPen(HPEN hpen)
-{
-    LOGPEN *pen = (LOGPEN *)GetGdiObjPtr(hpen);
-    return pen->lopnStyle == PS_NULL;
-}
-
 static bool ApplyBrush(HDC hdc, HBRUSH hbr, double wid, double hei, double x, double y);
 
 static bool ApplyPen(HDC hdc, HPEN hpen, double wid, double hei, double x, double y)
@@ -547,22 +540,6 @@ static void ApplyRop2(cairo_t *cr, int rop2)
     }
 }
 
-static bool IsNullBrush(HBRUSH hbr)
-{
-    if (IS_INTRESOURCE(hbr))
-        return false;
-    LOGBRUSH *br = (LOGBRUSH *)GetGdiObjPtr(hbr);
-    return br->lbStyle == BS_NULL;
-}
-
-static bool IsPatternBrush(HBRUSH hbr)
-{
-    if (IS_INTRESOURCE(hbr))
-        return false;
-    LOGBRUSH *br = (LOGBRUSH *)GetGdiObjPtr(hbr);
-    return br->lbStyle == BS_PATTERN;
-}
-
 static bool ApplyBrush(HDC hdc, HBRUSH hbr, double wid, double hei, double x, double y)
 {
     cairo_t *ctx = hdc->cairo;
@@ -632,210 +609,27 @@ static void DrawPathStroke(cairo_t *ctx, HDC hdc, double wid, double hei, double
     }
 }
 
-#ifdef __OHOS__
-static void InitOhosFontConfig()
-{
-    static std::once_flag s_once;
-    std::call_once(s_once, []() {
-        FcInit();
-        FcConfig *config = FcConfigGetCurrent();
-        if (!config)
-            return;
-
-        const char *fontDirs[] = {
-            "/system/fonts",
-            "/system/font",
-            "/vendor/fonts",
-            "/hw_product/fonts",
-        };
-        for (const char *dir : fontDirs)
-            FcConfigAppFontAddDir(config, (const FcChar8 *)dir);
-        FcConfigBuildFonts(config);
-    });
-}
-
-static bool IsLikelyChineseFontAlias(const char *faceName)
-{
-    if (!faceName || !faceName[0])
-        return true;
-
-    const char *aliases[] = {
-        "simsun",
-        "SimSun",
-        "Microsoft YaHei",
-        "Microsoft JhengHei",
-        "NSimSun",
-        "SimHei",
-        "Arial",
-        "sans",
-        "sans-serif",
-    };
-    for (const char *alias : aliases)
-    {
-        if (strcasecmp(faceName, alias) == 0)
-            return true;
-    }
-
-    for (const unsigned char *p = (const unsigned char *)faceName; *p; ++p)
-    {
-        if ((*p) & 0x80)
-            return true;
-    }
-    return false;
-}
-
-static cairo_font_face_t *CreateOhosFontFace(const LOGFONTA *lf)
-{
-    InitOhosFontConfig();
-
-    const char *faceName = lf->lfFaceName[0] ? lf->lfFaceName : "sans-serif";
-    FcPattern *pat = FcPatternCreate();
-    if (!pat)
-        return nullptr;
-
-    if (IsLikelyChineseFontAlias(faceName))
-    {
-        FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)"FZHeiT-SC");
-        FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)"FZHeiT-SC-Regular");
-        FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)"sans-serif");
-        FcPatternAddString(pat, FC_LANG, (const FcChar8 *)"zh-cn");
-
-        FcCharSet *charset = FcCharSetCreate();
-        if (charset)
-        {
-            FcCharSetAddChar(charset, 0x4E2D);
-            FcPatternAddCharSet(pat, FC_CHARSET, charset);
-            FcCharSetDestroy(charset);
-        }
-    }
-    else
-    {
-        FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)faceName);
-    }
-
-    FcPatternAddInteger(pat, FC_WEIGHT, lf->lfWeight > 400 ? FC_WEIGHT_BOLD : FC_WEIGHT_NORMAL);
-    FcPatternAddInteger(pat, FC_SLANT, lf->lfItalic ? FC_SLANT_ITALIC : FC_SLANT_ROMAN);
-    FcConfigSubstitute(NULL, pat, FcMatchPattern);
-    FcDefaultSubstitute(pat);
-
-    FcResult result = FcResultNoMatch;
-    FcPattern *font = FcFontMatch(NULL, pat, &result);
-    FcPatternDestroy(pat);
-    if (!font)
-        return nullptr;
-
-    cairo_font_face_t *face = cairo_ft_font_face_create_for_pattern(font);
-    FcPatternDestroy(font);
-    if (cairo_font_face_status(face) != CAIRO_STATUS_SUCCESS)
-    {
-        cairo_font_face_destroy(face);
-        return nullptr;
-    }
-    return face;
-}
-
-static std::string MakeOhosFontCacheKey(const LOGFONTA *lf)
-{
-    std::string key = lf->lfFaceName[0] ? lf->lfFaceName : "sans-serif";
-    key += lf->lfItalic ? "|i" : "|n";
-    key += lf->lfWeight > 400 ? "|b" : "|r";
-    return key;
-}
-
-static cairo_font_face_t *GetCachedOhosFontFace(const LOGFONTA *lf)
-{
-    static std::mutex s_mutex;
-    static std::map<std::string, cairo_font_face_t *> s_cache;
-
-    const std::string key = MakeOhosFontCacheKey(lf);
-    std::lock_guard<std::mutex> lock(s_mutex);
-    auto it = s_cache.find(key);
-    if (it != s_cache.end())
-        return cairo_font_face_reference(it->second);
-
-    cairo_font_face_t *face = CreateOhosFontFace(lf);
-    if (!face)
-        return nullptr;
-
-    s_cache.insert(std::make_pair(key, face));
-    return cairo_font_face_reference(face);
-}
-#endif
 
 static BOOL ApplyFont(HDC hdc)
 {
     if (hdc->hfont)
     {
         LOGFONTA *lf = (LOGFONTA *)GetGdiObjPtr(hdc->hfont);
-#ifdef __OHOS__
-        cairo_font_face_t *fontFace = GetCachedOhosFontFace(lf);
+        cairo_t *cr = hdc->cairo;
+
+        cairo_font_face_t *fontFace = SwinXGetCachedFontFace(lf);
         if (fontFace)
         {
-            cairo_set_font_face(hdc->cairo, fontFace);
+            cairo_set_font_face(cr, fontFace);
             cairo_font_face_destroy(fontFace);
         }
         else
         {
-            cairo_select_font_face(hdc->cairo, "sans-serif", lf->lfItalic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL, lf->lfWeight > 400 ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
+            cairo_select_font_face(cr, "sans-serif", lf->lfItalic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL, lf->lfWeight > 400 ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
         }
-        cairo_set_font_size(hdc->cairo, abs(lf->lfHeight));
+        cairo_set_font_size(cr, abs(lf->lfHeight));
+        AttachFontFallback(cr, lf);
         return TRUE;
-#else
-        const char *fontName = lf->lfFaceName;
-        // If the font name is not ASCII, try to resolve to English name using fontconfig
-        bool needResolve = false;
-        for (const char *p = lf->lfFaceName; *p; ++p)
-        {
-            if ((*p) & 0x80)
-            {
-                needResolve = true;
-                break;
-            }
-        }
-        if (needResolve)
-        {
-            static std::mutex mutex;
-            static std::map<std::string, std::string> fontMap;
-            std::lock_guard<std::mutex> lock(mutex);
-            auto it = fontMap.find(lf->lfFaceName);
-            if (it != fontMap.end())
-            {
-                fontName = it->second.c_str();
-            }
-            else
-            {
-                FcPattern *pat = FcPatternCreate();
-                FcPatternAddString(pat, FC_FAMILY, (const FcChar8 *)lf->lfFaceName);
-                FcConfigSubstitute(NULL, pat, FcMatchPattern);
-                FcDefaultSubstitute(pat);
-                FcResult result;
-                FcPattern *font = FcFontMatch(NULL, pat, &result);
-                if (font)
-                {
-                    FcChar8 *family = NULL;
-                    if (FcPatternGetString(font, FC_FAMILY, 0, &family) == FcResultMatch && family)
-                    {
-                        char szFaceName[LF_FACESIZE];
-                        strncpy(szFaceName, (const char *)family, LF_FACESIZE - 1);
-                        szFaceName[LF_FACESIZE - 1] = '\0';
-                        auto res = fontMap.insert(std::make_pair(lf->lfFaceName, szFaceName));
-                        assert(res.second);
-                        fontName = res.first->second.c_str();
-                    }
-                    FcPatternDestroy(font);
-                }
-                if (fontName == lf->lfFaceName)
-                {
-                    fontMap.insert(std::make_pair(lf->lfFaceName, fontName));
-                }
-                FcPatternDestroy(pat);
-            }
-        }
-        cairo_select_font_face(hdc->cairo, fontName, lf->lfItalic ? CAIRO_FONT_SLANT_ITALIC : CAIRO_FONT_SLANT_NORMAL, lf->lfWeight > 400 ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
-
-        cairo_set_font_size(hdc->cairo, abs(lf->lfHeight));
-        return TRUE;
-#endif
     }
     return FALSE;
 }
@@ -843,11 +637,13 @@ static BOOL ApplyFont(HDC hdc)
 static void ApplyRegion(cairo_t *ctx, HRGN hRgn)
 {
     cairo_reset_clip(ctx);
+    if (!hRgn)
+        return; // NULL region: remove clipping entirely (SelectClipRgn(hdc,NULL))
     DWORD dwCount = GetRegionData(hRgn, 0, nullptr);
     RGNDATA *pData = (RGNDATA *)malloc(dwCount);
     GetRegionData(hRgn, dwCount, pData);
     RECT *pRc = (RECT *)pData->Buffer;
-    for (int i = 0; i < pData->rdh.nCount; i++)
+    for (int i = 0; i < (int)pData->rdh.nCount; i++)
     {
         cairo_rectangle(ctx, pRc->left, pRc->top, pRc->right - pRc->left, pRc->bottom - pRc->top);
         pRc++;
@@ -855,6 +651,29 @@ static void ApplyRegion(cairo_t *ctx, HRGN hRgn)
     free(pData);
     cairo_clip(ctx);
 }
+
+// Clip coordinate-space contract of this backend (why the clip functions
+// below work in the CURRENT LOGICAL space instead of raw device space):
+//
+// Real Win32 GDI keeps SelectClipRgn/ExtSelectClipRgn/GetClipRgn regions in
+// raw device coordinates (verified empirically: with SetViewportOrgEx(30,50),
+// SelectClipRgn((10,20,110,120)) clips at device (10,20,110,120) and
+// GetClipRgn returns exactly that box, while GetClipBox reports the logical
+// box (-20,-30,80,70)). SOUI's Windows render layer
+// (components/render-gdi/win/render-gdi.cpp) compensates for that by
+// offsetting PushClipRect/PushClipRegion with its mirrored m_ptOrg and
+// offsetting GetClipRegion results back by -m_ptOrg.
+//
+// SOUI's Linux render layer (components/render-gdi/linux/render-gdi.cpp)
+// performs NO such compensation — it has no m_ptOrg mirror. It therefore
+// requires a backend whose clip API works in the current logical space:
+// rects/regions pushed through ExtSelectClipRgn must be mapped through the
+// active CTM (which update_transform composes from mtx + ptOrigin), and
+// GetClipRgn/GetClipBox must report the clip in that same logical space.
+// With an identity transform this coincides with Win32 device coordinates;
+// with an active transform it equals what SOUI's Windows layer produces
+// after its manual compensation. Getting this wrong blanks every
+// org-offset item panel (mc list controls paint blank).
 
 HPEN ExtCreatePen(DWORD iPenStyle, DWORD cWidth, const LOGBRUSH *plbrush, DWORD cStyle, const DWORD *pstyle)
 {
@@ -922,7 +741,7 @@ int GetObjectW(HGDIOBJ h, int c, LPVOID pv)
 {
     if (h->type == OBJ_FONT)
     {
-        if (c < sizeof(LOGFONTW))
+        if (c < (int)sizeof(LOGFONTW))
             return 0;
         LOGFONTA lf;
         GetObjectA(h, sizeof(lf), &lf);
@@ -945,7 +764,7 @@ int GetObjectA(HGDIOBJ h, int c, LPVOID pv)
     switch (h->type)
     {
     case OBJ_BITMAP:
-        if (c >= sizeof(BITMAP))
+        if (c >= (int)sizeof(BITMAP))
         {
             BITMAP *bm = (BITMAP *)pv;
             cairo_surface_t *pixmap = (cairo_surface_t *)h->ptr;
@@ -978,21 +797,21 @@ int GetObjectA(HGDIOBJ h, int c, LPVOID pv)
         }
         break;
     case OBJ_FONT:
-        if (c >= sizeof(LOGFONTA))
+        if (c >= (int)sizeof(LOGFONTA))
         {
             ret = sizeof(LOGFONTA);
             memcpy(pv, h->ptr, ret);
         }
         break;
     case OBJ_PEN:
-        if (c >= sizeof(LOGPEN))
+        if (c >= (int)sizeof(LOGPEN))
         {
             ret = sizeof(LOGPEN);
             memcpy(pv, h->ptr, ret);
         }
         break;
     case OBJ_BRUSH:
-        if (c >= sizeof(LOGBRUSH))
+        if (c >= (int)sizeof(LOGBRUSH))
         {
             ret = sizeof(LOGBRUSH);
             memcpy(pv, h->ptr, ret);
@@ -1012,7 +831,7 @@ HPEN CreatePenIndirect(const LOGPEN *plpen)
 {
     LOGPEN *pData = new LOGPEN;
     memcpy(pData, plpen, sizeof(LOGPEN));
-    assert((plpen->lopnStyle & PS_STYLE_MASK) != PS_USERSTYLE); // PS_USERSTYLE should be created by ExtCreatePen
+    assert((int)(plpen->lopnStyle & PS_STYLE_MASK) != PS_USERSTYLE); // PS_USERSTYLE should be created by ExtCreatePen
     return InitGdiObj(OBJ_PEN, pData);
 }
 
@@ -1051,7 +870,7 @@ HFONT CreateFontA(int cHeight, int cWidth, int cEscapement, int cOrientation, in
     return CreateFontIndirectA(&lf);
 }
 
-HFONT CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, int cWeight, DWORD bItalic, DWORD bUnderline, DWORD bStrikeOut, DWORD iCharSet, DWORD iOutPrecision, DWORD iClipPrecision, DWORD iQuality, DWORD iPitchAndFamily, LPCWSTR pszFaceName)
+HFONT CreateFontW(int cHeight, int cWidth __attribute__((unused)), int cEscapement, int cOrientation, int cWeight, DWORD bItalic, DWORD bUnderline, DWORD bStrikeOut, DWORD iCharSet, DWORD iOutPrecision, DWORD iClipPrecision, DWORD iQuality, DWORD iPitchAndFamily, LPCWSTR pszFaceName)
 {
     char facename[LF_FACESIZE];
     if (WideCharToMultiByte(CP_UTF8, 0, pszFaceName, -1, facename, LF_FACESIZE, nullptr, nullptr) == 0)
@@ -1059,7 +878,7 @@ HFONT CreateFontW(int cHeight, int cWidth, int cEscapement, int cOrientation, in
     return CreateFontA(cHeight, cWeight, cEscapement, cOrientation, cWeight, bItalic, bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision, iQuality, iPitchAndFamily, facename);
 }
 
-HBITMAP CreateDIBitmap(HDC hdc, const BITMAPINFOHEADER *pbmih, DWORD flInit, const VOID *pjBits, const BITMAPINFO *pbmi, UINT iUsage)
+HBITMAP CreateDIBitmap(HDC hdc, const BITMAPINFOHEADER *pbmih __attribute__((unused)), DWORD flInit __attribute__((unused)), const VOID *pjBits, const BITMAPINFO *pbmi, UINT iUsage)
 {
     if (iUsage != DIB_RGB_COLORS)
         return nullptr;
@@ -1072,7 +891,7 @@ HBITMAP CreateDIBitmap(HDC hdc, const BITMAPINFOHEADER *pbmih, DWORD flInit, con
     return bmp;
 }
 
-HBRUSH CreateDIBPatternBrush(HGLOBAL h, UINT iUsage)
+HBRUSH CreateDIBPatternBrush(HGLOBAL h __attribute__((unused)), UINT iUsage __attribute__((unused)))
 {
     // todo:hjx
     return nullptr;
@@ -1135,7 +954,7 @@ HBRUSH CreateSolidBrush(COLORREF color)
     return InitGdiObj(OBJ_BRUSH, plog);
 }
 
-HBITMAP CreateDIBSection(HDC hdc, const BITMAPINFO *lpbmi, UINT usage, VOID **ppvBits, HANDLE hSection, DWORD offset)
+HBITMAP CreateDIBSection(HDC hdc __attribute__((unused)), const BITMAPINFO *lpbmi, UINT usage __attribute__((unused)), VOID **ppvBits, HANDLE hSection __attribute__((unused)), DWORD offset __attribute__((unused)))
 {
     cairo_format_t fmt = CAIRO_FORMAT_INVALID;
     switch (lpbmi->bmiHeader.biBitCount)
@@ -1200,7 +1019,7 @@ HBITMAP CreateDIBSectionEx(int bitsPixel, int wid,int hei,int stride, VOID *pvBi
 
 BOOL UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, CONST VOID *pjBits)
 {
-    BITMAP bm = { 0 };
+    BITMAP bm = {};
     GetObject(bmp, sizeof(bm), &bm);
     if (!bm.bmBits)
         return FALSE;
@@ -1234,7 +1053,6 @@ BOOL UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, C
             }
             else if (bitsPixel == 1 && fmt == CAIRO_FORMAT_A1)
             {
-                // copy from kimi
                 for (int y = 0; y < hei; y++)
                 {
                     for (int x = 0; x < wid; x++)
@@ -1242,7 +1060,6 @@ BOOL UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, C
                         int bitmap_index = (y * ((wid + 7) / 8) + (x / 8));
                         int cairo_index = (y * surfaceStride + (x / 8));
                         uint8_t bitmap_bit = (src[bitmap_index] >> (7 - (x % 8))) & 1;
-                        uint8_t cairo_bit = (dst[cairo_index] >> (7 - (x % 8))) & 1;
 
                         if (bitmap_bit)
                         {
@@ -1318,7 +1135,7 @@ int SetBkMode(HDC hdc, int mode)
     return ret;
 }
 
-int SetGraphicsMode(HDC hdc, int iMode)
+int SetGraphicsMode(HDC hdc __attribute__((unused)), int iMode __attribute__((unused)))
 {
     return 0;
 }
@@ -1400,6 +1217,12 @@ BOOL RestoreDC(HDC hdc, int nSavedDC)
 int GetClipRgn(HDC hdc, HRGN hrgn)
 {
     cairo_rectangle_list_t *rcList = cairo_copy_clip_rectangle_list(hdc->cairo);
+    if (rcList->status == CAIRO_STATUS_CLIP_NOT_REPRESENTABLE)
+    { // no clip set on the context (unbounded clip): Win32 GetClipRgn
+      // reports "no clipping region" by returning 0
+        cairo_rectangle_list_destroy(rcList);
+        return 0;
+    }
     if (rcList->status != CAIRO_STATUS_SUCCESS)
         return -1;
     int size = FIELD_OFFSET(RGNDATA, Buffer) + rcList->num_rectangles * sizeof(RECT);
@@ -1408,6 +1231,9 @@ int GetClipRgn(HDC hdc, HRGN hrgn)
     pRgnData->rdh.iType = RDH_RECTANGLES;
     pRgnData->rdh.nCount = rcList->num_rectangles;
 
+    // cairo reports the clip in user (logical) coordinates; export it
+    // unchanged so callers receive the clip in the current logical space
+    // (see the clip semantics note above ApplyRegion)
     RECT *pRc = (RECT *)pRgnData->Buffer;
     cairo_rectangle_t *pRcSrc = rcList->rectangles;
     for (int i = 0; i < rcList->num_rectangles; i++)
@@ -1429,6 +1255,8 @@ int GetClipRgn(HDC hdc, HRGN hrgn)
 
 int SelectClipRgn(HDC hdc, HRGN hrgn)
 {
+    // apply with the active CTM so the region is interpreted in the current
+    // logical space (see the clip semantics note above ApplyRegion)
     ApplyRegion(hdc->cairo, hrgn);
     return RgnComplexity(hrgn);
 }
@@ -1440,19 +1268,38 @@ int ExtSelectClipRgn(HDC hdc, HRGN hrgn, int mode)
         ApplyRegion(hdc->cairo, hrgn);
         return 0;
     }
+    // combine in the current logical space: GetClipRgn exports the clip in
+    // user coordinates and ApplyRegion maps it back through the CTM (see the
+    // clip semantics note above ApplyRegion)
+    HRGN rgnNow = CreateRectRgn(0, 0, 0, 0);
+    // probe the raw clip state first: CLIP_NOT_REPRESENTABLE means "no clip
+    // set" (unbounded), while a bounded-but-empty clip must stay empty after
+    // the combine; GetClipRgn maps both to 0 and must be told apart here
+    cairo_rectangle_list_t *rcList = cairo_copy_clip_rectangle_list(hdc->cairo);
+    BOOL bNoClip = (rcList->status == CAIRO_STATUS_CLIP_NOT_REPRESENTABLE);
+    cairo_rectangle_list_destroy(rcList);
+    GetClipRgn(hdc, rgnNow);
+    int ret;
+    if (bNoClip && mode == RGN_AND)
+    { // no current clip: intersecting with it is a no-op, so the result is
+      // just hrgn itself (matches Win32)
+        ret = RgnComplexity(hrgn);
+        ApplyRegion(hdc->cairo, hrgn);
+    }
     else
     {
-        HRGN rgnNow = CreateRectRgn(0, 0, 0, 0);
-        GetClipRgn(hdc, rgnNow);
-        int ret = CombineRgn(rgnNow, rgnNow, hrgn, mode);
+        ret = CombineRgn(rgnNow, rgnNow, hrgn, mode);
         ApplyRegion(hdc->cairo, rgnNow);
-        DeleteObject(rgnNow);
-        return ret;
     }
+    DeleteObject(rgnNow);
+    return ret;
 }
 
 int ExcludeClipRect(HDC hdc, int left, int top, int right, int bottom)
 {
+    // the rect is in logical coordinates; ExtSelectClipRgn applies it under
+    // the active CTM, matching Win32 where Intersect/ExcludeClipRect take
+    // logical units
     HRGN hrgn = CreateRectRgn(left, top, right, bottom);
     int ret = ExtSelectClipRgn(hdc, hrgn, RGN_DIFF);
     DeleteObject(hrgn);
@@ -1483,9 +1330,76 @@ HGDIOBJ GetCurrentObject(HDC hdc, UINT type)
     return HGDIOBJ(0);
 }
 
-int GetDIBits(HDC hdc, HBITMAP hbm, UINT start, UINT cLines, LPVOID lpvBits, LPBITMAPINFO lpbmi, UINT usage)
+int GetDIBits(HDC hdc __attribute__((unused)), HBITMAP hbm, UINT start, UINT cLines, LPVOID lpvBits, LPBITMAPINFO lpbmi, UINT usage __attribute__((unused)))
 {
-    return 0;
+    if (!hbm || !lpbmi)
+        return 0;
+    BITMAP bm = {};
+    if (!GetObject(hbm, sizeof(bm), &bm))
+        return 0;
+    cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(hbm);
+    cairo_format_t fmt = cairo_image_surface_get_format(surface);
+    // only 4-byte-per-pixel formats are supported for conversion
+    if (fmt != CAIRO_FORMAT_ARGB32 && fmt != CAIRO_FORMAT_RGB24)
+        return 0;
+    const unsigned char *data = cairo_image_surface_get_data(surface);
+    if (!data)
+        return 0;
+    int wid = bm.bmWidth;
+    int hei = bm.bmHeight;
+    int srcStride = cairo_image_surface_get_stride(surface);
+
+    if (!lpvBits)
+    {
+        // query mode: fill the header describing the bitmap
+        BITMAPINFOHEADER &h = lpbmi->bmiHeader;
+        h.biSize = sizeof(BITMAPINFOHEADER);
+        h.biWidth = wid;
+        h.biHeight = hei; // positive => bottom-up, like a Win32 DDB
+        h.biPlanes = 1;
+        h.biBitCount = bm.bmBitsPixel;
+        h.biCompression = BI_RGB;
+        h.biSizeImage = ((wid * h.biBitCount / 8) + 3) / 4 * 4 * hei;
+        h.biXPelsPerMeter = 0;
+        h.biYPelsPerMeter = 0;
+        h.biClrUsed = 0;
+        h.biClrImportant = 0;
+        return 1;
+    }
+
+    // copy mode: convert into the caller-requested format
+    int outBpp = lpbmi->bmiHeader.biBitCount;
+    if (outBpp != 24 && outBpp != 32)
+        return 0;
+    bool topDown = lpbmi->bmiHeader.biHeight < 0;
+    if (start >= (UINT)hei)
+        return 0;
+    UINT lines = (cLines < (UINT)(hei - start)) ? cLines : (UINT)(hei - start);
+    int outStride = ((wid * outBpp / 8) + 3) / 4 * 4;
+    unsigned char *dstBase = (unsigned char *)lpvBits;
+    for (UINT j = 0; j < lines; j++)
+    {
+        // scan lines are counted from the bottom of a bottom-up DIB
+        int srcRow = topDown ? (int)(start + j) : (hei - 1 - (int)(start + j));
+        const unsigned char *src = data + (size_t)srcRow * srcStride;
+        unsigned char *dst = dstBase + (size_t)j * outStride;
+        // internal storage of both CAIRO_FORMAT_ARGB32 and CAIRO_FORMAT_RGB24
+        // is 4-byte premultiplied BGRA
+        if (outBpp == 32)
+        {
+            memcpy(dst, src, (size_t)wid * 4);
+        }
+        else
+        {
+            for (int x = 0; x < wid; x++)
+            {
+                dst[x * 3 + 0] = src[x * 4 + 0];
+                dst[x * 3 + 1] = src[x * 4 + 1];
+                dst[x * 3 + 2] = src[x * 4 + 2];
+            }
+        }
+    }
+    return (int)lines;
 }
 
 // 检查矩阵是否是单位矩阵
@@ -1493,52 +1407,6 @@ static int matrix_is_identity(const cairo_matrix_t *matrix)
 {
     static cairo_matrix_t identity_matrix = { 1.0, 0.0, 0.0, 1.0, 0.0, 0.0 };
     return matrix->xx == identity_matrix.xx && matrix->xy == identity_matrix.xy && matrix->yy == identity_matrix.yy && matrix->yx == identity_matrix.yx && matrix->x0 == identity_matrix.x0 && matrix->y0 == identity_matrix.y0;
-}
-
-static bool matrix_inverse(double A[3][3], double A_inv[3][3])
-{
-    double det = A[0][0] * (A[1][1] * A[2][2] - A[1][2] * A[2][1]) - A[0][1] * (A[1][0] * A[2][2] - A[1][2] * A[2][0]) + A[0][2] * (A[1][0] * A[2][1] - A[1][1] * A[2][0]);
-
-    if (det == 0)
-    {
-        // printf("矩阵不可逆，因为行列式为零。\n");
-        return false;
-    }
-
-    A_inv[0][0] = (A[1][1] * A[2][2] - A[1][2] * A[2][1]) / det;
-    A_inv[0][1] = (A[0][2] * A[2][1] - A[0][1] * A[2][2]) / det;
-    A_inv[0][2] = (A[0][1] * A[1][2] - A[0][2] * A[1][1]) / det;
-    A_inv[1][0] = (A[1][2] * A[2][0] - A[1][0] * A[2][2]) / det;
-    A_inv[1][1] = (A[0][0] * A[2][2] - A[0][2] * A[2][0]) / det;
-    A_inv[1][2] = (A[0][2] * A[1][0] - A[0][0] * A[1][2]) / det;
-    A_inv[2][0] = (A[1][0] * A[2][1] - A[1][1] * A[2][0]) / det;
-    A_inv[2][1] = (A[0][1] * A[2][0] - A[0][0] * A[2][1]) / det;
-    A_inv[2][2] = (A[0][0] * A[1][1] - A[0][1] * A[1][0]) / det;
-    return true;
-}
-
-static bool cairo_matrix_inverse(const cairo_matrix_t *src, cairo_matrix_t *inv)
-{
-    double A[3][3];
-    A[0][0] = src->xx;
-    A[0][1] = src->yx;
-    A[0][2] = 0;
-    A[1][0] = src->xy;
-    A[1][1] = src->yy;
-    A[1][2] = 0;
-    A[2][0] = src->x0;
-    A[2][1] = src->y0;
-    A[2][2] = 1;
-    double A_inv[3][3];
-    if (!matrix_inverse(A, A_inv))
-        return false;
-    inv->xx = A_inv[0][0];
-    inv->yx = A_inv[0][1];
-    inv->xy = A_inv[1][0];
-    inv->yy = A_inv[1][1];
-    inv->x0 = A_inv[2][0];
-    inv->y0 = A_inv[2][1];
-    return true;
 }
 
 BOOL InvertRgn(HDC hdc, HRGN hrgn)
@@ -1563,10 +1431,13 @@ int GetClipBox(HDC hdc, LPRECT lprect)
 {
     double x1, y1, x2, y2;
     cairo_clip_extents(hdc->cairo, &x1, &y1, &x2, &y2);
-    lprect->left = x1;
-    lprect->top = y1;
-    lprect->right = x2;
-    lprect->bottom = y2;
+    // cairo reports the clip extents in user (logical) coordinates; Win32
+    // GetClipBox also returns logical coordinates, so no transform is needed
+    // (see the clip semantics note above ApplyRegion)
+    lprect->left = (int)floor((x1 < x2) ? x1 : x2);
+    lprect->top = (int)floor((y1 < y2) ? y1 : y2);
+    lprect->right = (int)ceil((x1 < x2) ? x2 : x1);
+    lprect->bottom = (int)ceil((y1 < y2) ? y2 : y1);
     if (IsRectEmpty(lprect))
         return NULLREGION;
     return COMPLEXREGION;
@@ -1594,7 +1465,7 @@ BOOL FillRgn(HDC hdc, HRGN hrgn, HBRUSH hbr)
     return ret;
 }
 
-BOOL FrameRgn(HDC hdc, HRGN hrgn, HBRUSH hbr, int nWidth, int nHeight)
+BOOL FrameRgn(HDC hdc, HRGN hrgn, HBRUSH hbr __attribute__((unused)), int nWidth __attribute__((unused)), int nHeight __attribute__((unused)))
 {
     if (!hrgn || GetObjectType(hrgn) != OBJ_REGION)
         return FALSE;
@@ -1617,7 +1488,7 @@ BOOL WINAPI DrawFocusRect(HDC hdc,       // handle to device context
 {
     HBRUSH hOldBrush;
     HPEN hOldPen, hNewPen;
-    INT oldDrawMode, oldBkMode;
+    INT oldDrawMode;
     cairo_antialias_t oldAntialias = cairo_get_antialias(hdc->cairo);
     cairo_set_antialias(hdc->cairo, CAIRO_ANTIALIAS_NONE);
     hOldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
@@ -1869,6 +1740,307 @@ static void markDcDirty(HDC hdc, int x, int y, int cx, int cy)
 }
 #endif
 
+/* GDI 逐位光栅操作（SRCAND=dest&src / SRCPAINT=dest|src / SRCINVERT=dest^src）。
+ * cairo 没有按位合成算子，OVER/DEST_IN/DIFFERENCE 只是 alpha 混合的近似——
+ * 不透明源下 SRCPAINT 退化为 SRCCOPY、SRCAND 退化为无操作、SRCINVERT 给出
+ * |d-s| 而非 d^s，与 Windows 效果不符（drawgroup11 实测），必须逐像素运算。
+ *
+ * 存储布局：ARGB32/RGB24 均为 4B/px premultiplied BGRA（RGB24 末字节无意义），
+ * 所以 bpp 恒为 4。逐位运算作用于 B/G/R 三个字节；第 4 字节保留目标原值——
+ * 不透明像素（alpha=FF）上 premultiplied==straight，逐位结果与真 GDI 一致，
+ * 且避免 SRCINVERT 把 alpha 异或成 0 在 ARGB32 目标上凿出透明洞。
+ *
+ * surface 访问：image surface 直接读写 data；XCB（窗口 surface）等其它类型
+ * 用 cairo_surface_map_to_image 映射目标/源矩形（X11 GetImage/PutImage），
+ * unmap 时写回。坐标均为位图像素坐标（swinx 不使用 device_scale/offset，
+ * 设备空间即像素空间）；目标矩形经目标 DC 当前变换取轴对齐包围盒（平移/
+ * 缩放精确，旋转场景 GDI BitBlt 本身亦未定义）。源越界像素跳过（保留目标，
+ * GDI 裁剪语义）。srcSpanX/srcSpanY 为源矩形跨度（BitBlt 传 cx/cy，
+ * StretchBlt 传 cx2/cy2）。 */
+/* 任意 surface（image 内存位图 / XCB 窗口 surface）的尺寸查询。
+ *
+ * vendored cairo 的 cairo-xcb.h 只有 create/set_size，没有尺寸 getter；
+ * 唯一能取到 xcb surface 尺寸的后端方法是私有的 _cairo_xcb_surface_get_extents
+ * （cairo-xcb-surface.c，挂在 backend->get_extents 上）。没有直接导出的
+ * 公开 extents 查询，但公开 API cairo_clip_extents（since 1.4）的调用链
+ * 正好覆盖它：
+ *   cairo_clip_extents → _cairo_gstate_clip_extents →
+ *   _cairo_gstate_int_clip_extents → _cairo_surface_get_extents（内部）→
+ *   surface->backend->get_extents = _cairo_xcb_surface_get_extents。
+ * 在一个**全新的 cairo context**（无 clip、CTM 恒等、无 device 变换）上，
+ * clip extents 就是 surface extents 本身：(0,0,w,h)，单位即像素。
+ * image surface 同样走这条链（后端 get_extents 返回位图尺寸），所以
+ * 两种 surface 类型统一处理，无需分支、无需在别处记录尺寸。 */
+static void surfSize(cairo_surface_t *s, int *w, int *h)
+{
+    *w = *h = 0;
+    if (!s)
+        return;
+    cairo_t *cr = cairo_create(s);
+    if (cairo_status(cr) != CAIRO_STATUS_SUCCESS)
+    {
+        cairo_destroy(cr);
+        return;
+    }
+    double x1, y1, x2, y2;
+    cairo_clip_extents(cr, &x1, &y1, &x2, &y2);
+    cairo_destroy(cr);
+    /* 有效性守卫：有界 surface 的 extents 恒为 (0,0,w,h)。无界 surface
+     * （recording 等）返回 ±INFINITY，直接强转 int 是 UB，必须先判。 */
+    if (!(x1 == 0.0 && y1 == 0.0 && x2 > x1 && y2 > y1 &&
+          x2 <= 2147483647.0 && y2 <= 2147483647.0))
+        return;
+    *w = (int)(x2 - x1);
+    *h = (int)(y2 - y1);
+}
+
+static BOOL BitBltRasterOp(HDC hdcDst, int x, int y, int cx, int cy,
+                           cairo_surface_t *srcSurf, int sx, int sy,
+                           int srcSpanX, int srcSpanY, DWORD rop)
+{
+    if (cx <= 0 || cy <= 0 || srcSpanX <= 0 || srcSpanY <= 0)
+        return FALSE;
+    cairo_surface_t *dstSurf = (cairo_surface_t *)GetGdiObjPtr(hdcDst->bmp);
+    if (!dstSurf && hdcDst->cairo)
+        dstSurf = cairo_get_target(hdcDst->cairo); /* DC 上无选入位图时用绘制目标 */
+    if (!dstSurf || !srcSurf)
+        return FALSE;
+
+    /* 目标 DC 用户矩形 -> 像素矩形：两角经当前变换，取轴对齐包围盒 */
+    cairo_matrix_t mtx;
+    cairo_get_matrix(hdcDst->cairo, &mtx);
+    double ax = (double)x * mtx.xx + (double)y * mtx.xy + mtx.x0;
+    double ay = (double)x * mtx.yx + (double)y * mtx.yy + mtx.y0;
+    double bx = (double)(x + cx) * mtx.xx + (double)(y + cy) * mtx.xy + mtx.x0;
+    double by = (double)(x + cx) * mtx.yx + (double)(y + cy) * mtx.yy + mtx.y0;
+    int px = (int)floor(ax < bx ? ax : bx);
+    int py = (int)floor(ay < by ? ay : by);
+    int pw = (int)ceil(ax < bx ? bx : ax) - px;
+    int ph = (int)ceil(ay < by ? by : ay) - py;
+    if (pw <= 0 || ph <= 0)
+        return TRUE; /* 目标矩形为空：无事可做 */
+
+    /* 目标访问：image surface 直接取 data；其它类型 map_to_image，且仅映射
+     * 与 surface 相交的目标矩形（map 的 extents 必须落在 surface 内） */
+    int dw = 0, dh = 0;
+    surfSize(dstSurf, &dw, &dh);
+    int ex0 = px < 0 ? 0 : px, ey0 = py < 0 ? 0 : py;
+    int ex1 = px + pw > dw ? dw : px + pw;
+    int ey1 = py + ph > dh ? dh : py + ph;
+    if (dw <= 0 || dh <= 0 || ex0 >= ex1 || ey0 >= ey1)
+        return TRUE; /* 未知类型或与目标 surface 无交集 */
+    cairo_surface_t *dmap = nullptr;
+    unsigned char *ddata = nullptr;
+    int dstride = 0;
+    int dvx0 = 0, dvy0 = 0, dvw = 0, dvh = 0; /* 目标视图原点/尺寸（像素） */
+    if (cairo_surface_get_type(dstSurf) == CAIRO_SURFACE_TYPE_IMAGE)
+    {
+        cairo_surface_flush(dstSurf);
+        ddata = cairo_image_surface_get_data(dstSurf);
+        if (!ddata)
+            return FALSE;
+        dstride = cairo_image_surface_get_stride(dstSurf);
+        dvx0 = 0;
+        dvy0 = 0;
+        dvw = dw;
+        dvh = dh;
+    }
+    else
+    {
+        cairo_rectangle_int_t dext = {ex0, ey0, ex1 - ex0, ey1 - ey0};
+        cairo_surface_flush(dstSurf);
+        dmap = cairo_surface_map_to_image(dstSurf, &dext);
+        if (!dmap || cairo_surface_status(dmap) != CAIRO_STATUS_SUCCESS)
+        {
+            /* map 返回的错误 surface 也允许传给 unmap（其内部会 destroy） */
+            if (dmap)
+                cairo_surface_unmap_image(dstSurf, dmap);
+            return FALSE;
+        }
+        cairo_format_t dfmt = cairo_image_surface_get_format(dmap);
+        if (dfmt != CAIRO_FORMAT_ARGB32 && dfmt != CAIRO_FORMAT_RGB24)
+        {
+            /* 注意：map_to_image 返回的 image 由 unmap_image 负责销毁
+             * （_cairo_surface_unmap_image 末尾即 cairo_surface_destroy），
+             * 这里绝不能再 destroy，否则引用计数减穿触发断言。 */
+            cairo_surface_unmap_image(dstSurf, dmap);
+            return FALSE;
+        }
+        ddata = cairo_image_surface_get_data(dmap);
+        dstride = cairo_image_surface_get_stride(dmap);
+        if (!ddata)
+        {
+            cairo_surface_unmap_image(dstSurf, dmap);
+            return FALSE;
+        }
+        dvx0 = dext.x;
+        dvy0 = dext.y;
+        dvw = dext.width;
+        dvh = dext.height;
+    }
+
+    /* 源访问视图：与目标同一 surface 时复用其视图（同一块像素内存）；
+     * 否则 image surface 全图、其它类型仅映射源矩形与 surface 的交集。
+     * 统一约定：视图内像素 (gx,gy) 的地址 = sdata + (gy-viewY0)*sstride
+     * + (gx-viewX0)*4，越界即跳过。 */
+    int sw = 0, sh = 0;
+    surfSize(srcSurf, &sw, &sh);
+    const bool sameSurf = (dstSurf == srcSurf);
+    cairo_surface_t *smap = nullptr;
+    const unsigned char *sdata = nullptr;
+    int sstride = 0;
+    int svx0 = 0, svy0 = 0, svw = 0, svh = 0; /* 源视图原点/尺寸（像素） */
+    if (sameSurf)
+    {
+        sdata = ddata;
+        sstride = dstride;
+        svx0 = dvx0;
+        svy0 = dvy0;
+        svw = dvw;
+        svh = dvh;
+    }
+    else if (cairo_surface_get_type(srcSurf) == CAIRO_SURFACE_TYPE_IMAGE)
+    {
+        cairo_surface_flush(srcSurf);
+        sdata = cairo_image_surface_get_data(srcSurf);
+        if (!sdata)
+        {
+            if (dmap)
+            {
+                cairo_surface_unmap_image(dstSurf, dmap);
+            }
+            return FALSE;
+        }
+        sstride = cairo_image_surface_get_stride(srcSurf);
+        svw = sw;
+        svh = sh;
+    }
+    else
+    {
+        int sx0 = sx < 0 ? 0 : sx, sy0 = sy < 0 ? 0 : sy;
+        int sx1 = sx + srcSpanX > sw ? sw : sx + srcSpanX;
+        int sy1 = sy + srcSpanY > sh ? sh : sy + srcSpanY;
+        if (sx0 < sx1 && sy0 < sy1)
+        {
+            cairo_rectangle_int_t sext = {sx0, sy0, sx1 - sx0, sy1 - sy0};
+            cairo_surface_flush(srcSurf);
+            smap = cairo_surface_map_to_image(srcSurf, &sext);
+            if (smap && cairo_surface_status(smap) == CAIRO_STATUS_SUCCESS)
+            {
+                cairo_format_t sfmt = cairo_image_surface_get_format(smap);
+                if (sfmt == CAIRO_FORMAT_ARGB32 || sfmt == CAIRO_FORMAT_RGB24)
+                {
+                    sdata = cairo_image_surface_get_data(smap);
+                    sstride = cairo_image_surface_get_stride(smap);
+                    svx0 = sext.x;
+                    svy0 = sext.y;
+                    svw = sext.width;
+                    svh = sext.height;
+                }
+            }
+            if (!sdata)
+            {
+                if (smap)
+                {
+                    cairo_surface_unmap_image(srcSurf, smap);
+                    smap = nullptr;
+                }
+                if (dmap)
+                {
+                    cairo_surface_unmap_image(dstSurf, dmap);
+                }
+                return FALSE;
+            }
+        }
+        else
+        {
+            /* 源矩形与 surface 无交集：全部越界，保留目标即可 */
+            sdata = nullptr;
+        }
+    }
+
+    /* dst 与 src 是同一块像素内存（同一 surface）时，先把源矩形快照出来，
+     * 避免读写重叠互相破坏（真实 GDI 对重叠 blit 亦按"先读后写"处理）。
+     * 快照是紧凑缓冲（行宽 cw*4），本身成为一个新视图。 */
+    std::vector<unsigned char> snap;
+    if (sameSurf)
+    {
+        int cx0 = sx > svx0 ? sx : svx0;
+        int cy0 = sy > svy0 ? sy : svy0;
+        int cx1 = sx + srcSpanX < svx0 + svw ? sx + srcSpanX : svx0 + svw;
+        int cy1 = sy + srcSpanY < svy0 + svh ? sy + srcSpanY : svy0 + svh;
+        int cw = cx1 > cx0 ? cx1 - cx0 : 0;
+        int ch = cy1 > cy0 ? cy1 - cy0 : 0;
+        if (cw > 0 && ch > 0)
+        {
+            snap.resize((size_t)cw * ch * 4);
+            for (int r = 0; r < ch; r++)
+                memcpy(&snap[(size_t)r * cw * 4],
+                       sdata + (size_t)(cy0 + r - svy0) * sstride + (size_t)(cx0 - svx0) * 4,
+                       (size_t)cw * 4);
+            sdata = &snap[0];
+            sstride = cw * 4;
+            svx0 = cx0;
+            svy0 = cy0;
+            svw = cw;
+            svh = ch;
+        }
+        else
+            sdata = nullptr; /* 源矩形完全越界 */
+    }
+
+    for (int j = 0; j < ph; j++)
+    {
+        int dy = py + j; /* 目标全局像素坐标 */
+        if (dy - dvy0 < 0 || dy - dvy0 >= dvh)
+            continue;
+        unsigned char *drow = ddata + (size_t)(dy - dvy0) * dstride;
+        int syj = sy + (int)((double)j * srcSpanY / ph); /* 源全局像素坐标 */
+        const unsigned char *srow = (sdata && syj >= svy0 && syj - svy0 < svh)
+                                        ? sdata + (size_t)(syj - svy0) * sstride
+                                        : nullptr;
+        for (int i = 0; i < pw; i++)
+        {
+            int dx = px + i;
+            if (dx - dvx0 < 0 || dx - dvx0 >= dvw || !srow)
+                continue;
+            int sxi = sx + (int)((double)i * srcSpanX / pw);
+            if (sxi < svx0 || sxi - svx0 >= svw)
+                continue; /* 源位图之外：保留目标 */
+            unsigned char *d = drow + (size_t)(dx - dvx0) * 4;
+            const unsigned char *s = srow + (size_t)(sxi - svx0) * 4;
+            switch (rop)
+            {
+            case SRCAND:
+                d[0] &= s[0]; d[1] &= s[1]; d[2] &= s[2];
+                break;
+            case SRCPAINT:
+                d[0] |= s[0]; d[1] |= s[1]; d[2] |= s[2];
+                break;
+            case SRCINVERT:
+                d[0] ^= s[0]; d[1] ^= s[1]; d[2] ^= s[2];
+                break;
+            }
+        }
+    }
+    if (smap)
+    {
+        /* unmap_image 内部会把 image surface 销毁并写回源 surface */
+        cairo_surface_unmap_image(srcSurf, smap);
+    }
+    if (dmap)
+    {
+        /* 我们是直接写映射内存的，不经 cairo 绘制调用，image 的 serial 仍为
+         * 0；unmap 靠 serial 判断"图像未被改动"并跳过写回。必须先 mark_dirty
+         * 把 serial 顶上去，否则本次写入会被静默丢弃（表现为目标色块原样）。 */
+        cairo_surface_mark_dirty(dmap);
+        cairo_surface_unmap_image(dstSurf, dmap); /* unmap 时写回目标 surface */
+    }
+    else
+        cairo_surface_mark_dirty(dstSurf);
+    return TRUE;
+}
+
 BOOL BitBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, DWORD rop)
 {
     assert(hdc && hdcSrc);
@@ -1878,12 +2050,24 @@ BOOL BitBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, D
         // create an copy of src
         src = cairo_surface_create_copy(src);
     }
+
     cairo_save(hdc->cairo);
     cairo_matrix_t mtxSrc;
     cairo_get_matrix(hdcSrc->cairo, &mtxSrc);
     x1 += mtxSrc.x0;
     y1 += mtxSrc.y0;
 
+    /* SRCAND/SRCPAINT/SRCINVERT 是逐位运算，cairo 算子无法表达——走逐像素
+     * 路径；helper 无法处理的目标（无位图/ exotic 格式）回退旧的近似混合。
+     * 注意 helper 必须在 clip/translate 之前调用：它内部按当前矩阵折算目标
+     * 矩形，而下面的 translate 只是 fill 路径的绘制手段。 */
+    BOOL rasterDone = FALSE;
+    if (rop == SRCAND || rop == SRCPAINT || rop == SRCINVERT)
+        rasterDone = BitBltRasterOp(hdc, x, y, cx, cy, src, x1, y1, cx, cy, rop);
+
+    /* set_source_surface 在调用时刻按当前 CTM 固定 pattern 位置（实测：之后
+     * 的 cairo_translate 不会移动已设置的 surface 源），必须保持在
+     * clip/translate 之后调用，顺序不能提前——否则贴图整体偏移 (x,y)。 */
     cairo_rectangle(hdc->cairo, x, y, cx, cy);
     cairo_clip(hdc->cairo);
     cairo_translate(hdc->cairo, x, y);
@@ -1894,24 +2078,36 @@ BOOL BitBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, D
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_SOURCE);
         break;
     case SRCINVERT:
-        cairo_set_source_surface(hdc->cairo, src, -x1, -y1);
-        cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_DIFFERENCE);
+        if (!rasterDone)
+        {
+            cairo_set_source_surface(hdc->cairo, src, -x1, -y1);
+            cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_DIFFERENCE);
+        }
         break;
     case SRCPAINT:
-        cairo_set_source_surface(hdc->cairo, src, -x1, -y1);
-        cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_OVER);
+        if (!rasterDone)
+        {
+            cairo_set_source_surface(hdc->cairo, src, -x1, -y1);
+            cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_OVER);
+        }
         break;
     case SRCAND:
-        cairo_set_source_surface(hdc->cairo, src, -x1, -y1);
-        cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_DEST_IN);
+        if (!rasterDone)
+        {
+            cairo_set_source_surface(hdc->cairo, src, -x1, -y1);
+            cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_DEST_IN);
+        }
         break;
     case DSTINVERT:
         cairo_set_source_rgb(hdc->cairo, 1.0, 1.0, 1.0);
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_DIFFERENCE);
         break;
     }
-    cairo_rectangle(hdc->cairo, 0, 0, cx, cy);
-    cairo_fill(hdc->cairo);
+    if (!rasterDone)
+    {
+        cairo_rectangle(hdc->cairo, 0, 0, cx, cy);
+        cairo_fill(hdc->cairo);
+    }
     cairo_restore(hdc->cairo);
     if (hdc == hdcSrc)
     {
@@ -1939,6 +2135,14 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
     x1 += mtxSrc.x0;
     y1 += mtxSrc.y0;
 
+    /* SRCAND/SRCPAINT/SRCINVERT 逐位运算走逐像素路径（见 BitBltRasterOp）；
+     * 源跨度为负（镜像）时 helper 不支持，回退近似混合路径。注意必须在
+     * 下面 translate/scale 之前调用——helper 内部按当前矩阵折算目标矩形，
+     * 此处的 cairo_translate/cairo_scale 只是 fill 路径的绘制手段。 */
+    BOOL rasterDone = FALSE;
+    if (cx2 > 0 && cy2 > 0 && (rop == SRCAND || rop == SRCPAINT || rop == SRCINVERT))
+        rasterDone = BitBltRasterOp(hdc, x, y, cx, cy, src, x1, y1, cx2, cy2, rop);
+
     cairo_rectangle(hdc->cairo, x, y, cx, cy);
     cairo_clip(hdc->cairo);
     cairo_rectangle(hdc->cairo, x, y, cx, cy);
@@ -1957,14 +2161,20 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_SOURCE);
         break;
     case SRCINVERT:
+        if (rasterDone)
+            break;
         cairo_set_source_surface(hdc->cairo, src, src_ox, src_oy);
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_DIFFERENCE);
         break;
     case SRCPAINT:
+        if (rasterDone)
+            break;
         cairo_set_source_surface(hdc->cairo, src, src_ox, src_oy);
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_OVER);
         break;
     case SRCAND:
+        if (rasterDone)
+            break;
         cairo_set_source_surface(hdc->cairo, src, src_ox, src_oy);
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_DEST_IN);
         break;
@@ -1973,7 +2183,10 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
         cairo_set_operator(hdc->cairo, CAIRO_OPERATOR_DIFFERENCE);
         break;
     }
-    cairo_fill(hdc->cairo);
+    if (!rasterDone)
+    {
+        cairo_fill(hdc->cairo);
+    }
     cairo_restore(hdc->cairo);
     if (hdc == hdcSrc)
     {
@@ -1995,7 +2208,7 @@ INT StretchDIBits(HDC hdc, INT x_dst, INT y_dst, INT width_dst, INT height_dst, 
     }
     HDC memdc = CreateCompatibleDC(hdc);
     SelectObject(memdc, bmp);
-    BOOL ret = StretchBlt(hdc, x_dst, y_dst, width_dst, height_dst, memdc, x_src, y_src, width_src, height_src, rop);
+    (void)StretchBlt(hdc, x_dst, y_dst, width_dst, height_dst, memdc, x_src, y_src, width_src, height_src, rop);
     DeleteDC(memdc);
     DeleteObject(bmp);
     return height_src;
@@ -2003,65 +2216,87 @@ INT StretchDIBits(HDC hdc, INT x_dst, INT y_dst, INT width_dst, INT height_dst, 
 
 BOOL TransparentBlt(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, int hDest, HDC hdcSrc, int xoriginSrc, int yoriginSrc, int wSrc, int hSrc, UINT crTransparent)
 {
-    // 获取源和目标的 Cairo 上下文
+    // Win32 TransparentBlt：源区中 RGB 等于 crTransparent 的像素不绘制（目标
+    // 保留原内容），其余像素拉伸拷贝。cairo 的掩码/合成算子只承载 alpha、没有
+    // 颜色比较算子（GDI 的 SetBkColor 掩码 blit 是把比较藏在驱动 blitter 内部），
+    // 键控比较无论如何都要做一次逐像素扫描——所以扫描时直接生成"keyed 像素
+    // alpha=0"的 premultiplied BGRA 拷贝，最后用 OVER 一次绘制到位：
+    //   - keyed 像素（alpha=0）不改动目标；
+    //   - 非 keyed 像素 alpha=255 时精确覆盖（RGB24/不透明 32bpp 源与真 GDI
+    //     逐位一致；带部分 alpha 的 32bpp 源按 source-over 混合，符合实际用途）。
     cairo_t *crDest = hdcDest->cairo;
-    cairo_t *crSrc = hdcSrc->cairo;
-
-    if (!crDest || !crSrc)
+    cairo_surface_t *srcSurf = (cairo_surface_t *)GetGdiObjPtr(hdcSrc->bmp);
+    if (!crDest || !srcSurf)
         return FALSE;
+    if (wSrc <= 0 || hSrc <= 0 || wDest <= 0 || hDest <= 0)
+        return FALSE;
+    cairo_format_t fmt = cairo_image_surface_get_format(srcSurf);
+    if (fmt != CAIRO_FORMAT_ARGB32 && fmt != CAIRO_FORMAT_RGB24)
+        return FALSE;
+    cairo_surface_flush(srcSurf);
+    const unsigned char *sdata = cairo_image_surface_get_data(srcSurf);
+    if (!sdata)
+        return FALSE;
+    int bmpW = cairo_image_surface_get_width(srcSurf);
+    int bmpH = cairo_image_surface_get_height(srcSurf);
+    int srcStride = cairo_image_surface_get_stride(srcSurf);
+    /* cairo 的 ARGB32 与 RGB24 都是 4B/px（RGB24 末字节无意义，stride=width*4），
+     * 不能按 3B/px 索引——否则 RGB24 源从第 2 列起全部错位 */
+    int bpp = 4;
 
-    // 保存目标上下文状态
+    cairo_matrix_t mtxSrc;
+    cairo_get_matrix(hdcSrc->cairo, &mtxSrc);
+    xoriginSrc += (int)mtxSrc.x0;
+    yoriginSrc += (int)mtxSrc.y0;
+
+    int kB = GetBValue(crTransparent), kG = GetGValue(crTransparent), kR = GetRValue(crTransparent);
+
+    // 逐像素键控：keyed → 全透明（alpha=0），其余原样保留 premultiplied BGRA
+    //（含 32bpp 源的 per-pixel alpha；RGB24 源补 alpha=255）。扫描只读源、
+    // 先于任何目标写入，自拷贝（hdcDest==hdcSrc）天然安全。
+    cairo_surface_t *keyed = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, wSrc, hSrc);
+    if (!keyed)
+        return FALSE;
+    unsigned char *kdata = cairo_image_surface_get_data(keyed);
+    int kStride = cairo_image_surface_get_stride(keyed);
+    for (int j = 0; j < hSrc; j++)
+    {
+        int by = yoriginSrc + j; // 数据行 row0=顶部，与 BitBlt 的 srcRect 映射一致
+        const unsigned char *srow = (by >= 0 && by < bmpH) ? sdata + (size_t)by * srcStride : nullptr;
+        unsigned char *krow = kdata + (size_t)j * kStride;
+        for (int i = 0; i < wSrc; i++)
+        {
+            int bx = xoriginSrc + i;
+            if (!srow || bx < 0 || bx >= bmpW)
+                continue; // 源位图之外：保持全透明，保留目标
+            const unsigned char *s = srow + (size_t)bx * bpp;
+            if (s[0] == kB && s[1] == kG && s[2] == kR) // 只比 RGB，忽略 alpha（与真 GDI 一致）
+                continue;
+            unsigned char *d = krow + (size_t)i * 4;
+            d[0] = s[0]; d[1] = s[1]; d[2] = s[2];
+            d[3] = (fmt == CAIRO_FORMAT_ARGB32) ? s[3] : 0xFF;
+        }
+    }
+    cairo_surface_mark_dirty(keyed);
+
+    // 一次 OVER 绘制到位（keyed 像素 alpha=0 不改动目标，非 keyed 精确覆盖）。
+    // 必须显式 OVER：若外层残留 SOURCE/COPY 类算子，alpha=0 的 keyed 像素会把目标擦掉。
     cairo_save(crDest);
-
-    // 设置目标区域
     cairo_rectangle(crDest, xoriginDest, yoriginDest, wDest, hDest);
     cairo_clip(crDest);
-
-    // 创建一个临时表面用于处理透明色
-    cairo_surface_t *tempSurface = cairo_surface_create_similar(cairo_get_target(crDest), CAIRO_CONTENT_COLOR_ALPHA, wSrc, hSrc);
-    cairo_t *tempCr = cairo_create(tempSurface);
-
-    // 将源内容复制到临时表面
-    cairo_set_source_surface(tempCr, cairo_get_target(crSrc), -xoriginSrc, -yoriginSrc);
-    cairo_paint(tempCr);
-
-    // 创建一个掩码表面，用于标记透明区域
-    cairo_surface_t *maskSurface = cairo_surface_create_similar(tempSurface, CAIRO_CONTENT_ALPHA, wSrc, hSrc);
-    cairo_t *maskCr = cairo_create(maskSurface);
-
-    // 设置掩码颜色为不透明
-    cairo_set_source_rgb(maskCr, 1.0, 1.0, 1.0);
-    cairo_paint(maskCr);
-
-    // 将透明色设置为透明
-    cairo_set_source_rgba(maskCr, 0.0, 0.0, 0.0, 0.0);
-
-    // 提取透明色的 RGB 分量
-    double r = GetRValue(crTransparent) / 255.0;
-    double g = GetGValue(crTransparent) / 255.0;
-    double b = GetBValue(crTransparent) / 255.0;
-
-    // 这里需要实现一个扫描算法，将临时表面中与透明色匹配的像素设置为透明
-    // 简化实现：直接使用 Cairo 的合成操作
-
-    // 将临时表面绘制到目标，使用掩码
-    cairo_set_source_surface(crDest, tempSurface, xoriginDest, yoriginDest);
-    cairo_rectangle(crDest, xoriginDest, yoriginDest, wDest, hDest);
-    cairo_fill(crDest);
-
-    // 清理资源
-    cairo_destroy(tempCr);
-    cairo_destroy(maskCr);
-    cairo_surface_destroy(tempSurface);
-    cairo_surface_destroy(maskSurface);
-
-    // 恢复目标上下文状态
+    cairo_translate(crDest, xoriginDest, yoriginDest);
+    cairo_scale(crDest, (double)wDest / wSrc, (double)hDest / hSrc);
+    cairo_set_source_surface(crDest, keyed, 0, 0);
+    cairo_pattern_set_extend(cairo_get_source(crDest), CAIRO_EXTEND_PAD);
+    cairo_set_operator(crDest, CAIRO_OPERATOR_OVER);
+    cairo_paint(crDest);
     cairo_restore(crDest);
 
+    cairo_surface_destroy(keyed);
     return TRUE;
 }
 
-void SetStretchBltMode(HDC hdc, int mode)
+void SetStretchBltMode(HDC hdc __attribute__((unused)), int mode __attribute__((unused)))
 {
     // todo:hjx
 }
@@ -2186,7 +2421,6 @@ static LPCSTR nextChar(LPCSTR p)
 static SIZE OnMeasureText(HDC hdc, LPCSTR pszBuf, int cchText)
 {
     cairo_text_extents_t ext;
-    int i = 0;
     char word[6];
     LPCSTR p = pszBuf;
     LPCSTR pEnd = p + cchText;
@@ -2207,7 +2441,7 @@ static SIZE OnMeasureText(HDC hdc, LPCSTR pszBuf, int cchText)
     return ret;
 }
 
-static void DrawTextDecLines(HDC hdc, cairo_font_extents_t &font_ext, LPCSTR str, int len, int x, int y, const cairo_text_extents_t &text_ext)
+static void DrawTextDecLines(HDC hdc, cairo_font_extents_t &font_ext, LPCSTR str __attribute__((unused)), int len __attribute__((unused)), int x, int y, const cairo_text_extents_t &text_ext)
 {
     const LOGFONT *lf = (const LOGFONT *)GetGdiObjPtr(hdc->hfont);
     assert(lf);
@@ -2401,21 +2635,48 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
     if (cchText < 0)
         cchText = strlen(pszBuf);
     assert(pRect);
-    if (hdc->bkMode == OPAQUE && !(uFormat & DT_CALCRECT))
-    {
-        CairoColor cr(hdc->crBk);
-        cairo_set_source_rgba(hdc->cairo, cr.r, cr.g, cr.b, cr.a);
-        cairo_rectangle(hdc->cairo, pRect->left, pRect->top, pRect->right - pRect->left, pRect->bottom - pRect->top);
-        cairo_fill(hdc->cairo);
-    }
     RECT rc = *pRect;
     cairo_save(hdc->cairo);
     ApplyFont(hdc);
     double text_wid = pRect->right - pRect->left, text_hei = pRect->bottom - pRect->top;
     ApplyPen(hdc, hdc->pen, text_wid, text_hei, pRect->left, pRect->top);
+    if (hdc->bkMode == OPAQUE && !(uFormat & DT_CALCRECT))
+    {
+        // Win32: a single-line DrawText fills the background of the text
+        // extent only (like TextOut), not the whole format rectangle.
+        // Measure the laid-out text first, then place the fill rect the same
+        // way the real draw positions the line.
+        RECT rcFill = rc;
+        if (uFormat & DT_SINGLELINE)
+        {
+            RECT rcMeasure = rc;
+            cairo_draw_text(hdc->cairo, pszBuf, cchText, &rcMeasure,
+                uFormat | DT_CALCRECT | DT_NOCLIP);
+            int w = rcMeasure.right - rcMeasure.left;
+            int h = rcMeasure.bottom - rcMeasure.top;
+            int left = rc.left, top = rc.top;
+            if (uFormat & DT_RIGHT)
+                left += (rc.right - rc.left) - w;
+            else if (uFormat & DT_CENTER)
+                left += ((rc.right - rc.left) - w) / 2;
+            if (uFormat & DT_BOTTOM)
+                top += (rc.bottom - rc.top) - h;
+            else if (uFormat & DT_VCENTER)
+                top += ((rc.bottom - rc.top) - h) / 2;
+            rcFill.left = left;
+            rcFill.top = top;
+            rcFill.right = left + w;
+            rcFill.bottom = top + h;
+        }
+        CairoColor crBk(hdc->crBk);
+        cairo_set_source_rgba(hdc->cairo, crBk.r, crBk.g, crBk.b, crBk.a);
+        cairo_rectangle(hdc->cairo, rcFill.left, rcFill.top,
+            rcFill.right - rcFill.left, rcFill.bottom - rcFill.top);
+        cairo_fill(hdc->cairo);
+    }
     CairoColor cr(hdc->crText);
     cairo_set_source_rgba(hdc->cairo, cr.r, cr.g, cr.b, cr.a);
-    cairo_matrix_t mtx = { 0 };
+    cairo_matrix_t mtx = {};
     cairo_get_matrix(hdc->cairo, &mtx);
     const LOGFONT *lf = (const LOGFONT *)GetGdiObjPtr(hdc->hfont);
     assert(lf);
@@ -2478,6 +2739,17 @@ BOOL TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c)
     if (c == 0)
         return TRUE;
 
+    // Win32: with TA_UPDATECP the x/y parameters are ignored and drawing
+    // starts at the current position, which is then advanced by the text
+    // width. Without it, the current position is left untouched.
+    if (hdc->textAlign & TA_UPDATECP)
+    {
+        double cx, cy;
+        cairo_get_current_point(hdc->cairo, &cx, &cy);
+        x = (int)cx;
+        y = (int)cy;
+    }
+
     cairo_save(hdc->cairo);
     ApplyFont(hdc);
     CairoColor cr(hdc->crText);
@@ -2536,7 +2808,9 @@ BOOL TextOutA(HDC hdc, int x, int y, LPCSTR lpString, int c)
         DrawTextDecLines(hdc, font_ext, lpString, c, x, y, text_ext);
     }
 
-    if (hdc->textAlign & TA_NOUPDATECP)
+    // restore the current position unless TA_UPDATECP (Win32 semantics:
+    // TextOut only updates the current position under TA_UPDATECP)
+    if (!(hdc->textAlign & TA_UPDATECP))
         cairo_move_to(hdc->cairo, old_x, old_y);
     cairo_restore(hdc->cairo);
     return TRUE;
@@ -2556,6 +2830,23 @@ static LONG TEXT_TabbedTextOut(HDC hdc, INT x, INT y, LPCSTR lpstr, INT count, I
         count = strlen(lpstr);
     if (!lpTabPos)
         cTabStops = 0;
+
+    // Win32: with TA_UPDATECP TabbedTextOut ignores x/y, starts at the
+    // current position and updates it to the end of the text when done.
+    // (GetTabbedTextExtent passes fDisplayText=FALSE and must not touch CP.)
+    UINT oldAlign = 0;
+    if (fDisplayText && (hdc->textAlign & TA_UPDATECP))
+    {
+        double cx, cy;
+        cairo_get_current_point(hdc->cairo, &cx, &cy);
+        x = (int)cx;
+        y = (int)cy;
+        start = x;
+        // draw each substring at its computed x0: suspend UPDATECP while
+        // emitting chunks, the CP is advanced once at the end
+        oldAlign = hdc->textAlign;
+        hdc->textAlign = oldAlign & ~TA_UPDATECP;
+    }
 
     GetTextMetricsA(hdc, &tm);
 
@@ -2642,6 +2933,13 @@ static LONG TEXT_TabbedTextOut(HDC hdc, INT x, INT y, LPCSTR lpstr, INT count, I
         }
         count -= j;
         lpstr += j;
+    }
+
+    if (oldAlign)
+    {
+        // restore UPDATECP and advance the current position to the text end
+        hdc->textAlign = oldAlign;
+        cairo_move_to(hdc->cairo, x, y);
     }
 
     return MAKELONG(x - start, extent.cy);
@@ -2876,7 +3174,7 @@ static struct sysparam_rgb_entry system_colors[] = {
 
 COLORREF GetSysColor(int i)
 {
-    if (i >= 0 && i < ARRAYSIZE(system_colors))
+    if (i >= 0 && i < (int)ARRAYSIZE(system_colors))
         return system_colors[i].val;
     return RGBA(255, 255, 255, 255);
 }
@@ -3027,7 +3325,7 @@ HGDIOBJ GetStockObject(int i)
     case SYSTEM_FONT:
     case DEFAULT_GUI_FONT:
     {
-        static LOGFONTA lf = { 0 };
+        static LOGFONTA lf = {};
 #ifdef _WIN32
         strcpy(lf.lfFaceName, "宋体");
 #else
@@ -3049,11 +3347,15 @@ BOOL Rectangle(HDC hdc, int left, int top, int right, int bottom)
         return FALSE;
 
     double wid = right - left, hei = bottom - top;
-    cairo_rectangle(ctx, left, top, wid, hei);
     if (hdc->pathRecording)
     {
+        // Win32 Rectangle() records the path with the right/bottom edges
+        // excluded: PathToRegion(Rectangle(100,100,200,200)) yields the
+        // region box (100,100,199,199) (verified on real Windows)
+        cairo_rectangle(ctx, left, top, wid - 1, hei - 1);
         return TRUE;
     }
+    cairo_rectangle(ctx, left, top, wid, hei);
 
     cairo_save(ctx);
     DrawPathFillStroke(ctx, hdc, wid, hei, left,top);
@@ -3323,19 +3625,63 @@ BOOL LineTo(HDC hdc, int nXEnd, int nYEnd)
     if (!ctx)
         return FALSE;
 
-    cairo_line_to(ctx, nXEnd, nYEnd);
-
     if (!hdc->pathRecording)
     {
-        double x1, y1, x2, y2;
-        cairo_path_extents(ctx, &x1,&y1, &x2,&y2);
+        // Draw the segment in device space so that 1px lines land exactly on
+        // pixel rows/columns like real GDI. Cairo strokes are centered on the
+        // path, so a line at an integer coordinate covers two half-pixels and
+        // looks washed out / shifted instead of covering the pixel like GDI.
+        double x0, y0;
+        cairo_get_current_point(ctx, &x0, &y0); // (0,0) if no MoveToEx yet, like GDI
+
+        cairo_matrix_t mtx;
+        cairo_get_matrix(ctx, &mtx);
+        double x1 = x0, y1 = y0, x2 = nXEnd, y2 = nYEnd;
+        cairo_matrix_transform_point(&mtx, &x1, &y1);
+        cairo_matrix_transform_point(&mtx, &x2, &y2);
+
+        LOGPEN *pen = (LOGPEN *)GetGdiObjPtr(hdc->pen);
+        int penW = pen ? (int)pen->lopnWidth.x : 1;
+        if (penW == 0)
+            penW = 1; // width 0 means cosmetic 1px pen
+        if (penW & 1)
+        { // odd pens are pixel-aligned: shift onto pixel centers and extend
+          // by half the pen width so the endpoint pixels are covered like GDI
+            double dx = x2 - x1, dy = y2 - y1;
+            double len = sqrt(dx * dx + dy * dy);
+            if (len > 0)
+            {
+                double ext = penW / 2.0;
+                x1 += 0.5 - dx / len * ext;
+                y1 += 0.5 - dy / len * ext;
+                x2 += 0.5 + dx / len * ext;
+                y2 += 0.5 + dy / len * ext;
+            }
+            else
+            {
+                x1 += 0.5;
+                y1 += 0.5;
+            }
+        }
+
         cairo_save(ctx);
-        DrawPathStroke(ctx, hdc, x2-x1, y2-y1, x1, y1);
+        cairo_identity_matrix(ctx);
+        cairo_new_path(ctx);
+        cairo_move_to(ctx, x1, y1);
+        cairo_line_to(ctx, x2, y2);
+        DrawPathStroke(ctx, hdc,
+            (x2 > x1 ? x2 - x1 : x1 - x2), (y2 > y1 ? y2 - y1 : y1 - y2),
+            (x1 < x2 ? x1 : x2), (y1 < y2 ? y1 : y2));
         cairo_restore(ctx);
-        // Restore current point (DrawPathStroke consumed the path)
-        cairo_move_to(ctx, nXEnd, nYEnd);
+    }
+    else
+    {
+        // path recording keeps user-space coordinates (GDI path semantics)
+        cairo_line_to(ctx, nXEnd, nYEnd);
     }
 
+    // GDI: after LineTo the current position is the segment end (user space)
+    cairo_move_to(ctx, nXEnd, nYEnd);
     return TRUE;
 }
 
@@ -3587,10 +3933,10 @@ BOOL WINAPI SetWindowOrgEx(HDC hdc,        // handle to device context
     return SetViewportOrgEx(hdc, X, Y, lpPoint);
 }
 
-BOOL WINAPI SetWindowExtEx(HDC hdc,      // handle to device context
-                           int nXExtent, // new horizontal window extent
-                           int nYExtent, // new vertical window extent
-                           LPSIZE lpSize // original window extent
+BOOL WINAPI SetWindowExtEx(HDC hdc __attribute__((unused)),      // handle to device context
+                           int nXExtent __attribute__((unused)), // new horizontal window extent
+                           int nYExtent __attribute__((unused)), // new vertical window extent
+                           LPSIZE lpSize __attribute__((unused)) // original window extent
 )
 {
     // todo:hjx
@@ -3762,7 +4108,7 @@ BOOL GradientFill(HDC hdc, TRIVERTEX *pVertices, ULONG nVertices, void *pMesh, U
     return TRUE;
 }
 
-int GetDeviceCaps(HDC hdc, int cap)
+int GetDeviceCaps(HDC hdc __attribute__((unused)), int cap)
 {
     switch (cap)
     {
@@ -3841,10 +4187,35 @@ HICON CreateIconIndirect(PICONINFO piconinfo)
 {
     _IconObj *icon = new _IconObj;
     icon->fIcon = piconinfo->fIcon;
-    icon->xHotspot = piconinfo->xHotspot;
-    icon->yHotspot = piconinfo->yHotspot;
     icon->hbmColor = RefGdiObj(piconinfo->hbmColor);
     icon->hbmMask = RefGdiObj(piconinfo->hbmMask);
+    /* real Windows ignores the requested hotspot for icons (fIcon=TRUE)
+       and forces it to the bitmap centre; only cursors keep the caller's
+       hotspot (verified on real Windows: an 8x8 icon always reports 4,4) */
+    if (piconinfo->fIcon)
+    {
+        BITMAP bm = {};
+        if (icon->hbmColor && GetObject(icon->hbmColor, sizeof(bm), &bm))
+        {
+            icon->xHotspot = bm.bmWidth / 2;
+            icon->yHotspot = bm.bmHeight / 2;
+        }
+        else if (icon->hbmMask && GetObject(icon->hbmMask, sizeof(bm), &bm))
+        {
+            icon->xHotspot = bm.bmWidth / 2;
+            icon->yHotspot = (bm.bmHeight / 2) / 2;
+        }
+        else
+        {
+            icon->xHotspot = piconinfo->xHotspot;
+            icon->yHotspot = piconinfo->yHotspot;
+        }
+    }
+    else
+    {
+        icon->xHotspot = piconinfo->xHotspot;
+        icon->yHotspot = piconinfo->yHotspot;
+    }
     return icon;
 }
 
@@ -3853,7 +4224,7 @@ BOOL DrawIcon(HDC hDC, int X, int Y, HICON hIcon)
     return DrawIconEx(hDC, X, Y, hIcon, -1, -1, 0, NULL, DI_NORMAL);
 }
 
-BOOL DrawIconEx(HDC hDC, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWidth, UINT istepIfAniCur, HBRUSH hbrFlickerFreeDraw, UINT diFlags)
+BOOL DrawIconEx(HDC hDC, int xLeft, int yTop, HICON hIcon, int cxWidth, int cyWidth, UINT istepIfAniCur __attribute__((unused)), HBRUSH hbrFlickerFreeDraw __attribute__((unused)), UINT diFlags __attribute__((unused)))
 {
     if (!hIcon || !hIcon->hbmColor)
         return FALSE;
@@ -3951,6 +4322,10 @@ BOOL WINAPI GetTextMetricsW(HDC hdc, TEXTMETRICW *txtMetric)
     return TRUE;
 }
 
+// Real Win32 GetTextFace semantics (probed on Windows): with a NULL buffer it
+// returns the required size *including* the NUL; with a buffer it copies at
+// most nCount-1 characters plus the NUL and returns the number of characters
+// copied *excluding* the NUL (truncation instead of failure).
 int GetTextFaceA(HDC hdc, int nCount, LPSTR lpFaceName)
 {
     assert(hdc->hfont);
@@ -3958,17 +4333,31 @@ int GetTextFaceA(HDC hdc, int nCount, LPSTR lpFaceName)
     int len = strlen(lf->lfFaceName);
     if (!lpFaceName)
         return len + 1;
-    if (nCount < len + 1)
+    if (nCount <= 0)
         return 0;
-    strcpy(lpFaceName, lf->lfFaceName);
-    return len + 1;
+    int copy = len < nCount - 1 ? len : nCount - 1;
+    memcpy(lpFaceName, lf->lfFaceName, copy);
+    lpFaceName[copy] = '\0';
+    return copy;
 }
 
 int GetTextFaceW(HDC hdc, int nCount, LPWSTR lpFaceName)
 {
     assert(hdc->hfont);
     LOGFONTA *lf = (LOGFONTA *)GetGdiObjPtr(hdc->hfont);
-    return MultiByteToWideChar(CP_UTF8, 0, lf->lfFaceName, -1, lpFaceName, nCount);
+    wchar_t face[LF_FACESIZE];
+    int len = MultiByteToWideChar(CP_UTF8, 0, lf->lfFaceName, -1, face, LF_FACESIZE);
+    if (len <= 0)
+        return 0;
+    len -= 1; // exclude the NUL
+    if (!lpFaceName)
+        return len + 1;
+    if (nCount <= 0)
+        return 0;
+    int copy = len < nCount - 1 ? len : nCount - 1;
+    memcpy(lpFaceName, face, copy * sizeof(wchar_t));
+    lpFaceName[copy] = 0;
+    return copy;
 }
 
 BOOL Polygon_Priv(HDC hdc, const POINT *apt, int cpt)
@@ -4011,7 +4400,7 @@ UINT WINAPI GetTextAlign(HDC hdc)
     return hdc->textAlign;
 }
 
-COLORREF WINAPI GetNearestColor(HDC hdc,         // handle to DC
+COLORREF WINAPI GetNearestColor(HDC hdc __attribute__((unused)),         // handle to DC
                                 COLORREF crColor // color to be matched
 )
 {
@@ -4029,8 +4418,6 @@ BOOL WINAPI ExtTextOutA(HDC hdc,          // handle to DC
 )
 {
     cairo_save(hdc->cairo);
-    if (cbCount < 0)
-        cbCount = strlen(lpString);
     if (lprc)
     {
         if (fuOptions & ETO_CLIPPED)
@@ -4066,7 +4453,16 @@ BOOL WINAPI ExtTextOutA(HDC hdc,          // handle to DC
         double old_x, old_y;
         cairo_get_current_point(hdc->cairo, &old_x, &old_y);
 
+        cairo_font_extents_t font_ext;
+        cairo_font_extents(hdc->cairo, &font_ext);
+
         double x = X, y = Y;
+        // Win32: with TA_UPDATECP the x/y parameters are ignored and drawing
+        // starts at the current position (see TextOutA).
+        if (hdc->textAlign & TA_UPDATECP)
+        {
+            cairo_get_current_point(hdc->cairo, &x, &y);
+        }
         switch (hdc->textAlign & (TA_RIGHT | TA_CENTER))
         {
         case TA_RIGHT:
@@ -4076,8 +4472,6 @@ BOOL WINAPI ExtTextOutA(HDC hdc,          // handle to DC
             x -= wid / 2;
             break;
         }
-        cairo_font_extents_t font_ext;
-        cairo_font_extents(hdc->cairo, &font_ext);
         switch (hdc->textAlign & (TA_BASELINE | TA_BOTTOM | TA_TOP))
         {
         case TA_TOP:
@@ -4172,10 +4566,20 @@ COLORREF GetPixel(IN HDC hdc, IN int x, IN int y)
     const unsigned char *data = getPixelData(hdc, x, y);
     if (!data)
         return 0;
-    unsigned char r = data[0];
-    unsigned char g = data[1];
-    unsigned char b = data[2];
-    unsigned char a = data[3];
+    // CAIRO_FORMAT_ARGB32 stores premultiplied BGRA in memory on
+    // little-endian; un-premultiply to get the straight COLORREF back.
+    unsigned int b = data[0];
+    unsigned int g = data[1];
+    unsigned int r = data[2];
+    unsigned int a = data[3];
+    if (a != 0xFF)
+    {
+        if (a == 0)
+            return 0;
+        r = r * 255 / a;
+        g = g * 255 / a;
+        b = b * 255 / a;
+    }
     return RGBA(r, g, b, a);
 }
 
@@ -4194,12 +4598,12 @@ COLORREF SetPixel(IN HDC hdc, IN int x, IN int y, IN COLORREF color)
     return ret;
 }
 
-UINT WINAPI RealizePalette(_In_ HDC hdc)
+UINT WINAPI RealizePalette(_In_ HDC hdc __attribute__((unused)))
 {
     return 0;
 }
 
-HPALETTE WINAPI SelectPalette(_In_ HDC hdc, _In_ HPALETTE hPal, _In_ BOOL bForceBkgd)
+HPALETTE WINAPI SelectPalette(_In_ HDC hdc __attribute__((unused)), _In_ HPALETTE hPal __attribute__((unused)), _In_ BOOL bForceBkgd __attribute__((unused)))
 {
     return nullptr;
 }
@@ -4209,7 +4613,20 @@ BOOL WINAPI DPtoLP(HDC hdc,          // handle to device context
                    int nCount        // count of points in array
 )
 {
-    // todo:hjx
+    if (!hdc || !lpPoints || nCount <= 0)
+        return FALSE;
+    cairo_matrix_t mtx, inv;
+    cairo_get_matrix(hdc->cairo, &mtx);
+    inv = mtx;
+    if (cairo_matrix_invert(&inv) != CAIRO_STATUS_SUCCESS)
+        return FALSE; // non-invertible transform
+    for (int i = 0; i < nCount; i++)
+    {
+        double x = lpPoints[i].x, y = lpPoints[i].y;
+        cairo_matrix_transform_point(&inv, &x, &y);
+        lpPoints[i].x = (int)floor(x + 0.5);
+        lpPoints[i].y = (int)floor(y + 0.5);
+    }
     return TRUE;
 }
 
@@ -4218,37 +4635,66 @@ BOOL WINAPI LPtoDP(HDC hdc,          // handle to device context
                    int nCount        // count of points in array
 )
 {
-    // todo:hjx
+    if (!hdc || !lpPoints || nCount <= 0)
+        return FALSE;
+    cairo_matrix_t mtx;
+    cairo_get_matrix(hdc->cairo, &mtx); // user (logical) -> device
+    for (int i = 0; i < nCount; i++)
+    {
+        double x = lpPoints[i].x, y = lpPoints[i].y;
+        cairo_matrix_transform_point(&mtx, &x, &y);
+        lpPoints[i].x = (int)floor(x + 0.5);
+        lpPoints[i].y = (int)floor(y + 0.5);
+    }
     return TRUE;
 }
 
 BOOL WINAPI GetCharWidthA(_In_ HDC hdc, _In_ UINT iFirst, _In_ UINT iLast, _Out_writes_(iLast + 1 - iFirst) LPINT lpBuffer)
 {
-    *lpBuffer = 0;
-    for (char c = (char)iFirst; c <= (char)iLast; c++)
+    if (!hdc || !lpBuffer || iFirst > iLast || iLast > 0x10FFFF)
+        return FALSE;
+    for (UINT c = iFirst; c <= iLast; c++)
     {
-        SIZE sz;
-        GetTextExtentPoint32A(hdc, &c, 1, &sz);
-        *lpBuffer += sz.cx;
+        // swinx's "A" APIs treat strings as UTF-8 (see TextOutA/
+        // GetTextExtentPoint32A): encode the code point to a whole UTF-8
+        // character via uniconv before measuring it.
+        uint32_t uch = c;
+        char buf[4];
+        /* the NUL code point has no glyph; guard it explicitly since
+           UTF8FromUTF32 now converts embedded NULs like Win32 does */
+        size_t len = (uch == 0) ? 0 : swinx::UTF8FromUTF32(&uch, 1, buf, 4);
+        int width = 0;
+        if (len > 0)
+        {
+            SIZE sz;
+            if (!GetTextExtentPoint32A(hdc, buf, (int)len, &sz))
+                return FALSE;
+            width = sz.cx;
+        }
+        // len == 0 only for the NUL code point, which has no glyph.
+        lpBuffer[c - iFirst] = width;
     }
     return TRUE;
 }
 BOOL WINAPI GetCharWidthW(_In_ HDC hdc, _In_ UINT iFirst, _In_ UINT iLast, _Out_writes_(iLast + 1 - iFirst) LPINT lpBuffer)
 {
-    *lpBuffer = 0;
-    for (wchar_t c = (wchar_t)iFirst; c <= (wchar_t)iLast; c++)
+    if (!hdc || !lpBuffer || iFirst > iLast)
+        return FALSE;
+    for (UINT c = iFirst; c <= iLast; c++)
     {
         SIZE sz;
-        GetTextExtentPoint32W(hdc, &c, 1, &sz);
-        *lpBuffer += sz.cx;
+        WCHAR ch = (WCHAR)c;
+        if (!GetTextExtentPoint32W(hdc, &ch, 1, &sz))
+            return FALSE;
+        lpBuffer[c - iFirst] = sz.cx;
     }
     return TRUE;
 }
 
-HDC WINAPI CreateICA(LPCSTR lpszDriver,    // driver name
-                     LPCSTR lpszDevice,    // device name
-                     LPCSTR lpszOutput,    // port or file name
-                     CONST void *lpdvmInit // optional initialization data
+HDC WINAPI CreateICA(LPCSTR lpszDriver __attribute__((unused)),    // driver name
+                     LPCSTR lpszDevice __attribute__((unused)),    // device name
+                     LPCSTR lpszOutput __attribute__((unused)),    // port or file name
+                     CONST void *lpdvmInit __attribute__((unused)) // optional initialization data
 )
 {
     return CreateCompatibleDC(0);
@@ -4271,8 +4717,8 @@ HDC WINAPI CreateICW(LPCWSTR lpszDriver,   // driver name
 extern int macos_register_font(const char *path);
 #endif
 int AddFontResourceExA(LPCSTR lpszFilename, // font file name
-                       DWORD fl,            // font characteristics
-                       PVOID pdv            // reserved
+                       DWORD fl __attribute__((unused)),            // font characteristics
+                       PVOID pdv __attribute__((unused))            // reserved
 )
 {
     int ret = 0;
@@ -4490,6 +4936,9 @@ HRGN PathToRegion(HDC hdc)
     cairo_append_path(hdc->cairo, path);
     cairo_clip(hdc->cairo);
     HRGN hrgn = CreateRectRgn(0, 0, 0, 0);
+    // must read the clip BEFORE cairo_restore() undoes it — after the
+    // restore the clip is unbounded again and GetClipRgn would leave the
+    // region empty (reported as an all-zero box by GetRgnBox)
     GetClipRgn(hdc, hrgn);
     cairo_restore(hdc->cairo);
     cairo_path_destroy(hdc->currentPath);

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <list>
 #include <mutex>
+#include <atomic>
 #include <string>
 #include <memory>
 #include <vector>
@@ -108,7 +109,7 @@ public:
 
 private:
 	HWND m_owner;
-	BOOL m_bOpen;
+	std::atomic<bool> m_bOpen;
 	BOOL m_bModified;
 
 	std::recursive_mutex m_mutex;

@@ -18,11 +18,10 @@ xcb_atom_t SAtoms::internAtom(xcb_connection_t *connection, uint8_t onlyIfExist,
 
 void SAtoms::Init(xcb_connection_t *conn, int nScrNo)
 {
-    const int kAtomCount = (FIELD_OFFSET(SAtoms,SO_ATOM_COUNT) - FIELD_OFFSET(SAtoms,TEXT) ) / sizeof(xcb_atom_t);
-    xcb_intern_atom_cookie_t cookies[kAtomCount+1];
     int kAtomCount2 = 0;
     const char **kAtomNames = AtomNames(kAtomCount2);
-    assert(kAtomCount == kAtomCount2);
+    const int kAtomCount = kAtomCount2;
+    xcb_intern_atom_cookie_t cookies[kAtomCount+1];
     for (int i = 0; i < kAtomCount; i++)
     {
         if (strchr(kAtomNames[i], '%') != nullptr)
@@ -63,6 +62,7 @@ int SAtoms::getAtomName(xcb_atom_t atom,char *buf,int bufSize){
     xcb_get_atom_name_reply_t *reply = xcb_get_atom_name_reply(conn->connection, cookie, nullptr);
     if (reply)
     {
+        int ret = 0;
         char *atom_name = xcb_get_atom_name_name(reply);
         if (atom_name)
         {
@@ -71,15 +71,16 @@ int SAtoms::getAtomName(xcb_atom_t atom,char *buf,int bufSize){
                 if(bufSize > len){
                     strncpy(buf, atom_name,len);
                     buf[len] = 0;
-                    return len+1;
+                    ret = len+1;
                 }else{
-                    return -1;
+                    ret = -1;
                 }
             }else{
-                return len;
+                ret = len;
             }
         }
         free(reply);
+        return ret;
     }else if(atom > 10000){
         //user defined atom
         return snprintf(buf,bufSize,"#%d",atom);

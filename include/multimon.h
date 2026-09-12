@@ -65,6 +65,10 @@ typedef LPDISPLAY_DEVICEA LPDISPLAY_DEVICE;
 #define CCHFORMNAME   32
 #define CCHDEVICENAME 32
 
+// DISPLAY_DEVICE StateFlags (subset of Win32 constants actually set here)
+#define DISPLAY_DEVICE_ATTACHED_TO_DESKTOP 0x00000001
+#define DISPLAY_DEVICE_PRIMARY_DEVICE      0x00000004
+
     typedef struct _devicemodea
     {
         char dmDeviceName[CCHDEVICENAME];

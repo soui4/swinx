@@ -4,6 +4,7 @@
 #import <objc/runtime.h>
 #import <objc/NSObjCRuntime.h>
 #include <mutex>
+#include <algorithm>
 #include <MacTypes.h>
 #include <memory>
 #include <map>
@@ -15,7 +16,7 @@
 #include <wndobj.h>
 #include <log.h>
 #include "os_state.h"
-#include "tostring.hpp"
+#include "tostring.h"
 #include "STrayIconMgr.h"
 #include "keyboard.h"
 #include "atoms.h"
@@ -30,7 +31,9 @@ static const NSEventType kDummyEventType = NSEventTypeApplicationDefined;
 static const NSInteger kDummyEventSubtype = 200; // 自定义子类型
 static const NSInteger kFDReadyEventSubtype = 100; // 自定义子类型
 
-NSWindow *getNsWindow(HWND hWnd);
+// 返回 SOUI 窗口自己的宿主 NSWindow（定义在 SNsWindow.mm，因 SNsWindow
+// 类接口仅在该文件可见，故经由此转发而不是直接访问 view 的 window 属性）
+NSWindow *getNsHostWindow(HWND hWnd);
 
 
 #if defined(CAIRO_HAS_QUARTZ_FONT) && CAIRO_HAS_QUARTZ_FONT
@@ -88,24 +91,10 @@ extern "C"   BOOL WINAPI GetAppleBundlePath(char *path, int maxLen){
     }
 }
 
-static void ConvertNSRect(NSScreen *screen, bool fullscreen, NSRect *r)
-{
-    size_t screen_height = screen?screen.frame.size.height:CGDisplayPixelsHigh(kCGDirectMainDisplay);
-    r->origin.y = screen_height - r->origin.y - r->size.height;
-}
-
-static void ConvertNSPoint(NSScreen *screen, NSSize wndSize, NSPoint *pt)
-{
-    size_t screen_height = screen?screen.frame.size.height:CGDisplayPixelsHigh(kCGDirectMainDisplay);
-    pt->y = screen_height - pt->y - wndSize.height;
-}
-
-static void RevertNSRect(NSScreen *screen, bool fullscreen, NSRect *r)
-{
-    size_t screen_height = screen?screen.frame.size.height:CGDisplayPixelsHigh(kCGDirectMainDisplay);
-    r->origin.y = screen_height - r->origin.y - r->size.height;
-}
-
+// 注：本文件原有的 ConvertNSRect/ConvertNSPoint/RevertNSRect 副本与
+// wndpos2nsclient 已删除——前者按"所在屏高度"翻转的坐标约定与 swinx 全局
+// 物理像素约定（主屏高度 H1 翻转，见 SNsWindow.mm 的同名函数）不一致，
+// 后者自引入起无任何调用方。窗口坐标换算统一走 SNsWindow.mm 的实现。
 
 static RECT NSRectToRECT(NSRect rect)
 {
@@ -404,31 +393,9 @@ static void setupFDMonitoring(NSMutableArray *fdSources,int fds[], int fdCount) 
 }
 
 
-/**
- * convert ns point to client point 
- * @param nswindow ns window
- * @param pt ns point
- * @return true if the point is in the window, false otherwise
- */
-static bool wndpos2nsclient(NSWindow *nswindow, NSPoint &pt) {
-    NSRect rect = [nswindow contentRectForFrameRect:(NSRect)nswindow.frame];
-    rect.origin.x -= nswindow.frame.origin.x;
-    rect.origin.y -= nswindow.frame.origin.y;
-    if(!NSPointInRect(pt, rect)){
-        return false;
-    }
-    ConvertNSRect([nswindow screen], FALSE, &rect);
-    ConvertNSPoint([nswindow screen], rect.size, &pt);
-    pt.x -= rect.origin.x;
-    pt.y -= rect.origin.y;
-    
-    return true;
-}
-
 void SConnection::postMsg(Msg *pMsg){
   std::unique_lock<CountMutex> lock(m_mutex);
   m_msgQueue.push_back(pMsg);
-  //SLOG_STMI() << "postMsg, msg=" << pMsg->message;
   stopEventWaiting();
 }
 
@@ -721,7 +688,7 @@ void SConnection::updateMsgQueue(DWORD dwTimeout) {
 
 bool SConnection::peekMsg(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg) {
     updateMsgQueue(0);
-    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    std::unique_lock<CountMutex> lock(m_mutex);
     { // test for callback task
         auto it = m_lstCallbackTask.begin();
         while (it != m_lstCallbackTask.end())
@@ -826,7 +793,7 @@ bool SConnection::getMsg(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFi
 }
 
 void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp) {
-    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    std::unique_lock<CountMutex> lock(m_mutex);
     Msg *pMsg = new Msg;
     pMsg->hwnd = hWnd;
     pMsg->message = message;
@@ -837,7 +804,7 @@ void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp) {
 }
 
 void SConnection::postMsg2(bool bWideChar, HWND hWnd, UINT message, WPARAM wp, LPARAM lp, MsgReply *reply) {
-  std::lock_guard<std::recursive_mutex> lock(m_mutex);
+  std::unique_lock<CountMutex> lock(m_mutex);
    if (!bWideChar)
     {
         Msg *pMsg = new Msg(reply);
@@ -862,7 +829,7 @@ void SConnection::postMsg2(bool bWideChar, HWND hWnd, UINT message, WPARAM wp, L
 
 UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC proc) {
     UINT ret = 0;
-    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    std::unique_lock<CountMutex> lock(m_mutex);
     if (hWnd)
     {
         // find exist timer.
@@ -1282,24 +1249,226 @@ HWND SConnection::OnGetAncestor(HWND hwnd, UINT gaFlags) {
     }
 }
 
-HMONITOR SConnection::MonitorFromWindow(HWND hWnd, DWORD dwFlags) {
-@autoreleasepool {
-        NSScreen *screen = [NSScreen mainScreen];
-        return (__bridge HMONITOR)screen;
+// ---------------- 多显示器支持 ----------------
+// swinx 全局坐标（SOUI 使用物理像素）：主显示器左上角为原点、y 向下、
+// 单位为物理像素（与窗口矩形 m_rcPos、鼠标事件客户点同一约定，Retina 下
+// 均为 backingScaleFactor 倍的 Cocoa point）。
+// Cocoa 全局坐标：主显示器左下角为原点、y 向上、单位为 point。
+// 对位于屏 S（scale=k）上的 Cocoa 全局点 (gx,gy)：
+//     swinxX = gx * k;  swinxY = (H1 - gy) * k
+// 其中 H1 为主屏高度（point）。单屏时退化为旧的"所在屏翻转+乘 scale"。
+// 屏 S 自身的 swinx 像素矩形：[ox*k, (ox+w)*k] x [(H1-oy-h)*k, (H1-oy)*k]。
+
+// 主显示器 = Cocoa 全局坐标原点 (0,0) 所在屏；异常时回退 screens[0]
+static NSScreen *monPrimaryScreen()
+{
+    NSArray<NSScreen *> *screens = [NSScreen screens];
+    for (NSScreen *s in screens)
+    {
+        NSRect f = [s frame];
+        if (f.origin.x == 0 && f.origin.y == 0)
+            return s;
     }
+    return [screens count] ? [screens objectAtIndex:0] : nil;
 }
 
-HMONITOR SConnection::MonitorFromPoint(POINT pt, DWORD dwFlags) {
-@autoreleasepool {
-        NSScreen *screen = [NSScreen mainScreen];
-        return (__bridge HMONITOR)screen;
-    }
+static CGFloat monPrimaryHeight()
+{
+    NSScreen *primary = monPrimaryScreen();
+    return primary ? [primary frame].size.height : 0;
 }
 
-HMONITOR SConnection::MonitorFromRect(LPCRECT lprc, DWORD dwFlags) {
+// 校验 HMONITOR（NSScreen*）仍在当前屏幕列表中，防止显示器拔出后的悬垂句柄
+static NSScreen *monValidate(HMONITOR hMonitor)
+{
+    NSScreen *screen = (__bridge NSScreen *)hMonitor;
+    if (!screen)
+        return nil;
+    for (NSScreen *s in [NSScreen screens])
+    {
+        if (s == screen)
+            return s;
+    }
+    return nil;
+}
+
+// Cocoa 全局矩形（point）-> swinx 全局矩形（物理像素，y 翻转+乘 scale）
+static void monCocoaRectToWin(const NSRect &f, CGFloat h1, CGFloat scale, RECT *prc)
+{
+    prc->left = (int)(f.origin.x * scale);
+    prc->right = (int)((f.origin.x + f.size.width) * scale);
+    prc->top = (int)((h1 - (f.origin.y + f.size.height)) * scale);
+    prc->bottom = (int)((h1 - f.origin.y) * scale);
+}
+
+// swinx 像素矩形包含点（Win32 半开区间 [left,right) x [top,bottom)）
+static bool monWinRectContainsPt(const RECT &rc, const POINT &pt)
+{
+    return pt.x >= rc.left && pt.x < rc.right && pt.y >= rc.top && pt.y < rc.bottom;
+}
+
+// 点到 swinx 矩形的距离平方；点在矩形内为 0
+static double monDistSqToWinRect(const RECT &rc, int x, int y)
+{
+    double dx = 0, dy = 0;
+    if (x < rc.left)
+        dx = rc.left - x;
+    else if (x >= rc.right)
+        dx = x - rc.right + 1;
+    if (y < rc.top)
+        dy = rc.top - y;
+    else if (y >= rc.bottom)
+        dy = y - rc.bottom + 1;
+    return dx * dx + dy * dy;
+}
+
+// 取屏 S 的 swinx 像素矩形
+static void monScreenWinRect(NSScreen *s, CGFloat h1, RECT *prc)
+{
+    monCocoaRectToWin([s frame], h1, [s backingScaleFactor], prc);
+}
+
+static NSScreen *monNearestScreenToWinPoint(POINT pt)
+{
+    CGFloat h1 = monPrimaryHeight();
+    NSScreen *best = nil;
+    double distMin = -1;
+    for (NSScreen *s in [NSScreen screens])
+    {
+        RECT rc;
+        monScreenWinRect(s, h1, &rc);
+        double dist = monDistSqToWinRect(rc, pt.x, pt.y);
+        if (distMin < 0 || dist < distMin)
+        {
+            distMin = dist;
+            best = s;
+        }
+    }
+    return best;
+}
+
+static NSScreen *monNearestScreenToWinRect(const RECT &rc)
+{
+    POINT center = {(rc.left + rc.right) / 2, (rc.top + rc.bottom) / 2};
+    return monNearestScreenToWinPoint(center);
+}
+
+// MonitorFrom* 未命中时的标志语义公共尾部
+static HMONITOR monHitResult(NSScreen *hit, DWORD dwFlags)
+{
+    if (hit)
+        return (__bridge HMONITOR)hit;
+    if (dwFlags == MONITOR_DEFAULTTONULL)
+        return NULL;
+    return (__bridge HMONITOR)monPrimaryScreen(); // TOPRIMARY / TONEAREST 的桌面外回退
+}
+
+int SConnection::GetMonitorCount() const {
     @autoreleasepool {
-        NSScreen *screen = [NSScreen mainScreen];
-        return (__bridge HMONITOR)screen;
+        return (int)[[NSScreen screens] count];
+    }
+}
+
+HMONITOR SConnection::GetMonitor(int index) const {
+    @autoreleasepool {
+        NSArray<NSScreen *> *screens = [NSScreen screens];
+        if (index < 0 || index >= (int)[screens count])
+            return NULL;
+        return (__bridge HMONITOR)[screens objectAtIndex:index];
+    }
+}
+
+HMONITOR SConnection::GetPrimaryMonitor() const {
+    @autoreleasepool {
+        NSScreen *primary = monPrimaryScreen();
+        return primary ? (__bridge HMONITOR)primary : NULL;
+    }
+}
+
+bool SConnection::IsPrimaryMonitor(HMONITOR hMonitor) const {
+    @autoreleasepool {
+        return monValidate(hMonitor) == monPrimaryScreen();
+    }
+}
+
+bool SConnection::GetMonitorRect(HMONITOR hMonitor, RECT *prc) const {
+    @autoreleasepool {
+        NSScreen *screen = monValidate(hMonitor);
+        if (!screen || !prc)
+            return false;
+        monScreenWinRect(screen, monPrimaryHeight(), prc);
+        return true;
+    }
+}
+
+bool SConnection::GetMonitorWorkRect(HMONITOR hMonitor, RECT *prc) const {
+    @autoreleasepool {
+        NSScreen *screen = monValidate(hMonitor);
+        if (!screen || !prc)
+            return false;
+        // visibleFrame 已扣除菜单栏/Dock，即该显示器的工作区
+        monCocoaRectToWin([screen visibleFrame], monPrimaryHeight(), [screen backingScaleFactor], prc);
+        return true;
+    }
+}
+
+HMONITOR SConnection::MonitorFromWindow(HWND hWnd, DWORD dwFlags) const {
+@autoreleasepool {
+        if (!hWnd)
+            return dwFlags == MONITOR_DEFAULTTONULL ? NULL : (__bridge HMONITOR)monPrimaryScreen();
+        NSWindow *host = getNsHostWindow(hWnd);
+        if (!host)
+            return dwFlags == MONITOR_DEFAULTTONULL ? NULL : (__bridge HMONITOR)monPrimaryScreen();
+        // 窗口 frame 为 Cocoa point，按其所在屏的 scale 换算为 swinx 像素矩形
+        NSScreen *screen = [host screen] ?: [NSScreen mainScreen];
+        RECT rcWnd;
+        monCocoaRectToWin([host frame], monPrimaryHeight(), [screen backingScaleFactor], &rcWnd);
+        return MonitorFromRect(&rcWnd, dwFlags);
+    }
+}
+
+HMONITOR SConnection::MonitorFromPoint(POINT pt, DWORD dwFlags) const {
+@autoreleasepool {
+        CGFloat h1 = monPrimaryHeight();
+        NSScreen *hit = nil;
+        // Win32 显示器矩形是半开区间 [left,right) x [top,bottom)：主屏左上角
+        // (0,0) 必须命中主屏。全部在 swinx 物理像素空间判定。
+        for (NSScreen *s in [NSScreen screens]) {
+            RECT rc;
+            monScreenWinRect(s, h1, &rc);
+            if (monWinRectContainsPt(rc, pt)) {
+                hit = s;
+                break;
+            }
+        }
+        if (!hit && dwFlags == MONITOR_DEFAULTTONEAREST)
+            hit = monNearestScreenToWinPoint(pt);
+        return monHitResult(hit, dwFlags);
+    }
+}
+
+HMONITOR SConnection::MonitorFromRect(LPCRECT lprc, DWORD dwFlags) const {
+    @autoreleasepool {
+        if (!lprc)
+            return GetPrimaryMonitor();
+        CGFloat h1 = monPrimaryHeight();
+        NSScreen *hit = nil;
+        double areaMax = 0;
+        // 在 swinx 物理像素空间求与各屏矩形的相交面积（混合 DPI 下逐屏换算）
+        for (NSScreen *s in [NSScreen screens]) {
+            RECT rcScreen;
+            monScreenWinRect(s, h1, &rcScreen);
+            long w = std::min(lprc->right, rcScreen.right) - std::max(lprc->left, rcScreen.left);
+            long h = std::min(lprc->bottom, rcScreen.bottom) - std::max(lprc->top, rcScreen.top);
+            double area = (w > 0 && h > 0) ? (double)w * h : 0.0;
+            if (area > areaMax) {
+                areaMax = area;
+                hit = s;
+            }
+        }
+        if (!hit && dwFlags == MONITOR_DEFAULTTONEAREST)
+            hit = monNearestScreenToWinRect(*lprc);
+        return monHitResult(hit, dwFlags);
     }
 }
 
@@ -1442,10 +1611,10 @@ bool SConnection::NotifyIcon(DWORD dwMessage, PNOTIFYICONDATAA lpData) {
 }
 
 HMONITOR SConnection::GetScreen(DWORD dwFlags) const {
-    @autoreleasepool {
-    NSScreen *screen = [NSScreen mainScreen];
-    return (__bridge HMONITOR)screen;
-    }
+    // 兼容旧接口：GetSystemMetrics 等以 GetScreen(0) 取"当前屏幕"。
+    // 多显示器下返回主显示器；dwFlags 暂不参与语义（历史调用均传 0）。
+    (void)dwFlags;
+    return GetPrimaryMonitor();
 }
 
 bool SConnection::CreateCaret(HWND hWnd, HBITMAP hBitmap, int nWidth, int nHeight)
@@ -1529,15 +1698,14 @@ UINT SConnection::GetCaretBlinkTime() const {
     return m_caretBlinkTime;
 }
 
-void SConnection::GetWorkArea(HMONITOR hMonitor, RECT* prc) {
-    @autoreleasepool {
-        NSScreen *screen = (__bridge NSScreen *)hMonitor;
-        NSRect rect = [screen visibleFrame];
-        float scale = [screen backingScaleFactor];
-        prc->left = rect.origin.x * scale;
-        prc->top = rect.origin.y* scale;
-        prc->right = (rect.origin.x + rect.size.width)* scale;
-        prc->bottom = (rect.origin.y + rect.size.height)* scale;
+void SConnection::GetWorkArea(HMONITOR hMonitor, RECT* prc) const{
+    // 兼容旧接口：按显示器返回工作区（visibleFrame 扣除菜单栏/Dock）
+    if (!GetMonitorWorkRect(hMonitor, prc)) {
+        if (prc) {
+            prc->left = prc->top = 0;
+            prc->right = GetScreenWidth(hMonitor);
+            prc->bottom = GetScreenHeight(hMonitor);
+        }
     }
 }
 
@@ -1729,7 +1897,6 @@ static InitFontConfig g_initFontConfig;
 
 SConnMgr::SConnMgr()
 {
-    //setenv("CG_CONTEXT_SHOW_BACKTRACE", "1", 1);
     m_tid = GetCurrentThreadId();
     m_hHeap = HeapCreate(0, 0, 0);
     m_conn = new SConnection(0);
@@ -1878,7 +2045,7 @@ UINT SConnection::GetRawInputDeviceInfoA(HRAWINPUT hDevice, UINT uiCommand, LPVO
     DWORD device_type = RIM_TYPEMOUSE;
 
     {
-        std::lock_guard<std::recursive_mutex> lock(s_rawInputMutex);
+        std::unique_lock<std::recursive_mutex> lock(s_rawInputMutex);
         auto it = s_rawInputDevices.find(deviceId);
         if (it == s_rawInputDevices.end()) {
             SetLastError(ERROR_INVALID_PARAMETER);
@@ -1961,7 +2128,7 @@ UINT SConnection::GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVO
     std::string device_path;
 
     {
-        std::lock_guard<std::recursive_mutex> lock(s_rawInputMutex);
+        std::unique_lock<std::recursive_mutex> lock(s_rawInputMutex);
         auto it = s_rawInputDevices.find(deviceId);
         if (it == s_rawInputDevices.end()) {
             SetLastError(ERROR_INVALID_PARAMETER);

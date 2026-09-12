@@ -23,7 +23,7 @@ static size_t breakTextEx(cairo_t *ctx, const char *textD, size_t length, SkScal
         }
         p = (const char *)_mbsinc((const uint8_t *)p);
     }
-    if (nRet < nLineLen)
+    if (nRet < (int)nLineLen)
     {
         if (p + 1 < p2 && *p == '\r' && *(p + 1) == '\n')
             endLen = 2;
@@ -58,9 +58,9 @@ void TextLayoutEx::init(cairo_t *ctx, const char *text, size_t length, const REC
         tmp.resize(length);
         memcpy(tmp.data(), text, length);
         const char *p = tmp.data();
-        for (int i = 0; i < tmp.size();)
+        for (int i = 0; i < (int)tmp.size();)
         {
-            if (*p == '&' && i + 1 < tmp.size())
+            if (*p == '&' && i + 1 < (int)tmp.size())
             {
                 if (tmp[1] == '&')
                 {
@@ -107,7 +107,7 @@ void TextLayoutEx::buildLines()
         if (m_uFormat & DT_CALCRECT && maxWid < 1.0f)
             maxWid = 10000.0f;
         int lineHead = 0;
-        while (lineHead < m_text.size())
+        while (lineHead < (int)m_text.size())
         {
             int endLen = 0;
             size_t line_len = breakTextEx(m_ctx, text, stop - text, maxWid, endLen);
@@ -141,14 +141,14 @@ SkScalar TextLayoutEx::drawLine(cairo_t *ctx, SkScalar x1, SkScalar x2, SkScalar
         drawText(ctx, text, (iEnd - iBegin), x, y);
         // draw underlines
         int i = 0;
-        while (i < m_prefix.size())
+        while (i < (int)m_prefix.size())
         {
             if (m_prefix[i] >= iBegin)
                 break;
             i++;
         }
 
-        while (i < m_prefix.size() && m_prefix[i] < iEnd)
+        while (i < (int)m_prefix.size() && m_prefix[i] < iEnd)
         {
             SkScalar x1 = measureText(ctx, text, (m_prefix[i] - iBegin));
             SkScalar x2 = measureText(ctx, text, (m_prefix[i] - iBegin + 1));
@@ -240,7 +240,7 @@ RECT TextLayoutEx::draw()
     { //多行显示
         SkScalar maxLineWid = 0;
         int iLine = 0;
-        while (iLine < m_lines.size())
+        while (iLine < (int)m_lines.size())
         {
             if (y + lineSpan >= m_rcBound.bottom)
                 break; // the last visible line
@@ -251,7 +251,7 @@ RECT TextLayoutEx::draw()
             y += lineSpan + kLineInterval;
             iLine++;
         }
-        if (iLine < m_lines.size())
+        if (iLine < (int)m_lines.size())
         { // draw the last visible line
             int iBegin = m_lines[iLine].nOffset;
             int iEnd = iBegin + m_lines[iLine].nLen;

@@ -1,6 +1,7 @@
 #include <windows.h>
 #include "handle.h"
-
+#include <log.h>
+#define kLogTag "handle"
 HANDLE WINAPI AddHandleRef(HANDLE hHandle)
 {
     if (hHandle == INVALID_HANDLE_VALUE)
@@ -37,8 +38,8 @@ HANDLE InitHandle(int type, void *ptr, FreeHandlePtr cbFree)
 }
 
 _Handle::_Handle(int _type, void *_ptr, FreeHandlePtr _cbFree)
-    : nRef(1)
-    , type(_type)
+    : type(_type)
+    , nRef(1)
     , ptr(_ptr)
     , cbFree(_cbFree)
 {

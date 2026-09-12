@@ -478,7 +478,7 @@ char SKeyboard::scanCodeToAscii(xcb_keycode_t code)
     return szBuf[0];
 }
 
-int SKeyboard::keySymToVk(xcb_keysym_t keysym, UINT modifiers) const
+int SKeyboard::keySymToVk(xcb_keysym_t keysym, UINT modifiers __attribute__((unused))) const
 {
     int code = lookVkMap(keysym);
     if (code != 0)
@@ -503,7 +503,7 @@ int SKeyboard::keySymToVk(xcb_keysym_t keysym, UINT modifiers) const
     return code;
 }
 
-uint32_t SKeyboard::onKeyEvent(bool bPress, xcb_keycode_t code, uint16_t state, xcb_timestamp_t ts)
+uint32_t SKeyboard::onKeyEvent(bool bPress, xcb_keycode_t code, uint16_t state, xcb_timestamp_t ts __attribute__((unused)))
 {
     xkb_state_update_key(xkb_state_4_convert, code, bPress ? XKB_KEY_DOWN : XKB_KEY_UP);
     updateXKBStateFromState(xkb_state_4_convert, state);
@@ -550,7 +550,6 @@ uint32_t SKeyboard::onKeyEvent(bool bPress, xcb_keycode_t code, uint16_t state, 
         m_byKeyboardState[VK_CONTROL] = (modifiers & XCB_MOD_MASK_CONTROL) ? 0x80 : 0x00;
         m_byKeyboardState[VK_MENU] = (modifiers & XCB_MOD_MASK_1) ? 0x80 : 0x00;
     }
-    // SLOG_STMI()<<"ctrl state="<<m_byKeyboardState[VK_CONTROL] <<" bPress="<<bPress<<" code="<<code;
     return vk;
 }
 

@@ -198,6 +198,7 @@ static inline HRESULT HRESULT_FROM_WIN32(unsigned int x)
 #define ERROR_DIRECT_ACCESS_HANDLE                                               130
 #define ERROR_NEGATIVE_SEEK                                                      131
 #define ERROR_SEEK_ON_DEVICE                                                     132
+#define ERROR_INT_DIVIDE_BY_ZERO                                                 320
 #define ERROR_IS_JOIN_TARGET                                                     133
 #define ERROR_IS_JOINED                                                          134
 #define ERROR_IS_SUBSTED                                                         135

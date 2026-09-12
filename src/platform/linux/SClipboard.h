@@ -6,6 +6,7 @@
 #include <iostream>
 #include <list>
 #include <mutex>
+#include <atomic>
 #include <string>
 #include <memory>
 #include <vector>
@@ -52,24 +53,24 @@ public:
 
 	HRESULT WINAPI EnumFormatEtc(DWORD dwDirection,IEnumFORMATETC** ppenumFormatEtc)override;
 
-	HRESULT WINAPI GetCanonicalFormatEtc(FORMATETC* pformatectIn, FORMATETC* pformatetcOut) override{
+	HRESULT WINAPI GetCanonicalFormatEtc(FORMATETC* pformatectIn __attribute__((unused)), FORMATETC* pformatetcOut __attribute__((unused))) override{
 		return E_NOTIMPL;
 	}
 
 	HRESULT WINAPI DAdvise(
-		FORMATETC* pformatetc,
-		DWORD advf,
-		IAdviseSink* pAdvSink,
-		DWORD* pdwConnection)override {
+		FORMATETC* pformatetc __attribute__((unused)),
+		DWORD advf __attribute__((unused)),
+		IAdviseSink* pAdvSink __attribute__((unused)),
+		DWORD* pdwConnection __attribute__((unused)))override {
 		return E_NOTIMPL;
 	}
 
-	HRESULT WINAPI DUnadvise(DWORD dwConnection) override{
+	HRESULT WINAPI DUnadvise(DWORD dwConnection __attribute__((unused))) override{
 		return E_NOTIMPL;
 	}
 
 	HRESULT WINAPI EnumDAdvise(
-		IEnumSTATDATA** ppenumAdvise) override{
+		IEnumSTATDATA** ppenumAdvise __attribute__((unused))) override{
 		return E_NOTIMPL;
 	}
 	IUNKNOWN_BEGIN(IDataObject)
@@ -97,9 +98,9 @@ public:
 
     virtual /* [local] */ HRESULT WINAPI GetDataHere(
         /* [annotation][unique][in] */
-        _In_  FORMATETC* pformatetc,
+        _In_  FORMATETC* pformatetc __attribute__((unused)),
         /* [annotation][out][in] */
-        _Inout_  STGMEDIUM* pmedium) override{
+        _Inout_  STGMEDIUM* pmedium __attribute__((unused))) override{
         return E_NOTIMPL;
     }
 
@@ -118,41 +119,41 @@ public:
     }
 
     virtual HRESULT WINAPI GetCanonicalFormatEtc(
-        /* [unique][in] */ __RPC__in_opt FORMATETC* pformatectIn,
-        /* [out] */ __RPC__out FORMATETC* pformatetcOut) override{
+        /* [unique][in] */ __RPC__in_opt FORMATETC* pformatectIn __attribute__((unused)),
+        /* [out] */ __RPC__out FORMATETC* pformatetcOut __attribute__((unused))) override{
         return E_NOTIMPL;
     }
 
     virtual /* [local] */ HRESULT WINAPI SetData(
         /* [annotation][unique][in] */
-        _In_  FORMATETC* pformatetc,
+        _In_  FORMATETC* pformatetc __attribute__((unused)),
         /* [annotation][unique][in] */
-        _In_  STGMEDIUM* pmedium,
-        /* [in] */ BOOL fRelease) override{
+        _In_  STGMEDIUM* pmedium __attribute__((unused)),
+        /* [in] */ BOOL fRelease __attribute__((unused))) override{
         return E_NOTIMPL;
     }
 
     virtual HRESULT WINAPI EnumFormatEtc(
-        /* [in] */ DWORD dwDirection,
-        /* [out] */ __RPC__deref_out_opt IEnumFORMATETC** ppenumFormatEtc) override{
+        /* [in] */ DWORD dwDirection __attribute__((unused)),
+        /* [out] */ __RPC__deref_out_opt IEnumFORMATETC** ppenumFormatEtc __attribute__((unused))) override{
         return E_NOTIMPL;
     }
 
     virtual HRESULT WINAPI DAdvise(
-        /* [in] */ __RPC__in FORMATETC* pformatetc,
-        /* [in] */ DWORD advf,
-        /* [unique][in] */ __RPC__in_opt IAdviseSink* pAdvSink,
-        /* [out] */ __RPC__out DWORD* pdwConnection)override {
+        /* [in] */ __RPC__in FORMATETC* pformatetc __attribute__((unused)),
+        /* [in] */ DWORD advf __attribute__((unused)),
+        /* [unique][in] */ __RPC__in_opt IAdviseSink* pAdvSink __attribute__((unused)),
+        /* [out] */ __RPC__out DWORD* pdwConnection __attribute__((unused)))override {
         return E_NOTIMPL;
     }
 
     virtual HRESULT WINAPI DUnadvise(
-        /* [in] */ DWORD dwConnection)override {
+        /* [in] */ DWORD dwConnection __attribute__((unused)))override {
         return E_NOTIMPL;
     }
 
     virtual HRESULT WINAPI EnumDAdvise(
-        /* [out] */ __RPC__deref_out_opt IEnumSTATDATA** ppenumAdvise)override {
+        /* [out] */ __RPC__deref_out_opt IEnumSTATDATA** ppenumAdvise __attribute__((unused)))override {
         return E_NOTIMPL;
     }
 public:
@@ -215,7 +216,7 @@ private:
 
 	xcb_window_t m_requestor;
 	xcb_window_t m_owner;
-	BOOL m_bOpen;
+	std::atomic<bool> m_bOpen;
 	BOOL m_bModified;
 	
 	std::recursive_mutex m_mutex;

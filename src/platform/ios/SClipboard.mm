@@ -13,7 +13,7 @@
 #include "sysapi.h"
 #include "SUIDataObjectProxy.h"
 #define kLogTag "SClipboard"
-#include "tostring.hpp"
+#include "tostring.h"
 using namespace swinx;
 
 class SMimeEnumFORMATETC : public SUnkImpl<IEnumFORMATETC> {
@@ -437,7 +437,10 @@ HANDLE SClipboard::setClipboardData(UINT uFormat, HANDLE hMem) {
 BOOL SClipboard::openClipboard(HWND hWndNewOwner) {
   m_mutex.lock();
   if (m_bOpen)
+  {
+    m_mutex.unlock();
     return FALSE;
+  }
   m_bOpen = TRUE;
   m_bModified = FALSE;
   m_owner = hWndNewOwner;
@@ -445,7 +448,6 @@ BOOL SClipboard::openClipboard(HWND hWndNewOwner) {
 }
 
 BOOL SClipboard::closeClipboard() {
-  m_mutex.unlock();
   if (!m_bOpen)
     return FALSE;
   if(m_bModified)
@@ -455,6 +457,7 @@ BOOL SClipboard::closeClipboard() {
   m_bOpen = FALSE;
   m_bModified = FALSE;
   m_owner = NULL;
+  m_mutex.unlock();
   return TRUE;
 }
 

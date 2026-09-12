@@ -1,4 +1,4 @@
-#ifndef _SYS_API_H
+﻿#ifndef _SYS_API_H
 #define _SYS_API_H
 #include <ctypes.h>
 #include <unistd.h>
@@ -49,17 +49,77 @@ extern "C"
 
     VOID WINAPI ReleaseSRWLockShared(PSRWLOCK SRWLock);
 
+    BOOLEAN WINAPI TryAcquireSRWLockExclusive(PSRWLOCK SRWLock);
+
+    BOOLEAN WINAPI TryAcquireSRWLockShared(PSRWLOCK SRWLock);
+
+    // ---- One-time initialization (INIT_ONCE) ----
+#define INIT_ONCE_CTX_RESERVED_BITS 2
+
+    typedef struct _RTL_RUN_ONCE
+    {
+        int State;
+        LPVOID Context;
+    } RTL_RUN_ONCE, *PRTL_RUN_ONCE;
+
+    typedef RTL_RUN_ONCE INIT_ONCE;
+    typedef PRTL_RUN_ONCE PINIT_ONCE;
+    typedef PRTL_RUN_ONCE LPINIT_ONCE;
+
+#define INIT_ONCE_STATIC_INIT \
+    {                         \
+        0                     \
+    }
+
+#define RTL_RUN_ONCE_CHECK_ONLY  0x00000001
+#define RTL_RUN_ONCE_ASYNC       0x00000002
+#define RTL_RUN_ONCE_INIT_FAILED 0x00000004
+
+#define INIT_ONCE_CHECK_ONLY  RTL_RUN_ONCE_CHECK_ONLY
+#define INIT_ONCE_ASYNC       RTL_RUN_ONCE_ASYNC
+#define INIT_ONCE_INIT_FAILED RTL_RUN_ONCE_INIT_FAILED
+
+    typedef BOOL(WINAPI *PINIT_ONCE_FN)(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *Context);
+
+    VOID WINAPI InitOnceInitialize(PINIT_ONCE InitOnce);
+
+    BOOL WINAPI InitOnceExecuteOnce(PINIT_ONCE InitOnce, PINIT_ONCE_FN InitFn, PVOID Parameter, LPVOID *Context);
+
+    BOOL WINAPI InitOnceBeginInitialize(LPINIT_ONCE lpInitOnce, DWORD dwFlags, PBOOL fPending, LPVOID *lpContext);
+
+    BOOL WINAPI InitOnceComplete(LPINIT_ONCE lpInitOnce, DWORD dwFlags, LPVOID lpContext);
+
+    // ---- Thread Local Storage (TLS) ----
+#ifndef TLS_MINIMUM_AVAILABLE
+#define TLS_MINIMUM_AVAILABLE 64
+#endif
+#ifndef TLS_OUT_OF_INDEXES
+#define TLS_OUT_OF_INDEXES ((DWORD)0xFFFFFFFF)
+#endif
+
+    DWORD WINAPI TlsAlloc(VOID);
+
+    BOOL WINAPI TlsFree(DWORD dwTlsIndex);
+
+    LPVOID WINAPI TlsGetValue(DWORD dwTlsIndex);
+
+    BOOL WINAPI TlsSetValue(DWORD dwTlsIndex, LPVOID lpTlsValue);
+
     LONG WINAPI InterlockedDecrement(LONG volatile *v);
 
     LONG WINAPI InterlockedIncrement(LONG volatile *v);
 
     LONG WINAPI InterlockedCompareExchange(LONG volatile *v, LONG Exchange, LONG Comparand);
 
+    LONG WINAPI InterlockedExchangeAdd(LONG volatile *v, LONG Increment);
+
     int64_t WINAPI InterlockedDecrement64(int64_t volatile *v);
 
     int64_t WINAPI InterlockedIncrement64(int64_t volatile *v);
 
     int64_t WINAPI InterlockedCompareExchange64(int64_t volatile *v, int64_t Exchange, int64_t Comparand);
+
+    int64_t WINAPI InterlockedExchangeAdd64(int64_t volatile *v, int64_t Increment);
 
     void qsort_s(void *_Base, size_t _NumOfElements, size_t _SizeOfElements, int(__cdecl *_PtFuncCompare)(void *, const void *, const void *), void *_Context);
 
@@ -196,9 +256,9 @@ extern "C"
     // 读取指定PID的进程状态文件，获取其有效用户ID, 0-root, -1-failed.
     int WINAPI get_process_uid(int pid);
 
-    pid_t WINAPI GetCurrentProcessId();
+    DWORD WINAPI GetCurrentProcessId();
 
-    pid_t WINAPI GetProcessId(HANDLE Process);
+    DWORD WINAPI GetProcessId(HANDLE Process);
 
     HANDLE WINAPI GetCurrentProcess_Priv(void);
 #ifndef __APPLE__
@@ -887,28 +947,19 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
     HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName);
     HMODULE WINAPI GetModuleHandleW(LPCWSTR lpModuleName);
 
-#define GET_MODULE_HANDLE_EX_FLAG_PIN                 (0x00000001)
-#define GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT  (0x00000002)
-#define GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS        (0x00000004)
+#define GET_MODULE_HANDLE_EX_FLAG_PIN                (0x00000001)
+#define GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT (0x00000002)
+#define GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS       (0x00000004)
 
-    BOOL WINAPI GetModuleHandleExA(
-        _In_ DWORD dwFlags,
-        _In_opt_ LPCSTR lpModuleName,
-        _Out_ HMODULE* phModule
-        );
+    BOOL WINAPI GetModuleHandleExA(_In_ DWORD dwFlags, _In_opt_ LPCSTR lpModuleName, _Out_ HMODULE *phModule);
 
-    BOOL WINAPI GetModuleHandleExW(
-        _In_ DWORD dwFlags,
-        _In_opt_ LPCWSTR lpModuleName,
-        _Out_ HMODULE* phModule
-        );
+    BOOL WINAPI GetModuleHandleExW(_In_ DWORD dwFlags, _In_opt_ LPCWSTR lpModuleName, _Out_ HMODULE *phModule);
 
 #ifdef UNICODE
-#define GetModuleHandleEx  GetModuleHandleExW
+#define GetModuleHandleEx GetModuleHandleExW
 #else
-#define GetModuleHandleEx  GetModuleHandleExA
+#define GetModuleHandleEx GetModuleHandleExA
 #endif // !UNICODE
-
 
     BOOL WINAPI SetEnvironmentVariableA(LPCSTR lpName, LPCSTR lpValue);
     BOOL WINAPI SetEnvironmentVariableW(LPCWSTR lpName, LPCWSTR lpValue);

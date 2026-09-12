@@ -1,0 +1,170 @@
+SwinX License
+===============================================================================
+
+SwinX is a Windows API compatibility layer that runs on Linux and macOS. Its
+goal is to help projects developed for the Windows platform achieve cross
+-platform support; the near-term goal is primarily to support cross-platform
+development for the open-source soui4 project.
+
+Free for non-commercial use; commercial use is paid, and the fee is set by
+contacting the author.
+
+Please comply with the following terms when using SwinX:
+
+1. Third-party code terms. This software contains third-party code, including
+   components licensed under GNU LGPL-2.1. The copyright ownership and terms of
+   use of this code are set out in "Appendix 1: Third-Party Code List" of this
+   file. While using this software you must also comply with all of the terms of
+   the corresponding third-party licenses; third-party code is not converted to
+   this software's commercial license by virtue of this software being
+   commercially licensed.
+2. Other terms to be determined.
+
+setoutsoft
+
+
+===============================================================================
+Appendix 1: Third-Party Code List
+===============================================================================
+
+This software consists of both proprietary code and third-party code.
+Third-party code falls into two categories:
+
+    Category A    Built-in Wine-derived source code, located in the src/ and
+                  include/ directories, licensed under LGPL-2.1-or-later;
+    Category B    Built-in third-party open-source libraries, located in the
+                  thirdparty/ directory, each licensed under its original
+                  license.
+
+When purchasing a commercial license please note in particular: Category A code
+and the LGPL components in Category B are NOT converted by a commercial license;
+they always remain licensed under their respective open-source licenses, subject
+to the conditions below.
+
+
+--------------------------------------------------------------------------------
+Category A: Wine-derived source code (LGPL-2.1-or-later)
+--------------------------------------------------------------------------------
+
+The following files are taken from the Wine project
+(https://www.winehq.org/). The original copyright and license notices are
+retained in the headers of the files, licensed under the GNU Lesser General
+Public License version 2.1 or any later version:
+
+    #   File                                    Lines   Copyright holder
+  ---  --------------------------------------  ------  ----------------------
+    1  include/winerror.h                       3954   the Wine project
+    2  src/cmnctl32/listbox.cpp                 3024   1996 Alexandre Julliard
+                                                        2005 Frank Richter
+    3  src/cursoricon.cpp                       2015   1995 Alexandre Julliard / 1996 Martin Von Loewis
+                                                        / 1997 Alex Korobka / 1998 Turchanov Sergey
+                                                        / 2007 Henri Verbeet / 2009 Vincent Povirk
+                                                        (CodeWeavers) / 2016 Dmitry Timoshkov
+    4  src/safearray.cpp                        1696   1999 Sylvain St-Germain / 2002-2003 Marcus Meissner
+                                                        / 2003 Jon Griffiths
+    5  src/profile.cpp                          1534   1993 Miguel de Icaza / 1996 Alexandre Julliard
+    6  src/uitools.cpp                          1442   1997 Dimitrie O. Paun / 1997 Bertho A. Stultiens
+    7  src/malloc_impl.cpp                       461   1997 Marcus Meissner
+                                                        (only the IMalloc allocator and CoTaskMem*
+                                                        section of the file, lines 48-461)
+    8  src/list.h                                217   2002 Alexandre Julliard
+    9  src/cmnctl32/heap.h                        59   2006 Jacek Caban (CodeWeavers)
+                                                        / 2013, 2018 Michael Stefaniuc
+  ---  --------------------------------------  ------  ------
+       Total                                   14402
+
+Notes on this batch of code (corresponding to the requirements of LGPL-2.1
+Sections 2 and 6):
+
+  (1) Statement of modifications. The files above are all modified versions of
+      the original Wine code. The modifications were made by Qicheng Software
+      and consist of cross-platform adaptation (platform abstraction integration,
+      rendering backend adaptation, and fixes made to pass the SwinX unit
+      tests), without changing the externally exposed API semantics of each file.
+      This list itself serves as the statement of modifications made to this
+      batch of files; the last modification time of each file is as follows:
+      items 1 to 7 of the table above were modified on 2026-09-12, item 8 on
+      2024-11-28, and item 9 on 2025-02-02; earlier modification records can be
+      found in the repository commit history.
+
+  (2) Source code availability. The files above are distributed as readable
+      source code with the SwinX source package; there is no part included in
+      binary-only form. If you obtained SwinX in binary form, you may request the
+      complete source code of the corresponding version from the author through
+      the purchase channel; the author will provide access via a source package
+      or a public repository.
+
+  (3) Authority unchanged and replaceability. The files above remain licensed
+      under LGPL-2.1-or-later; the rest of this software is not relicensed by
+      virtue of referencing these files. LGPL-2.1 permits this batch of code to
+      be used in proprietary programs provided that: the original copyright and
+      license notices are retained, the files are marked as modified, and the
+      user can replace these files with a modified version (relinking right).
+      SwinX keeps this batch of code as separate source files and does not inline
+      or merge it into other files, in order to satisfy the replaceability
+      requirement.
+
+  (4) Full license text. The full text of LGPL-2.1 is provided in
+      "Appendix 2".
+
+
+--------------------------------------------------------------------------------
+Category B: Third-party libraries in the thirdparty/ directory
+--------------------------------------------------------------------------------
+
+    #   Component             License                                  License file
+  ---  -------------------  -----------------------------------------  ------------------------------------------
+    1  zlib                  zlib License                               thirdparty/zlib/LICENSE
+    2  libpng                libpng License                             thirdparty/libpng/LICENSE
+    3  pixman                MIT                                        thirdparty/pixman/COPYING
+    4  brotli                MIT                                        thirdparty/brotli/LICENSE
+    5  freetype              FTL or GPL-2.0+ (this project uses FTL)    thirdparty/freetype/LICENSE.TXT
+    6  expat                 MIT                                        thirdparty/expat/COPYING
+    7  fontconfig            MIT-like permissive license                thirdparty/fontconfig/COPYING
+    8  cairo                 LGPL-2.1 or MPL-1.1 (this project uses     thirdparty/cairo/COPYING-LGPL-2.1
+                             LGPL-2.1)                                  thirdparty/cairo/COPYING-MPL-1.1
+    9  D-Bus 1.14.10         AFL-2.1 or GPL-2.0+ (this project uses     thirdparty/dbus-1.14.10/COPYING
+                             AFL-2.1)
+   10  libxcb / xcb          MIT / X11                                  (see header declarations in each source file)
+   11  xcb-util family       MIT / X11                                  (see header declarations in each source file)
+   12  xcb-imdkit            LGPL-2.1-only                              thirdparty/xcb-imdkit/LICENSES/
+                                                                        LGPL-2.1-only.txt
+   13  xkbcommon             MIT / X11                                  thirdparty/xkbcommon/LICENSE
+
+The two LGPL components in the table above require particular attention:
+
+    * cairo        -- dual-licensed (LGPL-2.1 or MPL-1.1); this project uses it
+                      under LGPL-2.1;
+    * xcb-imdkit    -- sole LGPL-2.1-only license.
+
+These two components likewise remain in the form of "replaceable libraries":
+cairo and xcb-imdkit are both compiled as independent library targets (see the
+independent add_subdirectory entries in thirdparty/CMakeLists.txt and
+linux.cmake) and are not compiled together with SwinX's own code; users may
+replace them with their own modified and recompiled versions.
+
+Items 5 and 9 in the table above are dual-licensed components. This project has
+chosen the more permissive branch among the two (FTL, AFL-2.1) and does not use
+their GPL branch.
+
+
+--------------------------------------------------------------------------------
+Appendix 2: Locations of the Full License Text
+--------------------------------------------------------------------------------
+
+    * Full text of LGPL-2.1:
+        thirdparty/cairo/COPYING-LGPL-2.1
+        thirdparty/xcb-imdkit/LICENSES/LGPL-2.1-only.txt
+    * Full text of MPL-1.1:
+        thirdparty/cairo/COPYING-MPL-1.1
+    * Full texts of the licenses of all other components:
+        see the paths shown in the "License file" column of the Category B
+        table in Appendix 1.
+
+This list is provided solely to disclose the copyright and licensing status of
+third-party code and does not constitute a modification of the licensing terms
+of this software's proprietary parts. The author reserves the right to interpret
+and revise this agreement; the latest version shall be governed by this file.
+
+
+setoutsoft

@@ -23,7 +23,7 @@
 #include <windows.h>
 #include <algorithm>
 #include "heap.h"
-#include "../tostring.hpp"
+#include "../tostring.h"
 #include "../debug.h"
 #define kLogTag "listbox"
 
@@ -141,7 +141,7 @@ static BOOL resize_storage(LB_DESCR *descr, UINT items_size)
         descr->items_size = items_size;
     }
 
-    if ((descr->style & LBS_NODATA) && descr->u.nodata_items && items_size > descr->nb_items)
+    if ((descr->style & LBS_NODATA) && descr->u.nodata_items && (INT)items_size > descr->nb_items)
     {
         memset(descr->u.nodata_items + descr->nb_items, 0, (items_size - descr->nb_items) * get_sizeof_item(descr));
     }
@@ -184,7 +184,7 @@ static void set_item_height(LB_DESCR *descr, UINT index, UINT height)
 static BOOL is_item_selected(const LB_DESCR *descr, UINT index)
 {
     if (!(descr->style & (LBS_MULTIPLESEL | LBS_EXTENDEDSEL)))
-        return index == descr->selected_item;
+        return (INT)index == descr->selected_item;
     if (descr->style & LBS_NODATA)
         return descr->u.nodata_items[index];
     else
@@ -210,7 +210,7 @@ static void insert_item_data(LB_DESCR *descr, UINT index)
     if (!descr->u.items)
         return;
 
-    if (index < descr->nb_items)
+    if ((INT)index < descr->nb_items)
         memmove(p + size, p, (descr->nb_items - index) * size);
 }
 
@@ -222,7 +222,7 @@ static void remove_item_data(LB_DESCR *descr, UINT index)
     if (!descr->u.items)
         return;
 
-    if (index < descr->nb_items)
+    if ((INT)index < descr->nb_items)
         memmove(p, p + size, (descr->nb_items - index) * size);
 }
 
@@ -388,6 +388,7 @@ static LRESULT LISTBOX_SetTopItem(LB_DESCR *descr, INT index, BOOL scroll)
     if (scroll)
     {
         INT dx = 0, dy = 0;
+        (void)dx;
         if (descr->style & LBS_MULTICOLUMN)
             dx = (descr->top_item - index) / descr->page_size * descr->column_width;
         else if (descr->style & LBS_OWNERDRAWVARIABLE)
@@ -598,7 +599,7 @@ static void LISTBOX_PaintItem(LB_DESCR *descr, HDC hdc, const RECT *rect, INT in
     BOOL selected = FALSE, focused;
     char *item_str = NULL;
 
-    if (index < descr->nb_items)
+    if ((INT)index < descr->nb_items)
     {
         item_str = get_item_string(descr, index);
         selected = is_item_selected(descr, index);
@@ -1844,11 +1845,11 @@ static LRESULT LISTBOX_SetCount(LB_DESCR *descr, UINT count)
         if (count < orig_num)
         {
             descr->anchor_item = std::min(descr->anchor_item, (INT)count - 1);
-            if (descr->selected_item >= count)
+            if (descr->selected_item >= (INT)count)
                 descr->selected_item = -1;
 
             /* If we removed the scrollbar, reset the top of the list */
-            if (count <= descr->page_size && orig_num > descr->page_size)
+            if ((INT)count <= descr->page_size && (INT)orig_num > descr->page_size)
                 LISTBOX_SetTopItem(descr, 0, TRUE);
 
             descr->focus_item = std::min(descr->focus_item, (INT)count - 1);
@@ -1864,86 +1865,6 @@ static LRESULT LISTBOX_SetCount(LB_DESCR *descr, UINT count)
     InvalidateRect(descr->self, NULL, TRUE);
     return LB_OKAY;
 }
-
-///***********************************************************************
-// *           LISTBOX_Directory
-// */
-// static LRESULT LISTBOX_Directory( LB_DESCR *descr, UINT attrib,
-//                                  LPCSTR filespec, BOOL long_names )
-//{
-//    HANDLE handle;
-//    LRESULT ret = LB_OKAY;
-//    WIN32_FIND_DATAW entry;
-//    int pos;
-//    LRESULT maxinsert = LB_ERR;
-//
-//    /* don't scan directory if we just want drives exclusively */
-//    if (attrib != (DDL_DRIVES | DDL_EXCLUSIVE)) {
-//        /* scan directory */
-//        if ((handle = FindFirstFileW(filespec, &entry)) == INVALID_HANDLE_VALUE)
-//        {
-//	     int le = GetLastError();
-//            if ((le != ERROR_NO_MORE_FILES) && (le != ERROR_FILE_NOT_FOUND)) return LB_ERR;
-//        }
-//        else
-//        {
-//            do
-//            {
-//                char buffer[270];
-//                if (entry.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
-//                {
-//                    if (!(attrib & DDL_DIRECTORY) ||
-//                        !lstrcmpW( entry.cFileName, L"." )) continue;
-//                    buffer[0] = '[';
-//                    if (!long_names && entry.cAlternateFileName[0])
-//                        lstrcpyW( buffer + 1, entry.cAlternateFileName );
-//                    else
-//                        lstrcpyW( buffer + 1, entry.cFileName );
-//                    lstrcatW(buffer, L"]");
-//                }
-//                else  /* not a directory */
-//                {
-//#define ATTRIBS (FILE_ATTRIBUTE_READONLY | FILE_ATTRIBUTE_HIDDEN | \
-//                 FILE_ATTRIBUTE_SYSTEM | FILE_ATTRIBUTE_ARCHIVE)
-//
-//                    if ((attrib & DDL_EXCLUSIVE) &&
-//                        ((attrib & ATTRIBS) != (entry.dwFileAttributes & ATTRIBS)))
-//                        continue;
-//#undef ATTRIBS
-//                    if (!long_names && entry.cAlternateFileName[0])
-//                        lstrcpyW( buffer, entry.cAlternateFileName );
-//                    else
-//                        lstrcpyW( buffer, entry.cFileName );
-//                }
-//                if (!long_names) CharLowerW( buffer );
-//                pos = LISTBOX_FindFileStrPos( descr, buffer );
-//                if ((ret = LISTBOX_InsertString( descr, pos, buffer )) < 0)
-//                    break;
-//                if (ret <= maxinsert) maxinsert++; else maxinsert = ret;
-//            } while (FindNextFileW( handle, &entry ));
-//            FindClose( handle );
-//        }
-//    }
-//    if (ret >= 0)
-//    {
-//        ret = maxinsert;
-//
-//        /* scan drives */
-//        if (attrib & DDL_DRIVES)
-//        {
-//            char buffer[] = L"[-a-]";
-//            char root[] = L"A:\\";
-//            int drive;
-//            for (drive = 0; drive < 26; drive++, buffer[2]++, root[0]++)
-//            {
-//                if (GetDriveTypeW(root) <= DRIVE_NO_ROOT_DIR) continue;
-//                if ((ret = LISTBOX_InsertString( descr, -1, buffer )) < 0)
-//                    break;
-//            }
-//        }
-//    }
-//    return ret;
-//}
 
 /***********************************************************************
  *           LISTBOX_HandleVScroll
@@ -2702,7 +2623,7 @@ static LRESULT CALLBACK LISTBOX_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, L
 
         if (msg == WM_CREATE)
         {
-            CREATESTRUCT *lpcs = (CREATESTRUCT *)lParam;
+            // CREATESTRUCT *lpcs = (CREATESTRUCT *)lParam;
             // if (lpcs->style & LBS_COMBOBOX) lphc = lpcs->lpCreateParams;
             if (!LISTBOX_Create(hwnd))
                 return -1;
@@ -3058,8 +2979,8 @@ static LRESULT CALLBACK LISTBOX_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, L
     case WM_CHAR:
         return LISTBOX_HandleChar(descr, wParam);
 
-    // case WM_SYSTIMER:
-    //    return LISTBOX_HandleSystemTimer( descr );
+    case WM_TIMER:
+        return LISTBOX_HandleSystemTimer(descr);
     case WM_ERASEBKGND:
     {
         RECT rect;
@@ -3076,11 +2997,6 @@ static LRESULT CALLBACK LISTBOX_WindowProc(HWND hwnd, UINT msg, WPARAM wParam, L
         return 1;
     case WM_DROPFILES:
         return SendMessageW(descr->owner, msg, wParam, lParam);
-
-        // case WM_NCDESTROY:
-        //    if( lphc && (lphc->dwStyle & CBS_DROPDOWNLIST) != CBS_SIMPLE )
-        //        lphc->hWndLBox = 0;
-        //    break;
 
     default:
         if ((msg >= WM_USER) && (msg < 0xc000))

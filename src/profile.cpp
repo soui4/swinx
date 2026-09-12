@@ -20,7 +20,7 @@
  */
 #include <windows.h>
 #include <sys/time.h>
-#include "tostring.hpp"
+#include "tostring.h"
 #include "debug.h"
 #define kLogTag "profile"
 
@@ -104,7 +104,7 @@ static void PROFILE_CopyEntry(LPWSTR buffer, LPCWSTR value, int len)
     }
 
     lstrcpynW(buffer, value, len);
-    if (quote && (len >= lstrlenW(value)))
+    if (quote && (len >= (int)lstrlenW(value)))
         buffer[lstrlenW(buffer) - 1] = '\0';
 }
 
@@ -274,17 +274,17 @@ static inline BOOL PROFILE_isspaceW(WCHAR c)
 
 static inline ENCODING PROFILE_DetectTextEncoding(const void *buffer, int *len)
 {
-    if (*len >= sizeof(bom_utf8) && !memcmp(buffer, bom_utf8, sizeof(bom_utf8)))
+    if (*len >= (int)sizeof(bom_utf8) && !memcmp(buffer, bom_utf8, sizeof(bom_utf8)))
     {
         *len = sizeof(bom_utf8);
         return ENCODING_UTF8;
     }
-    if (*len >= sizeof(bom_utfle) && !memcmp(buffer, bom_utfle, sizeof(bom_utfle)))
+    if (*len >= (int)sizeof(bom_utfle) && !memcmp(buffer, bom_utfle, sizeof(bom_utfle)))
     {
         *len = sizeof(bom_utfle);
         return ENCODING_UTF16LE;
     }
-    if (*len >= sizeof(bom_utfbe) && !memcmp(buffer, bom_utfbe, sizeof(bom_utfbe)))
+    if (*len >= (int)sizeof(bom_utfbe) && !memcmp(buffer, bom_utfbe, sizeof(bom_utfbe)))
     {
         *len = sizeof(bom_utfbe);
         return ENCODING_UTF16BE;
@@ -748,11 +748,12 @@ static BOOL PROFILE_Open(LPCWSTR filename, BOOL write_access)
         filename = L"win.ini";
 
     GetFullPathNameW(filename, ARRAYSIZE(buffer), buffer, NULL);
-    hFile = CreateFileW(buffer, GENERIC_READ | (write_access ? GENERIC_WRITE : 0), FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    // write path must create the file if it does not exist yet (OPEN_ALWAYS),
+    // matching Wine: Win32 WritePrivateProfile* creates missing ini files
+    hFile = CreateFileW(buffer, GENERIC_READ | (write_access ? GENERIC_WRITE : 0), FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, write_access ? OPEN_ALWAYS : OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 
     if (hFile == INVALID_HANDLE_VALUE)
     {
-        //        SLOG_STMW() << "Error " << GetLastError() << " opening file " << filename;
         return FALSE;
     }
 
@@ -893,36 +894,6 @@ static INT PROFILE_GetSection(const WCHAR *filename, LPCWSTR section_name, LPWST
     LeaveCriticalSection(&PROFILE_CritSect);
 
     return 0;
-}
-
-static BOOL PROFILE_DeleteSection(const WCHAR *filename, const WCHAR *name)
-{
-    PROFILESECTION **section;
-
-    EnterCriticalSection(&PROFILE_CritSect);
-
-    if (!PROFILE_Open(filename, TRUE))
-    {
-        LeaveCriticalSection(&PROFILE_CritSect);
-        return FALSE;
-    }
-
-    for (section = &CurProfile->section; *section; section = &(*section)->next)
-    {
-        if (!wcsicmp((*section)->name, name))
-        {
-            PROFILESECTION *to_del = *section;
-            *section = to_del->next;
-            to_del->next = NULL;
-            PROFILE_Free(to_del);
-            CurProfile->changed = TRUE;
-            PROFILE_FlushFile();
-            break;
-        }
-    }
-
-    LeaveCriticalSection(&PROFILE_CritSect);
-    return TRUE;
 }
 
 /* See GetPrivateProfileSectionNamesA for documentation */
@@ -1205,9 +1176,32 @@ INT WINAPI GetPrivateProfileSectionA(LPCSTR section, LPSTR buffer, DWORD len, LP
     {
         WCHAR *buffer_tmp = new wchar_t[len];
         int ret = GetPrivateProfileSectionW(section_tmp.c_str(), buffer_tmp, len, filname_tmp.c_str());
-        if (ret)
+        if (ret > 0)
         {
-            ret = WideCharToMultiByte(CP_UTF8, 0, buffer_tmp, ret, buffer, len, NULL, NULL);
+            /* buffer_tmp holds NUL-separated "key=value" entries, double-NUL
+               terminated; tostring_filter converts such multi-strings with
+               the embedded NULs intact (str itself ends with one NUL) */
+            std::string str;
+            if (tostring_filter(buffer_tmp, str))
+            {
+                ret = (int)str.size();
+                if (ret > (int)len - 1)
+                    ret = (int)len - 1;
+                if (ret > 0)
+                    memcpy(buffer, str.data(), ret);
+            }
+            else
+            {
+                ret = 0;
+            }
+        }
+        /* Win32: the buffer is NUL-terminated (double NUL for an empty or
+           missing section) even when nothing was copied */
+        if (len > 0)
+        {
+            buffer[ret < (int)len ? ret : (int)len - 1] = '\0';
+            if (ret + 1 < (int)len)
+                buffer[ret + 1] = '\0';
         }
         delete[] buffer_tmp;
         return ret;
@@ -1389,9 +1383,30 @@ DWORD WINAPI GetPrivateProfileSectionNamesA(LPSTR buffer, DWORD size, LPCSTR fil
     {
         wchar_t *tmp = new wchar_t[size];
         DWORD ret = GetPrivateProfileSectionNamesW(tmp, size, filename_tmp.c_str());
-        if (ret)
+        if (ret > 0)
         {
-            ret = WideCharToMultiByte(CP_UTF8, 0, tmp, ret, buffer, size, NULL, NULL);
+            /* tmp holds NUL-separated section names, double-NUL terminated;
+               tostring_filter converts such multi-strings with the embedded
+               NULs intact (str itself ends with one NUL) */
+            std::string str;
+            if (tostring_filter(tmp, str))
+            {
+                ret = (DWORD)str.size();
+                if (ret > size - 1)
+                    ret = size - 1;
+                if (ret > 0)
+                    memcpy(buffer, str.data(), ret);
+            }
+            else
+            {
+                ret = 0;
+            }
+        }
+        if (size > 0)
+        {
+            buffer[ret < size ? ret : size - 1] = '\0';
+            if (ret + 1 < size)
+                buffer[ret + 1] = '\0';
         }
         delete[] tmp;
         return ret;
@@ -1440,7 +1455,7 @@ BOOL WINAPI GetPrivateProfileStructW(LPCWSTR section, LPCWSTR key, LPVOID buf, U
     if (!(buffer = (WCHAR *)HeapAlloc(GetProcessHeap(), 0, (2 * len + 3) * sizeof(WCHAR))))
         return FALSE;
 
-    if (GetPrivateProfileStringW(section, key, NULL, buffer, 2 * len + 3, filename) != 2 * len + 2)
+    if (GetPrivateProfileStringW(section, key, NULL, buffer, 2 * len + 3, filename) != (int)(2 * len + 2))
         goto done;
 
     for (p = buffer; len; p += 2, len--)

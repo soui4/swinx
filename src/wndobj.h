@@ -29,11 +29,11 @@ struct HoverInfo
 
 struct ScrollBar : SCROLLINFO {
     BuiltinImage::ImgState nState;//normal,hover,push, disable
-    UINT iHitTest;
+    int iHitTest;
     BYTE byFade;
     BOOL bDraging;
     UINT uArrowFlags;
-    ScrollBar() :nState(BuiltinImage::St_Normal), byFade(0xff), bDraging(FALSE), uArrowFlags(0), iHitTest(-1) {
+    ScrollBar() :nState(BuiltinImage::St_Normal), iHitTest(-1), byFade(0xff), bDraging(FALSE), uArrowFlags(0) {
         cbSize = sizeof(SCROLLINFO);
         nPos = 0;
         nMin = 0;
@@ -96,11 +96,11 @@ public:
     HIMC      hIMC;
     HMENU hSysMenu;     /* system menu */
     void * pPrivData;   /* private data, used by sconnection */
-    int cbWndExtra;      /* class cbWndExtra at window creation */
+    uint32_t cbWndExtra;      /* class cbWndExtra at window creation */
     char* extra;
 
-    _Window(size_t extraLen);
-    ~_Window();
+    _Window(uint32_t extraLen);
+    virtual ~_Window();
 
     LONG AddRef() {
         return InterlockedIncrement(&cRef);
@@ -153,6 +153,8 @@ public:
     }
 
     void operator = (const WndObj& src);
+
+    void reset();
 private:
     WndObj(_Window *pWnd);
 

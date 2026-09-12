@@ -23,6 +23,7 @@
 #include <oaidl.h>
 #include <ole2.h>
 #include <oleauto.h>
+#include <oleacc.h>
 #include <dlfcn.h>
 #include <tchar.h>
 #include <strapi.h>
@@ -35,6 +36,7 @@
 #include <richedit.h>
 #include <multimon.h>
 #include <shellapi.h>
+#include <logdef.h>
 #ifndef __OBJC__
 #include <resapi.h>
 #endif //__OBJC__

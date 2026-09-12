@@ -136,6 +136,13 @@ class SConnection : public SConnBase{
     HMONITOR MonitorFromWindow(HWND hWnd, DWORD dwFlags);
     HMONITOR MonitorFromPoint(POINT pt,  DWORD dwFlags );
     HMONITOR MonitorFromRect(LPCRECT lprc, DWORD dwFlags);
+    // 多显示器接口（iOS 单屏退化实现）
+    int GetMonitorCount() const;
+    HMONITOR GetMonitor(int index) const;
+    HMONITOR GetPrimaryMonitor() const;
+    bool GetMonitorRect(HMONITOR hMonitor, RECT *prc) const;
+    bool GetMonitorWorkRect(HMONITOR hMonitor, RECT *prc) const;
+    bool IsPrimaryMonitor(HMONITOR hMonitor) const;
     int GetScreenWidth(HMONITOR hMonitor) const;
     int GetScreenHeight(HMONITOR hMonitor) const;
     HWND GetScreenWindow() const;
@@ -195,7 +202,7 @@ class SConnection : public SConnBase{
     void SetCaretBlinkTime(UINT blinkTime);
     UINT GetCaretBlinkTime() const ;
 
-    void GetWorkArea(HMONITOR hMonitor, RECT* prc);
+    void GetWorkArea(HMONITOR hMonitor, RECT* prc) const;
 public:
     SClipboard* getClipboard() ;
 

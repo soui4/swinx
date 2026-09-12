@@ -4,7 +4,7 @@
 
 ATOM CNativeWnd::RegisterCls(LPCSTR clsName)
 {
-    WNDCLASSEXA wcex = { sizeof(WNDCLASSEXA), 0 };
+    WNDCLASSEXA wcex = {};
     wcex.cbSize = sizeof(WNDCLASSEXA);
     wcex.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;
     wcex.lpfnWndProc = StartWindowProc;
@@ -83,7 +83,7 @@ LRESULT CNativeWnd::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPara
     return lRes;
 }
 
-BOOL CNativeWnd::ProcessWindowMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, LRESULT &lResult, DWORD dwMsgMapID)
+BOOL CNativeWnd::ProcessWindowMessage(HWND hWnd __attribute__((unused)), UINT uMsg __attribute__((unused)), WPARAM wParam __attribute__((unused)), LPARAM lParam __attribute__((unused)), LRESULT &lResult __attribute__((unused)), DWORD dwMsgMapID __attribute__((unused)))
 {
     return FALSE;
 }

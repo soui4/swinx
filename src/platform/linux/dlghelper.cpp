@@ -451,12 +451,11 @@ private:
         char window_handle[32];
         snprintf(window_handle, sizeof(window_handle), "x11:%lx", (unsigned long)m_parent_window);
 
-        //SLOG_STMI() << "Parent window handle: " << window_handle;
         return std::string(window_handle);
     }
 
     DialogResult try_kde_dialog(const std::vector<FilePickerFilter>& filters,
-                                bool allow_multiple, bool directory, bool save_dialog,
+                                bool allow_multiple __attribute__((unused)), bool directory, bool save_dialog,
                                 const std::string& title, const std::string& initial_path) {
         // First check if kdialog service is available
         if (!is_kde_dialog_available()) {
@@ -690,7 +689,7 @@ private:
 
     DialogResult try_gnome_dialog(const std::vector<FilePickerFilter>& filters,
                                   bool allow_multiple, bool directory, bool save_dialog,
-                                  const std::string& title, const std::string& initial_path) {
+                                  const std::string& title, const std::string& initial_path __attribute__((unused))) {
         SLOG_STMI() << "try_gnome_dialog: save_dialog=" << save_dialog << ", directory=" << directory
                    << ", allow_multiple=" << allow_multiple << ", title=" << title.c_str();
 
@@ -699,7 +698,6 @@ private:
         char request_token[64];
         snprintf(request_token, sizeof(request_token), "dlghelper_%d_%ld", ++request_counter, time(nullptr));
 
-        //SLOG_STMI() << "Portal request token: " << request_token;
 
         // GNOME file dialog via D-Bus (org.freedesktop.portal.FileChooser)
         const char* method_name = save_dialog ? "SaveFile" : "OpenFile";
@@ -765,7 +763,7 @@ private:
         return try_gnome_dialog_async(msg, request_token);
     }
 
-    DialogResult try_gnome_dialog_async(DBusMessage* msg, const char* request_token) {
+    DialogResult try_gnome_dialog_async(DBusMessage* msg, const char* request_token __attribute__((unused))) {
         // Send the request (this returns immediately with a request path)
         DBusMessage* reply = dbus_connection_send_with_reply_and_block(connection, msg, 5000, &error);
         dbus_message_unref(msg);
@@ -786,7 +784,6 @@ private:
             return DialogResult({}, false);  // Dialog failed to show
         }
 
-        //SLOG_STMI() << "Got request path: " << returned_request_path;
         dbus_message_unref(reply);
 
         // Now wait for the Response signal on the request object
@@ -794,7 +791,6 @@ private:
     }
 
     DialogResult wait_for_portal_response(const char* request_path) {
-        //SLOG_STMI() << "Waiting for Portal response on: " << request_path;
 
         // Add match rule for the Response signal
         char match_rule[512];
@@ -812,7 +808,6 @@ private:
             return DialogResult({}, false);  // Dialog failed to show
         }
 
-        //SLOG_STMI() << "Added match rule: " << match_rule;
 
         // Wait for the Response signal with timeout
         const int timeout_ms = 300000; // 5 minutes
@@ -1289,7 +1284,7 @@ private:
     // Deepin/UOS portal file dialog using filter-based signal handling (mirrors main.cpp)
     DialogResult try_deepin_dialog(const std::vector<FilePickerFilter>& filters,
                                    bool allow_multiple, bool directory, bool save_dialog,
-                                   const std::string& title, const std::string& initial_path) {
+                                   const std::string& title, const std::string& initial_path __attribute__((unused))) {
         SLOG_STMI() << "try_deepin_dialog: title=" << title.c_str();
 
         if (!connection) {

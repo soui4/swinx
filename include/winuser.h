@@ -298,77 +298,81 @@ extern "C"
 #define WM_PRINT       0x0317
 #define WM_PRINTCLIENT 0x0318
 
-#define WM_MSG_W2A   0x0330 //
-#define WM_INTERNAL  0x0350 // internal message
+#define WM_MSG_W2A  0x0330 //
+#define WM_INTERNAL 0x0350 // internal message
 
-#define WM_SWINX_MSG_FIRST 0x1000 //swinx message start
-#define WM_KEYBOARD_HEIGHT (WM_SWINX_MSG_FIRST+0)   //
+#define WM_SWINX_MSG_FIRST 0x1000                   // swinx message start
+#define WM_KEYBOARD_HEIGHT (WM_SWINX_MSG_FIRST + 0) //
 
 #define WM_REG_FIRST 0x2000 // registered message start
 #define WM_APP       0x8000
 
-#define QS_KEY            0x0001                                                        //队列中WM_KEYUP、WM_KEYDOWN、WM_SYSKEYUP或WM_SYSKEYDOWN消息。
-#define QS_MOUSEMOVE      0x0002                                                        // 	队列中WM_MOUSEMOVE消息。
-#define QS_MOUSEBUTTON    0x0004                                                        // 	鼠标按钮消息 (WM_LBUTTONUP、 WM_RBUTTONDOWN等) 。
-#define QS_POSTMESSAGE    0x0008                                                        // 	队列中) (此处列出的消息以外的消息。 有关详细信息，请参阅 PostMessage。无论是否在筛选消息，调用 GetMessage 或 PeekMessage 时，此值都将被清除。
-#define QS_TIMER          0x0010                                                        // 	队列中WM_TIMER消息。
-#define QS_PAINT          0x0020                                                        // 	队列中WM_PAINT消息。
-#define QS_SENDMESSAGE    0x0040                                                        // 	另一个线程或应用程序发送的消息在队列中。 有关详细信息，请参阅 SendMessage。
-#define QS_HOTKEY         0x0080                                                        // 	队列中WM_HOTKEY消息。
-#define QS_ALLPOSTMESSAGE 0x0100                                                        // 	队列中) (此处列出的消息以外的消息。 有关详细信息，请参阅 PostMessage。调用 GetMessage 或 PeekMessage 而不筛选消息时，将清除此值。
-#define QS_RAWINPUT       0x0400                                                        // 	Windows XP 及更新版本：原始输入消息位于队列中。 有关详细信息，请参阅 原始输入。
+#define QS_KEY            0x0001 //队列中WM_KEYUP、WM_KEYDOWN、WM_SYSKEYUP或WM_SYSKEYDOWN消息。
+#define QS_MOUSEMOVE      0x0002 // 	队列中WM_MOUSEMOVE消息。
+#define QS_MOUSEBUTTON    0x0004 // 	鼠标按钮消息 (WM_LBUTTONUP、 WM_RBUTTONDOWN等) 。
+#define QS_POSTMESSAGE    0x0008 // 	队列中) (此处列出的消息以外的消息。 有关详细信息，请参阅 PostMessage。无论是否在筛选消息，调用 GetMessage 或 PeekMessage 时，此值都将被清除。
+#define QS_TIMER          0x0010 // 	队列中WM_TIMER消息。
+#define QS_PAINT          0x0020 // 	队列中WM_PAINT消息。
+#define QS_SENDMESSAGE    0x0040 // 	另一个线程或应用程序发送的消息在队列中。 有关详细信息，请参阅 SendMessage。
+#define QS_HOTKEY         0x0080 // 	队列中WM_HOTKEY消息。
+#define QS_ALLPOSTMESSAGE 0x0100 // 	队列中) (此处列出的消息以外的消息。 有关详细信息，请参阅 PostMessage。调用 GetMessage 或 PeekMessage 而不筛选消息时，将清除此值。
+#define QS_RAWINPUT       0x0400 // 	Windows XP 及更新版本：原始输入消息位于队列中。 有关详细信息，请参阅 原始输入。
 
-#define RIDI_DEVICENAME      0x20000007
-#define RIDI_DEVICEINFO      0x2000000b
-#define RIDI_PREPARSEDDATA   0x20000005
+#define RIDI_DEVICENAME    0x20000007
+#define RIDI_DEVICEINFO    0x2000000b
+#define RIDI_PREPARSEDDATA 0x20000005
 
-typedef struct tagRID_DEVICE_INFO_MOUSE {
-    DWORD dwId;
-    DWORD dwNumberOfButtons;
-    DWORD dwSampleRate;
-    BOOL fHasHorizontalWheel;
-} RID_DEVICE_INFO_MOUSE, *PRID_DEVICE_INFO_MOUSE, *LPRID_DEVICE_INFO_MOUSE;
+    typedef struct tagRID_DEVICE_INFO_MOUSE
+    {
+        DWORD dwId;
+        DWORD dwNumberOfButtons;
+        DWORD dwSampleRate;
+        BOOL fHasHorizontalWheel;
+    } RID_DEVICE_INFO_MOUSE, *PRID_DEVICE_INFO_MOUSE, *LPRID_DEVICE_INFO_MOUSE;
 
-typedef struct tagRID_DEVICE_INFO_KEYBOARD {
-    DWORD dwType;
-    DWORD dwSubType;
-    DWORD dwKeyboardMode;
-    DWORD dwNumberOfFunctionKeys;
-    DWORD dwNumberOfIndicators;
-    DWORD dwNumberOfKeysTotal;
-} RID_DEVICE_INFO_KEYBOARD, *PRID_DEVICE_INFO_KEYBOARD, *LPRID_DEVICE_INFO_KEYBOARD;
+    typedef struct tagRID_DEVICE_INFO_KEYBOARD
+    {
+        DWORD dwType;
+        DWORD dwSubType;
+        DWORD dwKeyboardMode;
+        DWORD dwNumberOfFunctionKeys;
+        DWORD dwNumberOfIndicators;
+        DWORD dwNumberOfKeysTotal;
+    } RID_DEVICE_INFO_KEYBOARD, *PRID_DEVICE_INFO_KEYBOARD, *LPRID_DEVICE_INFO_KEYBOARD;
 
-typedef struct tagRID_DEVICE_INFO_HID {
-    DWORD dwVendorId;
-    DWORD dwProductId;
-    DWORD dwVersionNumber;
-    USHORT usUsagePage;
-    USHORT usUsage;
-} RID_DEVICE_INFO_HID, *PRID_DEVICE_INFO_HID, *LPRID_DEVICE_INFO_HID;
+    typedef struct tagRID_DEVICE_INFO_HID
+    {
+        DWORD dwVendorId;
+        DWORD dwProductId;
+        DWORD dwVersionNumber;
+        USHORT usUsagePage;
+        USHORT usUsage;
+    } RID_DEVICE_INFO_HID, *PRID_DEVICE_INFO_HID, *LPRID_DEVICE_INFO_HID;
 
-typedef struct tagRID_DEVICE_INFO {
-    DWORD cbSize;
-    DWORD dwType;
-    union {
-        RID_DEVICE_INFO_MOUSE mouse;
-        RID_DEVICE_INFO_KEYBOARD keyboard;
-        RID_DEVICE_INFO_HID hid;
-    } DUMMYUNIONNAME;
-} RID_DEVICE_INFO, *PRID_DEVICE_INFO, *LPRID_DEVICE_INFO;
+    typedef struct tagRID_DEVICE_INFO
+    {
+        DWORD cbSize;
+        DWORD dwType;
+        union {
+            RID_DEVICE_INFO_MOUSE mouse;
+            RID_DEVICE_INFO_KEYBOARD keyboard;
+            RID_DEVICE_INFO_HID hid;
+        } DUMMYUNIONNAME;
+    } RID_DEVICE_INFO, *PRID_DEVICE_INFO, *LPRID_DEVICE_INFO;
 
 #define RIM_TYPEMOUSE    0
 #define RIM_TYPEKEYBOARD 1
 #define RIM_TYPEHID      2
 
-typedef HANDLE HRAWINPUT;
-typedef HRAWINPUT *PHRAWINPUT;
+    typedef HANDLE HRAWINPUT;
+    typedef HRAWINPUT *PHRAWINPUT;
 
-#define QS_TOUCH          0x0800                                                        // 	Windows 8及更新：触摸输入消息在队列中。 有关详细信息，请参阅 触摸输入。
-#define QS_POINTER        0x1000                                                        // 	Windows 8及更新：指针输入消息位于队列中。 有关详细信息，请参阅 指针输入。
-#define QS_MOUSE          (QS_MOUSEMOVE | QS_MOUSEBUTTON)                               // 	WM_LBUTTONUP、WM_RBUTTONDOWN等 (WM_MOUSEMOVE消息或鼠标按钮消息。
-#define QS_INPUT          (QS_MOUSE | QS_KEY | QS_RAWINPUT | QS_TOUCH | QS_POINTER)     //	输入消息位于队列中。
-#define QS_ALLEVENTS      (QS_INPUT | QS_POSTMESSAGE | QS_TIMER | QS_PAINT | QS_HOTKEY) // 	输入、 WM_TIMER、 WM_PAINT、 WM_HOTKEY或发布的消息在队列中。
-#define QS_ALLINPUT       (QS_INPUT | QS_POSTMESSAGE | QS_TIMER | QS_PAINT | QS_HOTKEY | QS_SENDMESSAGE)
+#define QS_TOUCH     0x0800                                                        // 	Windows 8及更新：触摸输入消息在队列中。 有关详细信息，请参阅 触摸输入。
+#define QS_POINTER   0x1000                                                        // 	Windows 8及更新：指针输入消息位于队列中。 有关详细信息，请参阅 指针输入。
+#define QS_MOUSE     (QS_MOUSEMOVE | QS_MOUSEBUTTON)                               // 	WM_LBUTTONUP、WM_RBUTTONDOWN等 (WM_MOUSEMOVE消息或鼠标按钮消息。
+#define QS_INPUT     (QS_MOUSE | QS_KEY | QS_RAWINPUT | QS_TOUCH | QS_POINTER)     //	输入消息位于队列中。
+#define QS_ALLEVENTS (QS_INPUT | QS_POSTMESSAGE | QS_TIMER | QS_PAINT | QS_HOTKEY) // 	输入、 WM_TIMER、 WM_PAINT、 WM_HOTKEY或发布的消息在队列中。
+#define QS_ALLINPUT  (QS_INPUT | QS_POSTMESSAGE | QS_TIMER | QS_PAINT | QS_HOTKEY | QS_SENDMESSAGE)
 
 /*
  * NOTE: All Message Numbers below 0x0400 are RESERVED.
@@ -1015,6 +1019,7 @@ typedef HRAWINPUT *PHRAWINPUT;
 #define MONITOR_DEFAULTTONULL    0x00000000
 #define MONITOR_DEFAULTTOPRIMARY 0x00000001
 #define MONITOR_DEFAULTTONEAREST 0x00000002
+#define MONITORINFOF_PRIMARY     0x00000001
 
     typedef struct tagMONITORINFO
     {
@@ -1099,6 +1104,21 @@ typedef HRAWINPUT *PHRAWINPUT;
  */
 #define EVENT_MIN 0x00000001
 #define EVENT_MAX 0x7FFFFFFF
+
+    /*
+     * WinEvent hooks（与 user32 的 SetWinEventHook/UnhookWinEvent 语义一致；
+     * 实现见 src/oleacc.cpp —— 无障碍事件基础设施与 MSAA 同处一地）
+     */
+    typedef HANDLE HWINEVENTHOOK;
+
+    typedef void(CALLBACK *WINEVENTPROC)(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd, LONG idObject, LONG idChild, DWORD idEventThread, DWORD dwmsEventTime);
+
+#define WINEVENT_OUTOFCONTEXT   0x0000 /* 回调经消息泵异步投递，与 user32 一致 */
+#define WINEVENT_SKIPOWNPROCESS 0x0002 /* 不收本进程产生的事件 */
+#define WINEVENT_SKIPOWNTHREAD  0x0001 /* 不收注册线程自身产生的事件 */
+
+    HWINEVENTHOOK WINAPI SetWinEventHook(DWORD eventMin, DWORD eventMax, HMODULE hmodWinEventProc, WINEVENTPROC pfnWinEventProc, DWORD idProcess, DWORD idThread, DWORD dwFlags);
+    BOOL WINAPI UnhookWinEvent(HWINEVENTHOOK hWinEventHook);
 
 #define WAIT_FAILED   ((DWORD)0xFFFFFFFF)
 #define WAIT_OBJECT_0 ((STATUS_WAIT_0) + 0)
@@ -1390,8 +1410,8 @@ typedef HRAWINPUT *PHRAWINPUT;
 #define SC_TASKLIST   0xF130
 #define SC_SCREENSAVE 0xF140
 #define SC_HOTKEY     0xF150
-
-#define MAX_PATH 1000
+#define SC_FULLSCREEN 0xF170
+#define MAX_PATH      1000
 
 #pragma pack(push, 1)
     typedef struct tagRGBQUAD
@@ -2018,16 +2038,13 @@ typedef HRAWINPUT *PHRAWINPUT;
     UINT WINAPI GetRawInputDeviceInfoA(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize);
     UINT WINAPI GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVOID pData, PUINT pcbSize);
 
-    typedef struct tagRAWINPUTDEVICELIST {
+    typedef struct tagRAWINPUTDEVICELIST
+    {
         HANDLE hDevice;
         DWORD dwType;
     } RAWINPUTDEVICELIST, *PRAWINPUTDEVICELIST;
 
-
-    UINT WINAPI GetRawInputDeviceList(
-            _Out_writes_opt_(*puiNumDevices) PRAWINPUTDEVICELIST pRawInputDeviceList,
-            _Inout_ PUINT puiNumDevices,
-            _In_ UINT cbSize);
+    UINT WINAPI GetRawInputDeviceList(_Out_writes_opt_(*puiNumDevices) PRAWINPUTDEVICELIST pRawInputDeviceList, _Inout_ PUINT puiNumDevices, _In_ UINT cbSize);
 
 #ifdef UNICODE
 #define GetRawInputDeviceInfo GetRawInputDeviceInfoW
@@ -2251,7 +2268,6 @@ typedef HRAWINPUT *PHRAWINPUT;
 #define GA_PARENT    1 // GetParent
 #define GA_ROOT      2 // GetAncestor (top level window)
 #define GA_ROOTOWNER 3 // root owner window (top level window)
-
 
 #ifdef __cplusplus
 }

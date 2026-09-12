@@ -231,6 +231,20 @@ SLogStream &SLogStream::operator<<(const void *t)
     return writePointer(t);
 }
 
+SLogStream &SLogStream::operator<<(const RECT &t)
+{
+    return writeFormat("{%d, %d, %d, %d}", t.left, t.top, t.right, t.bottom);
+}
+
+SLogStream &SLogStream::operator<<(const POINT &t)
+{
+    return writeFormat("{%d, %d}", t.x, t.y);
+}
+
+SLogStream &SLogStream::operator<<(const SIZE &t)
+{
+    return writeFormat("{%d, %d}", t.cx, t.cy);
+}
 ////////////////////////////////////////////////////////////////////////
 static SWinxLogCallback gs_LogFunc = NULL;
 static int gs_level = SLOG_INFO;
@@ -298,7 +312,7 @@ Log::~Log()
         OutputDebugStringA(buf);
 #endif
     }
-#endif//_DEBUG
+#endif //_DEBUG
 }
 
 SLogStream &Log::stream()

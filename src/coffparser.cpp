@@ -1,5 +1,5 @@
 ﻿#include "coffparser.h"
-#include "tostring.hpp"
+#include "tostring.h"
 #include "log.h"
 #define kLogTag "coffparser"
 
@@ -11,28 +11,6 @@ static void strtoup(std::wstring &str)
     {
         ch = towupper(ch);
     }
-}
-
-static void strtoup(std::string &str)
-{
-    for (auto &ch : str)
-    {
-        ch = toupper(ch);
-    }
-}
-
-static uint32_t read_u32(const uint8_t *p)
-{
-    uint32_t v = 0;
-    memcpy(&v, p, sizeof(v));
-    return v;
-}
-
-static const uint8_t *align_dword(const uint8_t *p)
-{
-    uintptr_t value = reinterpret_cast<uintptr_t>(p);
-    value = (value + 3) & ~static_cast<uintptr_t>(3);
-    return reinterpret_cast<const uint8_t *>(value);
 }
 
 static bool is_supported_coff_machine(uint16_t machine)
@@ -47,8 +25,7 @@ static bool is_coff_object_blob(const uint8_t *base, size_t size)
         return false;
 
     const COFF_FILE_HEADER *coffHeader = reinterpret_cast<const COFF_FILE_HEADER *>(base);
-    if (!is_supported_coff_machine(coffHeader->Machine) || coffHeader->NumberOfSections == 0 ||
-        coffHeader->NumberOfSections > 96)
+    if (!is_supported_coff_machine(coffHeader->Machine) || coffHeader->NumberOfSections == 0 || coffHeader->NumberOfSections > 96)
     {
         return false;
     }
@@ -248,10 +225,6 @@ BOOL WindResResourceParser::Parse()
         SLOG_STME() << "resource data too small";
         return FALSE;
     }
-
-    // 资源数据通常以资源目录开始
-    const IMAGE_RESOURCE_DIRECTORY *rootDir = reinterpret_cast<const IMAGE_RESOURCE_DIRECTORY *>(resourceBase);
-
     // 开始递归解析
     std::vector<ResourceInfo> resources;
     ParseResourceDirectory(resourceBase, 0, std::vector<std::wstring>(), resources);
@@ -265,7 +238,7 @@ BOOL WindResResourceParser::Parse()
 }
 
 // FindResource 的等价实现
-HRSRC WindResResourceParser::FindResourceW(HMODULE hModule, const wchar_t *lpName, const wchar_t *lpType, WORD wLanguage) const
+HRSRC WindResResourceParser::FindResourceW(HMODULE hModule __attribute__((unused)), const wchar_t *lpName, const wchar_t *lpType, WORD wLanguage) const
 {
     if (!m_isValid)
         return nullptr;
@@ -321,7 +294,7 @@ HRSRC WindResResourceParser::FindResourceW(HMODULE hModule, const wchar_t *lpNam
 }
 
 // SizeofResource 的等价实现
-uint32_t WindResResourceParser::SizeofResource(HMODULE hModule, HRSRC hResInfo) const
+uint32_t WindResResourceParser::SizeofResource(HMODULE hModule __attribute__((unused)), HRSRC hResInfo) const
 {
     if (!hResInfo)
         return 0;
@@ -330,7 +303,7 @@ uint32_t WindResResourceParser::SizeofResource(HMODULE hModule, HRSRC hResInfo) 
 }
 
 // LoadResource 的等价实现
-HGLOBAL WindResResourceParser::LoadResource(HMODULE hModule, HRSRC hResInfo)
+HGLOBAL WindResResourceParser::LoadResource(HMODULE hModule __attribute__((unused)), HRSRC hResInfo)
 {
     if (!hResInfo)
         return nullptr;

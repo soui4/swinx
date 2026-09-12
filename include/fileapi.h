@@ -76,6 +76,30 @@ extern "C"
 
 #define TIMER_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | TIMER_QUERY_STATE | TIMER_MODIFY_STATE)
 
+    //
+    // Event Specific Access Rights.
+    //
+
+#define EVENT_MODIFY_STATE 0x0002
+
+#define EVENT_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | EVENT_MODIFY_STATE)
+
+    //
+    // Mutex Specific Access Rights.
+    //
+
+#define MUTEX_MODIFY_STATE 0x0001
+
+#define MUTEX_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | MUTEX_MODIFY_STATE)
+
+    //
+    // Semaphore Specific Access Rights.
+    //
+
+#define SEMAPHORE_MODIFY_STATE 0x0002
+
+#define SEMAPHORE_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | SYNCHRONIZE | SEMAPHORE_MODIFY_STATE)
+
 //
 // Constants
 //

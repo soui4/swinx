@@ -62,107 +62,107 @@ HIMC ImmAssociateContext(HWND hWnd, HIMC hIMC)
     return hRet;
 }
 
-LONG WINAPI ImmGetCompositionStringA(IN HIMC, IN DWORD, __out_bcount_opt(dwBufLen) LPVOID lpBuf, IN DWORD dwBufLen)
+LONG WINAPI ImmGetCompositionStringA(IN HIMC, IN DWORD, __out_bcount_opt(dwBufLen) LPVOID lpBuf __attribute__((unused)), IN DWORD dwBufLen __attribute__((unused)))
 {
     return 0;
 }
-LONG WINAPI ImmGetCompositionStringW(IN HIMC, IN DWORD, __out_bcount_opt(dwBufLen) LPVOID lpBuf, IN DWORD dwBufLen)
-{
-    return 0;
-}
-
-BOOL WINAPI ImmGetStatusWindowPos(IN HIMC, _Out_ LPPOINT lpptPos)
-{
-    return FALSE;
-}
-BOOL WINAPI ImmSetStatusWindowPos(IN HIMC, _In_ LPPOINT lpptPos)
-{
-    return FALSE;
-}
-BOOL WINAPI ImmGetCompositionWindow(IN HIMC, _Out_ LPCOMPOSITIONFORM lpCompForm)
-{
-    return FALSE;
-}
-BOOL WINAPI ImmSetCompositionWindow(IN HIMC, _In_ LPCOMPOSITIONFORM lpCompForm)
-{
-    return FALSE;
-}
-BOOL WINAPI ImmGetCandidateWindow(IN HIMC, IN DWORD, _Out_ LPCANDIDATEFORM lpCandidate)
-{
-    return FALSE;
-}
-BOOL WINAPI ImmSetCandidateWindow(IN HIMC, _In_ LPCANDIDATEFORM lpCandidate)
-{
-    return FALSE;
-}
-
-BOOL WINAPI ImmNotifyIME(IN HIMC, IN DWORD dwAction, IN DWORD dwIndex, IN DWORD dwValue)
-{
-    return FALSE;
-}
-
-LRESULT ImmEscapeW(HKL unnamedParam1, HIMC unnamedParam2, UINT unnamedParam3, LPVOID unnamedParam4)
+LONG WINAPI ImmGetCompositionStringW(IN HIMC, IN DWORD, __out_bcount_opt(dwBufLen) LPVOID lpBuf __attribute__((unused)), IN DWORD dwBufLen __attribute__((unused)))
 {
     return 0;
 }
 
-LRESULT ImmEscapeA(HKL unnamedParam1, HIMC unnamedParam2, UINT unnamedParam3, LPVOID unnamedParam4)
+BOOL WINAPI ImmGetStatusWindowPos(IN HIMC, _Out_ LPPOINT lpptPos __attribute__((unused)))
+{
+    return FALSE;
+}
+BOOL WINAPI ImmSetStatusWindowPos(IN HIMC, _In_ LPPOINT lpptPos __attribute__((unused)))
+{
+    return FALSE;
+}
+BOOL WINAPI ImmGetCompositionWindow(IN HIMC, _Out_ LPCOMPOSITIONFORM lpCompForm __attribute__((unused)))
+{
+    return FALSE;
+}
+BOOL WINAPI ImmSetCompositionWindow(IN HIMC, _In_ LPCOMPOSITIONFORM lpCompForm __attribute__((unused)))
+{
+    return FALSE;
+}
+BOOL WINAPI ImmGetCandidateWindow(IN HIMC, IN DWORD, _Out_ LPCANDIDATEFORM lpCandidate __attribute__((unused)))
+{
+    return FALSE;
+}
+BOOL WINAPI ImmSetCandidateWindow(IN HIMC, _In_ LPCANDIDATEFORM lpCandidate __attribute__((unused)))
+{
+    return FALSE;
+}
+
+BOOL WINAPI ImmNotifyIME(IN HIMC, IN DWORD dwAction __attribute__((unused)), IN DWORD dwIndex __attribute__((unused)), IN DWORD dwValue __attribute__((unused)))
+{
+    return FALSE;
+}
+
+LRESULT ImmEscapeW(HKL unnamedParam1 __attribute__((unused)), HIMC unnamedParam2 __attribute__((unused)), UINT unnamedParam3 __attribute__((unused)), LPVOID unnamedParam4 __attribute__((unused)))
 {
     return 0;
 }
 
-BOOL WINAPI ImmSetCompositionFontA(IN HIMC, _In_ LPLOGFONTA lplf)
-{
-    return FALSE;
-}
-BOOL WINAPI ImmSetCompositionFontW(IN HIMC, _In_ LPLOGFONTW lplf)
-{
-    return FALSE;
-}
-
-BOOL WINAPI ImmSetCompositionStringA(IN HIMC, IN DWORD dwIndex, _In_reads_bytes_opt_(dwCompLen) LPVOID lpComp, IN DWORD dwCompLen, _In_reads_bytes_opt_(dwReadLen) LPVOID lpRead, IN DWORD dwReadLen)
-{
-    return FALSE;
-}
-BOOL WINAPI ImmSetCompositionStringW(IN HIMC, IN DWORD dwIndex, _In_reads_bytes_opt_(dwCompLen) LPVOID lpComp, IN DWORD dwCompLen, _In_reads_bytes_opt_(dwReadLen) LPVOID lpRead, IN DWORD dwReadLen)
-{
-    return FALSE;
-}
-
-DWORD WINAPI ImmGetProperty(HKL hKL, DWORD fdwIndex)
+LRESULT ImmEscapeA(HKL unnamedParam1 __attribute__((unused)), HIMC unnamedParam2 __attribute__((unused)), UINT unnamedParam3 __attribute__((unused)), LPVOID unnamedParam4 __attribute__((unused)))
 {
     return 0;
 }
 
-BOOL ImmGetOpenStatus(HIMC hIMC)
+BOOL WINAPI ImmSetCompositionFontA(IN HIMC, _In_ LPLOGFONTA lplf __attribute__((unused)))
 {
     return FALSE;
 }
-BOOL ImmSetOpenStatus(HIMC hIMC, BOOL fOpen)
+BOOL WINAPI ImmSetCompositionFontW(IN HIMC, _In_ LPLOGFONTW lplf __attribute__((unused)))
 {
     return FALSE;
 }
 
-UINT ImmGetVirtualKey(HWND hWnd)
+BOOL WINAPI ImmSetCompositionStringA(IN HIMC, IN DWORD dwIndex __attribute__((unused)), _In_reads_bytes_opt_(dwCompLen) LPVOID lpComp __attribute__((unused)), IN DWORD dwCompLen __attribute__((unused)), _In_reads_bytes_opt_(dwReadLen) LPVOID lpRead __attribute__((unused)), IN DWORD dwReadLen __attribute__((unused)))
+{
+    return FALSE;
+}
+BOOL WINAPI ImmSetCompositionStringW(IN HIMC, IN DWORD dwIndex __attribute__((unused)), _In_reads_bytes_opt_(dwCompLen) LPVOID lpComp __attribute__((unused)), IN DWORD dwCompLen __attribute__((unused)), _In_reads_bytes_opt_(dwReadLen) LPVOID lpRead __attribute__((unused)), IN DWORD dwReadLen __attribute__((unused)))
+{
+    return FALSE;
+}
+
+DWORD WINAPI ImmGetProperty(HKL hKL __attribute__((unused)), DWORD fdwIndex __attribute__((unused)))
 {
     return 0;
 }
 
-HWND ImmGetDefaultIMEWnd(HWND hWnd)
+BOOL ImmGetOpenStatus(HIMC hIMC __attribute__((unused)))
+{
+    return FALSE;
+}
+BOOL ImmSetOpenStatus(HIMC hIMC __attribute__((unused)), BOOL fOpen __attribute__((unused)))
+{
+    return FALSE;
+}
+
+UINT ImmGetVirtualKey(HWND hWnd __attribute__((unused)))
 {
     return 0;
 }
 
-BOOL ImmSetConversionStatus(HIMC hIMC, DWORD fdwConversion, DWORD fdwSentence)
+HWND ImmGetDefaultIMEWnd(HWND hWnd __attribute__((unused)))
+{
+    return 0;
+}
+
+BOOL ImmSetConversionStatus(HIMC hIMC __attribute__((unused)), DWORD fdwConversion __attribute__((unused)), DWORD fdwSentence __attribute__((unused)))
 {
     return FALSE;
 }
 
-BOOL ImmGetConversionStatus(HIMC hIMC, LPDWORD lpfdwConversion, LPDWORD lpfdwSentence)
+BOOL ImmGetConversionStatus(HIMC hIMC __attribute__((unused)), LPDWORD lpfdwConversion __attribute__((unused)), LPDWORD lpfdwSentence __attribute__((unused)))
 {
     return FALSE;
 }
-BOOL ImmIsIME(HKL hKL)
+BOOL ImmIsIME(HKL hKL __attribute__((unused)))
 {
     return FALSE;
 }

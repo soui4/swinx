@@ -28,7 +28,7 @@ struct MemBlock
 static cairo_status_t read_png_from_memory(void *closure, unsigned char *data, unsigned int length)
 {
     MemBlock *memBlock = (MemBlock *)closure;
-    if (length > memBlock->bufLen - memBlock->pos)
+    if (length > (unsigned int)(memBlock->bufLen - memBlock->pos))
     {
         return CAIRO_STATUS_READ_ERROR;
     }

@@ -97,7 +97,7 @@ extern "C"
     HWND WINAPI GetForegroundWindow();
 
     BOOL WINAPI BringWindowToTop(HWND hWnd);
-    
+
     BOOL WINAPI SetWindowPos(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
 
     LONG GetWindowLongA(HWND hWnd, int nIndex);
@@ -393,7 +393,8 @@ extern "C"
 #endif // UNICODE
 
     HMENU WINAPI GetSystemMenu(HWND hWnd, BOOL bRevert);
-    typedef struct _WINDOWPLACEMENT {
+    typedef struct _WINDOWPLACEMENT
+    {
         UINT length;
         UINT flags;
         UINT showCmd;
@@ -401,11 +402,17 @@ extern "C"
         POINT ptMaxPosition;
         RECT rcNormalPosition;
     } WINDOWPLACEMENT;
-    BOOL WINAPI GetWindowPlacement(HWND hWnd,WINDOWPLACEMENT *lpwndpl);
-    BOOL WINAPI SetWindowPlacement(HWND hWnd,WINDOWPLACEMENT *lpwndpl);
-    
+    BOOL WINAPI GetWindowPlacement(HWND hWnd, WINDOWPLACEMENT *lpwndpl);
+    BOOL WINAPI SetWindowPlacement(HWND hWnd, WINDOWPLACEMENT *lpwndpl);
+
+#ifdef __APPLE__
+    // Apple 平台（macOS / iOS）专用：返回给定 SOUI HWND 所属的原生窗口指针
+    // （macOS 为 NSWindow*，iOS 为 UIWindow*），桥接为 void*。
+    void *getAppleHostWindow(HWND hWnd);
+#endif // __APPLE__
+
 #ifdef ENABLE_VIRTUAL_HWND
-    BOOL WINAPI RegisterVirtualHWND(UINT_PTR externalId,HWND hParent, DWORD dwStyle,DWORD dwExStyle, const RECT* prc, int ctrlid);
+    BOOL WINAPI RegisterVirtualHWND(UINT_PTR externalId, HWND hParent, DWORD dwStyle, DWORD dwExStyle, const RECT *prc, int ctrlid);
     BOOL WINAPI UnregisterVirtualHWND(UINT_PTR externalId);
 #endif // ENABLE_VIRTUAL_HWND
 

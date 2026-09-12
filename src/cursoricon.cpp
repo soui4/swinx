@@ -197,13 +197,6 @@ static int map_file(LPCSTR name, MapFileInfo *ret)
     return 1;
 }
 
-static int map_fileW(LPCWSTR name, MapFileInfo *ret)
-{
-    char szNameU8[MAX_PATH];
-    WideCharToMultiByte(CP_UTF8, 0, name, -1, szNameU8, MAX_PATH, NULL, NULL);
-    return map_file(szNameU8, ret);
-}
-
 static void map_close(MapFileInfo *info)
 {
     if (!info->ptr)
@@ -604,7 +597,6 @@ static int CURSORICON_FindBestIcon(LPCVOID dir, DWORD size, fnGetCIEntry get_ent
     /* Find Best Colors for Best Fit */
     for (i = 0; get_entry(dir, size, i, &cx, &cy, &bits); i++)
     {
-        // SLOG_FMTD("entry %d: %d x %d, %d bpp\n", i, cx, cy, bits);
 
         if (abs(width - cx) == iXDiff && abs(height - cy) == iYDiff)
         {
@@ -645,7 +637,7 @@ static BOOL CURSORICON_GetResIconEntry(LPCVOID dir, DWORD size, int n, int *widt
  *
  * FIXME: parameter 'color' ignored.
  */
-static int CURSORICON_FindBestCursor(LPCVOID dir, DWORD size, fnGetCIEntry get_entry, int width, int height, int depth, UINT loadflags)
+static int CURSORICON_FindBestCursor(LPCVOID dir, DWORD size, fnGetCIEntry get_entry, int width, int height, int depth __attribute__((unused)), UINT loadflags)
 {
     int i, maxwidth, maxheight, maxbits, cx, cy, bits, bestEntry = -1;
 
@@ -1086,7 +1078,7 @@ done:
     return ret;
 }
 
-static HICON create_cursoricon_object(struct cursoricon_desc *desc, BOOL is_icon, HINSTANCE module, const char *resname, HRSRC rsrc)
+static HICON create_cursoricon_object(struct cursoricon_desc *desc, BOOL is_icon, HINSTANCE module __attribute__((unused)), const char *resname __attribute__((unused)), HRSRC rsrc __attribute__((unused)))
 {
     if (desc->num_frames == 0)
         return NULL;
@@ -1230,18 +1222,18 @@ static void riff_find_chunk(DWORD chunk_id, DWORD chunk_type, const riff_chunk_t
  */
 static HCURSOR CURSORICON_CreateIconFromANI(const BYTE *bits, DWORD bits_size, INT width, INT height, INT depth, BOOL is_icon, UINT loadflags)
 {
-    struct cursoricon_desc desc = { 0 };
+    struct cursoricon_desc desc = {};
     ani_header header;
     HCURSOR cursor;
     UINT i;
     BOOL error = FALSE;
 
     riff_chunk_t root_chunk = { bits_size, bits };
-    riff_chunk_t ACON_chunk = { 0 };
-    riff_chunk_t anih_chunk = { 0 };
-    riff_chunk_t fram_chunk = { 0 };
-    riff_chunk_t rate_chunk = { 0 };
-    riff_chunk_t seq_chunk = { 0 };
+    riff_chunk_t ACON_chunk = {};
+    riff_chunk_t anih_chunk = {};
+    riff_chunk_t fram_chunk = {};
+    riff_chunk_t rate_chunk = {};
+    riff_chunk_t seq_chunk = {};
     const unsigned char *icon_chunk;
     const unsigned char *icon_data;
 
@@ -1419,7 +1411,6 @@ static HICON CURSORICON_LoadFromBuf(const char *bits, DWORD filesize, INT width,
 {
     const CURSORICONFILEDIRENTRY *entry;
     CURSORICONFILEDIR *dir;
-    HICON hIcon = 0;
     POINT hotspot;
 
     // TRACE("loading %s\n", debugstr_w( filename ));
@@ -1427,7 +1418,7 @@ static HICON CURSORICON_LoadFromBuf(const char *bits, DWORD filesize, INT width,
     /* Check for .ani. */
     if (memcmp(bits, "RIFF", 4) == 0)
     {
-        return CURSORICON_CreateIconFromANI((const PBYTE)bits, filesize, width, height, depth, !fCursor, loadflags);
+        return CURSORICON_CreateIconFromANI((PBYTE)bits, filesize, width, height, depth, !fCursor, loadflags);
     }
 
     dir = (CURSORICONFILEDIR *)bits;
@@ -1574,41 +1565,6 @@ static HBITMAP create_masked_bitmap(int width, int height, const void *and_, con
 
 /* copy an icon bitmap, even when it can't be selected into a DC */
 /* helper for CreateIconIndirect */
-static void stretch_blt_icon(HDC hdc_dst, int dst_x, int dst_y, int dst_width, int dst_height, HBITMAP src, int width, int height)
-{
-    HDC hdc = CreateCompatibleDC(0);
-
-    if (!SelectObject(hdc, src)) /* do it the hard way */
-    {
-        BITMAPINFO *info;
-        void *bits;
-
-        if (!(info = (BITMAPINFO *)HeapAlloc(GetProcessHeap(), 0, FIELD_OFFSET(BITMAPINFO, bmiColors[256]))))
-            return;
-        info->bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        info->bmiHeader.biWidth = width;
-        info->bmiHeader.biHeight = height;
-        info->bmiHeader.biPlanes = GetDeviceCaps(hdc_dst, PLANES);
-        info->bmiHeader.biBitCount = GetDeviceCaps(hdc_dst, BITSPIXEL);
-        info->bmiHeader.biCompression = BI_RGB;
-        info->bmiHeader.biSizeImage = get_dib_image_size(width, height, info->bmiHeader.biBitCount);
-        info->bmiHeader.biXPelsPerMeter = 0;
-        info->bmiHeader.biYPelsPerMeter = 0;
-        info->bmiHeader.biClrUsed = 0;
-        info->bmiHeader.biClrImportant = 0;
-        bits = HeapAlloc(GetProcessHeap(), 0, info->bmiHeader.biSizeImage);
-        if (bits && GetDIBits(hdc, src, 0, height, bits, info, DIB_RGB_COLORS))
-            StretchDIBits(hdc_dst, dst_x, dst_y, dst_width, dst_height, 0, 0, width, height, bits, info, DIB_RGB_COLORS, SRCCOPY);
-
-        HeapFree(GetProcessHeap(), 0, bits);
-        HeapFree(GetProcessHeap(), 0, info);
-    }
-    else
-        StretchBlt(hdc_dst, dst_x, dst_y, dst_width, dst_height, hdc, 0, 0, width, height, SRCCOPY);
-
-    DeleteDC(hdc);
-}
-
 /***********************************************************************
  *           DIB_FixColorsToLoadflags
  *
@@ -1713,7 +1669,7 @@ static void DIB_FixColorsToLoadflags(BITMAPINFO *bmi, UINT loadflags, BYTE pix)
 /**********************************************************************
  *       BITMAP_Load
  */
-static HBITMAP BITMAP_LoadBuf(const char *ptr, UINT length, INT desiredx, INT desiredy, UINT loadflags)
+static HBITMAP BITMAP_LoadBuf(const char *ptr, UINT length __attribute__((unused)), INT desiredx, INT desiredy, UINT loadflags)
 {
     HBITMAP hbitmap = 0, orig_bm;
     BITMAPINFO *info, *fix_info = NULL, *scaled_info = NULL;
@@ -1822,7 +1778,7 @@ end:
     return hbitmap;
 }
 
-static HBITMAP BITMAP_Load(HINSTANCE instance, LPCSTR name, INT desiredx, INT desiredy, UINT loadflags)
+static HBITMAP BITMAP_Load(HINSTANCE instance __attribute__((unused)), LPCSTR name, INT desiredx, INT desiredy, UINT loadflags)
 {
 
     if (!(loadflags & LR_LOADFROMFILE))
@@ -1869,24 +1825,12 @@ HANDLE WINAPI LoadImageBuf(const void *buf, UINT length, UINT type, INT desiredx
 }
 
 /* StretchBlt from src to dest; helper for CopyImage(). */
-static void stretch_bitmap(HBITMAP dst, HBITMAP src, int dst_width, int dst_height, int src_width, int src_height)
-{
-    HDC src_dc = CreateCompatibleDC(0), dst_dc = CreateCompatibleDC(0);
-
-    SelectObject(src_dc, src);
-    SelectObject(dst_dc, dst);
-    StretchBlt(dst_dc, 0, 0, dst_width, dst_height, src_dc, 0, 0, src_width, src_height, SRCCOPY);
-
-    DeleteDC(src_dc);
-    DeleteDC(dst_dc);
-}
-
 #ifndef _WIN32
 
 /***********************************************************************
  *		CreateCursor (USER32.@)
  */
-HCURSOR WINAPI CreateCursor(HINSTANCE instance, int hotspot_x, int hotspot_y, int width, int height, const void *and_, const void *xor_)
+HCURSOR WINAPI CreateCursor(HINSTANCE instance __attribute__((unused)), int hotspot_x, int hotspot_y, int width, int height, const void *and_, const void *xor_)
 {
     ICONINFO info;
     HCURSOR cursor;
@@ -1922,7 +1866,7 @@ HCURSOR WINAPI CreateCursor(HINSTANCE instance, int hotspot_x, int hotspot_y, in
  *
  * FIXME: Do we need to resize the bitmaps?
  */
-HICON WINAPI CreateIcon(HINSTANCE instance, int width, int height, BYTE planes, BYTE depth, const void *and_, const void *xor_)
+HICON WINAPI CreateIcon(HINSTANCE instance __attribute__((unused)), int width, int height, BYTE planes, BYTE depth, const void *and_, const void *xor_)
 {
     ICONINFO info;
     HICON icon;

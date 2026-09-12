@@ -196,6 +196,8 @@ _xcb_xim_check_server_transport_wait(xcb_xim_t *im,
     bool check_transport = _xcb_xim_check_transport(im, address, &trans_addr);
     free(reply);
     if (check_transport) {
+        if(im->trans_addr)
+            free(im->trans_addr);
         im->trans_addr = strdup(trans_addr);
         free(address);
         if (!im->trans_addr) {
@@ -868,6 +870,7 @@ bool xcb_xim_check_trigger_off_key(xcb_xim_t *im, xcb_keysym_t keysym,
 
 void xcb_xim_destroy(xcb_xim_t *im) {
     free(im->server_name);
+    free(im->trans_addr);
     free(im);
 }
 
@@ -1067,6 +1070,8 @@ void _xcb_xim_process_queue(xcb_xim_t *im) {
         if (_xcb_xim_send_request_frame(im, request)) {
             if (request->major_code != XCB_XIM_FORWARD_EVENT) {
                 im->current = request;
+            }else{
+                _xcb_xim_request_free(request);
             }
         } else {
             _xcb_xim_process_fail_callback(im, request);

@@ -2,6 +2,7 @@
 #define _UIMSG_H_
 #include <mutex>
 #include <string>
+#include <string.h>
 #include <hook.h>
 #include "handle.h"
 #include "sharedmem.h"
@@ -52,7 +53,7 @@ struct MsgReply
         }
     }
 
-    virtual void SetResult(LRESULT res)
+    virtual void SetResult(LRESULT res __attribute__((unused)))
     {
     }
 
@@ -215,6 +216,7 @@ struct Msg : MSG
 {
     MsgReply *msgReply;
     Msg(MsgReply *reply = nullptr)
+        : MSG{} // zero-init MSG base to avoid uninitialised field comparisons
     {
         msgReply = reply;//move ower to this, not add ref
         time = GetTickCount();
@@ -237,6 +239,7 @@ struct Msg : MSG
 
 struct MsgW2A : Msg{
     MsgW2A(MsgReply *reply = nullptr): Msg(reply){
+        memset(&orgMsg, 0, sizeof(orgMsg));
         message = WM_MSG_W2A;
         wParam = 0;
         lParam = (LPARAM)&orgMsg;

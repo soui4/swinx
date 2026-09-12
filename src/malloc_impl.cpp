@@ -10,7 +10,7 @@ class CMalloc : public IMalloc {
     {
     }
 
-    ~CMalloc()
+    virtual ~CMalloc()
     {
     }
 
@@ -73,7 +73,7 @@ struct allocator
 };
 
 static CMalloc sys_malloc;
-static struct allocator allocator = { &sys_malloc, 0 };
+static struct allocator allocator = { &sys_malloc, NULL, 0, FALSE, NULL, 0 };
 
 static CRITICAL_SECTION allocspy_cs;
 

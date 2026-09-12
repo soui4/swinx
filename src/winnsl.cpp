@@ -4,7 +4,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
-#include "tostring.hpp"
+#include "tostring.h"
 
 #ifdef __linux__
 #include <locale.h>
@@ -12,20 +12,20 @@
 #endif // __linux__
 
 #ifdef __APPLE__
-int GetLocal(char *lpCData,int nSize);
+int GetLocal(char *lpCData, int nSize);
 #endif // __APPLE__
 
 // Helper function to convert POSIX locale string to Windows LCID format
-static LCID PosixLocaleToLCID(const char* localeName)
+static LCID PosixLocaleToLCID(const char *localeName)
 {
     if (!localeName || localeName[0] == '\0')
         return MAKELCID(MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), SORT_DEFAULT);
-    
+
     std::string loc(localeName);
-    
+
     // Convert to lowercase for easier comparison
     std::transform(loc.begin(), loc.end(), loc.begin(), ::tolower);
-    
+
     // Extract language part (before underscore or dot)
     std::string lang;
     size_t pos = loc.find('_');
@@ -39,10 +39,10 @@ static LCID PosixLocaleToLCID(const char* localeName)
         else
             lang = loc;
     }
-    
+
     // Map common locale names to LANGIDs
-    WORD primaryLang = LANG_ENGLISH;  // Default
-    
+    WORD primaryLang = LANG_ENGLISH; // Default
+
     if (lang == "zh" || lang == "chinese")
         primaryLang = LANG_CHINESE;
     else if (lang == "en" || lang == "english")
@@ -63,7 +63,7 @@ static LCID PosixLocaleToLCID(const char* localeName)
         primaryLang = LANG_RUSSIAN;
     else if (lang == "pt" || lang == "portuguese")
         primaryLang = LANG_PORTUGUESE;
-    
+
     return MAKELCID(MAKELANGID(primaryLang, SUBLANG_DEFAULT), SORT_DEFAULT);
 }
 
@@ -71,32 +71,33 @@ static LCID PosixLocaleToLCID(const char* localeName)
 static LCID GetUserLocaleLCID()
 {
 #ifdef __APPLE__
-    char szLCData[LOCALE_NAME_MAX_LENGTH]={0};
+    char szLCData[LOCALE_NAME_MAX_LENGTH] = { 0 };
     int ret = GetLocal(szLCData, LOCALE_NAME_MAX_LENGTH);
-    if (ret == 0){
+    if (ret == 0)
+    {
         strcpy(szLCData, "en_US.UTF-8");
     }
     return PosixLocaleToLCID(szLCData);
 #else
-    const char* locale = setlocale(LC_ALL, NULL);
+    const char *locale = setlocale(LC_ALL, NULL);
     if (!locale)
         locale = getenv("LANG");
     if (!locale)
         locale = getenv("LC_ALL");
     if (!locale)
-        locale = "en_US.UTF-8";  // Fallback to English
-    
+        locale = "en_US.UTF-8"; // Fallback to English
+
     return PosixLocaleToLCID(locale);
 #endif
 }
 
 // todo:hjx
-HKL GetKeyboardLayout(int idx)
+HKL GetKeyboardLayout(int idx __attribute__((unused)))
 {
     return 0;
 }
 
-int LCMapStringW(LCID Locale, DWORD dwMapFlags, LPCWSTR lpSrcStr, int cchSrc, LPWSTR lpDestStr, int cchDest)
+int LCMapStringW(LCID Locale __attribute__((unused)), DWORD dwMapFlags __attribute__((unused)), LPCWSTR lpSrcStr, int cchSrc, LPWSTR lpDestStr, int cchDest)
 {
     if (cchSrc == cchDest)
     {
@@ -105,7 +106,7 @@ int LCMapStringW(LCID Locale, DWORD dwMapFlags, LPCWSTR lpSrcStr, int cchSrc, LP
     return 1;
 }
 
-int LCMapStringA(LCID Locale, DWORD dwMapFlags, LPCSTR lpSrcStr, int cchSrc, LPSTR lpDestStr, int cchDest)
+int LCMapStringA(LCID Locale __attribute__((unused)), DWORD dwMapFlags __attribute__((unused)), LPCSTR lpSrcStr, int cchSrc, LPSTR lpDestStr, int cchDest)
 {
     if (cchSrc == cchDest)
     {
@@ -117,38 +118,38 @@ int LCMapStringA(LCID Locale, DWORD dwMapFlags, LPCSTR lpSrcStr, int cchSrc, LPS
 /******************************************************************************
  *	CompareStringW   (kernelbase.@)
  */
-INT WINAPI CompareStringW(LCID lcid, DWORD flags, const WCHAR *str1, int len1, const WCHAR *str2, int len2)
+INT WINAPI CompareStringW(LCID lcid __attribute__((unused)), DWORD flags __attribute__((unused)), const WCHAR *str1, int len1, const WCHAR *str2, int len2)
 {
     std::wstring p1(str1, len1), p2(str2, len2);
     return p1.compare(p2);
 }
 
-INT WINAPI CompareStringA(LCID lcid, DWORD flags, const char *str1, int len1, const char *str2, int len2)
+INT WINAPI CompareStringA(LCID lcid __attribute__((unused)), DWORD flags __attribute__((unused)), const char *str1, int len1, const char *str2, int len2)
 {
     std::string p1(str1, len1), p2(str2, len2);
     return p1.compare(p2);
 }
 
-int GetLocaleInfoA(LCID Locale, LCTYPE LCType, LPSTR lpLCData, int cchData)
+int GetLocaleInfoA(LCID Locale __attribute__((unused)), LCTYPE LCType __attribute__((unused)), LPSTR lpLCData, int cchData)
 {
 #ifdef __APPLE__
-    char szLCData[LOCALE_NAME_MAX_LENGTH]={0};
+    char szLCData[LOCALE_NAME_MAX_LENGTH] = { 0 };
     GetLocal(szLCData, LOCALE_NAME_MAX_LENGTH);
-    const char* locale = szLCData;
+    const char *locale = szLCData;
 #elif defined(__linux__)
     // For now, return locale name as string
-    const char* locale = setlocale(LC_ALL, NULL);
+    const char *locale = setlocale(LC_ALL, NULL);
     if (!locale)
         locale = "C";
 #else
-    #error "Unsupported platform"
+#error "Unsupported platform"
     return 0;
 #endif
-    
+
     int len = strlen(locale);
     if (len >= cchData)
-        return 0;  // Buffer too small
-    
+        return 0; // Buffer too small
+
     strncpy(lpLCData, locale, cchData - 1);
     lpLCData[cchData - 1] = '\0';
     return len + 1;
@@ -162,12 +163,15 @@ int GetLocaleInfoW(LCID Locale, LCTYPE LCType, LPWSTR lpLCData, int cchData)
     towstring(szLCData, nRet, wsLCData);
     if (!lpLCData || cchData <= 0)
     {
-        return wsLCData.length()+1;
-    }    
-    if(cchData > wsLCData.length()){
+        return wsLCData.length() + 1;
+    }
+    if ((size_t)cchData > wsLCData.length())
+    {
         wcscpy(lpLCData, wsLCData.c_str());
-        return wsLCData.length()+1;
-    }else{
+        return wsLCData.length() + 1;
+    }
+    else
+    {
         SetLastError(ERROR_INSUFFICIENT_BUFFER);
         return 0;
     }
@@ -198,6 +202,7 @@ LANGID WINAPI GetSystemDefaultLangID(void)
     return LANGIDFROMLCID(lcid);
 }
 
-LANGID WINAPI GetUserDefaultUILanguage(){
+LANGID WINAPI GetUserDefaultUILanguage()
+{
     return GetUserDefaultLangID();
 }

@@ -578,7 +578,6 @@ static void UITOOLS_DrawCheckedRect(HDC dc, LPRECT rect)
 {
     if (GetSysColor(COLOR_BTNHIGHLIGHT) == RGB(255, 255, 255))
     {
-        HBRUSH hbsave;
         COLORREF bg;
 
         FillRect(dc, rect, GetSysColorBrush(COLOR_BTNFACE));
@@ -1187,7 +1186,7 @@ BOOL WINAPI DrawFrameControl(HDC hdc, LPRECT rc, UINT uType, UINT uState)
 /**********************************************************************
  *		DrawAnimatedRects (USER32.@)
  */
-BOOL WINAPI DrawAnimatedRects(HWND hwnd, INT idAni, const RECT *lprcFrom, const RECT *lprcTo)
+BOOL WINAPI DrawAnimatedRects(HWND hwnd __attribute__((unused)), INT idAni __attribute__((unused)), const RECT *lprcFrom __attribute__((unused)), const RECT *lprcTo __attribute__((unused)))
 {
     // FIXME("(%p,%d,%p,%p): stub\n",hwnd,idAni,lprcFrom,lprcTo);
     return TRUE;

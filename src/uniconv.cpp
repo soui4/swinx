@@ -29,7 +29,8 @@ size_t UTF8CharLength(unsigned char ch)
 size_t UTF16toUTF8Length(const uint16_t *uptr, unsigned int tlen)
 {
     size_t len = 0;
-    for (unsigned int i = 0; i < tlen && uptr[i];)
+    /* see UTF8FromUTF16: explicit length converts embedded NULs too */
+    for (unsigned int i = 0; i < tlen;)
     {
         unsigned int uch = uptr[i];
         if (uch < 0x80)
@@ -57,7 +58,10 @@ size_t UTF16toUTF8Length(const uint16_t *uptr, unsigned int tlen)
 size_t UTF8FromUTF16(const uint16_t *uptr, unsigned int tlen, char *putf, unsigned int len)
 {
     unsigned int k = 0;
-    for (unsigned int i = 0; i < tlen && uptr[i];)
+    /* Win32 WideCharToMultiByte semantics: with an explicit length, embedded
+       NULs are converted as ordinary characters (NUL bytes in the output);
+       only a len of -1 stops at the terminator (handled by the caller). */
+    for (unsigned int i = 0; i < tlen;)
     {
         unsigned int uch = uptr[i];
         if (uch < 0x80)
@@ -227,7 +231,10 @@ size_t UTF32FromUTF8(const char *s, unsigned int len, uint32_t *tbuf, unsigned i
 size_t UTF8FromUTF32(const uint32_t *uptr, unsigned int tlen, char *putf, unsigned int len)
 {
     unsigned int k = 0;
-    for (unsigned int i = 0; i < tlen && uptr[i];)
+    /* Win32 WideCharToMultiByte semantics: with an explicit length, embedded
+       NULs are converted as ordinary characters (NUL bytes in the output);
+       only a len of -1 stops at the terminator (handled by the caller). */
+    for (unsigned int i = 0; i < tlen;)
     {
         unsigned int uch = uptr[i];
         if (uch < 0x80)
@@ -301,7 +308,8 @@ size_t UTF32Length(const char *s, size_t len, size_t &unconvertedCharacters)
 size_t UTF32toUTF8Length(const uint32_t *uptr, unsigned int tlen)
 {
     size_t len = 0;
-    for (unsigned int i = 0; i < tlen && uptr[i];)
+    /* see UTF8FromUTF32: explicit length converts embedded NULs too */
+    for (unsigned int i = 0; i < tlen;)
     {
         unsigned int uch = uptr[i];
         if (uch < 0x80)

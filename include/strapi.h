@@ -14,13 +14,13 @@ extern "C"
 {
 #endif //__cplusplus
 
-//count the length of the formatted string
-#define _vscprintf(fmt, argList) vsnprintf(nullptr, 0, fmt, argList)
+// count the length of the formatted string
+#define _vscprintf(fmt, argList)  vsnprintf(nullptr, 0, fmt, argList)
 #define _vscwprintf(fmt, argList) vswprintf(nullptr, 0, fmt, argList)
-#define vsprintf_s               vsnprintf
-#define sprintf_s                _snprintf
-#define strcat_s(dst, n, src)    strncat(dst, src, n)
-#define wcscat_s(dst, n, src)    wcsncat(dst, src, n)
+#define vsprintf_s                vsnprintf
+#define sprintf_s                 _snprintf
+#define strcat_s(dst, n, src)     strncat(dst, src, n)
+#define wcscat_s(dst, n, src)     wcsncat(dst, src, n)
 
 #define _mbslwr(x) _mbscvt((uint8_t *)(x), TRUE)
 #define _mbsupr(x) _mbscvt((uint8_t *)(x), FALSE)
@@ -57,8 +57,8 @@ extern "C"
 
     void WINAPI wcscpy_s(wchar_t *destination, size_t num, const wchar_t *source);
 
-    int WINAPI _snprintf(char *buffer,size_t size,const char *format, ...);
-    
+    int WINAPI _snprintf(char *buffer, size_t size, const char *format, ...);
+
     int WINAPI _snwprintf(wchar_t *buffer, size_t size, const wchar_t *format, ...);
 
     float WINAPI _wtof(const wchar_t *src);

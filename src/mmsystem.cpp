@@ -510,7 +510,7 @@ class AudioPlayer {
 #endif // HAS_ALSA
 
 #endif
-BOOL PlaySound(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound)
+BOOL PlaySound(LPCSTR pszSound, HMODULE hmod __attribute__((unused)), DWORD fdwSound)
 {
     if (fdwSound & (SND_MEMORY | SND_RESOURCE | SND_ALIAS | SND_ALIAS_ID))
     {
