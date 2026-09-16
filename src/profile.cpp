@@ -652,7 +652,9 @@ static BOOL PROFILE_FlushFile(void)
         return FALSE;
     }
     SLOG_STMD() << "Saving " << CurProfile->filename;
-
+    SetFilePointer(hFile,0, nullptr, FILE_BEGIN);
+    SetEndOfFile(hFile);
+    
     PROFILE_Save(hFile, CurProfile->section, CurProfile->encoding);
     if (GetFileTime(hFile, NULL, NULL, &LastWriteTime))
         CurProfile->LastWriteTime = LastWriteTime;
