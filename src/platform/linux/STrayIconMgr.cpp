@@ -1,4 +1,5 @@
 #include "STrayIconMgr.h"
+#include "xcb_event.h"
 #include <assert.h>
 #include <xcb/xcb_icccm.h>
 #include "SConnection.h"
@@ -100,7 +101,7 @@ BOOL STrayIconMgr::AddIcon(PNOTIFYICONDATAA lpData)
     // Set WM_NAME for tooltip
     xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, icon->hTray->m_hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(icon->szTip), icon->szTip);
 
-    xcb_size_hints_t size_hints;
+    xcb_size_hints_t size_hints = {};
     size_hints.flags = 0x30;  // PMinSize | PMaxSize
     size_hints.min_width = TRAY_ICON_SIZE;
     size_hints.min_height = TRAY_ICON_SIZE;
@@ -118,8 +119,7 @@ BOOL STrayIconMgr::AddIcon(PNOTIFYICONDATAA lpData)
 
     // Send the dock request to the tray manager. After this point the manager
     // owns the window's geometry and visibility.
-    xcb_client_message_event_t trayRequest;
-    memset(&trayRequest, 0, sizeof(trayRequest));
+    xcb_client_message_event_t trayRequest = {};
     trayRequest.response_type = XCB_CLIENT_MESSAGE;
     trayRequest.format = 32;
     trayRequest.sequence = 0;
@@ -128,7 +128,7 @@ BOOL STrayIconMgr::AddIcon(PNOTIFYICONDATAA lpData)
     trayRequest.data.data32[0] = XCB_CURRENT_TIME;
     trayRequest.data.data32[1] = SystemTrayRequestDock;
     trayRequest.data.data32[2] = icon->hTray->m_hWnd;
-    xcb_send_event(m_pConn->connection, 0, m_trayMgr, XCB_EVENT_MASK_NO_EVENT, (const char *)&trayRequest);
+    xcb_send_event32(m_pConn->connection, 0, m_trayMgr, XCB_EVENT_MASK_NO_EVENT, trayRequest);
     xcb_flush(m_pConn->connection);
 
     m_lstTrays.push_back(icon);

@@ -2,6 +2,7 @@
 #define _SWINX_MOBILE_SCONNECTION_H_
 
 #include <windows.h>
+#include <hkl.h> // HKL 取值编码约定（swinx 内部头）
 #include <map>
 #include <list>
 #include <mutex>

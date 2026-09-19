@@ -746,6 +746,9 @@ extern "C"
 #define SM_CXSMICON 49
 #define SM_CYSMICON 50
 
+#define SM_CXSMSIZE 52
+#define SM_CYSMSIZE 53
+
 #define SM_CXDRAG 68
 #define SM_CYDRAG 69
 
@@ -1015,6 +1018,10 @@ extern "C"
 #define VK_NONAME    0xFC
 #define VK_PA1       0xFD
 #define VK_OEM_CLEAR 0xFE
+
+/* Keyboard Layout*/
+#define HKL_PREV 0
+#define HKL_NEXT 1
 
 #define MONITOR_DEFAULTTONULL    0x00000000
 #define MONITOR_DEFAULTTOPRIMARY 0x00000001

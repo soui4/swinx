@@ -20,6 +20,102 @@
 
 namespace swinx
 {
+// 拖放数据管理器：接管 WM_DROPFILES 交付给宿主的数据（STGMEDIUM）。
+// 锁与所有权都在本管理器内闭环：attach 负责 GlobalLock 并登记，doRelease 负责与
+// 之配对的 GlobalUnlock 与 ReleaseStgMedium，二者严格 1:1，调用方不接触加解锁。
+// 按 Win32 语义，HDROP 在宿主调用 DragFinish 之前保持有效，并由 DragFinish 释放；
+// 宿主未调用时由 CDropFileTarget::Drop 兜底释放，同一份数据只会被释放一次。
+class CDropDataMgr {
+  public:
+    static CDropDataMgr *instance()
+    {
+        static CDropDataMgr singleton;
+        return &singleton;
+    }
+
+    // 接管一份拖放数据，返回可作为 HDROP 使用、可安全传给宿主的数据指针。
+    // GlobalLock 由本函数执行，与 doRelease 中的 GlobalUnlock 严格 1:1 配对：
+    // 条目只在加锁成功后入表，出表时必定解锁一次。
+    // 返回 NULL 表示接管失败，此时 medium 已在本函数内释放完毕。
+    HDROP attach(const STGMEDIUM &medium)
+    {
+        if (!medium.hGlobal)
+            return NULL;
+
+        HDROP hDrop = static_cast<HDROP>(GlobalLock(medium.hGlobal));
+        if (!hDrop)
+        {
+            // 取不到数据指针，直接释放，避免泄漏
+            STGMEDIUM copy = medium;
+            ReleaseStgMedium(&copy);
+            return NULL;
+        }
+
+        std::unique_lock<std::recursive_mutex> lock(m_mutex);
+        auto it = m_mapDrops.find(hDrop);
+        if (it != m_mapDrops.end())
+        {
+            const HDROP hExisting = it->first;
+            GlobalUnlock(medium.hGlobal);
+            return hExisting;
+        }
+
+        PendingDrop pending = {};
+        pending.medium = medium;
+        m_mapDrops[hDrop] = pending;
+        return hDrop;
+    }
+
+    // 释放 hDrop 对应的拖放数据；返回是否由本管理器接管，重复调用返回 FALSE
+    BOOL detach(HDROP hDrop)
+    {
+        PendingDrop pending = {};
+        {
+            std::unique_lock<std::recursive_mutex> lock(m_mutex);
+            auto it = m_mapDrops.find(hDrop);
+            if (it == m_mapDrops.end())
+                return FALSE;
+            pending = it->second;
+            m_mapDrops.erase(it);
+        }
+        doRelease(pending);
+        return TRUE;
+    }
+
+  private:
+    struct PendingDrop {
+        STGMEDIUM medium;
+    };
+
+    CDropDataMgr()
+    {
+    }
+
+    ~CDropDataMgr()
+    {
+        std::map<HDROP, PendingDrop> drops;
+        {
+            std::unique_lock<std::recursive_mutex> lock(m_mutex);
+            drops.swap(m_mapDrops);
+        }
+        for (auto &it : drops)
+            doRelease(it.second);
+    }
+
+    // 释放条目：GlobalUnlock 与 attach 中取得的 GlobalLock 配对（1:1），
+    // 先解锁再 ReleaseStgMedium——顺序反了会让带锁的块无法释放
+    static void doRelease(const PendingDrop &drop)
+    {
+        if (drop.medium.hGlobal)
+            GlobalUnlock(drop.medium.hGlobal);
+        STGMEDIUM medium = drop.medium;
+        ReleaseStgMedium(&medium);
+    }
+
+    std::recursive_mutex m_mutex;
+    std::map<HDROP, PendingDrop> m_mapDrops;
+};
+
 class CDropFileTarget : public SUnkImpl<IDropTarget> {
     HWND m_hOwner;
 
@@ -67,16 +163,25 @@ class CDropFileTarget : public SUnkImpl<IDropTarget> {
         /* [out][in] */ DWORD *pdwEffect) override
     {
         FORMATETC format = { CF_HDROP, 0, DVASPECT_CONTENT, -1, TYMED_HGLOBAL };
-        STGMEDIUM medium;
+        STGMEDIUM medium = {};
         if (FAILED(pDataObj->GetData(&format, &medium)))
         {
             return S_FALSE;
         }
 
-        HDROP hdrop = static_cast<HDROP>(GlobalLock(medium.hGlobal));
+        // 加锁、登记与解锁全部由 CDropDataMgr 承担（GlobalLock/GlobalUnlock 严格配对）；
+        // 接管失败时 medium 已在 attach 内释放，此处不再处理
+        HDROP hdrop = CDropDataMgr::instance()->attach(medium);
+        if (!hdrop)
+        {
+            return S_FALSE;
+        }
+
         SendMessage(m_hOwner, WM_DROPFILES, (WPARAM)hdrop, 0);
-        GlobalUnlock(medium.hGlobal);
-        ReleaseStgMedium(&medium);
+
+        // 宿主未调用 DragFinish 时在此兜底释放；已调用过则此处为空操作
+        CDropDataMgr::instance()->detach(hdrop);
+
         *pdwEffect = DROPEFFECT_COPY;
         return S_OK;
     }
@@ -111,7 +216,9 @@ class CDropFileMgr {
         auto it = m_mapTargets.find(hWnd);
         if (it == m_mapTargets.end())
             return FALSE;
-        it->second->Release();
+        IDropTarget *target = it->second;
+        m_mapTargets.erase(it);
+        target->Release();
         return TRUE;
     }
 
@@ -408,8 +515,12 @@ BOOL WINAPI DragQueryPoint(_In_ HDROP hDrop, _Out_ POINT *ppt)
     return TRUE;
 }
 
-void WINAPI DragFinish(_In_ HDROP hDrop __attribute__((unused)))
+void WINAPI DragFinish(_In_ HDROP hDrop)
 {
+    // 释放 WM_DROPFILES 交付给宿主的数据，宿主在拖放收尾时调用
+    // 未登记的 HDROP（例如宿主直接经 IDataObject::GetData 取得的数据）不由本管理器接管，
+    // 其所有权归取得方，应自行调用 ReleaseStgMedium 释放
+    swinx::CDropDataMgr::instance()->detach(hDrop);
 }
 
 void WINAPI DragAcceptFiles(_In_ HWND hWnd, _In_ BOOL fAccept)

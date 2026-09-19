@@ -1,4 +1,5 @@
 #include "SConnection.h"
+#include "xcb_event.h"
 #include "SClipboard.h"
 #include <shlobj.h>
 #include <algorithm>
@@ -701,7 +702,7 @@ xcb_atom_t SClipboard::sendSelection(IDataObject *d, xcb_atom_t target, xcb_wind
 
 void SClipboard::handleSelectionRequest(xcb_selection_request_event_t *req)
 {
-    xcb_selection_notify_event_t event;
+    xcb_selection_notify_event_t event = {};
     event.response_type = XCB_SELECTION_NOTIFY;
     event.requestor = req->requestor;
     event.selection = req->selection;
@@ -710,17 +711,17 @@ void SClipboard::handleSelectionRequest(xcb_selection_request_event_t *req)
     event.time = req->time;
     if (req->selection != m_conn->atoms.CLIPBOARD && req->selection != m_conn->atoms.XdndSelection)
     {
-        xcb_send_event(m_conn->connection, false, req->requestor, XCB_EVENT_MASK_NO_EVENT, (const char *)&event);
+        xcb_send_event32(m_conn->connection, false, req->requestor, XCB_EVENT_MASK_NO_EVENT, event);
         return;
     }
     if (req->selection == m_conn->atoms.XdndSelection && !m_doSel)
     {
-        xcb_send_event(m_conn->connection, false, req->requestor, XCB_EVENT_MASK_NO_EVENT, (const char *)&event);
+        xcb_send_event32(m_conn->connection, false, req->requestor, XCB_EVENT_MASK_NO_EVENT, event);
         return;
     }
     if (req->time != XCB_CURRENT_TIME && m_ts != XCB_CURRENT_TIME && req->time < m_ts)
     {
-        xcb_send_event(m_conn->connection, false, req->requestor, XCB_EVENT_MASK_NO_EVENT, (const char *)&event);
+        xcb_send_event32(m_conn->connection, false, req->requestor, XCB_EVENT_MASK_NO_EVENT, event);
         return;
     }
 
@@ -742,7 +743,7 @@ void SClipboard::handleSelectionRequest(xcb_selection_request_event_t *req)
         if (req->property == XCB_NONE || !clipboardReadProperty(req->requestor, req->property, false, &multi_data, 0, &multi_type, &multi_format) || multi_format != 32)
         {
             // MULTIPLE property not formatted correctly
-            xcb_send_event(xcb_connection(), false, req->requestor, XCB_EVENT_MASK_NO_EVENT, (const char *)&event);
+            xcb_send_event32(xcb_connection(), false, req->requestor, XCB_EVENT_MASK_NO_EVENT, event);
             return;
         }
         nmulti = multi_data.size() / sizeof(AtomPair);
@@ -824,7 +825,7 @@ void SClipboard::handleSelectionRequest(xcb_selection_request_event_t *req)
         event.property = req->property;
     }
     // send selection notify to requestor
-    xcb_send_event(xcb_connection(), false, req->requestor, XCB_EVENT_MASK_NO_EVENT, (const char *)&event);
+    xcb_send_event32(xcb_connection(), false, req->requestor, XCB_EVENT_MASK_NO_EVENT, event);
 }
 
 void SClipboard::handleSelectionClear(xcb_selection_clear_event_t *e)

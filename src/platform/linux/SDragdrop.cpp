@@ -1,4 +1,5 @@
 #include "SDragdrop.h"
+#include "xcb_event.h"
 #include "SConnection.h"
 #include "SClipboard.h"
 #include <vector>
@@ -146,14 +147,14 @@ LRESULT SDragDrop::OnMapNotify(UINT uMsg __attribute__((unused)), WPARAM wp, LPA
 
 void SDragDrop::drag_leave(HWND target)
 {
-    xcb_client_message_event_t leave;
+    xcb_client_message_event_t leave = {};
     leave.response_type = XCB_CLIENT_MESSAGE;
     leave.sequence = 0;
     leave.window = target;
     leave.format = 32;
     leave.type = conn->atoms.XdndLeave;
     leave.data.data32[0] = m_hWnd;
-    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char *)&leave);
+    xcb_send_event32(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, leave);
     xcb_flush(conn->connection);
 }
 
@@ -172,7 +173,7 @@ static uint32_t getXdndAction(DWORD dwEffect, SConnection *conn)
 void SDragDrop::drag_over(HWND target, int x, int y)
 {
 
-    xcb_client_message_event_t position;
+    xcb_client_message_event_t position = {};
     position.response_type = XCB_CLIENT_MESSAGE;
     position.sequence = 0;
     position.window = target;
@@ -183,7 +184,7 @@ void SDragDrop::drag_over(HWND target, int x, int y)
     position.data.data32[2] = MAKELONG(y, x);
     position.data.data32[3] = XCB_CURRENT_TIME;                // time
     position.data.data32[4] = getXdndAction(dwOKEffect, conn); // suggested action.
-    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char *)&position);
+    xcb_send_event32(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, position);
     xcb_flush(conn->connection);
 }
 
@@ -210,7 +211,7 @@ void SDragDrop::drag_enter(HWND target)
         if (types.size() > xdnd_max_type)
             types.resize(xdnd_max_type);
     }
-    xcb_client_message_event_t enter;
+    xcb_client_message_event_t enter = {};
     enter.response_type = XCB_CLIENT_MESSAGE;
     enter.sequence = 0;
     enter.window = target;
@@ -229,13 +230,13 @@ void SDragDrop::drag_enter(HWND target)
         enter.data.data32[3] = types.size() > 1 ? types.at(1) : 0;
         enter.data.data32[4] = types.size() > 2 ? types.at(2) : 0;
     }
-    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char *)&enter);
+    xcb_send_event32(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, enter);
     drag_over(target, curMousePos.x, curMousePos.y);
 }
 
 void SDragDrop::drag_drop(HWND target, DWORD dwEffect)
 {
-    xcb_client_message_event_t drop;
+    xcb_client_message_event_t drop = {};
     drop.response_type = XCB_CLIENT_MESSAGE;
     drop.sequence = 0;
     drop.window = target;
@@ -246,7 +247,7 @@ void SDragDrop::drag_drop(HWND target, DWORD dwEffect)
     drop.data.data32[2] = XCB_TIME_CURRENT_TIME;
     drop.data.data32[3] = 0;
     drop.data.data32[4] = dwEffect;
-    xcb_send_event(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, (const char *)&drop);
+    xcb_send_event32(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, drop);
 }
 
 void SDragDrop::drag_end()

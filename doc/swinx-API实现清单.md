@@ -18,22 +18,22 @@
 
 | 分级 | 数量 |
 |---|---|
-| 实现 | 814 |
+| 实现 | 822 |
 | 简单实现 | 67 |
 | 部分实现 | 0 |
-| 空实现 / 语义桩 | 30 |
-| 未提供（仅声明） | 125 |
-| **合计（有定义）** | **911** |
+| 空实现 / 语义桩 | 24 |
+| 未提供（仅声明） | 123 |
+| **合计（有定义）** | **913** |
 
 ## 3. 模块分布
 
 | 模块 | 实现 | 简单实现 | 部分实现 | 空实现 |
 |---|---|---|---|---|
-| 窗口、消息与用户界面（USER32 等价） | 182 | 12 | 0 | 8 |
+| 窗口、消息与用户界面（USER32 等价） | 184 | 12 | 0 | 6 |
 | 图形设备接口（GDI32 等价） | 152 | 21 | 0 | 5 |
-| 系统、文件、进程与线程（KERNEL32 等价） | 283 | 15 | 0 | 5 |
-| COM / OLE（OLE32·OLEAUT32 等价） | 49 | 9 | 0 | 4 |
-| 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 74 | 6 | 0 | 1 |
+| 系统、文件、进程与线程（KERNEL32 等价） | 286 | 15 | 0 | 2 |
+| COM / OLE（OLE32·OLEAUT32 等价） | 51 | 9 | 0 | 4 |
+| 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 75 | 6 | 0 | 0 |
 | 多媒体、资源及其它（WINMM·杂项） | 74 | 4 | 0 | 7 |
 
 ## 4. 模块 API 明细
@@ -46,6 +46,7 @@
 
 | API | 级别 | 实现位置 | 备注 |
 |---|---|---|---|
+| `AdjustWindowRectEx` | 实现 | src/wnd.cpp | 由客户区矩形反推窗口矩形：只有 WS_BORDER（swinx 自绘的那圈边框）会让矩形四周各外扩 SM_CXEDGE/SM_CYEDGE；标题栏与调整边框由原生窗口管理器画在窗口矩形之外、菜单栏不自绘，故这三项贡献为 0（详见 src/wnd.cpp 的说明） |
 | `AnimateWindow` | 实现 | src/wnd.cpp |  |
 | `AppendMenuA` | 实现 | src/cmnctl32/menu.cpp |  |
 | `AppendMenuW` | 实现 | src/cmnctl32/menu.cpp |  |
@@ -135,7 +136,7 @@
 | `GetWindowLongPtrW` | 实现 | src/wnd.cpp |  |
 | `GetWindowLongW` | 实现 | src/wnd.cpp |  |
 | `GetWindowPlacement` | 实现 | src/wnd.cpp |  |
-| `GetWindowRect` | 实现 | src/wnd.cpp（另有 1 个平台分支） |  |
+| `GetWindowRect` | 实现 | src/wnd.cpp（另有 2 个平台分支） |  |
 | `GetWindowTextA` | 实现 | src/wnd.cpp |  |
 | `GetWindowTextLengthA` | 实现 | src/wnd.cpp |  |
 | `GetWindowTextLengthW` | 实现 | src/wnd.cpp |  |
@@ -156,6 +157,7 @@
 | `IsZoomed` | 实现 | src/wnd.cpp |  |
 | `KillTimer` | 实现 | src/wnd.cpp（另有 1 个平台分支） |  |
 | `MapWindowPoints` | 实现 | src/wnd.cpp |  |
+| `MessageBeep` | 实现 | src/sysapi.cpp | 转发平台实现 swinx_messageBeep：Linux 走 X11 Bell 请求、macOS 走 NSBeep()、iOS 走 AudioServicesPlayAlertSound，Android / OHOS 经 g_platformAPI.audio.messageBeep 交宿主应用发声（契约见 src/SwinxUtils.h） |
 | `MessageBoxA` | 实现 | src/cmnctl32/msgbox.cpp |  |
 | `MessageBoxW` | 实现 | src/cmnctl32/msgbox.cpp |  |
 | `ModifyMenuA` | 实现 | src/cmnctl32/menu.cpp |  |
@@ -231,7 +233,7 @@
 | `CopyRect` | 简单实现 | src/winuser.cpp | memcpy 结构拷贝 |
 | `EqualRect` | 简单实现 | src/winuser.cpp | 逐成员比较 |
 | `GetScrollInfo` | 简单实现 | src/wnd.cpp |  |
-| `InflateRect` | 简单实现 | src/winuser.cpp |  |
+| `InflateRect` | 简单实现 | src/winuser.cpp 等 2 处 |  |
 | `IsMenu` | 简单实现 | src/cmnctl32/menu.cpp |  |
 | `IsRectEmpty` | 简单实现 | src/winuser.cpp | 逐成员比较 |
 | `OffsetRect` | 简单实现 | src/winuser.cpp |  |
@@ -240,10 +242,8 @@
 | `SetRectEmpty` | 简单实现 | src/winuser.cpp | 逐成员置零 |
 | `SetScrollInfo` | 简单实现 | src/wnd.cpp |  |
 | `UnhookWindowsHookEx` | 简单实现 | src/hook.cpp |  |
-| `AdjustWindowRectEx` | 空实现 | src/wnd.cpp | 恒返回 TRUE，不做任何矩形换算（SOUI 自行处理窗口边框） |
 | `EnumDisplayDevicesW` | 空实现 | src/multimon.cpp | 恒返回 FALSE，枚举显示器请使用 EnumDisplayMonitors |
 | `IsWindowUnicode` | 空实现 | src/wnd.cpp | 恒返回 FALSE（swinx 窗口内部统一 UTF-8 存储，非 Win32 的 Unicode/ANSI 双轨制） |
-| `MessageBeep` | 空实现 | src/sysapi.cpp | 恒返回 FALSE，不播放系统提示音 |
 | `ScrollWindowEx` | 空实现 | src/wnd.cpp | 恒返回 0，不执行窗口滚动（SOUI 滚动走自己的失效/重绘路径） |
 | `SendNotifyMessageA` | 空实现 | src/wnd.cpp | 恒返回 FALSE，不投递消息 |
 | `SendNotifyMessageW` | 空实现 | src/wnd.cpp | 恒返回 FALSE，不投递消息 |
@@ -442,6 +442,7 @@
 |---|---|---|---|
 | `AcquireSRWLockExclusive` | 实现 | src/syncapi.cpp |  |
 | `AcquireSRWLockShared` | 实现 | src/syncapi.cpp |  |
+| `ActivateKeyboardLayout` | 实现 | src/sysapi.cpp | 经 HKL 抽象暴露各平台键盘布局：Linux 走 XKB group、macOS 走 TIS、iOS/移动端只有唯一布局（OS 不允许 App 切换）。句柄 = 布局索引 + SWINX_HKL_BASE，与魔法值 HKL_PREV(0)/HKL_NEXT(1) 隔离 |
 | `CallMsgFilter` | 实现 | src/sysapi.cpp |  |
 | `CancelWaitableTimer` | 实现 | src/sysobjs.cpp |  |
 | `ChangeTimerQueueTimer` | 实现 | src/sysobjs.cpp |  |
@@ -529,6 +530,8 @@
 | `GetFileTime` | 实现 | src/fileapi.cpp |  |
 | `GetHandleName` | 实现 | src/sysobjs.cpp |  |
 | `GetKeyState` | 实现 | src/sysapi.cpp（另有 2 个平台分支） |  |
+| `GetKeyboardLayout` | 实现 | src/winnsl.cpp | 返回当前 HKL；尚未同步时按平台当前布局惰性初始化 |
+| `GetKeyboardLayoutList` | 实现 | src/sysapi.cpp | 枚举各平台键盘布局列表，返回 HKL 数组 |
 | `GetKeyboardState` | 实现 | src/sysapi.cpp |  |
 | `GetLocalTime` | 实现 | src/sysapi.cpp |  |
 | `GetLocaleInfoA` | 实现 | src/winnsl.cpp |  |
@@ -563,7 +566,7 @@
 | `GetSystemDefaultLCID` | 实现 | src/winnsl.cpp |  |
 | `GetSystemDefaultLangID` | 实现 | src/winnsl.cpp |  |
 | `GetSystemInfo` | 实现 | src/sysapi.cpp |  |
-| `GetSystemMetrics` | 实现 | src/sysapi.cpp |  |
+| `GetSystemMetrics` | 实现 | src/sysapi.cpp 等 2 处 |  |
 | `GetSystemScale` | 实现 | src/sysapi.cpp |  |
 | `GetSystemTime` | 实现 | src/sysapi.cpp |  |
 | `GetTempFileNameA` | 实现 | src/sysapi.cpp |  |
@@ -580,10 +583,10 @@
 | `GlobalFlags` | 实现 | src/memory.cpp |  |
 | `GlobalFree` | 实现 | src/memory.cpp |  |
 | `GlobalHandle` | 实现 | src/memory.cpp |  |
-| `GlobalLock` | 实现 | src/memory.cpp |  |
+| `GlobalLock` | 实现 | src/memory.cpp 等 2 处 |  |
 | `GlobalReAlloc` | 实现 | src/memory.cpp |  |
 | `GlobalSize` | 实现 | src/memory.cpp |  |
-| `GlobalUnlock` | 实现 | src/memory.cpp |  |
+| `GlobalUnlock` | 实现 | src/memory.cpp 等 2 处 |  |
 | `HeapCreate` | 实现 | src/memory.cpp |  |
 | `HeapDestroy` | 实现 | src/memory.cpp |  |
 | `HeapFree` | 实现 | src/memory.cpp |  |
@@ -738,10 +741,7 @@
 | `QueryPerformanceFrequency` | 简单实现 | src/sysapi.cpp |  |
 | `SetLastError` | 简单实现 | src/sysapi.cpp | 以线程局部 errno 模拟 last-error，错误码语义与 Win32 不完全一致 |
 | `set_error` | 简单实现 | src/sysapi.cpp |  |
-| `ActivateKeyboardLayout` | 实现 | src/sysapi.cpp（委托 SConnection） | 经 HKL 抽象暴露各平台键盘布局：Linux 走 XKB group，macOS 走 TIS，iOS/移动端存储+循环 |
 | `GetCurrentProcess_Priv` | 空实现 | src/sysapi.cpp | 内部辅助符号，恒返回 INVALID_HANDLE_VALUE（伪句柄方案不用进程句柄） |
-| `GetKeyboardLayout` | 实现 | src/winnsl.cpp（委托 SConnection） | 返回当前 HKL（m_hkl） |
-| `GetKeyboardLayoutList` | 实现 | src/sysapi.cpp（委托 SConnection） | 枚举各平台键盘布局列表，返回 HKL 数组 |
 | `TerminateThread` | 空实现 | src/sysapi.cpp | 恒返回 0，不强制终止线程（Win32 本身也强烈不建议使用） |
 
 ### 4.4 COM / OLE（OLE32·OLEAUT32 等价）
@@ -764,7 +764,7 @@
 | `OleIsCurrentClipboard` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
 | `OleSetClipboard` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
 | `RegisterDragDrop` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
-| `ReleaseStgMedium` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
+| `ReleaseStgMedium` | 实现 | src/shellapi.cpp（另有 4 个平台分支） |  |
 | `RevokeDragDrop` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
 | `SHCreateStdEnumFmtEtc` | 实现 | src/shellobj.cpp |  |
 | `SHGetSpecialFolderPathA` | 实现 | src/shellobj.cpp |  |
@@ -795,6 +795,8 @@
 | `SysAllocStringByteLen` | 实现 | src/objbase.cpp |  |
 | `SysAllocStringLen` | 实现 | src/objbase.cpp |  |
 | `SysFreeString` | 实现 | src/objbase.cpp |  |
+| `SysReAllocString` | 实现 | src/objbase.cpp |  |
+| `SysReAllocStringLen` | 实现 | src/objbase.cpp |  |
 | `SysStringByteLen` | 实现 | src/objbase.cpp |  |
 | `SysStringLen` | 实现 | src/objbase.cpp |  |
 | `VariantClear` | 实现 | src/variant.cpp |  |
@@ -824,6 +826,7 @@
 | `ChooseFontA` | 实现 | src/platform/*/dlghelper.cpp 等 4 处 |  |
 | `ChooseFontW` | 实现 | src/platform/*/dlghelper.cpp 等 4 处 |  |
 | `DragAcceptFiles` | 实现 | src/shellapi.cpp |  |
+| `DragFinish` | 实现 | src/shellapi.cpp | 释放 WM_DROPFILES 交付给宿主的拖放数据；宿主未调用时由 CDropFileTarget::Drop 兜底释放，重复调用幂等 |
 | `DragQueryFileA` | 实现 | src/shellapi.cpp |  |
 | `DragQueryFileW` | 实现 | src/shellapi.cpp |  |
 | `GetFullPathNameA` | 实现 | src/shellapi.cpp |  |
@@ -899,7 +902,6 @@
 | `PathIsRelativeA` | 简单实现 | src/shellapi.cpp |  |
 | `PathIsRelativeW` | 简单实现 | src/shellapi.cpp |  |
 | `PathUnquoteSpacesA` | 简单实现 | src/shellapi.cpp |  |
-| `DragFinish` | 空实现 | src/shellapi.cpp | 空操作（拖放文件列表内存由内部管理） |
 
 ### 4.6 多媒体、资源及其它（WINMM·杂项）
 
@@ -995,7 +997,7 @@
 
 ## 5. 空实现 / 语义桩 API 详解
 
-以下 30 个 API 在 swinx 中提供符号但无实质逻辑。分两类：**协议占位**（为满足初始化/配对协议，返回成功值）与**能力缺失**（直接返回失败或空操作）。使用前请确认调用方不依赖其真实效果。
+以下 24 个 API 在 swinx 中提供符号但无实质逻辑。分两类：**协议占位**（为满足初始化/配对协议，返回成功值）与**能力缺失**（直接返回失败或空操作）。使用前请确认调用方不依赖其真实效果。
 
 ### 5.1 协议占位（返回成功，可正常配对调用）
 
@@ -1021,16 +1023,10 @@
 
 | API | 行为与影响 |
 |---|---|
-| `ActivateKeyboardLayout` | 已实现，经 HKL 抽象暴露各平台键盘布局（Linux=XKB group / macOS=TIS / iOS·移动端=存储+循环） |
-| `AdjustWindowRectEx` | 恒返回 TRUE，不做任何矩形换算（SOUI 自行处理窗口边框） |
-| `DragFinish` | 空操作（拖放文件列表内存由内部管理） |
 | `EnumDisplayDevicesW` | 恒返回 FALSE，枚举显示器请使用 EnumDisplayMonitors |
 | `FreeResource` | 恒返回 TRUE。Win32 32 位模式下该 API 本身即为无操作，语义兼容 |
 | `GetCurrentProcess_Priv` | 内部辅助符号，恒返回 INVALID_HANDLE_VALUE（伪句柄方案不用进程句柄） |
-| `GetKeyboardLayout` | 已实现，返回当前 HKL |
-| `GetKeyboardLayoutList` | 已实现，枚举各平台键盘布局列表 |
 | `IsWindowUnicode` | 恒返回 FALSE（swinx 窗口内部统一 UTF-8 存储，非 Win32 的 Unicode/ANSI 双轨制） |
-| `MessageBeep` | 恒返回 FALSE，不播放系统提示音 |
 | `RealizePalette` | 恒返回 0（无调色板概念） |
 | `ScrollWindowEx` | 恒返回 0，不执行窗口滚动（SOUI 滚动走自己的失效/重绘路径） |
 | `SelectPalette` | 恒返回 NULL（无调色板概念） |
@@ -1062,9 +1058,9 @@
 | `AccessibleObjectFromEvent` | 与 Win32 同路径：经 AccessibleObjectFromWindow（SendMessage WM_GETOBJECT）解析 (hwnd, idObject) 处对象，pvarChild 回带事件携带的 child id |
 | `OBJID_*` 常量 | 数值与 WinSDK 一致，但定义写法不同：WinSDK 的 `0xFFFFFFFCL` 在 LP64（Linux/macOS）上是 64 位正数，swinx 用 `((LONG)0xFFFFFFFC)` 显式收窄，保证 `(LONG)lParam == OBJID_CLIENT` 这类服务端判断在所有平台成立；`AccessibleObjectFromWindow` 发 WM_GETOBJECT 时按真实客户端行为对 OBJID 做符号扩展 |
 
-## 6. 仅声明、未提供实现的 API（125 个）
+## 6. 仅声明、未提供实现的 API（123 个）
 
-以下 API 为维持 Windows 头文件（主要是 `commctrl.h` 的 DPA/DSA、ImageList、FlatSB、TaskDialog 系列及 `oleauto.h` 的个别 BSTR 函数）兼容而声明，swinx **没有符号定义**。SOUI 当前源码未引用它们；若第三方代码引用将产生链接错误。
+以下 API 为维持 Windows 头文件（主要是 `commctrl.h` 的 DPA/DSA、ImageList、FlatSB、TaskDialog 系列）兼容而声明，swinx **没有符号定义**。SOUI 当前源码未引用它们；若第三方代码引用将产生链接错误。
 
 ```
 ChangeClipboardChain              CountClipboardFormats             CreateMappedBitmap                CreateStatusWindowA             
@@ -1096,9 +1092,8 @@ ImageList_SetIconSize             ImageList_SetImageCount           ImageList_Se
 ImageList_WriteEx                 InitCommonControls                InitCommonControlsEx              InitMUILanguage                 
 InitializeFlatSB                  LBItemFromPt                      LoadIconMetric                    LoadIconWithScaleDown           
 MakeDragList                      MenuHelp                          RemoveWindowSubclass              SetClipboardViewer              
-SetWindowSubclass                 ShowHideMenuCtl                   Str_SetPtrW                       SysReAllocString                
-SysReAllocStringLen               TaskDialog                        TaskDialogIndirect                UninitializeFlatSB              
-_TrackMouseEvent                
+SetWindowSubclass                 ShowHideMenuCtl                   Str_SetPtrW                       TaskDialog                      
+TaskDialogIndirect                UninitializeFlatSB                _TrackMouseEvent                
 ```
 
 ## 7. 平台注入接口（platform_api.h）

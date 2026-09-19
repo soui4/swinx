@@ -33,15 +33,15 @@ OVERRIDES = {
     "UpdateResourceW":      ("stub", "显式拒绝：SetLastError(ERROR_CALL_NOT_IMPLEMENTED)；资源层为只读实现"),
     "FreeResource":         ("stub", "恒返回 TRUE。Win32 32 位模式下该 API 本身即为无操作，语义兼容"),
     # ---- 其余语义桩（附影响说明） ----
-    "ActivateKeyboardLayout":  ("stub", "恒返回 0，不做键盘布局切换"),
-    "AdjustWindowRectEx":      ("stub", "恒返回 TRUE，不做任何矩形换算（SOUI 自行处理窗口边框）"),
-    "DragFinish":              ("stub", "空操作（拖放文件列表内存由内部管理）"),
+    "ActivateKeyboardLayout":  ("impl", "经 HKL 抽象暴露各平台键盘布局：Linux 走 XKB group、macOS 走 TIS、iOS/移动端只有唯一布局（OS 不允许 App 切换）。句柄 = 布局索引 + SWINX_HKL_BASE，与魔法值 HKL_PREV(0)/HKL_NEXT(1) 隔离"),
+    "AdjustWindowRectEx":      ("impl", "由客户区矩形反推窗口矩形：只有 WS_BORDER（swinx 自绘的那圈边框）会让矩形四周各外扩 SM_CXEDGE/SM_CYEDGE；标题栏与调整边框由原生窗口管理器画在窗口矩形之外、菜单栏不自绘，故这三项贡献为 0（详见 src/wnd.cpp 的说明）"),
+    "DragFinish":              ("impl", "释放 WM_DROPFILES 交付给宿主的拖放数据；宿主未调用时由 CDropFileTarget::Drop 兜底释放，重复调用幂等"),
     "EnumDisplayDevicesW":     ("stub", "恒返回 FALSE，枚举显示器请使用 EnumDisplayMonitors"),
     "GetCurrentProcess_Priv":  ("stub", "内部辅助符号，恒返回 INVALID_HANDLE_VALUE（伪句柄方案不用进程句柄）"),
-    "GetKeyboardLayout":       ("stub", "恒返回 0"),
-    "GetKeyboardLayoutList":   ("stub", "恒返回 0，不枚举键盘布局"),
+    "GetKeyboardLayout":       ("impl", "返回当前 HKL；尚未同步时按平台当前布局惰性初始化"),
+    "GetKeyboardLayoutList":   ("impl", "枚举各平台键盘布局列表，返回 HKL 数组"),
     "IsWindowUnicode":         ("stub", "恒返回 FALSE（swinx 窗口内部统一 UTF-8 存储，非 Win32 的 Unicode/ANSI 双轨制）"),
-    "MessageBeep":             ("stub", "恒返回 FALSE，不播放系统提示音"),
+    "MessageBeep":             ("impl", "转发平台实现 swinx_messageBeep：Linux 走 X11 Bell 请求、macOS 走 NSBeep()、iOS 走 AudioServicesPlayAlertSound，Android / OHOS 经 g_platformAPI.audio.messageBeep 交宿主应用发声（契约见 src/SwinxUtils.h）"),
     "RealizePalette":          ("stub", "恒返回 0（无调色板概念）"),
     "ScrollWindowEx":          ("stub", "恒返回 0，不执行窗口滚动（SOUI 滚动走自己的失效/重绘路径）"),
     "SelectPalette":           ("stub", "恒返回 NULL（无调色板概念）"),
@@ -261,7 +261,7 @@ A("")
 # ---- 未提供 ----
 A("## 6. 仅声明、未提供实现的 API（%d 个）" % len(no_def_list))
 A("")
-A("以下 API 为维持 Windows 头文件（主要是 `commctrl.h` 的 DPA/DSA、ImageList、FlatSB、TaskDialog 系列及 `oleauto.h` 的个别 BSTR 函数）兼容而声明，swinx **没有符号定义**。SOUI 当前源码未引用它们；若第三方代码引用将产生链接错误。")
+A("以下 API 为维持 Windows 头文件（主要是 `commctrl.h` 的 DPA/DSA、ImageList、FlatSB、TaskDialog 系列）兼容而声明，swinx **没有符号定义**。SOUI 当前源码未引用它们；若第三方代码引用将产生链接错误。")
 A("")
 A("```")
 for i in range(0, len(no_def_list), 4):

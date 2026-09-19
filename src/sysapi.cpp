@@ -1525,6 +1525,22 @@ int GetSystemMetrics(int nIndex)
         return 16;
     case SM_CYSMICON:
         return 16;
+    // swinx 不自绘的非客户区尺寸：标题栏及其按钮、调整边框、对话框边框、菜单栏。
+    // 它们要么由原生窗口管理器画在窗口矩形之外（Linux 的 _MOTIF_WM_HINTS、macOS 的
+    // NSWindowStyleMask），要么由上层 UI 库（SOUI 的菜单控件）负责，因此在 swinx 的
+    // 窗口矩形里厚度恒为 0。显式返回 0 而不是落进 default 分支，免得每次查询都刷
+    // 一遍 "unknown index"——0 在这里是"确知没有"，不是"未实现"。
+    case SM_CYCAPTION:
+    case SM_CXSIZE:
+    case SM_CYSIZE:
+    case SM_CXSMSIZE:
+    case SM_CYSMSIZE:
+    case SM_CXFRAME:
+    case SM_CYFRAME:
+    case SM_CXDLGFRAME:
+    case SM_CYDLGFRAME:
+    case SM_CYMENU:
+        return 0;
     case SM_CXICON:
         ret = 32;
         break;

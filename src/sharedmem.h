@@ -41,8 +41,9 @@ struct ISemRwLock
 // 应用对同一命名对象的并发访问（如两个线程同时对同一命名信号量 Set/Wait）
 // 将失去互斥——这是功能回归。
 //
-// 解决方式：以锁文件路径为 key 维护每路径一份进程内状态（函数局部静态，
-// 可安全用于全局构造期）：
+// 解决方式：以锁文件路径为 key 维护每路径一份进程内状态（由 FlockGateTable
+// 单例持有，堆上分配且不参与静态析构 —— 原因见下方 FlockGateTable 处的说明 ——
+// 因此可安全用于全局构造期与全局析构期）：
 //   - gate     : 线程临界区互斥，恢复与 sem_wait 等价的线程间串行；
 //   - opMutex  : 保护 holders 计数；
 //   - holders  : 本进程当前处于该锁临界区的线程数；文件锁只在第一个持有
@@ -64,43 +65,86 @@ struct FlockGateState
     }
 };
 
-inline std::map<std::string, FlockGateState *> &flockGateStates()
+// gate 状态表与配套互斥量。
+//
+// 为什么把互斥量与表放进同一个对象，而不是两个各自独立的函数局部静态量：
+//   1. 二者的相对析构顺序由语言给定——成员按"声明逆序"销毁，互斥量声明在表之前，
+//      于是表先拆、锁后毁：绝不会出现"锁已销毁、表还在被操作"或"表已销毁、
+//      锁还被取用"这类由静态初始化次序决定的未定义行为；
+//   2. 表只能在它自己的锁保护下读写——这是同一个不变量；封装成对象后不存在
+//      "取到 A 的表、却用 B 的锁"的可能；
+//   3. 只分配一次，退出时只多一份 still-reachable。
+//
+// 为什么整份对象仍然刻意不析构（leak on purpose）：本对象在多个编译单元里各
+// 有一份弱定义（例如 exe 的 fun_test 与 libswinx.so 各一份），静态局部量的析构
+// 由"首次初始化它的那个编译单元"通过 __cxa_atexit 注册到该 DSO 的 __dso_handle
+// 上。DLL 模式下会出现"exe 注册了析构、DLL 仍在使用"的组合：进程退出时 exe 的
+// __cxa_finalize 先跑（本对象被销毁），随后才轮到 libswinx.so 的 fini_array，而
+// sysobjs.cpp 的静态对象 GLobalHandleTable 的析构会经 SharedMemory::~SharedMemory
+// -> ~TNamedSemRwLock -> flockGateRelease 再次访问本表，对已被释放的 map 节点做
+// find/erase。
+//
+// 该顺序无法靠调整构造顺序修复：exe 的 __cxa_finalize 恒早于 _dl_fini，而本对象
+// 又必然是在使用者的构造函数里"后构造"、按 LIFO 就先析构。故 instance() 在堆上
+// 分配且永不释放：退出时只多一份空表与互斥量计入 still-reachable，远小于
+// use-after-free 的代价（这正是 valgrind 报 23 处 Invalid read 与 2 处 Invalid
+// free 的根因）。表内条目仍在 refs 归零时正常 delete 并 erase，运行期行为与
+// 原来完全一致。
+class FlockGateTable
 {
-    static std::map<std::string, FlockGateState *> s_states;
-    return s_states;
-}
-inline std::mutex &flockGateStatesMutex()
-{
-    static std::mutex s_mutex;
-    return s_mutex;
-}
+  public:
+    static FlockGateTable &instance()
+    {
+        static FlockGateTable *s_table = new FlockGateTable();
+        return *s_table;
+    }
+
+    // 取 path 对应的 gate 状态；不存在则新建，引用计数 +1
+    FlockGateState *acquire(const std::string &path)
+    {
+        std::lock_guard<std::mutex> lk(m_mutex);
+        std::map<std::string, FlockGateState *>::iterator it = m_states.find(path);
+        if (it == m_states.end())
+        {
+            FlockGateState *st = new FlockGateState();
+            m_states[path] = st;
+            st->refs = 1;
+            return st;
+        }
+        FlockGateState *st = it->second;
+        st->refs++;
+        return st;
+    }
+
+    // 释放 path 对应的 gate 状态；引用计数归零则销毁条目
+    void release(const std::string &path)
+    {
+        std::lock_guard<std::mutex> lk(m_mutex);
+        std::map<std::string, FlockGateState *>::iterator it = m_states.find(path);
+        if (it != m_states.end() && --it->second->refs == 0)
+        {
+            delete it->second;
+            m_states.erase(it);
+        }
+    }
+
+  private:
+    FlockGateTable()
+    {
+    }
+
+    // 声明次序即析构逆序：表先析构，护着它的互斥量后析构
+    std::mutex m_mutex;
+    std::map<std::string, FlockGateState *> m_states;
+};
+
 inline FlockGateState *flockGateAcquire(const std::string &path)
 {
-    std::lock_guard<std::mutex> lk(flockGateStatesMutex());
-    FlockGateState *st = nullptr;
-    std::map<std::string, FlockGateState *>::iterator it = flockGateStates().find(path);
-    if (it == flockGateStates().end())
-    {
-        st = new FlockGateState();
-        flockGateStates()[path] = st;
-        st->refs = 1;
-    }
-    else
-    {
-        st = it->second;
-        st->refs++;
-    }
-    return st;
+    return FlockGateTable::instance().acquire(path);
 }
 inline void flockGateRelease(const std::string &path)
 {
-    std::lock_guard<std::mutex> lk(flockGateStatesMutex());
-    std::map<std::string, FlockGateState *>::iterator it = flockGateStates().find(path);
-    if (it != flockGateStates().end() && --it->second->refs == 0)
-    {
-        delete it->second;
-        flockGateStates().erase(it);
-    }
+    FlockGateTable::instance().release(path);
 }
 
 // 通用读写锁：以 fcntl POSIX 记录锁实现，取代 XSI System V 信号量。

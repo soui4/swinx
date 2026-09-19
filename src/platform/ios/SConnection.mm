@@ -860,8 +860,11 @@ bool SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn) {
     }
 }
 
-HKL SConnection::GetKeyboardLayout(DWORD idThread)
+HKL SConnection::GetKeyboardLayout(DWORD idThread __attribute__((unused)))
 {
+    // iOS 只有唯一系统键盘布局；m_hkl == 0 表示尚未同步
+    if (!m_hkl)
+        m_hkl = (HKL)SWINX_HKL_BASE;
     return m_hkl;
 }
 
@@ -869,15 +872,16 @@ UINT SConnection::GetKeyboardLayoutList(int nBuff, HKL *lpList)
 {
     // iOS 不允许 App 切换/枚举系统键盘布局，统一视为单一布局
     if (lpList && nBuff > 0)
-        lpList[0] = (HKL)0;
+        lpList[0] = (HKL)SWINX_HKL_BASE;
     return 1;
 }
 
-HKL SConnection::ActivateKeyboardLayout(HKL hKl)
+HKL SConnection::ActivateKeyboardLayout(HKL hKl __attribute__((unused)))
 {
-    // iOS 无 App 级键盘布局切换能力；仅记录请求并返回上一布局，保持 API 行为一致
-    HKL prev = m_hkl;
-    m_hkl = hKl;
+    // iOS 无 App 级键盘布局切换能力：单布局下 HKL_NEXT/HKL_PREV 与任意句柄
+    // 都落在同一布局上，故只返回上一布局，系统布局不变
+    HKL prev = GetKeyboardLayout(0);
+    m_hkl = (HKL)SWINX_HKL_BASE;
     return prev;
 }
 

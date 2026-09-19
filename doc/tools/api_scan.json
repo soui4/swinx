@@ -1,7 +1,7 @@
 {
  "_meta": {
   "decl_total": 1042,
-  "defined_total": 911,
+  "defined_total": 913,
   "no_def": [
    "ChangeClipboardChain",
    "CountClipboardFormats",
@@ -127,8 +127,6 @@
    "SetWindowSubclass",
    "ShowHideMenuCtl",
    "Str_SetPtrW",
-   "SysReAllocString",
-   "SysReAllocStringLen",
    "TaskDialog",
    "TaskDialogIndirect",
    "UninitializeFlatSB",
@@ -8959,10 +8957,26 @@
     "platform/cocoa/ole2.mm",
     "platform/ios/ole2.mm",
     "platform/linux/ole2.cpp",
-    "platform/mobile/ole2.cpp"
+    "platform/mobile/ole2.cpp",
+    "shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "shellapi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "shellapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "shellapi.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/cocoa/ole2.mm",
      "impl",
@@ -9281,6 +9295,21 @@
      "objbase.cpp",
      "impl",
      ""
+    ],
+    [
+     "objbase.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "objbase.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "objbase.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -9322,6 +9351,58 @@
    ]
   },
   "SysFreeString": {
+   "headers": [
+    "oleauto.h"
+   ],
+   "files": [
+    "objbase.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "objbase.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "objbase.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "objbase.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "objbase.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "SysReAllocString": {
+   "headers": [
+    "oleauto.h"
+   ],
+   "files": [
+    "objbase.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "objbase.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "objbase.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "SysReAllocStringLen": {
    "headers": [
     "oleauto.h"
    ],
@@ -11128,12 +11209,27 @@
    "files": [
     "shellapi.cpp"
    ],
-   "agg": "stub",
+   "agg": "impl",
    "site_classes": [
     [
      "shellapi.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "shellapi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "shellapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "shellapi.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -13569,12 +13665,148 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "sysapi.cpp",
+    "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
      "impl",
      ""
     ]
@@ -14500,12 +14732,28 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "memory.cpp",
+    "shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "memory.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "shellapi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "shellapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "shellapi.cpp",
      "impl",
      ""
     ]
@@ -14516,12 +14764,28 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "memory.cpp",
+    "shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "memory.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "shellapi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "shellapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "shellapi.cpp",
      "impl",
      ""
     ]
@@ -16756,7 +17020,8 @@
     "winuser.h"
    ],
    "files": [
-    "winuser.cpp"
+    "winuser.cpp",
+    "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -16764,6 +17029,36 @@
      "winuser.cpp",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -18646,6 +18941,41 @@
      "wnd.cpp",
      "impl",
      ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -18655,6 +18985,7 @@
    ],
    "files": [
     "platform/linux/SAtSpi.cpp",
+    "platform/linux/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
@@ -18675,7 +19006,27 @@
      ""
     ],
     [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
      "platform/linux/SAtSpi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ]
@@ -19045,6 +19396,16 @@
      "wnd.cpp",
      "impl",
      ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -19058,6 +19419,11 @@
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
     [
      "wnd.cpp",
      "impl",
@@ -19468,6 +19834,11 @@
      ""
     ],
     [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
      "platform/linux/SConnection.cpp",
      "impl",
      ""
@@ -19619,12 +19990,12 @@
    "files": [
     "wnd.cpp"
    ],
-   "agg": "stub",
+   "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },

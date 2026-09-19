@@ -1,4 +1,5 @@
 #include "SConnection.h"
+#include "xcb_event.h"
 #include <assert.h>
 #include <functional>
 #include <xcb/xcb_icccm.h>
@@ -1221,7 +1222,7 @@ void SConnection::EnableDragDrop(HWND hWnd, BOOL enable)
 
 void SConnection::SendXdndStatus(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect)
 {
-    xcb_client_message_event_t response;
+    xcb_client_message_event_t response = {};
     response.response_type = XCB_CLIENT_MESSAGE;
     response.sequence = 0;
     response.window = hSource;
@@ -1232,12 +1233,12 @@ void SConnection::SendXdndStatus(HWND hTarget, HWND hSource, BOOL accept, DWORD 
     response.data.data32[2] = 0;                           // x, y
     response.data.data32[3] = 0;                           // w, h
     response.data.data32[4] = XdndEffect2Action(dwEffect); // action
-    xcb_send_event(connection, false, hSource, XCB_EVENT_MASK_NO_EVENT, (const char *)&response);
+    xcb_send_event32(connection, false, hSource, XCB_EVENT_MASK_NO_EVENT, response);
 }
 
 void SConnection::SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect)
 {
-    xcb_client_message_event_t response;
+    xcb_client_message_event_t response = {};
     response.response_type = XCB_CLIENT_MESSAGE;
     response.sequence = 0;
     response.window = hSource;
@@ -1246,7 +1247,7 @@ void SConnection::SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD 
     response.data.data32[0] = hTarget;
     response.data.data32[1] = accept ? 1 : 0;              // flags
     response.data.data32[2] = XdndEffect2Action(dwEffect); // action
-    xcb_send_event(connection, false, hSource, XCB_EVENT_MASK_NO_EVENT, (const char *)&response);
+    xcb_send_event32(connection, false, hSource, XCB_EVENT_MASK_NO_EVENT, response);
 }
 
 xcb_atom_t SConnection::clipFormat2Atom(UINT uFormat)
@@ -1549,12 +1550,15 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
         if (!(wndObj->dwStyle & WS_CHILD))
         {
             // send synthetic UnmapNotify event according to icccm 4.1.4
-            xcb_unmap_notify_event_t event;
+            // xcb_unmap_notify_event_t 只有 16 字节，必须 `= {}` 补零并交给
+            // xcb_send_event32() 发送（见 xcb_event.h：xcb_send_event() 固定
+            // 拷贝 32 字节，直接传结构体地址会读过其尾部）。
+            xcb_unmap_notify_event_t event = {};
             event.response_type = XCB_UNMAP_NOTIFY;
             event.event = screen->root;
             event.window = hWnd;
             event.from_configure = false;
-            xcb_send_event(connection, false, event.event, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+            xcb_send_event32(connection, false, event.event, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, event);
         }
     }
     xcb_flush(connection);
@@ -1622,7 +1626,7 @@ void SConnection::SendExposeEvent(HWND hWnd, LPCRECT rc __attribute__((unused)),
     expose_event.y = 0;
     expose_event.width = 0;
     expose_event.height = 0;
-    xcb_send_event(connection, false, hWnd, XCB_EVENT_MASK_EXPOSURE, (const char *)&expose_event);
+    xcb_send_event32(connection, false, hWnd, XCB_EVENT_MASK_EXPOSURE, expose_event);
     xcb_flush(connection);
 }
 
@@ -2415,6 +2419,9 @@ BOOL SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn)
 
 HKL SConnection::GetKeyboardLayout(DWORD idThread __attribute__((unused)))
 {
+    // m_hkl == 0 表示尚未与 XKB 当前 group 同步
+    if (!m_hkl && m_keyboard)
+        m_hkl = (HKL)((DWORD)m_keyboard->getActiveGroup() + SWINX_HKL_BASE);
     return m_hkl;
 }
 
@@ -2427,37 +2434,37 @@ UINT SConnection::GetKeyboardLayoutList(int nBuff, HKL *lpList)
     {
         const int n = (nBuff < (int)count) ? nBuff : (int)count;
         for (int i = 0; i < n; ++i)
-            lpList[i] = (HKL)i;
+            lpList[i] = (HKL)((DWORD)i + SWINX_HKL_BASE);
     }
     return (UINT)count;
 }
 
 HKL SConnection::ActivateKeyboardLayout(HKL hKl)
 {
-    HKL prev = m_hkl;
+    HKL prev = GetKeyboardLayout(0);
     if (!m_keyboard)
         return prev;
     const unsigned count = (unsigned)m_keyboard->getLayoutCount();
     if (count <= 1)
     {
-        m_hkl = 0;
+        m_hkl = (HKL)SWINX_HKL_BASE;
         return prev;
     }
     unsigned group = (unsigned)m_keyboard->getActiveGroup();
-    // HKL_NEXT=1 / HKL_PREV=2 循环切换；其它值按 group 索引（DWORD 低字）定位
-    if (hKl == (HKL)1)
+    // Win32 魔法值 HKL_NEXT(1) / HKL_PREV(0) 做循环切换，其余按布局句柄解码索引
+    if (hKl == (HKL)HKL_NEXT)
         group = (group + 1) % count;
-    else if (hKl == (HKL)2)
+    else if (hKl == (HKL)HKL_PREV)
         group = (group + count - 1) % count;
     else
     {
-        unsigned idx = (unsigned)(DWORD)hKl;
-        if (idx >= count)
-            idx = count - 1;
-        group = idx;
+        const DWORD idx = (DWORD)hKl;
+        // 非法句柄（含未加偏移的裸索引）不改变当前 group
+        if (idx >= SWINX_HKL_BASE && (idx - SWINX_HKL_BASE) < count)
+            group = (unsigned)(idx - SWINX_HKL_BASE);
     }
     m_keyboard->setActiveGroup((xkb_layout_index_t)group);
-    m_hkl = (HKL)group;
+    m_hkl = (HKL)((DWORD)group + SWINX_HKL_BASE);
     return prev;
 }
 
@@ -2805,27 +2812,31 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                     free(reply);
             }
         }
-        RECT rc;
-        GetWindowRect(e2->window, &rc);
-        if (rc.left != pos.x || rc.top != pos.y)
+        // GetWindowRect 失败（窗口已不在 WndMgr 且 xcb 几何查询出错）时不会写入 rc，
+        // 此时直接比较就是读未初始化值（valgrind: conditional jump ... uninitialised）。
+        RECT rc = {};
+        if (GetWindowRect(e2->window, &rc))
         {
-            pMsg = new Msg;
-            pMsg->hwnd = e2->window;
-            pMsg->message = WM_MOVE;
-            pMsg->wParam = 0;
-            pMsg->lParam = MAKELPARAM(pos.x, pos.y);
-            GetCursorPos(&pMsg->pt);
-            m_msgQueue.push_back(pMsg);
-        }
-        if (rc.right - rc.left != e2->width || rc.bottom - rc.top != e2->height)
-        {
-            pMsg = new Msg;
-            pMsg->hwnd = e2->window;
-            pMsg->message = WM_SIZE;
-            pMsg->wParam = 0;
-            pMsg->lParam = MAKELPARAM(e2->width, e2->height);
-            GetCursorPos(&pMsg->pt);
-            m_msgQueue.push_back(pMsg);
+            if (rc.left != pos.x || rc.top != pos.y)
+            {
+                pMsg = new Msg;
+                pMsg->hwnd = e2->window;
+                pMsg->message = WM_MOVE;
+                pMsg->wParam = 0;
+                pMsg->lParam = MAKELPARAM(pos.x, pos.y);
+                GetCursorPos(&pMsg->pt);
+                m_msgQueue.push_back(pMsg);
+            }
+            if (rc.right - rc.left != e2->width || rc.bottom - rc.top != e2->height)
+            {
+                pMsg = new Msg;
+                pMsg->hwnd = e2->window;
+                pMsg->message = WM_SIZE;
+                pMsg->wParam = 0;
+                pMsg->lParam = MAKELPARAM(e2->width, e2->height);
+                GetCursorPos(&pMsg->pt);
+                m_msgQueue.push_back(pMsg);
+            }
         }
         pMsg = nullptr;
         break;
@@ -3372,7 +3383,7 @@ BOOL SConnection::FlashWindowEx(PFLASHWINFO info)
 
 void SConnection::changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom_t two)
 {
-    xcb_client_message_event_t event;
+    xcb_client_message_event_t event = {};
     event.response_type = XCB_CLIENT_MESSAGE;
     event.format = 32;
     event.sequence = 0;
@@ -3384,7 +3395,7 @@ void SConnection::changeNetWmState(HWND hWnd, bool set, xcb_atom_t one, xcb_atom
     event.data.data32[3] = 0;
     event.data.data32[4] = 0;
 
-    xcb_send_event(connection, 0, screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+    xcb_send_event32(connection, 0, screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, event);
 }
 
 int SConnection::OnGetClassName(HWND hWnd, LPSTR lpClassName, int nMaxCount)
@@ -3808,7 +3819,7 @@ cairo_surface_t * SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd
 
 static void _ChangeNetWmState(SConnection *conn, xcb_window_t wnd, bool bSet, xcb_atom_t one, xcb_atom_t two)
 {
-    xcb_client_message_event_t event;
+    xcb_client_message_event_t event = {};
     event.response_type = XCB_CLIENT_MESSAGE;
     event.window = wnd;
     event.format = 32;
@@ -3818,20 +3829,20 @@ static void _ChangeNetWmState(SConnection *conn, xcb_window_t wnd, bool bSet, xc
     event.data.data32[1] = one;
     event.data.data32[2] = two;
     event.data.data32[3] = event.data.data32[4] = 0;
-    xcb_send_event(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+    xcb_send_event32(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, event);
     xcb_flush(conn->connection);
 }
 
 static void _SendSysCommand(SConnection *conn, xcb_window_t wnd, uint32_t cmd)
 {
-    xcb_client_message_event_t event;
+    xcb_client_message_event_t event = {};
     event.response_type = XCB_CLIENT_MESSAGE;
     event.window = wnd;
     event.format = 32;
     event.sequence = 0;
     event.type = conn->atoms.WM_CHANGE_STATE;
     event.data.data32[0] = cmd;
-    xcb_send_event(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+    xcb_send_event32(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, event);
     xcb_flush(conn->connection);
 }
 
@@ -3842,7 +3853,7 @@ static void _SendSysRestore(SConnection *conn, xcb_window_t wnd)
         return;
     if((wndObj->dwStyle & WS_MAXIMIZE)){
         // Restore from maximized state - remove maximized flags
-	    xcb_client_message_event_t event;
+	    xcb_client_message_event_t event = {};
 	    event.response_type = XCB_CLIENT_MESSAGE;
 	    event.window = wnd;
 	    event.format = 32;
@@ -3854,10 +3865,10 @@ static void _SendSysRestore(SConnection *conn, xcb_window_t wnd)
 	    event.data.data32[3] = 0;
 	    event.data.data32[4] = 0;
 
-	    xcb_send_event(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+	    xcb_send_event32(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, event);
     }else if(wndObj->dwStyle & WS_MINIMIZE){
         _SendSysCommand(conn, wnd, XCB_ICCCM_WM_STATE_NORMAL);
-        xcb_client_message_event_t event;
+        xcb_client_message_event_t event = {};
         event.response_type = XCB_CLIENT_MESSAGE;
         event.window = wnd;
         event.format = 32;
@@ -3865,7 +3876,7 @@ static void _SendSysRestore(SConnection *conn, xcb_window_t wnd)
         event.type = conn->atoms._NET_ACTIVE_WINDOW;
         event.data.data32[0] = 1;  // 1 = source indication: application
         event.data.data32[1] = XCB_CURRENT_TIME;
-        xcb_send_event(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, (const char *)&event);
+        xcb_send_event32(conn->connection, false, conn->screen->root, XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT, event);
     }
     xcb_flush(conn->connection);
 }
@@ -4051,7 +4062,7 @@ void SConnection::UpdateWindowIcon(HWND hWnd, _Window * wndObj)
         assert(len<=5);
         memcpy(client_msg_event.data.data32, data, len * sizeof(uint32_t));
         // Send the client message event
-        xcb_send_event(connection, 0, hWnd, XCB_EVENT_MASK_NO_EVENT, (const char *)&client_msg_event);
+        xcb_send_event32(connection, 0, hWnd, XCB_EVENT_MASK_NO_EVENT, client_msg_event);
         // Flush the request to the X server
         xcb_flush(connection);
     }

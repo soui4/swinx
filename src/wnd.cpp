@@ -3724,16 +3724,53 @@ BOOL SetScrollRange(HWND hWnd, int nBar, int nMinPos, int nMaxPos, BOOL bRedraw)
     return SetScrollInfo(hWnd, nBar, &si, bRedraw);
 }
 
-BOOL WINAPI AdjustWindowRectEx(LPRECT rect __attribute__((unused)), DWORD style __attribute__((unused)), BOOL menu __attribute__((unused)), DWORD exStyle __attribute__((unused)))
+/* 窗口矩形换算：由期望的客户区矩形反推窗口矩形（Win32 的 AdjustWindowRect* 族语义）。
+ *
+ * swinx 的窗口矩形与客户区之间只差 swinx 自己画的那圈边框，其余非客户区都不占窗口矩形：
+ *
+ *   - 边框：唯一由 swinx 绘制的非客户区，且只有 WS_BORDER 一种。厚度是四周各一圈
+ *     SM_CXEDGE / SM_CYEDGE——依据是本文件 GetClientRect、GetDCEx、GetScrollBarRect、
+ *     OnNcPaint 四处都按"客户区 = 窗口矩形四周各内缩一圈"换算（即 InflateRect(-edge, -edge)），
+ *     因此反推就是四周各外扩一圈。
+ *   - 标题栏 / 调整边框：带 WS_CAPTION 的窗口在创建时就已被清掉 WS_BORDER 位（见
+ *     WIN_CreateWindowEx），边框改由原生窗口管理器画在窗口矩形之外——Linux 走
+ *     _MOTIF_WM_HINTS 的 MWM_DECOR_*（platform/linux/SConnection.cpp 的 setMotifWindowFlags），
+ *     macOS 走 NSWindowStyleMask（platform/cocoa/SNsWindow.mm 的 createNsHostWindow）；
+ *     连 GetWindowRect 也只回 content 矩形（cocoa 侧显式做 contentRectForFrameRect），
+ *     不含标题栏。故它们对窗口矩形的贡献是 0。
+ *   - 菜单栏：swinx 不自绘（菜单栏由 SOUI 自己的菜单控件绘制），故 bMenu 不增加高度。
+ *   - WS_EX_CLIENTEDGE / WS_EX_STATICEDGE / WS_EX_DLGMODALFRAME 的"客户区凹陷边框"未实现。
+ *
+ * 于是当前真正改变结果的只有 WS_BORDER 一项；标题栏与菜单栏两项仍按 Win32 的算式形状保留，
+ * 将来 swinx 开始绘制这些非客户区时，只需让 GetSystemMetrics 返回真实尺寸即可。
+ */
+BOOL WINAPI AdjustWindowRectEx(LPRECT rect, DWORD style, BOOL menu, DWORD exStyle)
 {
-    // todo:hjx
+    if (!rect)
+        return FALSE; // Win32 未定义该情形（实机会崩），此处按失败返回，不给出未换算的矩形
 
-    // NONCLIENTMETRICSW ncm;
+    // 是否带标题栏必须用原始 style 判定：WS_CAPTION 的定义含 WS_BORDER 位
+    // （winuser.h: WS_BORDER|WS_DLGFRAME），下面这步归一化会把它清掉
+    const BOOL bCaption = (style & WS_CAPTION) == WS_CAPTION;
 
-    // ncm.cbSize = sizeof(ncm);
-    // SystemParametersInfo(SPI_GETNONCLIENTMETRICS, 0, &ncm, 0);
+    // 与 WIN_CreateWindowEx 保持一致：标题栏窗口的边框由原生 WM 负责，swinx 不画
+    if (bCaption)
+        style &= ~WS_BORDER;
 
-    // adjust_window_rect(rect, style, menu, exStyle, &ncm);
+    int cx = (style & WS_BORDER) ? GetSystemMetrics(SM_CXEDGE) : 0;
+    int cy = (style & WS_BORDER) ? GetSystemMetrics(SM_CYEDGE) : 0;
+
+    // 标题栏、菜单栏只占顶部，左右与底部不外扩
+    int cyTop = 0;
+    if (bCaption)
+        cyTop += (exStyle & WS_EX_TOOLWINDOW) ? GetSystemMetrics(SM_CYSMSIZE) : GetSystemMetrics(SM_CYCAPTION);
+    if (menu)
+        cyTop += GetSystemMetrics(SM_CYMENU);
+
+    rect->left -= cx;
+    rect->top -= cy + cyTop;
+    rect->right += cx;
+    rect->bottom += cy;
     return TRUE;
 }
 

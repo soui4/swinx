@@ -1111,14 +1111,12 @@ static CFArrayRef copyKeyboardInputSources()
     return result;
 }
 
-/* macOS 的 HKL 编码：真实布局 = 输入源列表索引 + kHklBase。
+/* macOS 的 HKL 编码：真实输入源 = 列表索引 + SWINX_HKL_BASE（见 ctypes.h）。
  *
- * Windows 上 HKL 是不透明句柄，其值从不与魔法值 HKL_NEXT(1)/HKL_PREV(2) 冲突；
- * macOS 若直接用索引 0,1,2,... 当 HKL，第 2 个布局（值 2）会被
- * ActivateKeyboardLayout 误判为 HKL_PREV（本类曾因此导致
- * KeyboardLayoutTest.ActivateThenGetRoundTrip 在 index 2 失败）。
- * 统一加偏移即可彻底避开 1/2（0 也被用作"未初始化"哨兵）。 */
-static const DWORD kHklBase = 4;
+ * Windows 上 HKL 是不透明句柄，其值从不与魔法值 HKL_NEXT(1)/HKL_PREV(0) 冲突；
+ * macOS 若直接用索引 0,1,2,... 当 HKL，会撞上这两个魔法值
+ * （本类曾因此导致 KeyboardLayoutTest.ActivateThenGetRoundTrip 在索引 2 失败）。
+ * 统一加偏移即可彻底避开，0 仍留作"尚未与真实输入源同步"的哨兵。 */
 
 // 当前 TIS 键盘输入源在列表中的索引；找不到返回 -1。调用方负责传入的 list。
 static long currentKeyboardInputSourceIndex(CFArrayRef list)
@@ -1147,7 +1145,7 @@ HKL SConnection::GetKeyboardLayout(DWORD idThread)
     {
         CFArrayRef list = copyKeyboardInputSources();
         long idx = currentKeyboardInputSourceIndex(list);
-        m_hkl = (HKL)((idx >= 0 ? (DWORD)idx : 0) + kHklBase);
+        m_hkl = (HKL)((idx >= 0 ? (DWORD)idx : 0) + SWINX_HKL_BASE);
         CFRelease(list);
     }
     return m_hkl;
@@ -1161,7 +1159,7 @@ UINT SConnection::GetKeyboardLayoutList(int nBuff, HKL *lpList)
     {
         const int n = (nBuff < (int)count) ? nBuff : (int)count;
         for (int i = 0; i < n; ++i)
-            lpList[i] = (HKL)((DWORD)i + kHklBase);
+            lpList[i] = (HKL)((DWORD)i + SWINX_HKL_BASE);
     }
     CFRelease(list);
     return (UINT)count;
@@ -1180,23 +1178,24 @@ HKL SConnection::ActivateKeyboardLayout(HKL hKl)
         return prev;
     }
     unsigned c = (unsigned)count;
-    unsigned group = (unsigned)((DWORD)m_hkl - kHklBase);
-    if (hKl == (HKL)1)       // HKL_NEXT
+    unsigned group = (unsigned)((DWORD)m_hkl - SWINX_HKL_BASE);
+    // Win32 魔法值 HKL_NEXT(1) / HKL_PREV(0) 做循环切换，其余按句柄解码索引
+    if (hKl == (HKL)HKL_NEXT)
         group = (group + 1) % c;
-    else if (hKl == (HKL)2)  // HKL_PREV
+    else if (hKl == (HKL)HKL_PREV)
         group = (group + c - 1) % c;
     else
     {
-        unsigned idx = (unsigned)((DWORD)hKl - kHklBase);
-        if (idx >= c)
-            idx = c - 1;
-        group = idx;
+        const DWORD idx = (DWORD)hKl;
+        // 非法句柄（含未加偏移的裸索引）不改变当前 layout
+        if (idx >= SWINX_HKL_BASE && (idx - SWINX_HKL_BASE) < c)
+            group = (unsigned)(idx - SWINX_HKL_BASE);
     }
     TISInputSourceRef src = (TISInputSourceRef)CFArrayGetValueAtIndex(list, group);
     if (src)
         TISSelectInputSource(src);
     CFRelease(list);
-    m_hkl = (HKL)(group + kHklBase);
+    m_hkl = (HKL)((DWORD)group + SWINX_HKL_BASE);
     return prev;
 }
 

@@ -2,6 +2,7 @@
 #define _SCONN_H_
 
 #include <windows.h>
+#include <hkl.h> // HKL 取值编码约定（swinx 内部头）
 #include <map>
 #include <list>
 #include <pthread.h>
@@ -401,7 +402,7 @@ public:
     STrayIconMgr* m_trayIconMgr;
 
     HANDLE m_evtSync;
-    int m_wakeupPipe[2];  // Pipe for waking up event reader thread (m_wakeupPipe[0]=read, m_wakeupPipe[1]=write)
+    int m_wakeupPipe[2] = {-1, -1};  // Pipe for waking up event reader thread (m_wakeupPipe[0]=read, m_wakeupPipe[1]=write)
     tid_t m_tid;
     HKL   m_hkl = 0;
     xcb_xim_t *m_xim;

@@ -96,6 +96,53 @@ BSTR SysAllocString(const OLECHAR *s)
     return SysAllocStringLen(s, (UINT)(s2 - s));
 }
 
+INT SysReAllocString(LPBSTR pbstr, const OLECHAR *psz)
+{
+    if (!pbstr)
+        return FALSE;
+
+    /* A NULL source releases the BSTR without replacing it: Win32 leaves
+       *pbstr NULL afterwards (SysAllocString(NULL) returns NULL as well), so
+       psz has to be tested before it is handed on. */
+    if (!psz)
+    {
+        SysFreeString(*pbstr);
+        *pbstr = NULL;
+        return TRUE;
+    }
+
+    /* Allocate the replacement before releasing the old BSTR, so that an
+       allocation failure leaves *pbstr untouched (Win32 documents FALSE as
+       "insufficient memory exists", which must not destroy the old value).
+       It also keeps a source that points into *pbstr readable, although Win32
+       documents `psz` overlapping `*pbstr` as undefined. */
+    BSTR newstr = SysAllocString(psz);
+    if (!newstr)
+        return FALSE;
+
+    SysFreeString(*pbstr);
+    *pbstr = newstr;
+    return TRUE;
+}
+
+int SysReAllocStringLen(BSTR *pbstr, const OLECHAR *psz, UINT len)
+{
+    if (!pbstr)
+        return FALSE;
+
+    /* Same allocate-then-release order as SysReAllocString() above.
+       SysAllocStringLen(NULL, len) produces the result documented for a NULL
+       source ("a string of length len is allocated but not initialized"), and
+       still writes the terminating NUL after the len characters. */
+    BSTR newstr = SysAllocStringLen(psz, len);
+    if (!newstr)
+        return FALSE;
+
+    SysFreeString(*pbstr);
+    *pbstr = newstr;
+    return TRUE;
+}
+
 void SysFreeString(BSTR bstr)
 {
     if (bstr)
