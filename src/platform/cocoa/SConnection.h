@@ -115,6 +115,9 @@ class SConnection : public SConnBase{
     bool SetWindowOpacity(HWND hWnd, BYTE byAlpha);
     bool SetWindowRgn(HWND hWnd, HRGN hRgn);
     HKL  ActivateKeyboardLayout(HKL hKl);
+    // 键盘布局（HKL）抽象：经 Apple TIS 暴露给上层 Win32 API
+    HKL  GetKeyboardLayout(DWORD idThread);
+    UINT GetKeyboardLayoutList(int nBuff, HKL *lpList);
 
     HBITMAP GetDesktopBitmap();
 
@@ -275,6 +278,7 @@ public:
       HWND m_hFocus = NULL;
       HWND m_hActive = NULL;
       HWND m_hForeground = NULL;
+      HKL  m_hkl = 0;
       CaretInfo m_caretInfo;
       UINT m_caretBlinkTime = TS_CARET;
       SClipboard* m_clipboard;

@@ -152,6 +152,9 @@ class SConnection {
     BOOL SetWindowOpacity(HWND hWnd, BYTE byAlpha);
     BOOL SetWindowRgn(HWND hWnd, HRGN hRgn);
     HKL  ActivateKeyboardLayout(HKL hKl);
+    // 键盘布局（HKL）抽象：经 XKB group 暴露给上层 Win32 API
+    HKL  GetKeyboardLayout(DWORD idThread);
+    UINT GetKeyboardLayoutList(int nBuff, HKL *lpList);
 
     HBITMAP GetDesktopBitmap(){return m_deskBmp;}
 

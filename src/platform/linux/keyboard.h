@@ -72,6 +72,12 @@ class SKeyboard {
     void onMouseEvent(uint16_t state);
     void onMappingNotifyEvent(xcb_mapping_notify_event_t* event);
     void setKeyState(uint8_t vk, BYTE state);
+
+    // 键盘布局（XKB group）抽象：经 HKL 暴露给上层 Win32 API
+    xkb_layout_index_t getLayoutCount() const;
+    xkb_layout_index_t getActiveGroup() const { return m_activeGroup; }
+    void setActiveGroup(xkb_layout_index_t group);
+
     SHORT    getRepeatCount() const { return m_repeatCount; }
   protected:
     xcb_connection_t *xcb_connection();
@@ -83,6 +89,7 @@ class SKeyboard {
 
     xcb_keycode_t m_autorepeat_code;
     SHORT         m_repeatCount;
+    xkb_layout_index_t m_activeGroup = 0;
 
     struct xkb_context *xkb_context;
     struct xkb_keymap *xkb_keymap;

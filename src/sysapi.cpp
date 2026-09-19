@@ -2967,14 +2967,14 @@ BOOL IsValidCodePage(UINT CodePage __attribute__((unused)))
     return TRUE;
 }
 
-UINT WINAPI GetKeyboardLayoutList(int nBuff __attribute__((unused)), HKL *lpList __attribute__((unused)))
+UINT WINAPI GetKeyboardLayoutList(int nBuff, HKL *lpList)
 {
-    return 0;
+    return SConnMgr::instance()->getConnection()->GetKeyboardLayoutList(nBuff, lpList);
 }
 
-HKL ActivateKeyboardLayout(HKL hkl __attribute__((unused)), UINT Flags __attribute__((unused)))
+HKL ActivateKeyboardLayout(HKL hkl, UINT Flags __attribute__((unused)))
 {
-    return 0;
+    return SConnMgr::instance()->getConnection()->ActivateKeyboardLayout(hkl);
 }
 
 UINT WINAPI GetACP(void)

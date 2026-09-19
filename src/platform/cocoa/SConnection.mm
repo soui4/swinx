@@ -1,4 +1,4 @@
-﻿#import <Cocoa/Cocoa.h>
+#import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
 #import <Foundation/Foundation.h>
 #import <objc/runtime.h>
@@ -1081,9 +1081,123 @@ bool SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn) {
     }
 }
 
-HKL SConnection::ActivateKeyboardLayout(HKL hKl) {
-    // Empty implementation
-    return NULL;
+// 过滤出"可选中"的键盘输入源（Apple TIS）。调用方负责 CFRelease 返回的数组。
+static CFArrayRef copyKeyboardInputSources()
+{
+    NSDictionary *properties = @{
+        (__bridge NSString *)kTISPropertyInputSourceCategory:
+            (__bridge NSString *)kTISCategoryKeyboardInputSource
+    };
+    CFArrayRef all = TISCreateInputSourceList(
+        (__bridge CFDictionaryRef)properties,
+        NO
+    );
+    if (!all)
+        return CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+    CFMutableArrayRef result = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+    const CFIndex n = CFArrayGetCount(all);
+    for (CFIndex i = 0; i < n; ++i)
+    {
+        TISInputSourceRef src = (TISInputSourceRef)CFArrayGetValueAtIndex(all, i);
+        CFStringRef cat = (CFStringRef)TISGetInputSourceProperty(src, kTISPropertyInputSourceCategory);
+        if (cat && CFStringCompare(cat, kTISCategoryKeyboardInputSource, 0) != kCFCompareEqualTo)
+            continue;
+        CFBooleanRef selectable = (CFBooleanRef)TISGetInputSourceProperty(src, kTISPropertyInputSourceIsSelectCapable);
+        if (selectable != kCFBooleanTrue)
+            continue;
+        CFArrayAppendValue(result, src);
+    }
+    CFRelease(all);
+    return result;
+}
+
+/* macOS 的 HKL 编码：真实布局 = 输入源列表索引 + kHklBase。
+ *
+ * Windows 上 HKL 是不透明句柄，其值从不与魔法值 HKL_NEXT(1)/HKL_PREV(2) 冲突；
+ * macOS 若直接用索引 0,1,2,... 当 HKL，第 2 个布局（值 2）会被
+ * ActivateKeyboardLayout 误判为 HKL_PREV（本类曾因此导致
+ * KeyboardLayoutTest.ActivateThenGetRoundTrip 在 index 2 失败）。
+ * 统一加偏移即可彻底避开 1/2（0 也被用作"未初始化"哨兵）。 */
+static const DWORD kHklBase = 4;
+
+// 当前 TIS 键盘输入源在列表中的索引；找不到返回 -1。调用方负责传入的 list。
+static long currentKeyboardInputSourceIndex(CFArrayRef list)
+{
+    TISInputSourceRef cur = TISCopyCurrentKeyboardInputSource();
+    if (!cur)
+        return -1;
+    const CFIndex n = CFArrayGetCount(list);
+    long idx = -1;
+    for (CFIndex i = 0; i < n; ++i)
+    {
+        if (CFArrayGetValueAtIndex(list, i) == cur)
+        {
+            idx = (long)i;
+            break;
+        }
+    }
+    CFRelease(cur);
+    return idx;
+}
+
+HKL SConnection::GetKeyboardLayout(DWORD idThread)
+{
+    // 惰性初始化：m_hkl == 0 表示尚未与真实输入源同步，映射到当前输入源的索引
+    if (!m_hkl)
+    {
+        CFArrayRef list = copyKeyboardInputSources();
+        long idx = currentKeyboardInputSourceIndex(list);
+        m_hkl = (HKL)((idx >= 0 ? (DWORD)idx : 0) + kHklBase);
+        CFRelease(list);
+    }
+    return m_hkl;
+}
+
+UINT SConnection::GetKeyboardLayoutList(int nBuff, HKL *lpList)
+{
+    CFArrayRef list = copyKeyboardInputSources();
+    const CFIndex count = CFArrayGetCount(list);
+    if (lpList && nBuff > 0)
+    {
+        const int n = (nBuff < (int)count) ? nBuff : (int)count;
+        for (int i = 0; i < n; ++i)
+            lpList[i] = (HKL)((DWORD)i + kHklBase);
+    }
+    CFRelease(list);
+    return (UINT)count;
+}
+
+HKL SConnection::ActivateKeyboardLayout(HKL hKl)
+{
+    HKL prev = m_hkl;
+    if (!m_hkl)
+        GetKeyboardLayout(0); // 先与真实输入源同步，保证 group 解码有效
+    CFArrayRef list = copyKeyboardInputSources();
+    const CFIndex count = CFArrayGetCount(list);
+    if (count <= 0)
+    {
+        CFRelease(list);
+        return prev;
+    }
+    unsigned c = (unsigned)count;
+    unsigned group = (unsigned)((DWORD)m_hkl - kHklBase);
+    if (hKl == (HKL)1)       // HKL_NEXT
+        group = (group + 1) % c;
+    else if (hKl == (HKL)2)  // HKL_PREV
+        group = (group + c - 1) % c;
+    else
+    {
+        unsigned idx = (unsigned)((DWORD)hKl - kHklBase);
+        if (idx >= c)
+            idx = c - 1;
+        group = idx;
+    }
+    TISInputSourceRef src = (TISInputSourceRef)CFArrayGetValueAtIndex(list, group);
+    if (src)
+        TISSelectInputSource(src);
+    CFRelease(list);
+    m_hkl = (HKL)(group + kHklBase);
+    return prev;
 }
 
 HBITMAP SConnection::GetDesktopBitmap() {

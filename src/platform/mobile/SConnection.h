@@ -90,6 +90,9 @@ public:
     BOOL SetWindowOpacity(HWND hWnd, BYTE byAlpha);
     BOOL SetWindowRgn(HWND hWnd, HRGN hRgn);
     HKL ActivateKeyboardLayout(HKL hKl);
+    // 键盘布局（HKL）抽象：移动端 OS 不允许 App 切换系统输入法，仅做存储/循环
+    HKL GetKeyboardLayout(DWORD idThread);
+    UINT GetKeyboardLayoutList(int nBuff, HKL *lpList);
     HBITMAP GetDesktopBitmap();
 
     HWND GetFocus() const;
@@ -228,6 +231,7 @@ private:
     HWND m_hFocus;
     HWND m_hActive;
     HWND m_hForeground;
+    HKL  m_hkl = 0;
     std::map<HWND, HCURSOR> m_wndCursor;
     BYTE m_keyboardState[256];
     int m_cursorCount;

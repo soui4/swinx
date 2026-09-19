@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <algorithm>
 #include "tostring.h"
+#include "SConnection.h"
 
 #ifdef __linux__
 #include <locale.h>
@@ -91,10 +92,9 @@ static LCID GetUserLocaleLCID()
 #endif
 }
 
-// todo:hjx
-HKL GetKeyboardLayout(int idx __attribute__((unused)))
+HKL GetKeyboardLayout(int idx)
 {
-    return 0;
+    return SConnMgr::instance()->getConnection()->GetKeyboardLayout((DWORD)idx);
 }
 
 int LCMapStringW(LCID Locale __attribute__((unused)), DWORD dwMapFlags __attribute__((unused)), LPCWSTR lpSrcStr, int cchSrc, LPWSTR lpDestStr, int cchDest)

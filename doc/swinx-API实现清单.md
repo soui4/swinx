@@ -738,10 +738,10 @@
 | `QueryPerformanceFrequency` | 简单实现 | src/sysapi.cpp |  |
 | `SetLastError` | 简单实现 | src/sysapi.cpp | 以线程局部 errno 模拟 last-error，错误码语义与 Win32 不完全一致 |
 | `set_error` | 简单实现 | src/sysapi.cpp |  |
-| `ActivateKeyboardLayout` | 空实现 | src/sysapi.cpp | 恒返回 0，不做键盘布局切换 |
+| `ActivateKeyboardLayout` | 实现 | src/sysapi.cpp（委托 SConnection） | 经 HKL 抽象暴露各平台键盘布局：Linux 走 XKB group，macOS 走 TIS，iOS/移动端存储+循环 |
 | `GetCurrentProcess_Priv` | 空实现 | src/sysapi.cpp | 内部辅助符号，恒返回 INVALID_HANDLE_VALUE（伪句柄方案不用进程句柄） |
-| `GetKeyboardLayout` | 空实现 | src/winnsl.cpp | 恒返回 0 |
-| `GetKeyboardLayoutList` | 空实现 | src/sysapi.cpp | 恒返回 0，不枚举键盘布局 |
+| `GetKeyboardLayout` | 实现 | src/winnsl.cpp（委托 SConnection） | 返回当前 HKL（m_hkl） |
+| `GetKeyboardLayoutList` | 实现 | src/sysapi.cpp（委托 SConnection） | 枚举各平台键盘布局列表，返回 HKL 数组 |
 | `TerminateThread` | 空实现 | src/sysapi.cpp | 恒返回 0，不强制终止线程（Win32 本身也强烈不建议使用） |
 
 ### 4.4 COM / OLE（OLE32·OLEAUT32 等价）
@@ -1021,14 +1021,14 @@
 
 | API | 行为与影响 |
 |---|---|
-| `ActivateKeyboardLayout` | 恒返回 0，不做键盘布局切换 |
+| `ActivateKeyboardLayout` | 已实现，经 HKL 抽象暴露各平台键盘布局（Linux=XKB group / macOS=TIS / iOS·移动端=存储+循环） |
 | `AdjustWindowRectEx` | 恒返回 TRUE，不做任何矩形换算（SOUI 自行处理窗口边框） |
 | `DragFinish` | 空操作（拖放文件列表内存由内部管理） |
 | `EnumDisplayDevicesW` | 恒返回 FALSE，枚举显示器请使用 EnumDisplayMonitors |
 | `FreeResource` | 恒返回 TRUE。Win32 32 位模式下该 API 本身即为无操作，语义兼容 |
 | `GetCurrentProcess_Priv` | 内部辅助符号，恒返回 INVALID_HANDLE_VALUE（伪句柄方案不用进程句柄） |
-| `GetKeyboardLayout` | 恒返回 0 |
-| `GetKeyboardLayoutList` | 恒返回 0，不枚举键盘布局 |
+| `GetKeyboardLayout` | 已实现，返回当前 HKL |
+| `GetKeyboardLayoutList` | 已实现，枚举各平台键盘布局列表 |
 | `IsWindowUnicode` | 恒返回 FALSE（swinx 窗口内部统一 UTF-8 存储，非 Win32 的 Unicode/ANSI 双轨制） |
 | `MessageBeep` | 恒返回 FALSE，不播放系统提示音 |
 | `RealizePalette` | 恒返回 0（无调色板概念） |

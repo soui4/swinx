@@ -15998,12 +15998,12 @@
    "files": [
     "sysapi.cpp"
    ],
-   "agg": "stub",
+   "agg": "impl",
    "site_classes": [
     [
      "sysapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -16014,12 +16014,12 @@
    "files": [
     "sysapi.cpp"
    ],
-   "agg": "stub",
+   "agg": "impl",
    "site_classes": [
     [
      "sysapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -16434,12 +16434,12 @@
    "files": [
     "winnsl.cpp"
    ],
-   "agg": "stub",
+   "agg": "impl",
    "site_classes": [
     [
      "winnsl.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },

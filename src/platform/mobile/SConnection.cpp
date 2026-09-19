@@ -628,9 +628,25 @@ BOOL SConnection::SetWindowRgn(HWND hWnd, HRGN)
     return TRUE;
 }
 
+HKL SConnection::GetKeyboardLayout(DWORD idThread)
+{
+    return m_hkl;
+}
+
+UINT SConnection::GetKeyboardLayoutList(int nBuff, HKL *lpList)
+{
+    // 移动端 OS 不允许 App 切换/枚举系统输入法，统一视为单一布局
+    if (lpList && nBuff > 0)
+        lpList[0] = (HKL)0;
+    return 1;
+}
+
 HKL SConnection::ActivateKeyboardLayout(HKL hKl)
 {
-    return hKl;
+    // 移动端无 App 级输入法切换能力；仅记录请求并返回上一布局，保持 API 行为一致
+    HKL prev = m_hkl;
+    m_hkl = hKl;
+    return prev;
 }
 
 HBITMAP SConnection::GetDesktopBitmap()

@@ -394,6 +394,37 @@ void SKeyboard::checkForLatinLayout()
     xkb_state_unref(kb_state);
 }
 
+xkb_layout_index_t SKeyboard::getLayoutCount() const
+{
+    return xkb_keymap ? xkb_keymap_num_layouts(xkb_keymap) : 1;
+}
+
+void SKeyboard::setActiveGroup(xkb_layout_index_t group)
+{
+    const xkb_layout_index_t count = getLayoutCount();
+    if (count == 0)
+        return;
+    if (group >= count)
+        group = count - 1;
+    m_activeGroup = group;
+    // 切换两个 state 的 group（XKB group 是 xkb_state_update_mask 的第 4 个参数），
+    // 保留现有 mods，使其立即影响 onKeyEvent 的按键翻译。
+    struct
+    {
+        struct xkb_state **pp;
+    } states[] = {{&xkb_state_4_convert}, {&xkb_state_4_vt}};
+    for (auto &s : states)
+    {
+        struct xkb_state *st = *s.pp;
+        if (!st)
+            continue;
+        const uint32_t d = xkb_state_serialize_mods(st, XKB_STATE_MODS_DEPRESSED);
+        const uint32_t l = xkb_state_serialize_mods(st, XKB_STATE_MODS_LATCHED);
+        const uint32_t k = xkb_state_serialize_mods(st, XKB_STATE_MODS_LOCKED);
+        xkb_state_update_mask(st, d, l, k, group, 0, 0);
+    }
+}
+
 void SKeyboard::updateXKBMods()
 {
     xkb_mods.shift = xkb_keymap_mod_get_index(xkb_keymap, XKB_MOD_NAME_SHIFT);

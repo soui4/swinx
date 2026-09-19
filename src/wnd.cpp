@@ -3835,9 +3835,9 @@ UINT WINAPI RegisterWindowMessageW(_In_ LPCWSTR lpString)
     return RegisterWindowMessageA(str.c_str());
 }
 
-BOOL WINAPI IsWindowUnicode(HWND hWnd __attribute__((unused)))
+BOOL WINAPI IsWindowUnicode(HWND hWnd __attribute__((unused)))  // 故意返回 FALSE，语义见下方 return 处说明
 {
-    return FALSE;
+    return FALSE;  // 故意返回 FALSE：swinx 内部统一以 UTF-8 存储窗口文本；Windows 同时提供 wchar(Unicode) 与多字节(ANSI) 两套 API，UTF-8 在此对应"多字节"代码路径（GetACP() 返回 CP_UTF8）。返回 FALSE 正确映射到多字节路径，与 Windows 双轨语义一致，并非缺陷。
 }
 
 BOOL WINAPI EnumWindows(WNDENUMPROC lpEnumFunc, LPARAM lParam)

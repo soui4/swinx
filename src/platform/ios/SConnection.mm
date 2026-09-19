@@ -860,8 +860,25 @@ bool SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn) {
     }
 }
 
-HKL SConnection::ActivateKeyboardLayout(HKL hKl) {
-    return NULL;
+HKL SConnection::GetKeyboardLayout(DWORD idThread)
+{
+    return m_hkl;
+}
+
+UINT SConnection::GetKeyboardLayoutList(int nBuff, HKL *lpList)
+{
+    // iOS 不允许 App 切换/枚举系统键盘布局，统一视为单一布局
+    if (lpList && nBuff > 0)
+        lpList[0] = (HKL)0;
+    return 1;
+}
+
+HKL SConnection::ActivateKeyboardLayout(HKL hKl)
+{
+    // iOS 无 App 级键盘布局切换能力；仅记录请求并返回上一布局，保持 API 行为一致
+    HKL prev = m_hkl;
+    m_hkl = hKl;
+    return prev;
 }
 
 HBITMAP SConnection::GetDesktopBitmap() {

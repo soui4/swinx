@@ -2413,11 +2413,52 @@ BOOL SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn)
     return TRUE;
 }
 
+HKL SConnection::GetKeyboardLayout(DWORD idThread __attribute__((unused)))
+{
+    return m_hkl;
+}
+
+UINT SConnection::GetKeyboardLayoutList(int nBuff, HKL *lpList)
+{
+    if (!m_keyboard)
+        return 0;
+    const unsigned count = (unsigned)m_keyboard->getLayoutCount();
+    if (lpList && nBuff > 0)
+    {
+        const int n = (nBuff < (int)count) ? nBuff : (int)count;
+        for (int i = 0; i < n; ++i)
+            lpList[i] = (HKL)i;
+    }
+    return (UINT)count;
+}
+
 HKL SConnection::ActivateKeyboardLayout(HKL hKl)
 {
-    HKL ret = m_hkl;
-    m_hkl = hKl;
-    return ret;
+    HKL prev = m_hkl;
+    if (!m_keyboard)
+        return prev;
+    const unsigned count = (unsigned)m_keyboard->getLayoutCount();
+    if (count <= 1)
+    {
+        m_hkl = 0;
+        return prev;
+    }
+    unsigned group = (unsigned)m_keyboard->getActiveGroup();
+    // HKL_NEXT=1 / HKL_PREV=2 循环切换；其它值按 group 索引（DWORD 低字）定位
+    if (hKl == (HKL)1)
+        group = (group + 1) % count;
+    else if (hKl == (HKL)2)
+        group = (group + count - 1) % count;
+    else
+    {
+        unsigned idx = (unsigned)(DWORD)hKl;
+        if (idx >= count)
+            idx = count - 1;
+        group = idx;
+    }
+    m_keyboard->setActiveGroup((xkb_layout_index_t)group);
+    m_hkl = (HKL)group;
+    return prev;
 }
 
 void SConnection::OnFocusChanged(HWND hFocus)
