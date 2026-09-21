@@ -85,4 +85,13 @@ BOOL isUiWindowMaximized(HWND hWnd);
 // 供 OnEnumWindows 使用，从 UIView 获取 HWND
 HWND getHwndFromUiView(void *view);
 
+/** 移动端 ShellExecute（iOS 实现）：用 UIApplication 打开 URL / 本地文件。
+ *  @param lpOperation Win32 verb（"open" 等，目前仅 open 有意义）
+ *  @param lpFile      URL（http/https 等完整 scheme）或本地文件路径（UTF-8）
+ *  @param lpParameters 未使用，传 NULL
+ *  @return 请求是否已成功提交（与 macOS open / xdg-open 的同步语义一致）
+ *  Android/OHOS 不走本函数，由 g_platformAPI.shell.shellExecute 回调宿主。
+ */
+BOOL swinx_iosShellExecute(LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters);
+
 #endif//_SUIWINDOW_H_

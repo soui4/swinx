@@ -9,10 +9,11 @@ extern "C"
 #endif
 
 /* 版本历史：1 = 初版；2 = 增加 window.getMouseButtons / clipboard.hasFormat；
- *           3 = 增加 audio.messageBeep（MessageBeep 的平台回调，移动端专用）。
+ *           3 = 增加 audio.messageBeep（MessageBeep 的平台回调，移动端专用）；
+ *           4 = 增加 shell.shellExecute（ShellExecute 的平台回调，Android/OHOS 专用）。
  * 宿主应用（如 soui-android-lib / soui-ohos-lib）与 swinx 的头文件必须同步，
  * PlatformAPI_Init 会做严格版本比对，不一致直接拒绝注册。 */
-#define PLATFORM_API_VERSION 3
+#define PLATFORM_API_VERSION 4
 
     struct PlatformClipboardAPI
     {
@@ -117,6 +118,21 @@ extern "C"
         BOOL (*getSpecialFolderPathA)(HWND hwndOwner, LPSTR lpszPath, int nFolder, BOOL fCreate);
     };
 
+    struct PlatformShellAPI
+    {
+        // ShellExecute 的平台回调（Android/OHOS 专用）。swinx 侧没有 JNI/N-API
+        // 通道，打开 URL / 文件必须由宿主应用实现：
+        //   Android   AndroidPlatformAPI::shellExecute → SouiPlatformBridge.shellExecute
+        //             （内部用 ACTION_VIEW Intent）
+        //   OHOS      OhosPlatformAPI::shellExecute    → SouiPlatformBridge.shellExecute
+        //             （内部用 Want + startAbility）
+        // 参数均为 UTF-8：lpOperation 为 Win32 verb（"open" 等）；lpFile 为 URL
+        // 或本地文件路径；lpParameters 可 NULL。成功返回 TRUE。
+        // iOS 走原生 UIApplication（见 SUIWindow.mm 的 swinx_iosShellExecute），
+        // 不注册该回调。回调未注册时 ShellExecute 返回 FALSE，与 Win32 失败语义一致。
+        BOOL (*shellExecute)(LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters);
+    };
+
     struct PlatformAPI
     {
         int version;
@@ -125,6 +141,7 @@ extern "C"
         struct PlatformIMEAPI ime;
         struct PlatformAudioAPI audio;
         struct PlatformPathAPI path;
+        struct PlatformShellAPI shell;
     };
 
     extern struct PlatformAPI g_platformAPI;

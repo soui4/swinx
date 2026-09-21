@@ -12,6 +12,7 @@
 #include <string>
 #include <map>
 #include <mutex>
+#include <condition_variable>
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
@@ -81,7 +82,7 @@ struct FlockGateState
 // 上。DLL 模式下会出现"exe 注册了析构、DLL 仍在使用"的组合：进程退出时 exe 的
 // __cxa_finalize 先跑（本对象被销毁），随后才轮到 libswinx.so 的 fini_array，而
 // sysobjs.cpp 的静态对象 GLobalHandleTable 的析构会经 SharedMemory::~SharedMemory
-// -> ~TNamedSemRwLock -> flockGateRelease 再次访问本表，对已被释放的 map 节点做
+// -> ~TSemRwLock -> flockGateRelease 再次访问本表，对已被释放的 map 节点做
 // find/erase。
 //
 // 该顺序无法靠调整构造顺序修复：exe 的 __cxa_finalize 恒早于 _dl_fini，而本对象
@@ -147,42 +148,107 @@ inline void flockGateRelease(const std::string &path)
     FlockGateTable::instance().release(path);
 }
 
-// 通用读写锁：以 fcntl POSIX 记录锁实现，取代 XSI System V 信号量。
+// ---------------------------------------------------------------------------
+// TSemRwLock：swinx 唯一的读写锁实现，跨平台以同一个模板类暴露，移动端与
+// 桌面端分别提供实现（见下方 #if / #else 分支）。所有需要"rwlock"的地方
+// （GlobalMutex、SharedMemory 全局句柄表等）只认 TSemRwLock，不再有
+// TAnonymousRwLock / TNamedSemRwLock 等别名类型。
 //
-// 为什么要替换：XSI 信号量集（semget/semop）由内核持久持有，当最后一个持
-// 有进程崩溃退出时，其计数状态不会自动恢复。GlobalMutex（TSemRwLock<1>）
-// 被命名等待对象/文件映射对象用于跨进程互斥；若持锁进程在 semop 拉空计数
-// 后崩溃，其它进程下一次 semop 会永久阻塞（与命名信号量同类问题）。
-// fcntl 记录锁在持有进程退出（无论正常或崩溃）时由内核自动释放，可根治此
-// 残留卡死。
+//   - 移动端（Android/OHOS/iOS）：这些平台单进程运行，全局句柄表
+//     （GLobalHandleTable）只需进程内共享，不存在跨进程并发；同时移动沙箱里
+//     /data/local/tmp 等目录常不可写，基于 fcntl 的命名文件锁在 init 时 open
+//     锁文件会失败，令全局句柄表失效、进而运行时 getRwLock() 返回空指针并崩溃。
+//     故移动端用 std::mutex + std::condition_variable 实现进程内匿名读写锁，
+//     init 永不失败，配合 SharedMemory 在移动端的"堆内存回退"即可根治该崩溃。
+//   - 桌面端（Linux/macOS）：以 fcntl POSIX 记录锁实现，取代 XSI System V
+//     信号量 / 命名计数信号量（sem_open/sem_wait/sem_post），用于跨进程互斥
+//     （命名等待对象、文件映射对象、全局句柄表所在的共享内存）。fcntl 记录锁
+//     在持有进程退出时由内核自动释放，可根治"持锁进程崩溃后其它进程永久阻塞"
+//     的残留卡死。
 //
-// 关键点：本类是跨平台通用类（Android/OHOS 与非 Android 均编译，见
-// FileMapObject 在 Android/OHOS 分支也调用 mutex.init），因此锁文件目录须按
-// 平台区分——移动沙箱没有标准 /tmp（Android 无 /tmp，OpenHarmony 应用沙箱
-// 内 /tmp 亦不可作为跨进程命名目录），统一用 /data/local/tmp；Linux/macOS
-// 等桌面 POSIX 平台用 /tmp。
+// 语义与 ISemRwLock 一致：lockShared=读锁、lockExclusive=写锁、不可重入
+// （每段临界区一次 lock 配一次 unlock）。kNumLock 仅保留为模板签名兼容
+// （GlobalMutex 用 TSemRwLock<1>、SharedMemory 用 TSemRwLock<kSharedNumber>），
+// 记录锁不需要显式槽位计数，故以 static_assert 引用以满足 -Wall -Wextra。
+// ---------------------------------------------------------------------------
+#if defined(__ANDROID__) || defined(__OHOS__) || defined(__IOS__)
+
+// 移动端实现：进程内匿名读写锁。
 //
-// key 语义保持不变：调用方以整数 key 标识一把锁（例如
-//  s_globalHandleTable.getHeader()->key + idx + 10000
-// ），同一命名对象跨进程计算出的 key 一致，从而 open 同一锁文件并通过
-// fcntl 实现跨进程互斥。与 XSI 的 semget(key) 同步到同一信号量集等价。
+// 为兼顾"写者优先"避免读饿死，加入 m_writersWaiting 计数；全局句柄表实际
+// 使用中以排他路径为主，读锁路径也存在（WaitForSingleObject 等），保持完整
+// 读写语义以防回归。init 接受 key 或 name 均直接成功，不创建任何文件。
+template <int kNumLock = 2>
+class TSemRwLock : public ISemRwLock {
+    static_assert(kNumLock >= 1, "kNumLock retained for source compatibility");
+  private:
+    std::mutex m_mutex;
+    std::condition_variable m_cv;
+    int m_readers;
+    int m_writersWaiting;
+    bool m_writer;
+
+  public:
+    TSemRwLock()
+        : m_readers(0)
+        , m_writersWaiting(0)
+        , m_writer(false)
+    {
+    }
+    ~TSemRwLock() override {}
+
+    // 移动端无需命名内核对象：init 永不失败。
+    bool init(uint32_t) { return true; }
+    bool init(const char *) { return true; }
+
+    void lockShared() override
+    {
+        std::unique_lock<std::mutex> lk(m_mutex);
+        m_cv.wait(lk, [this] { return !m_writer && m_writersWaiting == 0; });
+        ++m_readers;
+    }
+    void unlockShared() override
+    {
+        std::unique_lock<std::mutex> lk(m_mutex);
+        if (--m_readers == 0)
+            m_cv.notify_all();
+    }
+    void lockExclusive() override
+    {
+        std::unique_lock<std::mutex> lk(m_mutex);
+        ++m_writersWaiting;
+        m_cv.wait(lk, [this] { return !m_writer && m_readers == 0; });
+        --m_writersWaiting;
+        m_writer = true;
+    }
+    void unlockExclusive() override
+    {
+        std::unique_lock<std::mutex> lk(m_mutex);
+        m_writer = false;
+        m_cv.notify_all();
+    }
+};
+
+#else // 桌面 POSIX 平台（Linux/macOS）
+
+// 桌面端实现：以 fcntl POSIX 记录锁实现跨进程互斥。
 //
-// 锁映射：锁文件名 = <dir>/soui_flock_key_<key十进制>.lock。key 为纯数字，
-// 天然文件名安全、无路径穿越。锁文件进程退出即无状态（不残留锁），unlink
-// 非必要也不应做——残留 .lock 文件无害。
+// key / name 语义：
+//   - init(uint32_t key)：锁文件名 = /tmp/soui_flock_key_<key十进制>.lock
+//     （GlobalMutex : TSemRwLock<1> 使用）。key 为纯数字，天然文件名安全。
+//   - init(const char* name)：锁文件名 = /tmp/soui_flock_<净化名>.lock
+//     （SharedMemory 使用）。name 中的非 [A-Za-z0-9_-] 字符统一替换为 '_'，
+//     杜绝路径穿越。
+//   同一命名对象跨进程计算出的 key/name 一致，从而 open 同一锁文件并通过 fcntl
+//   实现跨进程互斥，与 XSI 的 semget(key) 等价。
 //
 // 语义映射（本类实际以 GlobalMutex / TSemRwLock<1> 使用，只走排他路径）：
-//   - lockExclusive  = F_WRLCK（排他）
-//   - unlockExclusive = F_UNLCK
-//   - lockShared     = F_RDLCK（共享，本模板为通用读写锁语义保留）
-//   - unlockShared   = F_UNLCK
+//   - lockExclusive  = F_WRLCK（排他），unlockExclusive = F_UNLCK
+//   - lockShared     = F_RDLCK（共享，通用读写锁语义保留），unlockShared = F_UNLCK
 //
-// 约束（与 XSI 版相同）：进程内的线程间互斥、以及同进程多个锁对象实例映射
-// 到同一锁文件时的互斥，由 FlockGateState（见文件顶部说明）恢复，与原
-// sem_wait 行为一致。使用方仍须保证不嵌套加锁：每段临界区一次 lock 配一次
-// unlock（fcntl 记录锁与信号量一样不可重入）。
-// kNumLock 仅保留为模板签名兼容（GlobalMutex 用 TSemRwLock<1>），记录锁
-// 不需要显式槽位计数，故 static_assert 引用之以满足 -Wall -Wextra。
+// 约束：进程内线程间互斥、及同进程多个锁对象实例映射到同一锁文件时的互斥，
+// 由 FlockGateState（见文件顶部说明）恢复，与原 sem_wait 行为一致。使用方仍
+// 须保证不嵌套加锁（fcntl 记录锁与信号量一样不可重入）。
 template <int kNumLock = 2>
 class TSemRwLock : public ISemRwLock {
     static_assert(kNumLock >= 1, "kNumLock retained for source compatibility");
@@ -192,17 +258,19 @@ class TSemRwLock : public ISemRwLock {
     std::string m_lockPath;
     FlockGateState *m_gate;
 
-    static const char *lockDir()
+    // 共享内存名形如 "/share_soui_..."；剥离路径分隔符等非法文件名字符。
+    static std::string sanitizeName(const char *name)
     {
-#if defined(__ANDROID__) || defined(__OHOS__)
-        // 移动/鸿蒙沙箱无可写 /tmp；/data/local/tmp 与 Android 分支既有约定
-        // 一致（调试/具 shell 权限形态可写）。单进程 App 内跨进程锁不参与真
-        // 实并发，但全局静态对象仍在 main 前 open 该目录下的锁文件，目录必须
-        // 可写，否则 init 失败会让全局句柄表失效。
-        return "/data/local/tmp/";
-#else
-        return "/tmp/";
-#endif
+        std::string s = name ? name : "default";
+        for (char &c : s)
+        {
+            if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') &&
+                !(c >= '0' && c <= '9') && c != '_' && c != '-')
+            {
+                c = '_';
+            }
+        }
+        return s;
     }
 
   private:
@@ -250,7 +318,7 @@ class TSemRwLock : public ISemRwLock {
         m_key = _key;
         char keybuf[32];
         snprintf(keybuf, sizeof(keybuf), "%u", (unsigned)_key);
-        m_lockPath = std::string(lockDir()) + "soui_flock_key_" + keybuf + ".lock";
+        m_lockPath = std::string("/tmp/") + "soui_flock_key_" + keybuf + ".lock";
         // O_RDWR 让单一 fd 可同时取读(F_RDLCK)/写(F_WRLCK)锁；历史残留文件
         // 无害，因为 fcntl 记录锁不跨进程退出残留。
         m_fd = open(m_lockPath.c_str(), O_CREAT | O_RDWR, 0666);
@@ -264,150 +332,10 @@ class TSemRwLock : public ISemRwLock {
         return true;
     }
 
-    void lockShared() override
-    {
-        m_gate->gate.lock(); // 线程间互斥（等价于旧 sem_wait 的进程内阻塞）
-        m_gate->opMutex.lock();
-        if (m_gate->holders++ == 0) // 本进程第一个持有者负责加文件锁
-            setFileLock(F_RDLCK);
-        m_gate->opMutex.unlock();
-    }
-
-    void unlockShared() override
-    {
-        m_gate->opMutex.lock();
-        if (--m_gate->holders == 0) // 最后一个持有者退出才释放文件锁
-            setFileLock(F_UNLCK);
-        m_gate->opMutex.unlock();
-        m_gate->gate.unlock();
-    }
-
-    void lockExclusive() override
-    {
-        m_gate->gate.lock();
-        m_gate->opMutex.lock();
-        if (m_gate->holders++ == 0)
-            setFileLock(F_WRLCK);
-        m_gate->opMutex.unlock();
-    }
-
-    void unlockExclusive() override
-    {
-        m_gate->opMutex.lock();
-        if (--m_gate->holders == 0)
-            setFileLock(F_UNLCK);
-        m_gate->opMutex.unlock();
-        m_gate->gate.unlock();
-    }
-};
-
-// 命名的读写锁：以 fcntl POSIX 记录锁实现，取代命名计数信号量
-// （sem_open/sem_wait/sem_post）。本实现为 Android / OHOS / Linux / macOS
-// 等所有 POSIX 平台共用；平台差异仅体现在锁文件目录（lockDir）。
-//
-// Why a file lock: a POSIX named semaphore (sem_open/sem_wait/sem_post) keeps
-// its kernel state after every process using it exits. If the last holder
-// crashes while holding the lock (count already drained by sem_wait, never
-// returned by sem_post), the semaphore stays exhausted, so the NEXT process
-// blocks forever in its global-object constructor (GLobalHandleTable is a
-// static that runs before main) — the program cannot start. fcntl record
-// locks are released by the kernel automatically when the owning process
-// exits, whether cleanly or by a crash, so a stale lock can never wedge a
-// subsequent startup.
-//
-// Semantics vs the counting-semaphore version:
-//   - lockShared  = F_RDLCK (multiple readers may hold it concurrently)
-//   - lockExclusive = F_WRLCK (mutually exclusive with readers and writers)
-//   - The kNumLock template parameter is kept only for signature/ABI
-//     compatibility with call sites (TNamedSemRwLock<kSharedNumber>); the
-//     POSIX record lock needs no explicit slot counting.
-//
-// Usage constraint: each critical section must pair one lock with exactly
-// one unlock (neither fcntl record locks nor the replaced semaphores are
-// re-entrant — do not nest). Intra-process mutual exclusion between threads
-// — and between multiple lock-object instances mapped to the same lock file
-// — is restored by FlockGateState (see the block comment near the top of
-// this header), matching the old sem_wait behavior.
-template <int kNumLock = 2>
-class TNamedSemRwLock : public ISemRwLock {
-    // kNumLock kept for source compatibility with TNamedSemRwLock<kSharedNumber>;
-    // a record lock needs no slot count. Referenced so -Wall -Wextra sees it.
-    static_assert(kNumLock >= 1, "kNumLock retained for ABI compatibility");
-  private:
-    int m_fd;
-    std::string m_lockPath;
-    FlockGateState *m_gate;
-
-    static const char *lockDir()
-    {
-#if defined(__ANDROID__) || defined(__OHOS__)
-        // Android / OpenHarmony 无标准 /tmp：与共享内存/句柄表的既有移动端
-        // 目录约定一致，都用 /data/local/tmp（调试/具权限形态可写）。全局静
-        // 态对象（GLobalHandleTable）在 main 前即 open 此目录下的锁文件，故
-        // 目录必须可写；单进程 App 内跨进程锁不参与真实并发。
-        return "/data/local/tmp/";
-#else
-        return "/tmp/";
-#endif
-    }
-
-    // shared-memory names look like "/share_soui_..."; strip path separators
-    // and any other character that is not file-name safe. 对 Android/OHOS 同样
-    // 适用（共享内存名带前导 '/'，直接拼进文件名会开出子目录使 open 失败）。
-    static std::string sanitizeName(const char *name)
-    {
-        std::string s = name ? name : "default";
-        for (char &c : s)
-        {
-            if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') &&
-                !(c >= '0' && c <= '9') && c != '_' && c != '-')
-            {
-                c = '_';
-            }
-        }
-        return s;
-    }
-
-  private:
-    void setFileLock(short type)
-    {
-        struct flock lock;
-        memset(&lock, 0, sizeof(lock));
-        lock.l_type = type;
-        lock.l_whence = SEEK_SET;
-        lock.l_start = 0;
-        lock.l_len = 0;
-        if (fcntl(m_fd, F_SETLKW, &lock) == -1)
-        {
-            perror("fcntl(F_SETLKW)");
-        }
-    }
-
-  public:
-    TNamedSemRwLock()
-        : m_fd(-1)
-        , m_gate(nullptr)
-    {
-    }
-    ~TNamedSemRwLock()
-    {
-        if (m_gate != nullptr)
-        {
-            flockGateRelease(m_lockPath);
-        }
-        if (m_fd != -1)
-        {
-            close(m_fd);
-        }
-    }
-
     bool init(const char *name)
     {
         assert(m_fd == -1);
-        m_lockPath = std::string(lockDir()) + "soui_flock_" + sanitizeName(name) + ".lock";
-        // O_RDWR so the single fd can take both read (F_RDLCK) and write
-        // (F_WRLCK) locks; a stale file from a previous run is harmless
-        // because fcntl locks do not persist across process exit.
+        m_lockPath = std::string("/tmp/") + "soui_flock_" + sanitizeName(name) + ".lock";
         m_fd = open(m_lockPath.c_str(), O_CREAT | O_RDWR, 0666);
         if (m_fd == -1)
         {
@@ -455,6 +383,8 @@ class TNamedSemRwLock : public ISemRwLock {
         m_gate->gate.unlock();
     }
 };
+
+#endif // __ANDROID__ / __OHOS__ / __IOS__
 
 class SharedMemory {
     enum
@@ -477,6 +407,7 @@ class SharedMemory {
     std::string m_name;
     uint32_t &nRef;
     bool m_bDetached;
+    bool m_bHeap;
     ISemRwLock *m_rwlock;
 
   public:
@@ -485,6 +416,8 @@ class SharedMemory {
         , m_dwSize(0)
         , shmid(-1)
         , nRef(m_dwSize)
+        , m_bDetached(false)
+        , m_bHeap(false)
         , m_rwlock(nullptr) // init nRef to m_dwSize to avoid compile error. nRef will ref to buffer header later. hjx 2024/9/10
     {
     }

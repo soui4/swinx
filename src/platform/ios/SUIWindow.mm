@@ -1619,3 +1619,37 @@ extern "C" void* getAppleHostWindow(HWND hWnd){
     return (__bridge void*)root.hostWindow;
 }
 }
+
+// ---------------------------------------------------------------------------
+//  swinx_iosShellExecute：iOS 移动端 ShellExecute。
+//  用 UIApplication openURL 打开 URL / 本地文件，对应 Win32 ShellExecute("open")。
+//  Android/OHOS 不经过这里（swinx 无 JNI/N-API 通道），由宿主应用注册的
+//  g_platformAPI.shell.shellExecute 回调实现。
+// ---------------------------------------------------------------------------
+BOOL swinx_iosShellExecute(LPCSTR lpOperation, LPCSTR lpFile, LPCSTR lpParameters){
+    @autoreleasepool {
+        if (!lpFile || !*lpFile)
+            return FALSE;
+        // 完整 scheme（http/https 等）按 URL 打开，否则按本地文件路径
+        NSString *file = [NSString stringWithUTF8String:lpFile];
+        NSURL *url = [NSURL URLWithString:file];
+        if (!url || !url.scheme)
+            url = [NSURL fileURLWithPath:file];
+        UIApplication *app = [UIApplication sharedApplication];
+        if (!url || !app)
+            return FALSE;
+
+        // iOS 10+ 异步接口；请求已提交即视为成功（与 macOS open / xdg-open 语义一致）。
+        // 注意：completionHandler 在主队列回调，这里不等待，避免主线程死锁。
+        if ([app respondsToSelector:@selector(openURL:options:completionHandler:)])
+        {
+            [app openURL:url options:@{} completionHandler:nil];
+            return TRUE;
+        }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        // iOS 5.0 ~ 9 同步接口
+        return [app openURL:url] ? TRUE : FALSE;
+#pragma clang diagnostic pop
+    }
+}

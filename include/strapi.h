@@ -107,13 +107,13 @@ extern "C"
 #define MB_USEGLYPHCHARS     0x00000004 // DEPRECATED: use glyph chars, not ctrl chars
 #define MB_ERR_INVALID_CHARS 0x00000008 // error for invalid chars
 
-    BOOL WINAPI CharToOemBuffA(LPCSTR lpszSrc, LPSTR lpszDst, DWORD cchDstLength);
+    BOOL WINAPI CharToOemBuffA(LPCSTR lpszSrc, LPSTR lpszDst, DWORD cchSrcLength);
 
-    BOOL WINAPI CharToOemBuffW(LPCWSTR lpszSrc, LPSTR lpszDst, DWORD cchDstLength);
+    BOOL WINAPI CharToOemBuffW(LPCWSTR lpszSrc, LPSTR lpszDst, DWORD cchSrcLength);
 
-    BOOL WINAPI OemToCharBuffA(LPCSTR lpszSrc, LPSTR lpszDst, DWORD cchDstLength);
+    BOOL WINAPI OemToCharBuffA(LPCSTR lpszSrc, LPSTR lpszDst, DWORD cchSrcLength);
 
-    BOOL WINAPI OemToCharBuffW(LPCSTR lpszSrc, LPWSTR lpszDst, DWORD cchDstLength);
+    BOOL WINAPI OemToCharBuffW(LPCSTR lpszSrc, LPWSTR lpszDst, DWORD cchSrcLength);
 
     BOOL WINAPI CharToOemA(LPCSTR s, LPSTR d);
     BOOL WINAPI CharToOemW(LPCWSTR s, LPSTR d);

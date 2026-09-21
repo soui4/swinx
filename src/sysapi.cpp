@@ -34,10 +34,12 @@ extern char **environ; // POSIX 约定的环境指针（execve 备用）
 #include <string>
 #include <atomic>
 #include <mutex>
+#include <algorithm>
 #include "SConnection.h"
 #include "wnd.h"
 #include "uimsg.h"
 #include "uniconv.h"
+#include "cptable.h"
 #include "synhandle.h"
 #include "tostring.h"
 #include "debug.h"
@@ -254,6 +256,221 @@ static const char *Cp2IConvCode(int codePage)
     }
 }
 
+// ============================================================================
+// iconv 不可用时的内置码表兜底
+// ----------------------------------------------------------------------------
+// Android(bionic) 与 OHOS(musl) 的 iconv 只实现了 Unicode 系编码(UTF-8/16/32、
+// US-ASCII、wchar_t), 既不认识 GBK/CP936 与 Windows-125x, 也没有别名解析能力,
+// 于是 iconv_open 对传统代码页必然失败(失败时返回 -1, 个别实现返回 NULL),
+// 使 MultiByteToWideChar/WideCharToMultiByte 对 CP936 等直接失效。
+// 这里用 cptable.h 的静态码表兜底, 让各平台的转换结果保持一致; iconv 可用的平台
+// (Linux/macOS/iOS 桌面链)仍优先走 iconv, 行为不变。
+// ============================================================================
+
+// iconv_open 成功时才返回有效句柄; 失败时不同实现返回 (iconv_t)-1 或 NULL, 都算失败
+static inline bool isInvalidIconv(iconv_t cd)
+{
+    return cd == (iconv_t)-1 || cd == (iconv_t)0;
+}
+
+// Windows-125x 单字节页码表; 该代码页无内置码表时返回 NULL
+static const unsigned short *builtinSingleByteTable(int codePage)
+{
+    switch (codePage)
+    {
+    case 1250:
+        return kCP1250ToUnicode;
+    case 1251:
+        return kCP1251ToUnicode;
+    case 1252:
+        return kCP1252ToUnicode;
+    case 1253:
+        return kCP1253ToUnicode;
+    case 1254:
+        return kCP1254ToUnicode;
+    case 1255:
+        return kCP1255ToUnicode;
+    case 1256:
+        return kCP1256ToUnicode;
+    case 1257:
+        return kCP1257ToUnicode;
+    case 1258:
+        return kCP1258ToUnicode;
+    default:
+        return NULL;
+    }
+}
+
+// 是否有内置码表可以处理该代码页(目前为 CP936 与 Windows-125x)
+static inline bool hasBuiltinTable(int codePage)
+{
+    return codePage == 936 || builtinSingleByteTable(codePage) != NULL;
+}
+
+// 尾字节 -> 表内序号(0x40..0x7E 与 0x80..0xFE 合法, 0x7F/0xFF 非法), 非法返回 -1
+static inline int cp936TrailIndex(unsigned char c)
+{
+    if (c >= 0x40 && c <= 0x7E)
+        return c - 0x40;
+    if (c >= 0x80 && c <= 0xFE)
+        return c - 0x80 + 63; // 0x40..0x7E 共 63 个尾字节
+    return -1;
+}
+
+// 用内置码表把多字节串转成宽字符串。返回值语义同 to_unicode(写出的字符数);
+// unConvertedChars 记录未能转换的字节数(语义与 iconv 路径一致), 供
+// MultiByteToWideChar 判定 ERROR_NO_UNICODE_TRANSLATION。无法转换的字节按 Win32
+// 语义替换为 U+FFFD 并继续, 而不是中断整个转换。
+static int builtinToUnicode(const char *input, size_t input_len, int codePage, std::wstring &out, int &unConvertedChars)
+{
+    size_t unconverted = 0;
+    out.clear();
+    out.reserve(input_len);
+
+    if (codePage == 936)
+    {
+        for (size_t i = 0; i < input_len;)
+        {
+            unsigned char c = (unsigned char)input[i];
+            if (c < 0x80)
+            { // 单字节区与 ASCII 一致
+                out.push_back((wchar_t)c);
+                ++i;
+                continue;
+            }
+            int trail = (i + 1 < input_len) ? cp936TrailIndex((unsigned char)input[i + 1]) : -1;
+            if (c >= kCP936LeadFirst && c <= kCP936LeadLast && trail >= 0)
+            {
+                unsigned short u = kCP936ToUnicode[(c - kCP936LeadFirst) * kCP936TrailCount + trail];
+                if (u)
+                {
+                    out.push_back((wchar_t)u);
+                    i += 2;
+                    continue;
+                }
+            }
+            // 非法序列: 只前进一个字节, 让后一个字节仍有机会被正确解码
+            out.push_back((wchar_t)0xFFFD);
+            ++unconverted;
+            ++i;
+        }
+        unConvertedChars = (int)unconverted;
+        return (int)out.length();
+    }
+
+    const unsigned short *table = builtinSingleByteTable(codePage);
+    if (!table)
+        return 0; // 该代码页无内置码表(如 UTF-16), 由调用方按转换失败处理
+
+    for (size_t i = 0; i < input_len; ++i)
+    {
+        unsigned char c = (unsigned char)input[i];
+        unsigned short u = c;
+        if (c >= 0x80)
+        {
+            u = table[c - 0x80];
+            if (!u)
+            { // 该页未定义此字节
+                u = 0xFFFD;
+                ++unconverted;
+            }
+        }
+        out.push_back((wchar_t)u);
+    }
+    unConvertedChars = (int)unconverted;
+    return (int)out.length();
+}
+
+// Unicode -> CP936 反查表: 元素为 (unicode << 16) | 表内序号, 排序后即可二分查找。
+// 首次使用时由正向码表构建一次。故意 new 出来不释放(leak-on-purpose): 若被其它
+// 静态对象的析构函数调用, 函数局部静态的析构会早于调用方, 造成 UAF。
+static const std::vector<unsigned int> &cp936ReverseMap()
+{
+    static const std::vector<unsigned int> *s_map = []() {
+        std::vector<unsigned int> *map = new std::vector<unsigned int>();
+        map->reserve(kCP936TableSize);
+        for (unsigned int i = 0; i < (unsigned int)kCP936TableSize; ++i)
+        {
+            unsigned short u = kCP936ToUnicode[i];
+            if (u)
+                map->push_back((((unsigned int)u) << 16) | i);
+        }
+        std::sort(map->begin(), map->end());
+        return map;
+    }();
+    return *s_map;
+}
+
+// Unicode -> CP936 单字符编码; 无法映射返回 0
+static unsigned short cp936Encode(unsigned int ch)
+{
+    if (ch < 0x80)
+        return (unsigned short)ch;
+    const std::vector<unsigned int> &map = cp936ReverseMap();
+    std::vector<unsigned int>::const_iterator it = std::lower_bound(map.begin(), map.end(), ch << 16);
+    if (it != map.end() && (*it >> 16) == ch)
+        return (unsigned short)(*it & 0xFFFF);
+    return 0;
+}
+
+// 用内置码表把宽字符串转成多字节串。返回值语义同 to_mb(写出的字节数); 无法映射的
+// 字符按 Win32 语义替换为 '?'。不写结尾 0, 由调用方按 dstLen 处理。
+static int builtinToMb(const wchar_t *input, size_t input_len, int codePage, std::string &out)
+{
+    out.clear();
+    out.reserve(input_len * 2);
+
+    if (codePage == 936)
+    {
+        for (size_t i = 0; i < input_len; ++i)
+        {
+            unsigned int ch = (unsigned int)input[i];
+            if (ch < 0x80)
+            {
+                out.push_back((char)ch);
+                continue;
+            }
+            unsigned short idx = cp936Encode(ch);
+            if (!idx)
+            {
+                out.push_back('?');
+                continue;
+            }
+            int trail = idx % kCP936TrailCount;
+            out.push_back((char)(kCP936LeadFirst + idx / kCP936TrailCount));
+            out.push_back((char)(trail < 63 ? (0x40 + trail) : (0x80 + trail - 63)));
+        }
+        return (int)out.length();
+    }
+
+    const unsigned short *table = builtinSingleByteTable(codePage);
+    if (!table)
+        return 0; // 该代码页无内置码表(如 UTF-16), 由调用方按转换失败处理
+
+    for (size_t i = 0; i < input_len; ++i)
+    {
+        unsigned int ch = (unsigned int)input[i];
+        char mb = 0;
+        if (ch < 0x80)
+            mb = (char)ch;
+        else
+        {
+            for (int b = 0; b < 128; ++b)
+            { // 单字节页只有 128 项, 线性反查足够
+                if (table[b] == ch)
+                {
+                    mb = (char)(0x80 + b);
+                    break;
+                }
+            }
+            if (!mb)
+                mb = '?';
+        }
+        out.push_back(mb);
+    }
+    return (int)out.length();
+}
+
 static int to_mb(const wchar_t *input, size_t input_len, int codePage, std::string &out)
 {
     const char *toCode = Cp2IConvCode(codePage);
@@ -264,8 +481,15 @@ static int to_mb(const wchar_t *input, size_t input_len, int codePage, std::stri
 #else
     iconv_t cd = iconv_open(toCode, ICONV_UTF16LE);
 #endif
-    if (cd == (iconv_t)-1)
+    if (isInvalidIconv(cd))
     {
+        // iconv 不认识该代码页(典型: Android/OHOS 上的 CP936 与 Windows-125x),
+        // 改用内置码表兜底, 否则这些代码页在移动平台上完全不可用。
+        if (hasBuiltinTable(codePage))
+        {
+            SLOG_STMW() << "iconv_open failed, fallback to builtin table, codePage=" << codePage;
+            return builtinToMb(input, input_len, codePage, out);
+        }
         SLOG_STMW() << "iconv_open failed, codePage=" << codePage;
         return 0;
     }
@@ -301,8 +525,15 @@ int to_unicode(const char *input, size_t input_len, int codePage, std::wstring &
 #else
     iconv_t cd = iconv_open(ICONV_UTF16LE, fromCode);
 #endif
-    if (cd == (iconv_t)-1)
+    if (isInvalidIconv(cd))
     {
+        // iconv 不认识该代码页(典型: Android/OHOS 的 bionic/musl 只实现了 Unicode
+        // 系编码), 改用内置码表兜底, 否则 GBK 等中文编码在本平台完全无法转换。
+        if (hasBuiltinTable(codePage))
+        {
+            SLOG_STMW() << "iconv_open failed, fallback to builtin table, codePage=" << codePage;
+            return builtinToUnicode(input, input_len, codePage, out, unConvertedChars);
+        }
         SLOG_STMW() << "iconv_open failed, codePage=" << codePage;
         return 0;
     }
@@ -386,7 +617,7 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
 {
     assert(src);
     if (cp == CP_OEMCP)
-        cp = CP_UTF8; // todo:hjx
+        cp = 936;
 
     if (len < 0)
         len = strlen(src) + 1;
@@ -394,7 +625,7 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
     {
         std::wstring str;
         int unConvertedChars = 0;
-        int ret = to_unicode(src, len, cp, str, unConvertedChars); // using iconv to support 936
+        int ret = to_unicode(src, len, cp, str, unConvertedChars); // iconv 或内置码表(见 builtinToUnicode)
         if (unConvertedChars)
         {
             if (flags & MB_ERR_INVALID_CHARS)

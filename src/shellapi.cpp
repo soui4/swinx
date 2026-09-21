@@ -1,5 +1,9 @@
 #include <shellapi.h>
 #include "tostring.h"
+#include "platform_api.h"
+#if defined(__IOS__)
+#include "SUIWindow.h"
+#endif
 #include <mutex>
 #include <list>
 #include <map>
@@ -1376,7 +1380,18 @@ BOOL WINAPI ShellExecuteA(HWND hwnd __attribute__((unused)), LPCSTR lpOperation,
                 url = urlBuf.c_str();
             }
         }
-#ifdef __linux__
+#if defined(__IOS__)
+        // iOS：UIApplication openURL（原生实现，见 SUIWindow.mm 的
+        // swinx_iosShellExecute）。__IOS__ 必须在 __APPLE__ 之前判断。
+        return swinx_iosShellExecute("open", url, NULL);
+#elif defined(__ANDROID__) || defined(__OHOS__) || defined(OHOS)
+        // Android/OHOS：swinx 无 JNI/N-API 通道，走宿主应用注册的
+        // g_platformAPI.shell.shellExecute 回调（ACTION_VIEW Intent /
+        // Want + startAbility）。回调未注册时返回 FALSE，与 Win32 失败语义一致。
+        return g_platformAPI.shell.shellExecute
+                   ? g_platformAPI.shell.shellExecute("open", url, NULL)
+                   : FALSE;
+#elif defined(__linux__)
         int len = strlen(url);
         char *cmd = new char[len + 12];
         sprintf(cmd, "xdg-open '%s'", url);
@@ -1438,12 +1453,20 @@ BOOL WINAPI ShellExecuteExA(LPSHELLEXECUTEINFOA lpExecInfo)
         return FALSE;
     if (exe == 0)
     {
+#if defined(__IOS__)
+        return swinx_iosShellExecute("open", lpFile, NULL);
+#elif defined(__ANDROID__) || defined(__OHOS__) || defined(OHOS)
+        return g_platformAPI.shell.shellExecute
+                   ? g_platformAPI.shell.shellExecute("open", lpFile, NULL)
+                   : FALSE;
+#else
         int len = strlen(lpFile);
         char *cmd = new char[len + 10];
         sprintf(cmd, "xdg-open %s", lpFile);
         mysystem(cmd);
         delete[] cmd;
         return TRUE;
+#endif
     }
     else
     {

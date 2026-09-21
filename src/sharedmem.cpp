@@ -2,7 +2,16 @@
 #include <sys/mman.h>
 #include <windows.h>
 #include <map>
+#include <new>
 #include "log.h"
+
+// 移动端（Android/OHOS/iOS）的共享内存回退路径需要这些 POSIX 头；无条件包含
+// （幂等，不影响桌面端）。android/sharedmem.h 仅 Android 有，留在下方 __ANDROID__ 内。
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <errno.h>
 
 #define kLogTag "sharememory"
 
@@ -165,17 +174,31 @@ namespace swinx
 {
 SharedMemory::~SharedMemory()
 {
-    if (shmid == -1)
+    if (shmid == -1 && !m_bHeap)
         return;
-    m_rwlock->lockExclusive();
-    bool bUnlink = 0 == (--nRef);
-    m_rwlock->unlockExclusive();
-    munmap(&nRef, m_dwSize + sizeof(uint32_t));
-    close(shmid);
+    bool bUnlink = false;
+    if (m_rwlock)
+    {
+        m_rwlock->lockExclusive();
+        bUnlink = (0 == (--nRef));
+        m_rwlock->unlockExclusive();
+    }
+    if (m_bHeap)
+    {
+        // 堆内存回退：缓冲区由 new[] 分配。注意 nRef 是引用别名（绑定到
+        // m_dwSize，链接期不可重绑），&nRef 指向对象自身成员而非缓冲区，不能
+        // 用来释放；真实缓冲区基址 = m_pBuf - sizeof(uint32_t)。
+        delete[] (m_pBuf - sizeof(uint32_t));
+    }
+    else
+    {
+        munmap(&nRef, m_dwSize + sizeof(uint32_t));
+        close(shmid);
+    }
     delete m_rwlock;
-    SLOG_FMTD("close share memory, name=%s, bUnlink=%d", m_name.c_str(), bUnlink);
+    SLOG_FMTD("close share memory, name=%s, heap=%d, bUnlink=%d", m_name.c_str(), m_bHeap, bUnlink);
 
-    if (bUnlink && !m_bDetached)
+    if (bUnlink && !m_bDetached && !m_bHeap)
     {
 #if defined(__ANDROID__)
         // todo:
@@ -199,7 +222,99 @@ SharedMemory::~SharedMemory()
 SharedMemory::InitStat SharedMemory::init(const char *name, uint32_t size)
 {
     assert(m_rwlock == nullptr);
-    TNamedSemRwLock<kSharedNumber> *rwlock = new TNamedSemRwLock<kSharedNumber>();
+
+#if defined(__ANDROID__) || defined(__OHOS__) || defined(__IOS__)
+    // ------------------------------------------------------------------
+    // 移动端（Android/OHOS/iOS）：命名内核对象不被支持，且沙箱内 /data/local/tmp
+    // 常不可写。这些平台单进程运行，全局句柄表（GLobalHandleTable）只需进程内
+    // 共享，不存在跨进程并发。故：
+    //   1) 用进程内匿名读写锁（TSemRwLock 移动端实现，即 std::mutex +
+    //      std::condition_variable）取代命名 fcntl 文件锁，init 永不失败，
+    //      避免在 main 前构造全局句柄表时 open 锁文件失败使其失效；
+    //   2) 先尝试真实共享内存（ASharedMemory_create / 临时文件），任一环节失败
+    //      则回退到堆内存模拟，保证 init 成功、全局句柄表不失效、程序不崩溃。
+    // 跨进程共享在移动端无意义（单进程 App），堆回退对每个实例给出独立缓冲区，
+    // 对全局句柄表这类单例语义正确。
+    // ------------------------------------------------------------------
+    TSemRwLock<kSharedNumber> *rwlock = new TSemRwLock<kSharedNumber>();
+    if (!rwlock->init(name))
+    {
+        delete rwlock;
+        return Failed;
+    }
+    m_rwlock = rwlock;
+
+    const uint32_t memSize = size + sizeof(uint32_t);
+    int fd = -1;
+    LPBYTE ptr = nullptr;
+
+#if defined(__ANDROID__)
+    // ASharedMemory 仅 Android 可用；名字带 '/' 或 '-' 时仍可能创建成功（内核以
+    // ashmem 名称记录），失败再走临时文件回退。
+    fd = ASharedMemory_create(name, memSize);
+    if (fd >= 0)
+        ASharedMemory_setProt(fd, PROT_READ | PROT_WRITE);
+#endif
+    if (fd < 0)
+    {
+        // 临时文件（OHOS/iOS 无 ASharedMemory；Android 的 ASharedMemory 失败时也走这里）
+        char tempPath[256];
+        snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d",
+                 name ? name : "anon", (int)getpid());
+        fd = open(tempPath, O_RDWR | O_CREAT | O_EXCL, 0666);
+        if (fd >= 0 && ftruncate(fd, memSize) == -1)
+        {
+            close(fd);
+            fd = -1;
+        }
+    }
+    if (fd >= 0)
+    {
+        ptr = (LPBYTE)mmap(0, memSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        if (ptr == MAP_FAILED)
+        {
+            close(fd);
+            fd = -1;
+            ptr = nullptr;
+        }
+    }
+
+    if (fd < 0 || ptr == nullptr)
+    {
+        // 堆内存回退：即便临时文件/mapping 都失败也不让全局句柄表失效
+        fd = -1;
+        ptr = new (std::nothrow) uint8_t[memSize];
+        if (ptr == nullptr)
+        {
+            // 极端情况：连堆都分配不出。m_rwlock 已设置，返回 Failed 让上层感知
+            // （与桌面端语义一致），但不再出现 init 部分成功却留下空 m_rwlock。
+            delete rwlock;
+            m_rwlock = nullptr;
+            return Failed;
+        }
+        m_bHeap = true;
+    }
+    else
+    {
+        m_bHeap = false;
+    }
+
+    nRef = *(uint32_t *)ptr;
+    m_rwlock->lockExclusive();
+    nRef = 1;
+    m_rwlock->unlockExclusive();
+    m_pBuf = ptr + sizeof(uint32_t);
+    shmid = fd;
+    m_dwSize = size;
+    m_name = name ? name : "";
+    m_bDetached = false;
+    SLOG_FMTD("open share memory (mobile, heap-fallback=%d), name=%s\n", m_bHeap, name);
+    return Created;
+
+#else
+    // 桌面 POSIX 平台（Linux/macOS）：保留跨进程共享内存语义（命名共享内存 +
+    // 命名 fcntl 文件锁），用于进程间句柄/IPC。
+    TSemRwLock<kSharedNumber> *rwlock = new TSemRwLock<kSharedNumber>();
     if (!rwlock->init(name))
     {
         delete rwlock;
@@ -208,114 +323,6 @@ SharedMemory::InitStat SharedMemory::init(const char *name, uint32_t size)
     m_rwlock = rwlock;
     InitStat ret = Failed;
 
-#ifdef __ANDROID__
-    // Android-specific implementation
-    // Check if shared memory already exists in registry
-    {
-        std::lock_guard<std::mutex> lock(s_androidShmMutex);
-        auto it = s_androidShmRegistry.find(name);
-        if (it != s_androidShmRegistry.end())
-        {
-            // Open existing shared memory
-            AndroidSharedMemEntry *entry = it->second;
-            int fd = dup(entry->fd);
-            if (fd >= 0)
-            {
-                // Map the shared memory
-                LPBYTE ptr = (LPBYTE)mmap(0, entry->size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-                if (ptr == MAP_FAILED)
-                {
-                    close(fd);
-                    perror("mmap");
-                    delete rwlock;
-                    return Failed;
-                }
-
-                nRef = *(uint32_t *)ptr;
-                m_rwlock->lockExclusive();
-                nRef++;
-                m_rwlock->unlockExclusive();
-                m_pBuf = ptr + sizeof(uint32_t);
-
-                shmid = fd;
-                m_dwSize = entry->size - sizeof(uint32_t);
-                m_name = name;
-                m_bDetached = false;
-                entry->refCount++;
-                ret = Existed;
-                SLOG_FMTD("open share memory (Android), name=%s, ret=%d\n", name, ret);
-                return ret;
-            }
-        }
-    }
-
-    // Create new shared memory with correct size
-    size_t memSize = size + sizeof(uint32_t);
-    int fd = ASharedMemory_create(name, memSize);
-    if (fd < 0)
-    {
-        // Fallback to temporary file
-        char tempPath[256];
-        snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d", name, getpid());
-
-        int flags = O_RDWR | O_CREAT | O_EXCL;
-        fd = open(tempPath, flags, 0666);
-        if (fd < 0)
-        {
-            perror("open temp file");
-            delete rwlock;
-            return Failed;
-        }
-
-        // Set size
-        if (ftruncate(fd, memSize) == -1)
-        {
-            close(fd);
-            perror("ftruncate");
-            delete rwlock;
-            return Failed;
-        }
-    }
-    else
-    {
-        // Set protection flags
-        ASharedMemory_setProt(fd, PROT_READ | PROT_WRITE);
-
-        // Register the shared memory
-        std::lock_guard<std::mutex> lock(s_androidShmMutex);
-        AndroidSharedMemEntry *entry = new AndroidSharedMemEntry();
-        entry->name = name;
-        entry->fd = fd;
-        entry->size = memSize;
-        entry->refCount = 1;
-        s_androidShmRegistry[name] = entry;
-    }
-
-    // Map the shared memory
-    LPBYTE ptr = (LPBYTE)mmap(0, memSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    if (ptr == MAP_FAILED)
-    {
-        close(fd);
-        perror("mmap");
-        delete rwlock;
-        return Failed;
-    }
-
-    nRef = *(uint32_t *)ptr;
-    m_rwlock->lockExclusive();
-    nRef = 1;
-    m_rwlock->unlockExclusive();
-    m_pBuf = ptr + sizeof(uint32_t);
-
-    shmid = fd;
-    m_dwSize = size;
-    m_name = name;
-    m_bDetached = false;
-    ret = Created;
-    SLOG_FMTD("open share memory (Android), name=%s, ret=%d\n", name, ret);
-    return ret;
-
-#else
     // Non-Android platforms use shm_open
     int fd = shm_open(name, O_RDWR, 0666); // open share memory
     if (fd == -1)
