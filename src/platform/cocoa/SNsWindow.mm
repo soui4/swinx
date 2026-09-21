@@ -2035,13 +2035,13 @@ static void createNsHostWindow(SNsWindow *nswindow, HWND hWnd){
     if(dwStyle & WS_DLGFRAME)
     {
         styleMask |= NSWindowStyleMaskTitled;
+        if(dwStyle & WS_SYSMENU)//关闭按钮只在有标题栏时才有意义
+            styleMask |= NSWindowStyleMaskClosable;
         if(dwStyle & WS_THICKFRAME)//keep resize only for window with caption
             styleMask |= NSWindowStyleMaskResizable;
     }
     if(dwStyle & WS_MAXIMIZEBOX)
         styleMask |= NSWindowStyleMaskMiniaturizable;
-    if(dwStyle & WS_SYSMENU)
-        styleMask |= NSWindowStyleMaskClosable;
     if(dwExStyle & (WS_EX_NOACTIVATE))
         styleMask |= NSWindowStyleMaskNonactivatingPanel|NSWindowStyleMaskUtilityWindow;
     NSScreen *screen = getNsScreen(hWnd);
