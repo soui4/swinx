@@ -24,8 +24,6 @@
 // 因为 memcpy 会连同 padding 一起复制。
 //=====================================================================
 #include <xcb/xcb.h>
-#include <cstdint>
-#include <cstring>
 
 template <typename T>
 inline void xcb_send_event32(xcb_connection_t *c,
@@ -36,6 +34,6 @@ inline void xcb_send_event32(xcb_connection_t *c,
 {
     static_assert(sizeof(T) <= 32, "xcb event struct must not exceed 32 bytes");
     char buf[32] = {};
-    std::memcpy(buf, &event, sizeof(T));
+    memcpy(buf, &event, sizeof(T));
     xcb_send_event(c, propagate, destination, event_mask, buf);
 }
