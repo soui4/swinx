@@ -474,12 +474,16 @@ void SKeyboard::updateXKBStateFromState(struct xkb_state *kb_state, uint16_t sta
     // set modifiers in depressed if they don't appear in any of the final masks
     depressed |= ~(depressed | latched | locked) & xkbMask;
 
-    const xkb_state_component newState = xkb_state_update_mask(kb_state, depressed, latched, locked, 0, 0,
-                                                               (state >> 13) & 3); // bits 13 and 14 report the state keyboard group
+    // bits 13 and 14 report the state keyboard group（XKB group，由 IM 管理）
+    const xkb_layout_index_t group = (xkb_layout_index_t)((state >> 13) & 3);
+    const xkb_state_component newState = xkb_state_update_mask(kb_state, depressed, latched, locked, 0, 0, group);
 
     if ((newState & XKB_STATE_LAYOUT_EFFECTIVE) == XKB_STATE_LAYOUT_EFFECTIVE)
     {
-        // qWarning("TODO: Support KeyboardLayoutChange on QPA (QTBUG-27681)");
+        // 系统真实键盘布局（XKB group）变化时同步 m_activeGroup，使
+        // SConnection::GetKeyboardLayout 首次惰性初始化能反映当前真实输入法，
+        // 而不是一直停留在初始 group 0。XKB group 由 IM 实际管理，这里只跟随。
+        m_activeGroup = group;
     }
 }
 

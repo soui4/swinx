@@ -1119,16 +1119,26 @@ static CFArrayRef copyKeyboardInputSources()
  * 统一加偏移即可彻底避开，0 仍留作"尚未与真实输入源同步"的哨兵。 */
 
 // 当前 TIS 键盘输入源在列表中的索引；找不到返回 -1。调用方负责传入的 list。
+//
+// 注意：不能再用「指针同一性」匹配（CFArrayGetValueAtIndex(list,i) == cur）。
+// TISCreateInputSourceList 与 TISCopyCurrentKeyboardInputSource 各自独立创建
+// 输入源对象，指针永不相等，导致永远匹配不到而退回列开头（通常是 ABC），
+// 进而让激活/还原 HKL 时把真实输入法（如五笔）误切到 ABC。这里改为按
+// kTISPropertyInputSourceID 字符串比较。
 static long currentKeyboardInputSourceIndex(CFArrayRef list)
 {
     TISInputSourceRef cur = TISCopyCurrentKeyboardInputSource();
     if (!cur)
         return -1;
+    CFStringRef curID = (CFStringRef)TISGetInputSourceProperty(cur, kTISPropertyInputSourceID);
     const CFIndex n = CFArrayGetCount(list);
     long idx = -1;
     for (CFIndex i = 0; i < n; ++i)
     {
-        if (CFArrayGetValueAtIndex(list, i) == cur)
+        TISInputSourceRef src = (TISInputSourceRef)CFArrayGetValueAtIndex(list, i);
+        CFStringRef srcID = (CFStringRef)TISGetInputSourceProperty(src, kTISPropertyInputSourceID);
+        if (curID && srcID &&
+            CFStringCompare(curID, srcID, 0) == kCFCompareEqualTo)
         {
             idx = (long)i;
             break;
