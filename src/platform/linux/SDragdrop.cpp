@@ -1,5 +1,5 @@
 #include "SDragdrop.h"
-#include "xcb_event.h"
+#include "xcb_event32.h"
 #include "SConnection.h"
 #include "SClipboard.h"
 #include <vector>

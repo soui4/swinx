@@ -1,5 +1,5 @@
 #include "STrayIconMgr.h"
-#include "xcb_event.h"
+#include "xcb_event32.h"
 #include <assert.h>
 #include <xcb/xcb_icccm.h>
 #include "SConnection.h"

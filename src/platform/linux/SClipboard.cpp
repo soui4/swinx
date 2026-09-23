@@ -1,5 +1,5 @@
 #include "SConnection.h"
-#include "xcb_event.h"
+#include "xcb_event32.h"
 #include "SClipboard.h"
 #include <shlobj.h>
 #include <algorithm>

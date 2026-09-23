@@ -1,5 +1,5 @@
-#pragma once
-
+#ifndef _XCB_EVENT32_H__
+#define _XCB_EVENT32_H__
 //=====================================================================
 // xcb_send_event() 的 32 字节陷阱 —— 发送 xcb 事件的唯一正确入口
 //=====================================================================
@@ -25,8 +25,8 @@
 //=====================================================================
 #include <xcb/xcb.h>
 
-template <typename T>
-inline void xcb_send_event32(xcb_connection_t *c,
+template<typename T>
+void xcb_send_event32(xcb_connection_t *c,
                              uint8_t propagate,
                              xcb_window_t destination,
                              uint32_t event_mask,
@@ -37,3 +37,5 @@ inline void xcb_send_event32(xcb_connection_t *c,
     memcpy(buf, &event, sizeof(T));
     xcb_send_event(c, propagate, destination, event_mask, buf);
 }
+
+#endif // _XCB_EVENT32_H__

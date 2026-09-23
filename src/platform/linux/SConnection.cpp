@@ -1,5 +1,5 @@
 #include "SConnection.h"
-#include "xcb_event.h"
+#include "xcb_event32.h"
 #include <assert.h>
 #include <functional>
 #include <xcb/xcb_icccm.h>
