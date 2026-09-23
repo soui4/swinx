@@ -50,6 +50,13 @@
                "Set -DUSTL_INCLUDE_DIR=<path> to your uSTL checkout (github.com/msharov/ustl, v2.5)."
     #endif
 
+    // uSTL's ulist.h unconditionally does "#define deque list" at global scope
+    // (uSTL's list is just a vector alias, not a real deque). That macro poisons
+    // the bare token "deque" everywhere, so libstdc++'s std::deque is rewritten
+    // to std::list and <deque> fails to compile. swinx keeps a real std::deque,
+    // so undo the macro immediately after pulling in the umbrella.
+    #undef deque
+
     // uSTL has no unordered_map/unordered_set and no deque, so those two stay
     // on the real standard library. Their headers must be pulled in here
     // (the ustl umbrella does not include them) before the aliases below.
