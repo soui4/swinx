@@ -50,6 +50,12 @@
                "Set -DUSTL_INCLUDE_DIR=<path> to your uSTL checkout (github.com/msharov/ustl, v2.5)."
     #endif
 
+    // uSTL has no unordered_map/unordered_set and no deque, so those two stay
+    // on the real standard library. Their headers must be pulled in here
+    // (the ustl umbrella does not include them) before the aliases below.
+    #include <unordered_map>
+    #include <deque>
+
     namespace swinx_stl {
         using ustl::string;
         using ustl::vector;

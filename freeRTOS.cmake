@@ -128,6 +128,12 @@ target_link_libraries(swinx
 )
 
 target_include_directories(swinx
+    # Make uSTL's freshly generated headers + config.h win over any stray uSTL
+    # checkout on the include path (e.g. swinx/thirdparty/ustl from an
+    # autotools ./configure). Our generated config.h has WITHOUT_LIBSTDCPP
+    # undefined, so uSTL uses libstdc++'s std primitives instead of defining
+    # its own (which would clash with libstdc++ and break the build).
+    PRIVATE BEFORE ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/ustl/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
