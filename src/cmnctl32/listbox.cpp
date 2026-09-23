@@ -2589,7 +2589,7 @@ static LRESULT CALLBACK LISTBOX_Msg_W2A(HWND hwnd, UINT msg, WPARAM wParam, LPAR
     case LB_FINDSTRINGEXACT:
     case LB_SELECTSTRING:
     {
-        std::string str;
+        swinx_stl::string str;
         tostring((const WCHAR *)lParam, -1, str);
         return LISTBOX_WindowProc(hwnd, msg, wParam, (LPARAM)str.c_str());
     }

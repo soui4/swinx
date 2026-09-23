@@ -39,7 +39,7 @@ struct CairoColor
 
 struct LOGPENEX : LOGPEN
 {
-    std::vector<double> dash;
+    swinx_stl::vector<double> dash;
     HBRUSH patternBrush;
     LOGPENEX()
         : patternBrush(nullptr)
@@ -73,7 +73,7 @@ static void gdi_pen_free(void *ptr)
 
 struct GradientDetail
 {
-    std::vector<GRADIENTITEM> items;
+    swinx_stl::vector<GRADIENTITEM> items;
     GRADIENTINFO info;
 };
 struct PatternInfo
@@ -1962,7 +1962,7 @@ static BOOL BitBltRasterOp(HDC hdcDst, int x, int y, int cx, int cy,
     /* dst 与 src 是同一块像素内存（同一 surface）时，先把源矩形快照出来，
      * 避免读写重叠互相破坏（真实 GDI 对重叠 blit 亦按"先读后写"处理）。
      * 快照是紧凑缓冲（行宽 cw*4），本身成为一个新视图。 */
-    std::vector<unsigned char> snap;
+    swinx_stl::vector<unsigned char> snap;
     if (sameSurf)
     {
         int cx0 = sx > svx0 ? sx : svx0;
@@ -2725,7 +2725,7 @@ COLORREF SetBkColor(HDC hdc, COLORREF cr)
 
 BOOL WINAPI TextOutW(HDC hdc, int x, int y, LPCWSTR lpString, int c)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, c, str);
     return TextOutA(hdc, x, y, str.c_str(), str.length());
 }
@@ -2962,7 +2962,7 @@ DWORD WINAPI GetTabbedTextExtentW(HDC hDC,                        // handle to D
                                   CONST LPINT lpnTabStopPositions // array of tab positions
 )
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, nCount, str);
     return GetTabbedTextExtentA(hDC, str.c_str(), str.length(), nTabPositions, lpnTabStopPositions);
 }
@@ -2990,7 +2990,7 @@ LONG WINAPI TabbedTextOutW(HDC hDC,                         // handle to DC
                            int nTabOrigin                   // start of tab expansion
 )
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, nCount, str);
     return TabbedTextOutA(hDC, X, Y, str.c_str(), str.length(), nTabPositions, lpnTabStopPositions, nTabOrigin);
 }
@@ -3011,7 +3011,7 @@ BOOL GetTextExtentPoint32A(HDC hdc, LPCSTR lpString, int c, LPSIZE psizl)
 
 BOOL GetTextExtentPoint32W(HDC hdc, LPCWSTR lpString, int c, LPSIZE psizl)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, c, str);
     return GetTextExtentPoint32A(hdc, str.c_str(), str.length(), psizl);
 }
@@ -3070,7 +3070,7 @@ BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, in
     cairo_text_extents_t ext;
     cairo_font_extents_t font_ext;
     cairo_font_extents(hdc->cairo, &font_ext);
-    std::string str;
+    swinx_stl::string str;
     tostring(lpszString, cchString, str);
     int *pCharWid = new int[str.length()];
     int nWords = cairo_text_extents2_ex(hdc->cairo, str.c_str(), str.length(), &ext, pCharWid);
@@ -4522,7 +4522,7 @@ BOOL WINAPI ExtTextOutW(HDC hdc,          // handle to DC
                         CONST INT *lpDx   // array of spacing values
 )
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, cbCount, str);
     return ExtTextOutA(hdc, X, Y, fuOptions, lprc, str.c_str(), str.length(), lpDx);
 }
@@ -4706,7 +4706,7 @@ HDC WINAPI CreateICW(LPCWSTR lpszDriver,   // driver name
                      CONST void *lpdvmInit // optional initialization data
 )
 {
-    std::string strDriver, strDevice, strOutput;
+    swinx_stl::string strDriver, strDevice, strOutput;
     tostring(lpszDriver, -1, strDriver);
     tostring(lpszDevice, -1, strDevice);
     tostring(lpszOutput, -1, strOutput);
@@ -4760,7 +4760,7 @@ int AddFontResourceA(LPCSTR lpszFilename)
 
 int AddFontResourceW(LPCWSTR lpszFilename)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpszFilename, -1, str);
     return AddFontResourceExA(str.c_str(), 0, 0);
 }
@@ -4770,7 +4770,7 @@ int AddFontResourceExW(LPCWSTR lpszFilename, // font file name
                        PVOID pdv             // reserved
 )
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpszFilename, -1, str);
     return AddFontResourceExA(str.c_str(), fl, pdv);
 }

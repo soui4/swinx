@@ -216,11 +216,11 @@ protected:
 
 private:
     CountMutex m_mutex;
-    std::list<Msg *> m_msgQueue;
+    swinx_stl::list<Msg *> m_msgQueue;
     Msg *m_msgPeek;
     bool m_bMsgNeedFree;
-    std::list<Msg *> m_msgStack;
-    std::list<CbTask *> m_lstCallbackTask;
+    swinx_stl::list<Msg *> m_msgStack;
+    swinx_stl::list<CbTask *> m_lstCallbackTask;
     uint64_t m_tsLastMsg;
     std::atomic<bool> m_bQuit;
     tid_t m_tid;
@@ -233,7 +233,7 @@ private:
     HWND m_hActive;
     HWND m_hForeground;
     HKL  m_hkl = 0;
-    std::map<HWND, HCURSOR> m_wndCursor;
+    swinx_stl::map<HWND, HCURSOR> m_wndCursor;
     BYTE m_keyboardState[256];
     int m_cursorCount;
     CaretInfo m_caretInfo;
@@ -255,7 +255,7 @@ private:
 
     HANDLE m_hHeap;
     std::recursive_mutex m_mutex;
-    std::map<tid_t, SConnection *> m_conns;
+    swinx_stl::map<tid_t, SConnection *> m_conns;
 };
 
 #endif // _SWINX_MOBILE_SCONNECTION_H_

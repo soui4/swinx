@@ -543,7 +543,7 @@ void SConnection::readXResources()
         if (reply && reply->format == 8 && reply->type == XCB_ATOM_STRING)
         {
             int len = xcb_get_property_value_length(reply);
-            resources << std::string((const char *)xcb_get_property_value(reply), len);
+            resources << swinx_stl::string((const char *)xcb_get_property_value(reply), len);
             offset += len;
             more = reply->bytes_after != 0;
         }
@@ -555,7 +555,7 @@ void SConnection::readXResources()
             break;
     }
 
-    std::string line;
+    swinx_stl::string line;
     static const char kDpiDesc[] = "Xft.dpi:\t";
     while (std::getline(resources, line, '\n'))
     {
@@ -1294,7 +1294,7 @@ uint32_t SConnection::atom2ClipFormat(xcb_atom_t atom)
     }
 }
 
-std::shared_ptr<std::vector<char>> SConnection::readSelection(bool bXdnd, uint32_t fmt)
+std::shared_ptr<swinx_stl::vector<char>> SConnection::readSelection(bool bXdnd, uint32_t fmt)
 {
     if(fmt == CF_TEXT){
         //mutiple clip atom were mapped to CF_TEXT
@@ -2116,7 +2116,7 @@ xcb_cursor_t SConnection::getXcbCursor(HCURSOR cursor)
             SLOG_STMW() << "create xcb cursor failed!";
             return 0;
         }
-        m_sysCursor.insert(std::make_pair(cursor, xcbCursor));
+        m_sysCursor.insert(swinx_stl::make_pair(cursor, xcbCursor));
     }
     return xcbCursor;
 }
@@ -2389,7 +2389,7 @@ BOOL SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn)
 {
     if (hRgn)
     {
-        std::vector<xcb_rectangle_t> rects;
+        swinx_stl::vector<xcb_rectangle_t> rects;
         DWORD len = GetRegionData(hRgn, 0, nullptr);
         if (!len)
             return FALSE;
@@ -2616,7 +2616,7 @@ xcb_atom_t SConnection::XdndEffect2Action(DWORD dwEffect)
 
 
 static int CALLBACK CbEnumPopupWindow(HWND hwnd, LPARAM lParam){
-    std::list<HWND> *lstPopups = (std::list<HWND> *)lParam;
+    swinx_stl::list<HWND> *lstPopups = (swinx_stl::list<HWND> *)lParam;
     lstPopups->push_back(hwnd);
     return 1;
 }
@@ -2737,7 +2737,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
                 readXResources();
                 int newDpi = m_forceDpi;
                 if(oldDpi != newDpi){                  
-                    std::list<HWND> lstPopups;
+                    swinx_stl::list<HWND> lstPopups;
                     OnEnumWindows(0,0,CbEnumPopupWindow,(LPARAM)&lstPopups);
                     for(auto it:lstPopups){
                         WndObj wndObj = WndMgr::fromHwnd(it);
@@ -3898,7 +3898,7 @@ void SConnection::SendSysCommand(HWND hWnd, int nCmd)
 }
 
 
-static void AppendIconData(std::vector<uint32_t> &buf, HICON hIcon)
+static void AppendIconData(swinx_stl::vector<uint32_t> &buf, HICON hIcon)
 {
     ICONINFO info;
     if (GetIconInfo(hIcon, &info))
@@ -3925,7 +3925,7 @@ void SConnection::UpdateWindowIcon(HWND hWnd, _Window * wndObj)
     {
         if (wndObj)
         {
-            std::vector<uint32_t> buf;
+            swinx_stl::vector<uint32_t> buf;
             AppendIconData(buf, wndObj->iconSmall);
             AppendIconData(buf, wndObj->iconBig);
             if (!buf.empty())
@@ -4097,7 +4097,7 @@ HWND SConnection::GetWndSibling(HWND hParent, HWND hWnd, BOOL bNext)
     xcb_window_t *children = xcb_query_tree_children(reply);
     
     // Filter to only application windows (skip decoration windows)
-    std::vector<int> app_indices;
+    swinx_stl::vector<int> app_indices;
     for (int i = 0; i < reply->children_len; i++)
     {
         // Fallback to IsApplicationWindow (cross-process support)
@@ -4237,7 +4237,7 @@ struct MonInfo
 };
 
 // 枚举当前所有活跃显示器；成功返回 true（mons 至少一项）。
-bool enumRandrMonitors(xcb_connection_t *conn, xcb_screen_t *scr, std::vector<MonInfo> &mons)
+bool enumRandrMonitors(xcb_connection_t *conn, xcb_screen_t *scr, swinx_stl::vector<MonInfo> &mons)
 {
     mons.clear();
     xcb_randr_get_screen_resources_current_cookie_t rcookie =
@@ -4354,7 +4354,7 @@ bool intersectRects(RECT *dst, const RECT &a, const RECT &b)
 }
 
 // Win32 MonitorFrom* 的标志语义公共尾部
-HMONITOR monitorHitResult(const std::vector<MonInfo> &mons, const MonInfo *pHit, DWORD dwFlags)
+HMONITOR monitorHitResult(const swinx_stl::vector<MonInfo> &mons, const MonInfo *pHit, DWORD dwFlags)
 {
     if (pHit)
         return pHit->hMon;
@@ -4377,7 +4377,7 @@ HMONITOR monitorHitResult(const std::vector<MonInfo> &mons, const MonInfo *pHit,
 // 枚举当前所有活跃显示器；成功返回 true（mons 至少一项）。
 // RANDR 不可用时退化为"整 X screen 视为单台显示器"（仍返回 true），
 // 仅在连接/屏幕无效时返回 false。
-bool getMonitorList(xcb_connection_t *conn, xcb_screen_t *scr, std::vector<MonInfo> &mons)
+bool getMonitorList(xcb_connection_t *conn, xcb_screen_t *scr, swinx_stl::vector<MonInfo> &mons)
 {
     mons.clear();
     if (!conn || !scr)
@@ -4399,7 +4399,7 @@ bool getMonitorList(xcb_connection_t *conn, xcb_screen_t *scr, std::vector<MonIn
 
 int SConnection::GetMonitorCount() const
 {
-    std::vector<MonInfo> mons;
+    swinx_stl::vector<MonInfo> mons;
     if (!getMonitorList(connection, screen, mons))
         return 0;
     return (int)mons.size();
@@ -4407,7 +4407,7 @@ int SConnection::GetMonitorCount() const
 
 HMONITOR SConnection::GetMonitor(int index) const
 {
-    std::vector<MonInfo> mons;
+    swinx_stl::vector<MonInfo> mons;
     if (!getMonitorList(connection, screen, mons) || index < 0 || index >= (int)mons.size())
         return NULL;
     return mons[index].hMon;
@@ -4415,7 +4415,7 @@ HMONITOR SConnection::GetMonitor(int index) const
 
 HMONITOR SConnection::GetPrimaryMonitor() const
 {
-    std::vector<MonInfo> mons;
+    swinx_stl::vector<MonInfo> mons;
     if (!getMonitorList(connection, screen, mons))
         return NULL;
     for (size_t i = 0; i < mons.size(); i++)
@@ -4428,7 +4428,7 @@ HMONITOR SConnection::GetPrimaryMonitor() const
 
 bool SConnection::IsPrimaryMonitor(HMONITOR hMonitor) const
 {
-    std::vector<MonInfo> mons;
+    swinx_stl::vector<MonInfo> mons;
     if (!getMonitorList(connection, screen, mons))
         return false;
     for (size_t i = 0; i < mons.size(); i++)
@@ -4443,7 +4443,7 @@ bool SConnection::GetMonitorRect(HMONITOR hMonitor, RECT *prc) const
 {
     if (!prc || !hMonitor)
         return false;
-    std::vector<MonInfo> mons;
+    swinx_stl::vector<MonInfo> mons;
     if (!getMonitorList(connection, screen, mons))
         return false;
     for (size_t i = 0; i < mons.size(); i++)
@@ -4479,7 +4479,7 @@ bool SConnection::GetMonitorWorkRect(HMONITOR hMonitor, RECT *prc) const
 
 HMONITOR SConnection::MonitorFromPoint(POINT pt, DWORD dwFlags) const
 {
-    std::vector<MonInfo> mons;
+    swinx_stl::vector<MonInfo> mons;
     if (!getMonitorList(connection, screen, mons) || mons.empty())
         return NULL;
     const MonInfo *pHit = nullptr;
@@ -4512,7 +4512,7 @@ HMONITOR SConnection::MonitorFromRect(LPCRECT lprc, DWORD dwFlags) const
 {
     if (!lprc)
         return GetPrimaryMonitor();
-    std::vector<MonInfo> mons;
+    swinx_stl::vector<MonInfo> mons;
     if (!getMonitorList(connection, screen, mons) || mons.empty())
         return NULL;
     const MonInfo *pHit = nullptr;
@@ -4664,11 +4664,11 @@ int SConnection::ShowCursor(BOOL bShow){
 }
 
 struct RawInputDeviceEntry {
-    std::string device_path;
+    swinx_stl::string device_path;
     DWORD device_type;
 };
 
-static std::map<int, RawInputDeviceEntry> s_rawInputDevices;
+static swinx_stl::map<int, RawInputDeviceEntry> s_rawInputDevices;
 static std::recursive_mutex s_rawInputMutex;
 static int s_nextDeviceId = 1;
 
@@ -4776,7 +4776,7 @@ UINT SConnection::GetRawInputDeviceInfoA(HRAWINPUT hDevice, UINT uiCommand, LPVO
 
     UINT requiredSize = 0;
     int deviceId = (int)(intptr_t)hDevice;
-    std::string device_path;
+    swinx_stl::string device_path;
     DWORD device_type = RIM_TYPEMOUSE;
 
     {
@@ -4860,7 +4860,7 @@ UINT SConnection::GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVO
 
     UINT requiredSize = 0;
     int deviceId = (int)(intptr_t)hDevice;
-    std::string device_path;
+    swinx_stl::string device_path;
 
     {
         std::lock_guard<std::recursive_mutex> lock(s_rawInputMutex);

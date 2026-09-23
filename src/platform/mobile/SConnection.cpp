@@ -13,14 +13,14 @@
 
 static UINT s_nextRegisteredMessage = WM_USER + 100000;
 static std::recursive_mutex s_registeredMessageMutex;
-static std::map<std::string, UINT> s_registeredMessages;
+static swinx_stl::map<swinx_stl::string, UINT> s_registeredMessages;
 
 static bool isSameTimerMsg(const Msg *msg, HWND hWnd, UINT_PTR id, TIMERPROC proc)
 {
     return msg && msg->message == WM_TIMER && msg->hwnd == hWnd && msg->wParam == id && msg->lParam == (LPARAM)proc;
 }
 
-static bool hasQueuedTimerMsg(const std::list<Msg *> &queue, HWND hWnd, UINT_PTR id, TIMERPROC proc)
+static bool hasQueuedTimerMsg(const swinx_stl::list<Msg *> &queue, HWND hWnd, UINT_PTR id, TIMERPROC proc)
 {
     for (auto msg : queue)
     {
@@ -30,7 +30,7 @@ static bool hasQueuedTimerMsg(const std::list<Msg *> &queue, HWND hWnd, UINT_PTR
     return false;
 }
 
-static bool hasQueuedPaintMsg(const std::list<Msg *> &queue, HWND hWnd)
+static bool hasQueuedPaintMsg(const swinx_stl::list<Msg *> &queue, HWND hWnd)
 {
     for (auto msg : queue)
     {
@@ -955,7 +955,7 @@ UINT SConnection::RegisterMessage(LPCSTR lpString)
     if (!lpString)
         return 0;
     std::lock_guard<std::recursive_mutex> lock(s_registeredMessageMutex);
-    std::string key(lpString);
+    swinx_stl::string key(lpString);
     auto it = s_registeredMessages.find(key);
     if (it != s_registeredMessages.end())
         return it->second;

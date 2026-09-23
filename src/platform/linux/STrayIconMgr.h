@@ -37,7 +37,7 @@ struct TrayIconData : NOTIFYICONDATAA
 
 class STrayIconMgr {
 
-	typedef std::list<TrayIconData*> TRAYLIST;
+	typedef swinx_stl::list<TrayIconData*> TRAYLIST;
 	SConnection* m_pConn;
 public:
     STrayIconMgr(SConnection *pConn);

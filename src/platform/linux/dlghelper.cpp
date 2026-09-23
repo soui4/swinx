@@ -18,15 +18,15 @@
 #define kLogTag "dlghelper"
 
 
-using FilePatternList = std::vector<std::string>;
+using FilePatternList = swinx_stl::vector<swinx_stl::string>;
 
 // Dialog result structure to distinguish between failure and user cancellation
 struct DialogResult {
-    std::vector<std::string> files;
+    swinx_stl::vector<swinx_stl::string> files;
     bool dialog_shown;  // true if dialog was successfully shown (even if user cancelled)
 
     DialogResult() : dialog_shown(false) {}
-    DialogResult(const std::vector<std::string>& f, bool shown) : files(f), dialog_shown(shown) {}
+    DialogResult(const swinx_stl::vector<swinx_stl::string>& f, bool shown) : files(f), dialog_shown(shown) {}
 
     bool empty() const { return files.empty(); }
     bool failed() const { return !dialog_shown; }
@@ -37,14 +37,14 @@ namespace swinx::Dialogs
 
 struct FilePickerFilter
 {
-    std::string name;
+    swinx_stl::string name;
     FilePatternList file_patterns;
 };
 
 // Helper function to detect MIME type using xdg-mime
-auto detect_mime_type(std::string const &file_path) -> std::string
+auto detect_mime_type(swinx_stl::string const &file_path) -> swinx_stl::string
 {
-    std::string command = "xdg-mime query filetype \"" + file_path + "\" 2>/dev/null";
+    swinx_stl::string command = "xdg-mime query filetype \"" + file_path + "\" 2>/dev/null";
     auto file = popen(command.c_str(), "r");
     if (!file)
     {
@@ -63,11 +63,11 @@ auto detect_mime_type(std::string const &file_path) -> std::string
     }
     *end = 0;
 
-    return std::string(buffer);
+    return swinx_stl::string(buffer);
 }
 
 // Helper function to convert common file extensions to MIME types
-auto extension_to_mime_type(std::string const &extension) -> std::string
+auto extension_to_mime_type(swinx_stl::string const &extension) -> swinx_stl::string
 {
     // Common extension to MIME type mappings
     if (extension == ".txt" || extension == "*.txt")
@@ -100,14 +100,14 @@ auto process_filter_patterns(FilePatternList const &patterns) -> FilePatternList
     for (const auto &pattern : patterns)
     {
         // If it looks like a MIME type, use it as is
-        if (pattern.find('/') != std::string::npos && pattern.find('.') == std::string::npos)
+        if (pattern.find('/') != swinx_stl::string::npos && pattern.find('.') == swinx_stl::string::npos)
         {
             processed_patterns.push_back(pattern);
             continue;
         }
 
         // If it's a file extension or pattern, try to convert to MIME type
-        std::string mime_type = extension_to_mime_type(pattern);
+        swinx_stl::string mime_type = extension_to_mime_type(pattern);
         if (!mime_type.empty())
         {
             processed_patterns.push_back(mime_type);
@@ -123,9 +123,9 @@ auto process_filter_patterns(FilePatternList const &patterns) -> FilePatternList
 
 // Context structure for deepin portal dialog (used by filter callback)
 struct DeepinDialogContext {
-    std::vector<std::string> uris;
+    swinx_stl::vector<swinx_stl::string> uris;
     bool done = false;
-    std::string request_path;
+    swinx_stl::string request_path;
 };
 
 // Filter callback for deepin portal Response signal (mirrors main.cpp approach)
@@ -194,8 +194,8 @@ class DBusDialog {
 private:
     DBusConnection* connection = nullptr;
     DBusError error;
-    std::string m_title;
-    std::string m_path;
+    swinx_stl::string m_title;
+    swinx_stl::string m_path;
     HWND m_parent_window = 0;
 
 public:
@@ -222,24 +222,24 @@ public:
         m_parent_window = parent;
     }
 
-    void set_path(const std::string& path) {
+    void set_path(const swinx_stl::string& path) {
         m_path = path;
     }
 
-    void set_title(const std::string& title) {
+    void set_title(const swinx_stl::string& title) {
         m_title = title;
     }
 
-    std::vector<std::string> open_file_dialog(const std::vector<FilePickerFilter>& filters,
+    swinx_stl::vector<swinx_stl::string> open_file_dialog(const swinx_stl::vector<FilePickerFilter>& filters,
                                             bool allow_multiple, bool directory, bool save_dialog,
-                                            const std::string& title, const std::string& initial_path) {
+                                            const swinx_stl::string& title, const swinx_stl::string& initial_path) {
         if (!connection) {
             // Fallback to zenity if D-Bus is not available
             return fallback_to_zenity_file(filters, allow_multiple, directory, save_dialog, title, initial_path);
         }
 
         // Detect desktop environment to avoid opening multiple dialogs
-        std::string desktop_env = get_desktop_environment();
+        swinx_stl::string desktop_env = get_desktop_environment();
 
         // Use deepin/UOS portal dialog when running on deepin or UOS
         if (desktop_env == "DEEPIN") {
@@ -274,30 +274,30 @@ public:
         return fallback_to_zenity_file(filters, allow_multiple, directory, save_dialog, title, initial_path);
     }
 
-    std::vector<std::string> open_file_picker(const std::vector<FilePickerFilter>& filters,
+    swinx_stl::vector<swinx_stl::string> open_file_picker(const swinx_stl::vector<FilePickerFilter>& filters,
                                             bool allow_multiple, bool directory = false, bool save_dialog = false) {
-        std::string title = m_title.empty() ? "Select File" : m_title;
-        std::string path = m_path;
+        swinx_stl::string title = m_title.empty() ? "Select File" : m_title;
+        swinx_stl::string path = m_path;
         return open_file_dialog(filters, allow_multiple, directory, save_dialog, title, path);
     }
 
-    std::string open_directory_picker() {
+    swinx_stl::string open_directory_picker() {
         auto results = open_file_picker({}, false, true);
         return results.empty() ? "" : results[0];
     }
 
-    std::string choose_color(COLORREF initial_color = 0) {
+    swinx_stl::string choose_color(COLORREF initial_color = 0) {
         if (!connection) {
             // Fallback to zenity if D-Bus is not available
             return fallback_to_zenity_color(initial_color);
         }
 
         // Detect desktop environment to avoid opening multiple dialogs
-        std::string desktop_env = get_desktop_environment();
+        swinx_stl::string desktop_env = get_desktop_environment();
 
         // Try KDE's color dialog first if we're in KDE environment
         if (desktop_env == "KDE" || desktop_env == "UNKNOWN") {
-            std::string result = try_kde_color_dialog(initial_color);
+            swinx_stl::string result = try_kde_color_dialog(initial_color);
             if (!result.empty() || desktop_env == "KDE") {
                 // If we got a result OR we're definitely in KDE, don't try other methods
                 return result.empty() ? fallback_to_zenity_color(initial_color) : result;
@@ -309,7 +309,7 @@ public:
     }
 
     // Font dialog methods
-    std::string try_kde_font_dialog(const std::string& initial_font) {
+    swinx_stl::string try_kde_font_dialog(const swinx_stl::string& initial_font) {
         // First check if kdialog service is available
         if (!is_kde_dialog_available()) {
             return "";
@@ -355,11 +355,11 @@ public:
         }
 
         char* result_font = nullptr;
-        std::string result;
+        swinx_stl::string result;
 
         if (dbus_message_get_args(reply, &error, DBUS_TYPE_STRING, &result_font, DBUS_TYPE_INVALID)) {
             if (result_font && strlen(result_font) > 0) {
-                std::string font_result(result_font);
+                swinx_stl::string font_result(result_font);
                 // Check if user cancelled (kdialog might return empty string on cancel)
                 if (!font_result.empty() && font_result != " ") {
                     result = font_result;
@@ -377,20 +377,20 @@ public:
 
 private:
 
-    std::string get_desktop_environment() {
+    swinx_stl::string get_desktop_environment() {
         // Check environment variables to determine desktop environment
         const char* desktop = getenv("XDG_CURRENT_DESKTOP");
         if (desktop) {
-            std::string desktop_str(desktop);
-            if (desktop_str.find("KDE") != std::string::npos) {
+            swinx_stl::string desktop_str(desktop);
+            if (desktop_str.find("KDE") != swinx_stl::string::npos) {
                 return "KDE";
             }
-            if (desktop_str.find("GNOME") != std::string::npos) {
+            if (desktop_str.find("GNOME") != swinx_stl::string::npos) {
                 return "GNOME";
             }
-            if (desktop_str.find("DDE") != std::string::npos ||
-                desktop_str.find("Deepin") != std::string::npos ||
-                desktop_str.find("deepin") != std::string::npos) {
+            if (desktop_str.find("DDE") != swinx_stl::string::npos ||
+                desktop_str.find("Deepin") != swinx_stl::string::npos ||
+                desktop_str.find("deepin") != swinx_stl::string::npos) {
                 return "DEEPIN";
             }
         }
@@ -410,16 +410,16 @@ private:
         // Check DESKTOP_SESSION
         const char* session = getenv("DESKTOP_SESSION");
         if (session) {
-            std::string session_str(session);
-            if (session_str.find("kde") != std::string::npos ||
-                session_str.find("plasma") != std::string::npos) {
+            swinx_stl::string session_str(session);
+            if (session_str.find("kde") != swinx_stl::string::npos ||
+                session_str.find("plasma") != swinx_stl::string::npos) {
                 return "KDE";
             }
-            if (session_str.find("gnome") != std::string::npos) {
+            if (session_str.find("gnome") != swinx_stl::string::npos) {
                 return "GNOME";
             }
-            if (session_str.find("deepin") != std::string::npos ||
-                session_str.find("dde") != std::string::npos) {
+            if (session_str.find("deepin") != swinx_stl::string::npos ||
+                session_str.find("dde") != swinx_stl::string::npos) {
                 return "DEEPIN";
             }
         }
@@ -427,12 +427,12 @@ private:
         // Check /etc/os-release for deepin/UOS
         std::ifstream os_release("/etc/os-release");
         if (os_release.is_open()) {
-            std::string line;
+            swinx_stl::string line;
             while (std::getline(os_release, line)) {
-                if (line.find("ID=deepin") != std::string::npos ||
-                    line.find("ID=\"deepin\"") != std::string::npos ||
-                    line.find("ID=uos") != std::string::npos ||
-                    line.find("ID=\"uos\"") != std::string::npos) {
+                if (line.find("ID=deepin") != swinx_stl::string::npos ||
+                    line.find("ID=\"deepin\"") != swinx_stl::string::npos ||
+                    line.find("ID=uos") != swinx_stl::string::npos ||
+                    line.find("ID=\"uos\"") != swinx_stl::string::npos) {
                     return "DEEPIN";
                 }
             }
@@ -441,7 +441,7 @@ private:
         return "UNKNOWN";
     }
 
-    std::string get_parent_window_handle() {
+    swinx_stl::string get_parent_window_handle() {
         if (!m_parent_window) {
             return "";
         }
@@ -451,12 +451,12 @@ private:
         char window_handle[32];
         snprintf(window_handle, sizeof(window_handle), "x11:%lx", (unsigned long)m_parent_window);
 
-        return std::string(window_handle);
+        return swinx_stl::string(window_handle);
     }
 
-    DialogResult try_kde_dialog(const std::vector<FilePickerFilter>& filters,
+    DialogResult try_kde_dialog(const swinx_stl::vector<FilePickerFilter>& filters,
                                 bool allow_multiple __attribute__((unused)), bool directory, bool save_dialog,
-                                const std::string& title, const std::string& initial_path) {
+                                const swinx_stl::string& title, const swinx_stl::string& initial_path) {
         // First check if kdialog service is available
         if (!is_kde_dialog_available()) {
             return DialogResult({}, false);  // Dialog failed to show
@@ -473,7 +473,7 @@ private:
         const char* path_cstr = initial_path.empty() ? "" : initial_path.c_str();
 
         // Build KDE filter string
-        std::string kde_filter = build_kde_filter_string(filters);
+        swinx_stl::string kde_filter = build_kde_filter_string(filters);
         const char* filter_cstr = kde_filter.c_str();
 
         const char* title_cstr = title.empty() ? "" : title.c_str();
@@ -491,7 +491,7 @@ private:
         }
 
         // Set parent window for KDE dialog if available
-        std::string old_windowid;
+        swinx_stl::string old_windowid;
         bool windowid_set = false;
         if (m_parent_window) {
             char* existing_windowid = getenv("WINDOWID");
@@ -545,12 +545,12 @@ private:
         }
 
         char* result_path = nullptr;
-        std::vector<std::string> result;
+        swinx_stl::vector<swinx_stl::string> result;
 
         if (dbus_message_get_args(reply, &error, DBUS_TYPE_STRING, &result_path, DBUS_TYPE_INVALID)) {
             if (result_path && strlen(result_path) > 0) {
                 // Check if user cancelled (kdialog returns empty string on cancel)
-                std::string path_str(result_path);
+                swinx_stl::string path_str(result_path);
                 if (!path_str.empty() && path_str != " ") {
                     result.push_back(path_str);
                 }
@@ -609,7 +609,7 @@ private:
         return false;
     }
 
-    std::string try_kde_color_dialog(COLORREF initial_color) {
+    swinx_stl::string try_kde_color_dialog(COLORREF initial_color) {
         // First check if kdialog service is available
         if (!is_kde_dialog_available()) {
             return "";
@@ -622,7 +622,7 @@ private:
         if (!msg) return "";
 
         // Convert COLORREF to HTML color format for KDE
-        std::string color_str;
+        swinx_stl::string color_str;
         if (initial_color != 0) {
             char color_buf[8];
             snprintf(color_buf, sizeof(color_buf), "#%02X%02X%02X",
@@ -667,11 +667,11 @@ private:
         }
 
         char* result_color = nullptr;
-        std::string result;
+        swinx_stl::string result;
 
         if (dbus_message_get_args(reply, &error, DBUS_TYPE_STRING, &result_color, DBUS_TYPE_INVALID)) {
             if (result_color && strlen(result_color) > 0) {
-                std::string color_result(result_color);
+                swinx_stl::string color_result(result_color);
                 // Check if user cancelled (kdialog might return empty string on cancel)
                 if (!color_result.empty() && color_result != " ") {
                     result = color_result;
@@ -687,9 +687,9 @@ private:
         return result;
     }
 
-    DialogResult try_gnome_dialog(const std::vector<FilePickerFilter>& filters,
+    DialogResult try_gnome_dialog(const swinx_stl::vector<FilePickerFilter>& filters,
                                   bool allow_multiple, bool directory, bool save_dialog,
-                                  const std::string& title, const std::string& initial_path __attribute__((unused))) {
+                                  const swinx_stl::string& title, const swinx_stl::string& initial_path __attribute__((unused))) {
         SLOG_STMI() << "try_gnome_dialog: save_dialog=" << save_dialog << ", directory=" << directory
                    << ", allow_multiple=" << allow_multiple << ", title=" << title.c_str();
 
@@ -717,7 +717,7 @@ private:
         dbus_message_iter_init_append(msg, &iter);
 
         // Parent window handle
-        std::string parent_handle_str = get_parent_window_handle();
+        swinx_stl::string parent_handle_str = get_parent_window_handle();
         const char* parent_handle = parent_handle_str.c_str();
         dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &parent_handle);
 
@@ -814,7 +814,7 @@ private:
         const int poll_interval_ms = 100; // 100ms
         int elapsed_ms = 0;
 
-        std::vector<std::string> result;
+        swinx_stl::vector<swinx_stl::string> result;
         bool response_received = false;
 
         while (elapsed_ms < timeout_ms && !response_received) {
@@ -856,15 +856,15 @@ private:
         }
     }
 
-    std::vector<std::string> fallback_to_zenity_file(const std::vector<FilePickerFilter>& filters,
+    swinx_stl::vector<swinx_stl::string> fallback_to_zenity_file(const swinx_stl::vector<FilePickerFilter>& filters,
                                                    bool allow_multiple, bool directory, bool save_dialog,
-                                                   const std::string& title, const std::string& initial_path) {
-        std::vector<std::string> files{};
+                                                   const swinx_stl::string& title, const swinx_stl::string& initial_path) {
+        swinx_stl::vector<swinx_stl::string> files{};
                                                 
         SLOG_STMI() << "fallback_to_zenity_file: save_dialog=" << save_dialog << ", directory=" << directory
                    << ", allow_multiple=" << allow_multiple << ", title=" << title.c_str();
         // Build zenity command
-        std::string command = "zenity --file-selection";
+        swinx_stl::string command = "zenity --file-selection";
 
         // Add dialog type
         if (save_dialog) {
@@ -911,7 +911,7 @@ private:
         }
 
         // Execute command and get result
-        std::string result = execute_zenity_command(command);
+        swinx_stl::string result = execute_zenity_command(command);
         if (!result.empty()) {
             // Parse output - zenity uses | or \n as separators
             // Remove trailing newline
@@ -925,7 +925,7 @@ private:
                 size_t pos = 0;
                 while (pos <= result.length()) {
                     if (pos == result.length() || result[pos] == '|') {
-                        std::string file = result.substr(start, pos - start);
+                        swinx_stl::string file = result.substr(start, pos - start);
                         if (!file.empty()) {
                             files.push_back(file);
                         }
@@ -942,9 +942,9 @@ private:
         return files;
     }
 
-    std::string fallback_to_zenity_color(COLORREF initial_color) {
+    swinx_stl::string fallback_to_zenity_color(COLORREF initial_color) {
         // Build zenity color selection command
-        std::string command = "zenity --color-selection";
+        swinx_stl::string command = "zenity --color-selection";
 
         // Add title if specified
         if (!m_title.empty()) {
@@ -959,7 +959,7 @@ private:
                      GetRValue(initial_color),
                      GetGValue(initial_color),
                      GetBValue(initial_color));
-            command += " --color=\"" + std::string(color_str) + "\"";
+            command += " --color=\"" + swinx_stl::string(color_str) + "\"";
         }
 
         // Add parent window if specified
@@ -971,8 +971,8 @@ private:
         return execute_zenity_command(command);
     }
 
-    std::string execute_zenity_command(const std::string& command) {
-        std::string result = "";
+    swinx_stl::string execute_zenity_command(const swinx_stl::string& command) {
+        swinx_stl::string result = "";
 
         // Execute command
         FILE* pipe = popen(command.c_str(), "r");
@@ -984,7 +984,7 @@ private:
         if (fgets(buffer, sizeof(buffer), pipe) != nullptr) {
             int status = pclose(pipe);
             if (WEXITSTATUS(status) == 0) {
-                result = std::string(buffer);
+                result = swinx_stl::string(buffer);
                 // Remove trailing newline
                 if (!result.empty() && result.back() == '\n') {
                     result.pop_back();
@@ -1035,7 +1035,7 @@ private:
         dbus_message_iter_close_container(dict_iter, &entry_iter);
     }
 
-    void add_portal_filters(DBusMessageIter* dict_iter, const std::vector<FilePickerFilter>& filters) {
+    void add_portal_filters(DBusMessageIter* dict_iter, const swinx_stl::vector<FilePickerFilter>& filters) {
         // Portal filters format: "filters" -> array of (string name, array of (uint32 type, string pattern))
         // type: 0 = glob pattern, 1 = mime type
 
@@ -1072,7 +1072,7 @@ private:
 
                 // Determine pattern type (0 = glob, 1 = mime)
                 uint32_t pattern_type = 0; // Default to glob pattern
-                if (pattern.find('/') != std::string::npos && pattern.find('.') == std::string::npos) {
+                if (pattern.find('/') != swinx_stl::string::npos && pattern.find('.') == swinx_stl::string::npos) {
                     pattern_type = 1; // MIME type
                 }
 
@@ -1093,7 +1093,7 @@ private:
         dbus_message_iter_close_container(dict_iter, &entry_iter);
     }
 
-    std::string build_kde_filter_string(const std::vector<FilePickerFilter>& filters) {
+    swinx_stl::string build_kde_filter_string(const swinx_stl::vector<FilePickerFilter>& filters) {
         // KDE filter format: "Description (*.ext1 *.ext2)|*.ext1 *.ext2|Description2 (*.ext3)|*.ext3"
         // Each filter is separated by |, and consists of "Description|patterns"
 
@@ -1101,7 +1101,7 @@ private:
             return "All Files (*)|*";
         }
 
-        std::string kde_filter;
+        swinx_stl::string kde_filter;
         bool first = true;
 
         for (const auto& filter : filters) {
@@ -1151,8 +1151,8 @@ private:
         return kde_filter;
     }
 
-    std::vector<std::string> parse_portal_response(DBusMessage* reply) {
-        std::vector<std::string> result;
+    swinx_stl::vector<swinx_stl::string> parse_portal_response(DBusMessage* reply) {
+        swinx_stl::vector<swinx_stl::string> result;
 
         if (!reply) return result;
 
@@ -1230,7 +1230,7 @@ private:
 
                     if (uri && strlen(uri) > 0) {
                         // Convert file:// URI to local path
-                        std::string file_path = uri_to_local_path(uri);
+                        swinx_stl::string file_path = uri_to_local_path(uri);
                         if (!file_path.empty()) {
                             result.push_back(file_path);
                         }
@@ -1250,13 +1250,13 @@ private:
         return result;
     }
 
-    std::string uri_to_local_path(const std::string& uri) {
+    swinx_stl::string uri_to_local_path(const swinx_stl::string& uri) {
         // Convert file:// URI to local file path
         if (uri.substr(0, 7) == "file://") {
-            std::string path = uri.substr(7);
+            swinx_stl::string path = uri.substr(7);
 
             // URL decode the path
-            std::string decoded_path;
+            swinx_stl::string decoded_path;
             for (size_t i = 0; i < path.length(); ++i) {
                 if (path[i] == '%' && i + 2 < path.length()) {
                     // Decode %XX sequences
@@ -1282,9 +1282,9 @@ private:
     }
 
     // Deepin/UOS portal file dialog using filter-based signal handling (mirrors main.cpp)
-    DialogResult try_deepin_dialog(const std::vector<FilePickerFilter>& filters,
+    DialogResult try_deepin_dialog(const swinx_stl::vector<FilePickerFilter>& filters,
                                    bool allow_multiple, bool directory, bool save_dialog,
-                                   const std::string& title, const std::string& initial_path __attribute__((unused))) {
+                                   const swinx_stl::string& title, const swinx_stl::string& initial_path __attribute__((unused))) {
         SLOG_STMI() << "try_deepin_dialog: title=" << title.c_str();
 
         if (!connection) {
@@ -1337,7 +1337,7 @@ private:
         DBusMessageIter iter, dict_iter;
         dbus_message_iter_init_append(msg, &iter);
 
-        std::string parent_handle = get_parent_window_handle();
+        swinx_stl::string parent_handle = get_parent_window_handle();
         const char* parent_cstr = parent_handle.c_str();
         dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &parent_cstr);
 
@@ -1413,9 +1413,9 @@ private:
         }
 
         // Convert file:// URIs to local paths
-        std::vector<std::string> result;
+        swinx_stl::vector<swinx_stl::string> result;
         for (const auto& uri : ctx.uris) {
-            std::string path = uri_to_local_path(uri);
+            swinx_stl::string path = uri_to_local_path(uri);
             if (!path.empty()) {
                 result.push_back(path);
             }
@@ -1450,7 +1450,7 @@ BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out)
         dialog.set_title("Choose Color");
 
         // Call the color selection dialog
-        std::string color_result = dialog.choose_color(initial_color);
+        swinx_stl::string color_result = dialog.choose_color(initial_color);
 
         // If user didn't cancel, convert the result
         if (!color_result.empty()) {
@@ -1513,30 +1513,30 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
         bool allow_multiple = (p->Flags & OFN_ALLOWMULTISELECT) != 0 && !is_save && !is_directory;
 
         // Parse filters from lpstrFilter
-        std::vector<swinx::Dialogs::FilePickerFilter> filters;
+        swinx_stl::vector<swinx::Dialogs::FilePickerFilter> filters;
         if (p->lpstrFilter && !is_directory)
         {
             const char *filter_ptr = p->lpstrFilter;
             while (*filter_ptr)
             {
                 swinx::Dialogs::FilePickerFilter filter;
-                filter.name = std::string(filter_ptr);
+                filter.name = swinx_stl::string(filter_ptr);
                 filter_ptr += strlen(filter_ptr) + 1;
 
                 if (*filter_ptr)
                 {
-                    std::string patterns(filter_ptr);
+                    swinx_stl::string patterns(filter_ptr);
                     // Parse multiple patterns separated by semicolons
                     size_t start = 0;
                     size_t semicolon_pos = patterns.find(';');
                     while (start < patterns.length())
                     {
-                        if (semicolon_pos == std::string::npos)
+                        if (semicolon_pos == swinx_stl::string::npos)
                         {
                             semicolon_pos = patterns.length();
                         }
 
-                        std::string pattern = patterns.substr(start, semicolon_pos - start);
+                        swinx_stl::string pattern = patterns.substr(start, semicolon_pos - start);
                         // Remove any whitespace
                         pattern.erase(0, pattern.find_first_not_of(" \t"));
                         pattern.erase(pattern.find_last_not_of(" \t") + 1);
@@ -1570,14 +1570,14 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
         // Set initial directory if provided
         if (p->lpstrInitialDir)
         {
-            dialog.set_path(std::string(p->lpstrInitialDir));
+            dialog.set_path(swinx_stl::string(p->lpstrInitialDir));
         }
 
         // Call the appropriate dialog method
-        std::vector<std::string> results;
+        swinx_stl::vector<swinx_stl::string> results;
         if (is_directory)
         {
-            std::string dir = dialog.open_directory_picker();
+            swinx_stl::string dir = dialog.open_directory_picker();
             if (!dir.empty())
             {
                 results.push_back(dir);
@@ -1596,7 +1596,7 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
         if (is_directory || is_save || !allow_multiple)
         {
             // Single file selection or save dialog
-            const std::string &file = results[0];
+            const swinx_stl::string &file = results[0];
             if (file.length() >= p->nMaxFile)
             {
                 return FALSE; // Buffer too small
@@ -1629,7 +1629,7 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
             if (results.size() == 1)
             {
                 // If only one file was selected, treat as single file selection
-                const std::string &file = results[0];
+                const swinx_stl::string &file = results[0];
                 if (file.length() >= p->nMaxFile)
                 {
                     return FALSE; // Buffer too small
@@ -1655,9 +1655,9 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
             {
                 // Multiple files selected
                 // Find common directory
-                std::string directory = results[0];
+                swinx_stl::string directory = results[0];
                 size_t lastSlash = directory.find_last_of('/');
-                if (lastSlash != std::string::npos)
+                if (lastSlash != swinx_stl::string::npos)
                 {
                     directory = directory.substr(0, lastSlash + 1);
                 }
@@ -1671,9 +1671,9 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
                 for (const auto &file : results)
                 {
                     size_t fileNameStart = file.find_last_of('/') + 1;
-                    if (fileNameStart == std::string::npos)
+                    if (fileNameStart == swinx_stl::string::npos)
                         fileNameStart = 0;
-                    std::string fileName = file.substr(fileNameStart);
+                    swinx_stl::string fileName = file.substr(fileNameStart);
                     needed += fileName.length() + 1; // +1 for null terminator
                 }
                 needed += 1; // Final null terminator
@@ -1695,9 +1695,9 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
                 for (const auto &file : results)
                 {
                     size_t fileNameStart = file.find_last_of('/') + 1;
-                    if (fileNameStart == std::string::npos)
+                    if (fileNameStart == swinx_stl::string::npos)
                         fileNameStart = 0;
-                    std::string fileName = file.substr(fileNameStart);
+                    swinx_stl::string fileName = file.substr(fileNameStart);
                     strcpy(buffer + pos, fileName.c_str());
                     pos += fileName.length() + 1;
                 }
@@ -1724,7 +1724,7 @@ BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode)
 
 
 // Helper function to convert font string to LOGFONT
-bool parse_font_string_to_logfont(const std::string& font_str, LOGFONTA* logfont) {
+bool parse_font_string_to_logfont(const swinx_stl::string& font_str, LOGFONTA* logfont) {
     if (font_str.empty() || !logfont) return false;
 
     // Initialize LOGFONT with defaults
@@ -1740,20 +1740,20 @@ bool parse_font_string_to_logfont(const std::string& font_str, LOGFONTA* logfont
     // Parse font string format: "Family Name, Size, Style"
     // Example: "Arial, 12, Bold Italic" or "Arial 12 Bold Italic"
 
-    std::string work_str = font_str;
-    std::vector<std::string> parts;
+    swinx_stl::string work_str = font_str;
+    swinx_stl::vector<swinx_stl::string> parts;
 
     // Split by comma first, then by space if no comma
     size_t pos = 0;
-    std::string delimiter = ",";
-    bool has_comma = work_str.find(',') != std::string::npos;
+    swinx_stl::string delimiter = ",";
+    bool has_comma = work_str.find(',') != swinx_stl::string::npos;
 
     if (!has_comma) {
         delimiter = " ";
     }
 
-    while ((pos = work_str.find(delimiter)) != std::string::npos) {
-        std::string part = work_str.substr(0, pos);
+    while ((pos = work_str.find(delimiter)) != swinx_stl::string::npos) {
+        swinx_stl::string part = work_str.substr(0, pos);
         // Trim whitespace
         part.erase(0, part.find_first_not_of(" \t"));
         part.erase(part.find_last_not_of(" \t") + 1);
@@ -1778,7 +1778,7 @@ bool parse_font_string_to_logfont(const std::string& font_str, LOGFONTA* logfont
 
     // Parse remaining parts for size and style
     for (size_t i = 1; i < parts.size(); ++i) {
-        const std::string& part = parts[i];
+        const swinx_stl::string& part = parts[i];
 
         // Check if it's a number (font size)
         if (std::isdigit(part[0])) {
@@ -1807,10 +1807,10 @@ bool parse_font_string_to_logfont(const std::string& font_str, LOGFONTA* logfont
 }
 
 // Helper function to convert LOGFONT to font string
-std::string logfont_to_font_string(const LOGFONTA* logfont) {
+swinx_stl::string logfont_to_font_string(const LOGFONTA* logfont) {
     if (!logfont) return "";
 
-    std::string result = logfont->lfFaceName;
+    swinx_stl::string result = logfont->lfFaceName;
 
     // Add size (convert from logical units to points)
     int size = abs(logfont->lfHeight);
@@ -1819,7 +1819,7 @@ std::string logfont_to_font_string(const LOGFONTA* logfont) {
     }
 
     // Add style attributes
-    std::vector<std::string> styles;
+    swinx_stl::vector<swinx_stl::string> styles;
     if (logfont->lfWeight >= FW_BOLD) {
         styles.push_back("Bold");
     }
@@ -1847,10 +1847,10 @@ BOOL WINAPI ChooseFontA(LPCHOOSEFONTA p) {
 
     try {
         swinx::Dialogs::DBusDialog font_dialog;
-        std::string result_font;
+        swinx_stl::string result_font;
 
         // Convert current LOGFONT to font string for initial value
-        std::string initial_font = logfont_to_font_string(p->lpLogFont);
+        swinx_stl::string initial_font = logfont_to_font_string(p->lpLogFont);
 
         // Try KDE dialog first
         if (font_dialog.is_available()) {

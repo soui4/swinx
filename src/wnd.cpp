@@ -411,7 +411,7 @@ HWND WINAPI CreateWindowW(LPCWSTR lpClassName, LPCWSTR lpWindowName, DWORD dwSty
  */
 HWND WINAPI CreateWindowExW(DWORD exStyle, LPCWSTR className, LPCWSTR windowName, DWORD style, INT x, INT y, INT width, INT height, HWND parent, HMENU menu, HINSTANCE instance, LPVOID data)
 {
-    std::string strClsName, strWndName;
+    swinx_stl::string strClsName, strWndName;
     tostring(windowName, -1, strWndName);
     if (IS_INTRESOURCE(className))
     {
@@ -1352,7 +1352,7 @@ SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM w
         return nullptr;
     suid_t uuid;
     IpcMsg::gen_suid(&uuid);
-    std::string strName = IpcMsg::get_share_mem_name(uuid);
+    swinx_stl::string strName = IpcMsg::get_share_mem_name(uuid);
     // SLOG_STMI()<<"post ipc msg: share mem name="<<strName.c_str();
     SharedMemory *shareMem = new SharedMemory;
 
@@ -1391,7 +1391,7 @@ SharedMemory *PostIpcMessage(SConnection *connCur, HWND hWnd, UINT msg, WPARAM w
         ptr->lp = lp;
     }
 
-    std::string evtName = IpcMsg::get_ipc_event_name(uuid);
+    swinx_stl::string evtName = IpcMsg::get_ipc_event_name(uuid);
     // SLOG_STMI()<<"post ipc msg: event name="<<evtName.c_str();
 
     hEvt = CreateEventA(nullptr, FALSE, FALSE, evtName.c_str());
@@ -1419,7 +1419,7 @@ class CallStackCount {
 
 static int CALLBACK CbEnumPopupWindow(HWND hwnd, LPARAM lParam)
 {
-    std::list<HWND> *lstPopups = (std::list<HWND> *)lParam;
+    swinx_stl::list<HWND> *lstPopups = (swinx_stl::list<HWND> *)lParam;
     lstPopups->push_back(hwnd);
     return 1;
 }
@@ -1431,7 +1431,7 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         // send message to all popup window owned by this process.
         if (uTimeout == INFINITE || uTimeout > 500)
             uTimeout = 500;
-        std::list<HWND> lstPopups;
+        swinx_stl::list<HWND> lstPopups;
         EnumWindows(CbEnumPopupWindow, (LPARAM)&lstPopups);
         for (auto it : lstPopups)
         {
@@ -2813,7 +2813,7 @@ LRESULT OnMsgW2A(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
     break;
     case WM_SETTEXT:
     {
-        std::string str;
+        swinx_stl::string str;
         tostring((LPCWSTR)lp, -1, str);
         ret = CallWindowProcPriv(wndObj->winproc, hWnd, msg->message, 0, (LPARAM)str.c_str());
     }
@@ -3276,7 +3276,7 @@ int GetWindowTextLengthA(HWND hWnd)
 
 BOOL SetWindowTextW(HWND hWnd, LPCWSTR lpszString)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpszString, -1, str);
     return SetWindowTextA(hWnd, str.c_str());
 }
@@ -3867,7 +3867,7 @@ UINT WINAPI RegisterWindowMessageA(_In_ LPCSTR lpString)
 
 UINT WINAPI RegisterWindowMessageW(_In_ LPCWSTR lpString)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, -1, str);
     return RegisterWindowMessageA(str.c_str());
 }
@@ -3939,7 +3939,7 @@ HWND WINAPI FindWindowExA(HWND hParent, HWND hChildAfter, LPCSTR lpClassName, LP
 
 HWND WINAPI FindWindowExW(HWND hParent, HWND hChildAfter, LPCWSTR lpClassName, LPCWSTR lpWindowName)
 {
-    std::string strCls, strWnd;
+    swinx_stl::string strCls, strWnd;
     tostring(lpWindowName, -1, strWnd);
     if (IS_INTRESOURCE(lpClassName))
     {

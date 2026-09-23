@@ -253,7 +253,7 @@ HRESULT SMimeData::SetData(FORMATETC *pformatetc, STGMEDIUM *pmedium,
       pdata->fmt = CF_TEXT;
       const wchar_t *src = (const wchar_t*)GlobalLock(pmedium->hGlobal);
       int len = GlobalSize(pmedium->hGlobal)/sizeof(wchar_t);
-      std::string strU8;
+      swinx_stl::string strU8;
       tostring(src,len,strU8);
       pdata->data = GlobalAlloc(0, strU8.size());
       void *dst = GlobalLock(pdata->data);
@@ -415,7 +415,7 @@ HANDLE SClipboard::setClipboardData(UINT uFormat, HANDLE hMem) {
   if (uFormat == CF_UNICODETEXT) {
     const wchar_t *src = (const wchar_t *)GlobalLock(hMem);
     size_t len = GlobalSize(hMem) / sizeof(wchar_t);
-    std::string str;
+    swinx_stl::string str;
     tostring(src, len, str);
     GlobalUnlock(hMem);
     hMem = GlobalReAlloc(hMem, str.length(), 0);

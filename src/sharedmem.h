@@ -101,10 +101,10 @@ class FlockGateTable
     }
 
     // 取 path 对应的 gate 状态；不存在则新建，引用计数 +1
-    FlockGateState *acquire(const std::string &path)
+    FlockGateState *acquire(const swinx_stl::string &path)
     {
         std::lock_guard<std::mutex> lk(m_mutex);
-        std::map<std::string, FlockGateState *>::iterator it = m_states.find(path);
+        swinx_stl::map<swinx_stl::string, FlockGateState *>::iterator it = m_states.find(path);
         if (it == m_states.end())
         {
             FlockGateState *st = new FlockGateState();
@@ -118,10 +118,10 @@ class FlockGateTable
     }
 
     // 释放 path 对应的 gate 状态；引用计数归零则销毁条目
-    void release(const std::string &path)
+    void release(const swinx_stl::string &path)
     {
         std::lock_guard<std::mutex> lk(m_mutex);
-        std::map<std::string, FlockGateState *>::iterator it = m_states.find(path);
+        swinx_stl::map<swinx_stl::string, FlockGateState *>::iterator it = m_states.find(path);
         if (it != m_states.end() && --it->second->refs == 0)
         {
             delete it->second;
@@ -136,14 +136,14 @@ class FlockGateTable
 
     // 声明次序即析构逆序：表先析构，护着它的互斥量后析构
     std::mutex m_mutex;
-    std::map<std::string, FlockGateState *> m_states;
+    swinx_stl::map<swinx_stl::string, FlockGateState *> m_states;
 };
 
-inline FlockGateState *flockGateAcquire(const std::string &path)
+inline FlockGateState *flockGateAcquire(const swinx_stl::string &path)
 {
     return FlockGateTable::instance().acquire(path);
 }
-inline void flockGateRelease(const std::string &path)
+inline void flockGateRelease(const swinx_stl::string &path)
 {
     FlockGateTable::instance().release(path);
 }
@@ -255,13 +255,13 @@ class TSemRwLock : public ISemRwLock {
   private:
     int m_fd;
     uint32_t m_key;
-    std::string m_lockPath;
+    swinx_stl::string m_lockPath;
     FlockGateState *m_gate;
 
     // 共享内存名形如 "/share_soui_..."；剥离路径分隔符等非法文件名字符。
-    static std::string sanitizeName(const char *name)
+    static swinx_stl::string sanitizeName(const char *name)
     {
-        std::string s = name ? name : "default";
+        swinx_stl::string s = name ? name : "default";
         for (char &c : s)
         {
             if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z') &&
@@ -318,7 +318,7 @@ class TSemRwLock : public ISemRwLock {
         m_key = _key;
         char keybuf[32];
         snprintf(keybuf, sizeof(keybuf), "%u", (unsigned)_key);
-        m_lockPath = std::string("/tmp/") + "soui_flock_key_" + keybuf + ".lock";
+        m_lockPath = swinx_stl::string("/tmp/") + "soui_flock_key_" + keybuf + ".lock";
         // O_RDWR 让单一 fd 可同时取读(F_RDLCK)/写(F_WRLCK)锁；历史残留文件
         // 无害，因为 fcntl 记录锁不跨进程退出残留。
         m_fd = open(m_lockPath.c_str(), O_CREAT | O_RDWR, 0666);
@@ -335,7 +335,7 @@ class TSemRwLock : public ISemRwLock {
     bool init(const char *name)
     {
         assert(m_fd == -1);
-        m_lockPath = std::string("/tmp/") + "soui_flock_" + sanitizeName(name) + ".lock";
+        m_lockPath = swinx_stl::string("/tmp/") + "soui_flock_" + sanitizeName(name) + ".lock";
         m_fd = open(m_lockPath.c_str(), O_CREAT | O_RDWR, 0666);
         if (m_fd == -1)
         {
@@ -404,7 +404,7 @@ class SharedMemory {
     LPBYTE m_pBuf;
     uint32_t m_dwSize;
     int shmid;
-    std::string m_name;
+    swinx_stl::string m_name;
     uint32_t &nRef;
     bool m_bDetached;
     bool m_bHeap;

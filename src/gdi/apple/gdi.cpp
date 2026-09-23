@@ -168,7 +168,7 @@ struct CairoColor
 
 struct LOGPENEX : LOGPEN
 {
-    std::vector<double> dash;
+    swinx_stl::vector<double> dash;
     HBRUSH patternBrush;
     LOGPENEX()
         : patternBrush(nullptr)
@@ -212,7 +212,7 @@ static CGImageRef CreateCGImageFromBitmap(HBITMAP hbmp)
 
 struct GradientDetail
 {
-    std::vector<GRADIENTITEM> items;
+    swinx_stl::vector<GRADIENTITEM> items;
     GRADIENTINFO info;
 };
 // CGGradient 绘制所需的几何信息（替代 CGShadingRef，避免 CGFunctionRef 回调）
@@ -469,8 +469,8 @@ struct PatternInfo
                 endPts[1].fX += x; endPts[1].fY += y;
                 // Build gradient function from color stops
                 size_t n = gd.items.size();
-                std::vector<CGFloat> locations(n);
-                std::vector<CGFloat> colors(n * 4);
+                swinx_stl::vector<CGFloat> locations(n);
+                swinx_stl::vector<CGFloat> colors(n * 4);
                 for (size_t i = 0; i < n; i++)
                 {
                     CairoColor cr(gd.items[i].cr);
@@ -502,8 +502,8 @@ struct PatternInfo
                 float cy0 = (float)(hei * gd.info.radial.centerY + y);
                 float r   = (float)gd.info.radial.radius;
                 size_t n = gd.items.size();
-                std::vector<CGFloat> locations(n);
-                std::vector<CGFloat> colors(n * 4);
+                swinx_stl::vector<CGFloat> locations(n);
+                swinx_stl::vector<CGFloat> colors(n * 4);
                 for (size_t i = 0; i < n; i++)
                 {
                     CairoColor cr(gd.items[i].cr);
@@ -2329,7 +2329,7 @@ static BOOL BitBltRasterOp(HDC hdcDst, int x, int y, int cx, int cy,
     int sstride = src->stride, sw = src->width, sh = src->height;
     /* 快照是紧凑缓冲（行宽 cw*4），有效区域 [snapX0, snapX0+svw) x
      * [snapY0, snapY0+svh)，采样时按 snap 原点换算 */
-    std::vector<unsigned char> snap;
+    swinx_stl::vector<unsigned char> snap;
     int snapX0 = 0, snapY0 = 0; /* 源视图 (0,0) 对应的全局像素坐标 */
     int svw = sw, svh = sh;     /* 源视图有效宽高 */
     if (dst == src)
@@ -3245,7 +3245,7 @@ COLORREF SetBkColor(HDC hdc, COLORREF cr)
 
 BOOL WINAPI TextOutW(HDC hdc, int x, int y, LPCWSTR lpString, int c)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, c, str);
     return TextOutA(hdc, x, y, str.c_str(), str.length());
 }
@@ -3566,7 +3566,7 @@ DWORD WINAPI GetTabbedTextExtentW(HDC hDC,                        // handle to D
                                   CONST LPINT lpnTabStopPositions // array of tab positions
 )
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, nCount, str);
     return GetTabbedTextExtentA(hDC, str.c_str(), str.length(), nTabPositions, lpnTabStopPositions);
 }
@@ -3594,7 +3594,7 @@ LONG WINAPI TabbedTextOutW(HDC hDC,                         // handle to DC
                            int nTabOrigin                   // start of tab expansion
 )
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, nCount, str);
     return TabbedTextOutA(hDC, X, Y, str.c_str(), str.length(), nTabPositions, lpnTabStopPositions, nTabOrigin);
 }
@@ -3615,7 +3615,7 @@ BOOL GetTextExtentPoint32A(HDC hdc, LPCSTR lpString, int c, LPSIZE psizl)
 
 BOOL GetTextExtentPoint32W(HDC hdc, LPCWSTR lpString, int c, LPSIZE psizl)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, c, str);
     return GetTextExtentPoint32A(hdc, str.c_str(), str.length(), psizl);
 }
@@ -3671,7 +3671,7 @@ BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, in
 {
     if (!lpnFit && !lpnDx)
         return GetTextExtentPoint32W(hdc, lpszString, cchString, psizl);
-    std::string str;
+    swinx_stl::string str;
     tostring(lpszString, cchString, str);
     const char *lpszStringA = str.c_str();
     int cchStringA = (int)str.length();
@@ -5273,7 +5273,7 @@ BOOL WINAPI ExtTextOutW(HDC hdc,          // handle to DC
                         CONST INT *lpDx   // array of spacing values
 )
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, cbCount, str);
     return ExtTextOutA(hdc, X, Y, fuOptions, lprc, str.c_str(), str.length(), lpDx);
 }
@@ -5462,7 +5462,7 @@ HDC WINAPI CreateICW(LPCWSTR lpszDriver,   // driver name
                      CONST void *lpdvmInit // optional initialization data
 )
 {
-    std::string strDriver, strDevice, strOutput;
+    swinx_stl::string strDriver, strDevice, strOutput;
     tostring(lpszDriver, -1, strDriver);
     tostring(lpszDevice, -1, strDevice);
     tostring(lpszOutput, -1, strOutput);
@@ -5545,7 +5545,7 @@ int AddFontResourceA(LPCSTR lpszFilename)
 
 int AddFontResourceW(LPCWSTR lpszFilename)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpszFilename, -1, str);
     return AddFontResourceExA(str.c_str(), 0, 0);
 }
@@ -5555,7 +5555,7 @@ int AddFontResourceExW(LPCWSTR lpszFilename, // font file name
                        PVOID pdv             // reserved
 )
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpszFilename, -1, str);
     return AddFontResourceExA(str.c_str(), fl, pdv);
 }

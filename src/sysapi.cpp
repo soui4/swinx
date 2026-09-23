@@ -384,10 +384,10 @@ static int builtinToUnicode(const char *input, size_t input_len, int codePage, s
 // Unicode -> CP936 反查表: 元素为 (unicode << 16) | 表内序号, 排序后即可二分查找。
 // 首次使用时由正向码表构建一次。故意 new 出来不释放(leak-on-purpose): 若被其它
 // 静态对象的析构函数调用, 函数局部静态的析构会早于调用方, 造成 UAF。
-static const std::vector<unsigned int> &cp936ReverseMap()
+static const swinx_stl::vector<unsigned int> &cp936ReverseMap()
 {
-    static const std::vector<unsigned int> *s_map = []() {
-        std::vector<unsigned int> *map = new std::vector<unsigned int>();
+    static const swinx_stl::vector<unsigned int> *s_map = []() {
+        swinx_stl::vector<unsigned int> *map = new swinx_stl::vector<unsigned int>();
         map->reserve(kCP936TableSize);
         for (unsigned int i = 0; i < (unsigned int)kCP936TableSize; ++i)
         {
@@ -406,8 +406,8 @@ static unsigned short cp936Encode(unsigned int ch)
 {
     if (ch < 0x80)
         return (unsigned short)ch;
-    const std::vector<unsigned int> &map = cp936ReverseMap();
-    std::vector<unsigned int>::const_iterator it = std::lower_bound(map.begin(), map.end(), ch << 16);
+    const swinx_stl::vector<unsigned int> &map = cp936ReverseMap();
+    swinx_stl::vector<unsigned int>::const_iterator it = std::lower_bound(map.begin(), map.end(), ch << 16);
     if (it != map.end() && (*it >> 16) == ch)
         return (unsigned short)(*it & 0xFFFF);
     return 0;
@@ -415,7 +415,7 @@ static unsigned short cp936Encode(unsigned int ch)
 
 // 用内置码表把宽字符串转成多字节串。返回值语义同 to_mb(写出的字节数); 无法映射的
 // 字符按 Win32 语义替换为 '?'。不写结尾 0, 由调用方按 dstLen 处理。
-static int builtinToMb(const wchar_t *input, size_t input_len, int codePage, std::string &out)
+static int builtinToMb(const wchar_t *input, size_t input_len, int codePage, swinx_stl::string &out)
 {
     out.clear();
     out.reserve(input_len * 2);
@@ -471,7 +471,7 @@ static int builtinToMb(const wchar_t *input, size_t input_len, int codePage, std
     return (int)out.length();
 }
 
-static int to_mb(const wchar_t *input, size_t input_len, int codePage, std::string &out)
+static int to_mb(const wchar_t *input, size_t input_len, int codePage, swinx_stl::string &out)
 {
     const char *toCode = Cp2IConvCode(codePage);
     if (!toCode)
@@ -716,7 +716,7 @@ int WideCharToMultiByte(int cp, int flags __attribute__((unused)), const wchar_t
         cp = CP_UTF8; // todo:hjx
     if (cp != CP_ACP && cp != CP_UTF8)
     {
-        std::string str;
+        swinx_stl::string str;
         int ret = to_mb(src, len, cp, str);
         if (ret == 0)
             return 0;
@@ -774,7 +774,7 @@ int WideCharToMultiByte(int cp, int flags __attribute__((unused)), const wchar_t
 
 #ifdef __APPLE__
 // 获取当前进程的 RPATH 列表
-static int get_current_rpaths(std::list<std::string> &rpaths)
+static int get_current_rpaths(swinx_stl::list<swinx_stl::string> &rpaths)
 {
     // 1. 获取当前可执行文件的 Mach-O 头
     const struct mach_header_64 *header = (const struct mach_header_64 *)_dyld_get_image_header(0);
@@ -818,11 +818,11 @@ class DllLoader {
         p[1] = 0;
 #ifdef __APPLE__
         const char rpaths[] = "@executable_path/";
-        std::list<std::string> lstRPaths;
+        swinx_stl::list<swinx_stl::string> lstRPaths;
         get_current_rpaths(lstRPaths);
         for (auto it : lstRPaths)
         {
-            std::string path = it;
+            swinx_stl::string path = it;
             if (path.find(rpaths) == 0)
             {
                 path.replace(0, sizeof(rpaths) - 1, szPath);
@@ -882,13 +882,13 @@ class DllLoader {
         std::unique_lock<std::mutex> lock(m_mutex);
         if (!m_userDllDir.empty())
         {
-            std::string path = m_userDllDir + lpFileName;
+            swinx_stl::string path = m_userDllDir + lpFileName;
             if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
                 return mydlopen(path.c_str(), mode);
         }
         for (auto it : m_lstDirs)
         {
-            std::string path = it + lpFileName;
+            swinx_stl::string path = it + lpFileName;
             if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
                 return mydlopen(path.c_str(), mode);
         }
@@ -901,7 +901,7 @@ class DllLoader {
                 szPath[len++] = '/';
                 szPath[len] = 0;
             }
-            std::string path = szPath;
+            swinx_stl::string path = szPath;
             path += lpFileName;
             if (GetFileAttributesA(path.c_str()) != INVALID_FILE_ATTRIBUTES)
                 return mydlopen(path.c_str(), mode);
@@ -920,8 +920,8 @@ class DllLoader {
 
   private:
     std::mutex m_mutex;
-    std::list<std::string> m_lstDirs;
-    std::string m_userDllDir;
+    swinx_stl::list<swinx_stl::string> m_lstDirs;
+    swinx_stl::string m_userDllDir;
 };
 
 static DllLoader s_dllLoader;
@@ -1032,7 +1032,7 @@ BOOL WINAPI SetDllDirectoryW(LPCWSTR lpPathName)
 {
     if (!lpPathName)
         return SetDllDirectoryA(NULL);
-    std::string str;
+    swinx_stl::string str;
     tostring(lpPathName, -1, str);
     return SetDllDirectoryA(str.c_str());
 }
@@ -1849,7 +1849,7 @@ class ChildStatusMgr {
     }
 
   private:
-    std::map<pid_t, int> m_child_status;
+    swinx_stl::map<pid_t, int> m_child_status;
     std::mutex m_mutex;
 } s_child_status_mgr;
 
@@ -2048,7 +2048,7 @@ BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR 
     }
     install_sigchld_handler();
 
-    std::list<char *> lstArg;
+    swinx_stl::list<char *> lstArg;
     lstArg.push_back((char *)lpApplicationName);
     while (lpCommandLine)
     {
@@ -2094,8 +2094,8 @@ BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR 
     // 冻结在"已加锁"状态；子进程若在 exec 前调用任何取锁的 CRT/swinx API
     // 就会永久卡死，且卡死的子进程会永久占住 shm 锁、连带阻塞父进程
     // （macOS 快速连续 spawn 时实测触发）。因此子进程路径只允许系统调用。
-    std::vector<char *> args;
-    std::string strHost;
+    swinx_stl::vector<char *> args;
+    swinx_stl::string strHost;
     if ((UINT_PTR)hToken == Verb_RunAs)
     {
         // 提权宿主在父进程内探测（原实现在子进程内调 swinx API，fork 不安全）
@@ -2122,23 +2122,23 @@ BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR 
     args.push_back(nullptr);
 
     // env 组成保持与原实现一致：DISPLAY/XAUTHORITY（非 RunAs）+ lpEnvironment
-    std::vector<std::string> envStore;
+    swinx_stl::vector<swinx_stl::string> envStore;
     if ((UINT_PTR)hToken != Verb_RunAs)
     {
         const char *szDisplay = getenv("DISPLAY");
         const char *szAuth = getenv("XAUTHORITY");
         if (szDisplay)
-            envStore.push_back(std::string("DISPLAY=") + szDisplay);
+            envStore.push_back(swinx_stl::string("DISPLAY=") + szDisplay);
         if (szAuth)
-            envStore.push_back(std::string("XAUTHORITY=") + szAuth);
+            envStore.push_back(swinx_stl::string("XAUTHORITY=") + szAuth);
     }
     else
     {
         // RunAs 走 pkexec："env DISPLAY=... XAUTHORITY=..." 作为参数注入
         const char *szDisplay = getenv("DISPLAY");
         const char *szAuth = getenv("XAUTHORITY");
-        envStore.push_back(std::string("DISPLAY=") + (szDisplay ? szDisplay : ""));
-        envStore.push_back(std::string("XAUTHORITY=") + (szAuth ? szAuth : ""));
+        envStore.push_back(swinx_stl::string("DISPLAY=") + (szDisplay ? szDisplay : ""));
+        envStore.push_back(swinx_stl::string("XAUTHORITY=") + (szAuth ? szAuth : ""));
     }
     if (lpEnvironment)
     {
@@ -2148,7 +2148,7 @@ BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR 
             while (*pszEnv)
             {
                 size_t len = wcslen(pszEnv);
-                std::string strEnv;
+                swinx_stl::string strEnv;
                 tostring(pszEnv, -1, strEnv);
                 envStore.push_back(strEnv);
                 pszEnv += len + 1;
@@ -2160,12 +2160,12 @@ BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR 
             while (*pszEnv)
             {
                 size_t len = strlen(pszEnv);
-                envStore.push_back(std::string(pszEnv, len));
+                envStore.push_back(swinx_stl::string(pszEnv, len));
                 pszEnv += len + 1;
             }
         }
     }
-    std::vector<char *> envs;
+    swinx_stl::vector<char *> envs;
     for (auto it = envStore.begin(); it != envStore.end() && envs.size() < 1000; it++)
     {
         envs.push_back((char *)it->c_str());
@@ -2276,11 +2276,11 @@ BOOL WINAPI CreateProcessAsUserA(HANDLE hToken, LPCSTR lpApplicationName, LPSTR 
 
 BOOL WINAPI CreateProcessAsUserW(HANDLE hToken, LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSECURITY_ATTRIBUTES lpProcessAttributes, LPSECURITY_ATTRIBUTES lpThreadAttributes, BOOL bInheritHandles, DWORD dwCreationFlags, LPVOID lpEnvironment, LPCWSTR lpCurrentDirectory, LPSTARTUPINFOW lpStartupInfo, LPPROCESS_INFORMATION lpProcessInformation)
 {
-    std::string strApp, strCmd, strDir;
+    swinx_stl::string strApp, strCmd, strDir;
     tostring(lpApplicationName, -1, strApp);
     tostring(lpCommandLine, -1, strCmd);
     tostring(lpCurrentDirectory, -1, strDir);
-    std::string strDesktop, strTitle;
+    swinx_stl::string strDesktop, strTitle;
     STARTUPINFOA startupINfoA;
     STARTUPINFOA *pStartInfoA = nullptr;
     if (lpStartupInfo)
@@ -2398,7 +2398,7 @@ HCURSOR LoadCursorW(HINSTANCE hInstance, LPCWSTR lpCursorName)
 {
     if (IS_INTRESOURCE(lpCursorName))
         return LoadCursorA(hInstance, (LPCSTR)lpCursorName);
-    std::string str;
+    swinx_stl::string str;
     tostring(lpCursorName, -1, str);
     return CursorMgr::loadCursor(str.c_str());
 }
@@ -2757,7 +2757,7 @@ UINT WINAPI RegisterClipboardFormatA(_In_ LPCSTR lpszFormat)
 
 UINT WINAPI RegisterClipboardFormatW(_In_ LPCWSTR lpszFormat)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpszFormat, -1, str);
     return RegisterClipboardFormatA(str.c_str());
 }
@@ -2998,7 +2998,7 @@ BOOL WINAPI GetUserNameW(LPWSTR lpBuffer, LPDWORD nSize)
 // Track VirtualAlloc regions so VirtualFree(MEM_RELEASE) can release the
 // whole region (Win32 requires dwSize == 0 for MEM_RELEASE).
 static std::mutex s_virtualMemMutex;
-static std::map<LPVOID, SIZE_T> s_virtualAllocs;
+static swinx_stl::map<LPVOID, SIZE_T> s_virtualAllocs;
 
 LPVOID WINAPI VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType __attribute__((unused)), DWORD flProtect)
 {
@@ -3142,7 +3142,7 @@ GetTempPathW(_In_ DWORD nBufferLength, _Out_writes_to_opt_(nBufferLength, return
 
 UINT WINAPI GetTempFileNameW(LPCWSTR lpPathName, LPCWSTR lpPrefixString, UINT uUnique, LPWSTR lpTempFileName)
 {
-    std::string strPath, strPrefix;
+    swinx_stl::string strPath, strPrefix;
     char szTmpFileName[MAX_PATH] = { 0 };
     tostring(lpPathName, -1, strPath);
     tostring(lpPrefixString, -1, strPrefix);
@@ -3291,7 +3291,7 @@ HMODULE WINAPI GetModuleHandleW(LPCWSTR lpModuleName)
 {
     if (!lpModuleName)
         return GetModuleHandleA(NULL);
-    std::string str;
+    swinx_stl::string str;
     tostring(lpModuleName, -1, str);
     return GetModuleHandleA(str.c_str());
 }
@@ -3304,7 +3304,7 @@ BOOL WINAPI SetEnvironmentVariableA(LPCSTR lpName, LPCSTR lpValue)
 
 BOOL WINAPI SetEnvironmentVariableW(LPCWSTR lpName, LPCWSTR lpValue)
 {
-    std::string name, value;
+    swinx_stl::string name, value;
     tostring(lpName, -1, name);
     tostring(lpValue, -1, value);
     return SetEnvironmentVariableA(name.c_str(), value.c_str());
@@ -3327,7 +3327,7 @@ DWORD WINAPI GetEnvironmentVariableA(LPCSTR lpName, LPSTR lpBuffer, DWORD nSize)
 
 DWORD WINAPI GetEnvironmentVariableW(LPCWSTR lpName, LPWSTR lpBuffer, DWORD nSize)
 {
-    std::string name;
+    swinx_stl::string name;
     tostring(lpName, -1, name);
     const char *value = getenv(name.c_str());
     if (!value)
@@ -3443,7 +3443,7 @@ class SOsHandleMgr {
         if (it != m_fdMap.end())
             return it->second;
         HANDLE hRet = NewSynHandle(new FdHandle(fd));
-        m_fdMap.insert(std::make_pair(fd, hRet));
+        m_fdMap.insert(swinx_stl::make_pair(fd, hRet));
         return hRet;
     }
 
@@ -3460,7 +3460,7 @@ class SOsHandleMgr {
     }
 
   private:
-    std::map<int, HANDLE> m_fdMap;
+    swinx_stl::map<int, HANDLE> m_fdMap;
     std::mutex m_mutex;
     uint64_t m_ts;
 };
@@ -3565,7 +3565,7 @@ HANDLE WINAPI FindFirstChangeNotificationW(LPCWSTR lpPathName, BOOL bWatchSubtre
 {
     if (!lpPathName)
         return INVALID_HANDLE_VALUE;
-    std::string str;
+    swinx_stl::string str;
     tostring(lpPathName, -1, str);
     return FindFirstChangeNotificationA(str.c_str(), bWatchSubtree, dwNotifyFilter);
 }
@@ -3573,8 +3573,8 @@ HANDLE WINAPI FindFirstChangeNotificationW(LPCWSTR lpPathName, BOOL bWatchSubtre
 #ifdef __linux__
 struct NotifyHandle : FdHandle
 {
-    std::map<int, std::string> mapWdPath; // watch descriptor -> path mapping
-    std::map<std::string, int> mapPathWd; // path -> watch descriptor mapping
+    swinx_stl::map<int, swinx_stl::string> mapWdPath; // watch descriptor -> path mapping
+    swinx_stl::map<swinx_stl::string, int> mapPathWd; // path -> watch descriptor mapping
     BOOL bWatchSubtree;                   // 是否监控子目录
     uint32_t mask;                        // inotify mask
 
@@ -3626,7 +3626,7 @@ struct NotifyHandle : FdHandle
     }
 
     // 移除路径监控(通过路径)
-    void removeWatchByPath(const std::string &path)
+    void removeWatchByPath(const swinx_stl::string &path)
     {
         auto it = mapPathWd.find(path);
         if (it != mapPathWd.end())
@@ -3673,10 +3673,10 @@ static void add_path_watch_recursive(NotifyHandle *pHandle, const char *path)
 }
 
 // 递归移除目录及其子目录的监控
-static void remove_path_watch_recursive(NotifyHandle *pHandle, const std::string &path)
+static void remove_path_watch_recursive(NotifyHandle *pHandle, const swinx_stl::string &path)
 {
     // 先移除所有子目录
-    std::vector<std::string> toRemove;
+    swinx_stl::vector<swinx_stl::string> toRemove;
     for (auto &it : pHandle->mapPathWd)
     {
         if (it.first.find(path) == 0) // 路径以path开头
@@ -3770,13 +3770,13 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
             if (it == notifyHandle->mapWdPath.end())
                 continue;
 
-            std::string parentPath = it->second;
+            swinx_stl::string parentPath = it->second;
 
             // 只处理有名称的事件
             if (event->len == 0)
                 continue;
 
-            std::string fullPath = parentPath + "/" + event->name;
+            swinx_stl::string fullPath = parentPath + "/" + event->name;
 
             // 处理目录创建事件
             if ((event->mask & IN_CREATE) && (event->mask & IN_ISDIR))
@@ -3821,9 +3821,9 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
 #elif defined(__APPLE__) && defined(__MACH__)
 struct NotifyHandle : FdHandle
 {
-    std::map<int, std::string> mapFdPath; // fd -> path mapping
-    std::map<std::string, int> mapPathFd; // path -> fd mapping
-    std::string rootPath;                 // 根路径
+    swinx_stl::map<int, swinx_stl::string> mapFdPath; // fd -> path mapping
+    swinx_stl::map<swinx_stl::string, int> mapPathFd; // path -> fd mapping
+    swinx_stl::string rootPath;                 // 根路径
     BOOL watchSubtree;                    // 是否监控子目录
     DWORD notifyFilter;                   // 通知过滤器
 
@@ -3853,7 +3853,7 @@ struct NotifyHandle : FdHandle
     }
 
     // 移除路径监控
-    void removeWatchByPath(const std::string &path)
+    void removeWatchByPath(const swinx_stl::string &path)
     {
         auto it = mapPathFd.find(path);
         if (it != mapPathFd.end())
@@ -4067,7 +4067,7 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
         if (it == notifyHandle->mapFdPath.end())
             continue;
 
-        std::string watchedPath = it->second;
+        swinx_stl::string watchedPath = it->second;
 
         // 如果监控子目录且检测到目录内容变化,需要检查是否有新增或删除的子目录
         if (notifyHandle->watchSubtree && (event.fflags & NOTE_WRITE))
@@ -4081,7 +4081,7 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
             DIR *dir = opendir(watchedPath.c_str());
             if (dir)
             {
-                std::set<std::string> currentSubDirs;
+                swinx_stl::set<swinx_stl::string> currentSubDirs;
                 struct dirent *entry;
                 while ((entry = readdir(dir)) != NULL)
                 {
@@ -4113,7 +4113,7 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
             if (notifyHandle->watchSubtree)
             {
                 // 移除所有以此路径开头的监控
-                std::vector<std::string> toRemove;
+                swinx_stl::vector<swinx_stl::string> toRemove;
                 for (auto &pathIt : notifyHandle->mapPathFd)
                 {
                     if (pathIt.first.find(watchedPath) == 0)
@@ -4435,7 +4435,7 @@ BOOL WINAPI GetModuleHandleExW(_In_ DWORD dwFlags, _In_opt_ LPCWSTR lpModuleName
     if (!lpModuleName)
         return GetModuleHandleExA(dwFlags, NULL, phModule);
 
-    std::string str;
+    swinx_stl::string str;
     tostring(lpModuleName, -1, str);
     return GetModuleHandleExA(dwFlags, str.c_str(), phModule);
 }

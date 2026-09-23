@@ -28,7 +28,7 @@ bool SwinXIsCjkFontAlias(const char *faceName)
         return true; // default font: assume mixed script UI, want CJK fallback
 
     // lowercase the name once
-    std::string name;
+    swinx_stl::string name;
     name.reserve(strlen(faceName));
     for (const char *p = faceName; *p; ++p)
         name += (char)tolower((unsigned char)*p);
@@ -214,7 +214,7 @@ public:
     bool ready() const { return m_ready.load(std::memory_order_acquire); }
 
     // read-only after ready() turns true
-    const std::vector<SystemFontEntry> &fonts() const { return m_fonts; }
+    const swinx_stl::vector<SystemFontEntry> &fonts() const { return m_fonts; }
 
     // Resolve (and cache) the primary font face for `lf` through fontconfig.
     // ApplyFont runs before every text drawing call, and an uncached path
@@ -227,7 +227,7 @@ public:
     // for new face names (cache miss) but does not invalidate cached faces.
     cairo_font_face_t *getCachedFontFace(const LOGFONTA *lf)
     {
-        std::string key = lf->lfFaceName[0] ? lf->lfFaceName : "sans-serif";
+        swinx_stl::string key = lf->lfFaceName[0] ? lf->lfFaceName : "sans-serif";
         key += lf->lfItalic ? "|i" : "|n";
         key += lf->lfWeight > 400 ? "|b" : "|r";
 
@@ -240,7 +240,7 @@ public:
         if (!face)
             return nullptr;
 
-        m_faces.insert(std::make_pair(key, face));
+        m_faces.insert(swinx_stl::make_pair(key, face));
         return cairo_font_face_reference(face);
     }
 
@@ -251,7 +251,7 @@ public:
     {
         int weight = lf->lfWeight > 400 ? FC_WEIGHT_BOLD : FC_WEIGHT_NORMAL;
         int slant = lf->lfItalic ? FC_SLANT_ITALIC : FC_SLANT_ROMAN;
-        std::string key = lf->lfFaceName[0] ? lf->lfFaceName : "sans-serif";
+        swinx_stl::string key = lf->lfFaceName[0] ? lf->lfFaceName : "sans-serif";
         key += cjk ? "|zh" : "|--";
         key += "|w" + std::to_string(weight);
         key += "|s" + std::to_string(slant);
@@ -289,7 +289,7 @@ public:
                     chain->primaryCharset = cs;
             }
         }
-        m_chains.insert(std::make_pair(key, chain));
+        m_chains.insert(swinx_stl::make_pair(key, chain));
         return chain;
     }
 
@@ -364,7 +364,7 @@ private:
 
         if (set)
         {
-            std::vector<SystemFontEntry> fonts;
+            swinx_stl::vector<SystemFontEntry> fonts;
             fonts.reserve(set->nfont);
             for (int i = 0; i < set->nfont; i++)
             {
@@ -417,11 +417,11 @@ private:
     std::atomic<bool> m_quit{false};
     std::atomic<bool> m_ready{false};
     mutable std::mutex m_mutex;    // guards m_fonts / m_chains release
-    std::vector<SystemFontEntry> m_fonts;
+    swinx_stl::vector<SystemFontEntry> m_fonts;
     std::mutex m_faceMutex;        // guards the face cache
-    std::map<std::string, cairo_font_face_t *> m_faces;
+    swinx_stl::map<swinx_stl::string, cairo_font_face_t *> m_faces;
     std::mutex m_chainMutex;       // guards the chain cache
-    std::map<std::string, std::shared_ptr<FontFallbackChain>> m_chains;
+    swinx_stl::map<swinx_stl::string, std::shared_ptr<FontFallbackChain>> m_chains;
 };
 
 void SwinXFontFallbackPrefetch()
@@ -441,11 +441,11 @@ void SwinXFontFallbackShutdown()
 // system fonts actually used by this context
 struct FontFallbackCtx
 {
-    std::string key; // request this ctx was built for (incl. font matrix)
+    swinx_stl::string key; // request this ctx was built for (incl. font matrix)
     std::shared_ptr<FontFallbackChain> chain;
     int reqWeight = FC_WEIGHT_NORMAL; // request class used for tiering
     int reqSlant = FC_SLANT_ROMAN;
-    std::map<int, cairo_scaled_font_t *> scaledByIndex; // index in system list -> scaled font (owned)
+    swinx_stl::map<int, cairo_scaled_font_t *> scaledByIndex; // index in system list -> scaled font (owned)
     int lastFallbackHit = -1;                           // index into the system font list
 
     ~FontFallbackCtx()
@@ -489,7 +489,7 @@ static cairo_scaled_font_t *GetScaledFont(FontFallbackCtx *ctx, cairo_t *cr, int
     if (it != ctx->scaledByIndex.end())
         return it->second; // may be NULL = known failure
 
-    const std::vector<SystemFontEntry> &fonts = SystemFontList::instance().fonts();
+    const swinx_stl::vector<SystemFontEntry> &fonts = SystemFontList::instance().fonts();
     if (idx < 0 || idx >= (int)fonts.size())
         return NULL;
 
@@ -529,13 +529,13 @@ void AttachFontFallback(cairo_t *cr, const LOGFONTA *lf)
     // ApplyFont runs before every text drawing call, so the early return
     // below avoids redoing the work for every draw.  The ctx key covers the
     // chain (family/cjk/weight/slant) and the font matrix (size).
-    std::string key = family;
+    swinx_stl::string key = family;
     key += cjk ? "|zh" : "|--";
     key += "|w" + std::to_string(weight);
     key += "|s" + std::to_string(slant);
     cairo_matrix_t fontMtx;
     cairo_get_font_matrix(cr, &fontMtx);
-    std::string ctxKey = key + "|m" + std::to_string(fontMtx.xx) + "," + std::to_string(fontMtx.yy);
+    swinx_stl::string ctxKey = key + "|m" + std::to_string(fontMtx.xx) + "," + std::to_string(fontMtx.yy);
 
     // fast path: same request already attached to this context
     if (FontFallbackCtx *old = (FontFallbackCtx *)cairo_get_user_data(cr, &kFontFallbackKey))
@@ -565,7 +565,7 @@ void AttachFontFallback(cairo_t *cr, const LOGFONTA *lf)
     }
 }
 
-void SplitTextRuns(cairo_t *cr, const char *utf8, int len, std::vector<TextRun> &runs)
+void SplitTextRuns(cairo_t *cr, const char *utf8, int len, swinx_stl::vector<TextRun> &runs)
 {
     runs.clear();
     if (len <= 0)
@@ -589,7 +589,7 @@ void SplitTextRuns(cairo_t *cr, const char *utf8, int len, std::vector<TextRun> 
     }
 
     FontFallbackChain *chain = ctx->chain.get();
-    const std::vector<SystemFontEntry> &fonts = SystemFontList::instance().fonts();
+    const swinx_stl::vector<SystemFontEntry> &fonts = SystemFontList::instance().fonts();
     auto pickFont = [&](uint32_t cp) -> int {
         if (cp < 0x20)
             return -1; // control characters always use the primary font

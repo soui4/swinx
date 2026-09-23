@@ -14,7 +14,7 @@ BOOL WINAPI PathIsDirectoryA(LPCSTR pszPath)
 
 BOOL WINAPI PathIsDirectoryW(LPCWSTR pszPath)
 {
-    std::string strPath;
+    swinx_stl::string strPath;
     tostring(pszPath, -1, strPath);
     return PathIsDirectoryA(strPath.c_str());
 }
@@ -26,7 +26,7 @@ BOOL WINAPI PathFileExistsA(LPCSTR pszPath)
 
 BOOL WINAPI PathFileExistsW(LPCWSTR pszPath)
 {
-    std::string strPath;
+    swinx_stl::string strPath;
     tostring(pszPath, -1, strPath);
     return PathFileExistsA(strPath.c_str());
 }

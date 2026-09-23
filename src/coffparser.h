@@ -115,7 +115,7 @@ class WindResResourceParser {
 private:
     const uint8_t* m_baseAddr;
     size_t m_totalSize;
-    std::map<std::wstring, std::map<std::wstring, std::map<uint16_t, ResourceInfo>>> m_resourceMap;
+    swinx_stl::map<std::wstring, swinx_stl::map<std::wstring, swinx_stl::map<uint16_t, ResourceInfo>>> m_resourceMap;
     bool m_isValid;
 
     // 将资源ID字符串转换为可读形式
@@ -129,8 +129,8 @@ private:
 
     // 递归解析资源目录
     void ParseResourceDirectory(const uint8_t* dirBase, uint32_t dirOffset,
-        const std::vector<std::wstring>& typePath,
-        std::vector<ResourceInfo>& resources, int depth = 0);
+        const swinx_stl::vector<std::wstring>& typePath,
+        swinx_stl::vector<ResourceInfo>& resources, int depth = 0);
 
 public:
     WindResResourceParser(const void* data, size_t size)

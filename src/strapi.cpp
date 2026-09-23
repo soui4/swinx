@@ -715,7 +715,7 @@ void _wsplitpath(const wchar_t *path, wchar_t *drive __attribute__((unused)), wc
 
 int _wrename(const wchar_t *oldpath, const wchar_t *newpath)
 {
-    std::string strOld, strNew;
+    swinx_stl::string strOld, strNew;
     tostring(oldpath, -1, strOld);
     tostring(newpath, -1, strNew);
     return rename(strOld.c_str(), strNew.c_str());

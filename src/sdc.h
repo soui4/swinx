@@ -57,7 +57,7 @@ typedef struct _SDC
 #endif
 
     // State stack for SaveDC/RestoreDC
-    std::vector<std::shared_ptr<DCState>> stateStack;
+    swinx_stl::vector<std::shared_ptr<DCState>> stateStack;
 
     _SDC(HWND _hwnd);
     ~_SDC();

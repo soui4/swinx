@@ -55,7 +55,7 @@ public:
     SConnection* mConnection;
     HDC hdc;
     HBITMAP bmp;
-    std::string title;
+    swinx_stl::string title;
     RECT rc;
     WndState state;
     ATOM clsAtom;

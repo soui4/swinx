@@ -32,7 +32,7 @@ struct HeapInfo
     DWORD option;
     size_t dwInitialSize;
     size_t dwMaximumSize;
-    std::list<MemBlock> lstMem;
+    swinx_stl::list<MemBlock> lstMem;
 };
 
 HANDLE GetProcessHeap()

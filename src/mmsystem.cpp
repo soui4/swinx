@@ -179,7 +179,7 @@ class AudioPlayer {
   private:
     std::mutex m_mutex;
     // use shared_ptr to manage stop flags and avoid ownership races
-    std::map<pthread_t, std::shared_ptr<PlayStatus>> m_threads;
+    swinx_stl::map<pthread_t, std::shared_ptr<PlayStatus>> m_threads;
 
     AudioPlayer()
     {
@@ -377,7 +377,7 @@ class AudioPlayer {
     void stopAll()
     {
         // Move thread list to local so we don't hold the mutex while joining
-        std::map<pthread_t, std::shared_ptr<PlayStatus>> local;
+        swinx_stl::map<pthread_t, std::shared_ptr<PlayStatus>> local;
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             for (auto &pair : m_threads)

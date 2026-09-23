@@ -29,14 +29,14 @@ class TextLayoutEx {
     SkScalar measureText(cairo_t *ctx, const char *text, size_t length);
 
   private:
-    std::vector<char> m_text;  //文本内容
-    std::vector<int> m_prefix; //前缀符索引
+    swinx_stl::vector<char> m_text;  //文本内容
+    swinx_stl::vector<int> m_prefix; //前缀符索引
     struct LineInfo
     {
         int nOffset;
         int nLen;
     };
-    std::vector<LineInfo> m_lines; //分行索引
+    swinx_stl::vector<LineInfo> m_lines; //分行索引
     UINT m_uFormat;                //显示标志
     RECT m_rcBound;                //限制矩形
     cairo_t *m_ctx;

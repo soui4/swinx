@@ -269,8 +269,8 @@ struct IpcMsg : Msg
 {
     static void gen_suid(suid_t * uid);
     static void suid2string(const suid_t id, char *buf);
-    static std::string get_share_mem_name(const suid_t id);
-    static std::string get_ipc_event_name(const suid_t id);
+    static swinx_stl::string get_share_mem_name(const suid_t id);
+    static swinx_stl::string get_ipc_event_name(const suid_t id);
 
     swinx::SharedMemory *shareMem;
     HANDLE synEvt;

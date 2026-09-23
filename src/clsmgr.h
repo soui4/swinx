@@ -35,7 +35,7 @@ public:
     void builtin_register();
 public:
     std::recursive_mutex cls_mutex;
-    std::list<CLASS*> class_list;
+    swinx_stl::list<CLASS*> class_list;
     bool     builtin_registed=false;
 };
 

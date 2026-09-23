@@ -18,7 +18,7 @@ public:
 
     BOOL _DestroyCursor(HCURSOR cursor);
 
-    std::map<WORD, HCURSOR> m_stdCursor;
+    swinx_stl::map<WORD, HCURSOR> m_stdCursor;
     std::mutex  m_mutex;
 };
 

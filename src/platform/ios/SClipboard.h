@@ -45,12 +45,12 @@ public:
 	void unlock() {
 		m_mutex.unlock();
 	}
-	const std::list<FormatedData*> & formatedData() const {
+	const swinx_stl::list<FormatedData*> & formatedData() const {
 		return m_lstData;
 	}
 protected:
 	mutable std::recursive_mutex m_mutex;
-	std::list<FormatedData*> m_lstData;
+	swinx_stl::list<FormatedData*> m_lstData;
 
 public:
 	HRESULT WINAPI GetData(FORMATETC* pformatetcIn,STGMEDIUM* pmedium)override;

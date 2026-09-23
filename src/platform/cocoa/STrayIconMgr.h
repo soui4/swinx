@@ -13,7 +13,7 @@ struct TrayIconData : NOTIFYICONDATAA
 
 class STrayIconMgr {
 
-	typedef std::list<TrayIconData*> TRAYLIST;
+	typedef swinx_stl::list<TrayIconData*> TRAYLIST;
 public:
     STrayIconMgr();
 	~STrayIconMgr();

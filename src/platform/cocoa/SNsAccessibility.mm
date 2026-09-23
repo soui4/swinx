@@ -187,7 +187,7 @@ static NSString *SwinxAccRoleFromMsaA(DWORD role)
     *pAcc = NULL;
     *pChildId = CHILDID_SELF;
 
-    std::vector<LONG> chain;
+    swinx_stl::vector<LONG> chain;
     chain.reserve(_chain.count);
     for (NSNumber *n in _chain)
         chain.push_back((LONG)[n longValue]);
@@ -619,7 +619,7 @@ static NSArray *SwinxAccHitTestChain(HWND hwnd, POINT pt, NSArray *startChain)
     NSMutableArray<NSNumber *> *chain = [startChain mutableCopy] ?: [NSMutableArray array];
     for (int depth = 0; depth < 64; depth++)
     {
-        std::vector<LONG> path;
+        swinx_stl::vector<LONG> path;
         path.reserve(chain.count);
         for (NSNumber *n in chain)
             path.push_back((LONG)[n longValue]);

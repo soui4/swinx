@@ -22,20 +22,20 @@ static LCID PosixLocaleToLCID(const char *localeName)
     if (!localeName || localeName[0] == '\0')
         return MAKELCID(MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT), SORT_DEFAULT);
 
-    std::string loc(localeName);
+    swinx_stl::string loc(localeName);
 
     // Convert to lowercase for easier comparison
     std::transform(loc.begin(), loc.end(), loc.begin(), ::tolower);
 
     // Extract language part (before underscore or dot)
-    std::string lang;
+    swinx_stl::string lang;
     size_t pos = loc.find('_');
-    if (pos != std::string::npos)
+    if (pos != swinx_stl::string::npos)
         lang = loc.substr(0, pos);
     else
     {
         pos = loc.find('.');
-        if (pos != std::string::npos)
+        if (pos != swinx_stl::string::npos)
             lang = loc.substr(0, pos);
         else
             lang = loc;
@@ -126,7 +126,7 @@ INT WINAPI CompareStringW(LCID lcid __attribute__((unused)), DWORD flags __attri
 
 INT WINAPI CompareStringA(LCID lcid __attribute__((unused)), DWORD flags __attribute__((unused)), const char *str1, int len1, const char *str2, int len2)
 {
-    std::string p1(str1, len1), p2(str2, len2);
+    swinx_stl::string p1(str1, len1), p2(str2, len2);
     return p1.compare(p2);
 }
 

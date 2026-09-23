@@ -97,7 +97,7 @@ class CDropDataMgr {
 
     ~CDropDataMgr()
     {
-        std::map<HDROP, PendingDrop> drops;
+        swinx_stl::map<HDROP, PendingDrop> drops;
         {
             std::unique_lock<std::recursive_mutex> lock(m_mutex);
             drops.swap(m_mapDrops);
@@ -117,7 +117,7 @@ class CDropDataMgr {
     }
 
     std::recursive_mutex m_mutex;
-    std::map<HDROP, PendingDrop> m_mapDrops;
+    swinx_stl::map<HDROP, PendingDrop> m_mapDrops;
 };
 
 class CDropFileTarget : public SUnkImpl<IDropTarget> {
@@ -206,7 +206,7 @@ class CDropFileMgr {
         std::unique_lock<std::recursive_mutex> lock(m_mutex);
         if (m_mapTargets.find(hWnd) != m_mapTargets.end())
             return FALSE;
-        auto ret = m_mapTargets.insert(std::make_pair(hWnd, target));
+        auto ret = m_mapTargets.insert(swinx_stl::make_pair(hWnd, target));
         if (ret.second)
         {
             target->AddRef();
@@ -241,7 +241,7 @@ class CDropFileMgr {
     }
 
     std::recursive_mutex m_mutex;
-    std::map<HWND, IDropTarget *> m_mapTargets;
+    swinx_stl::map<HWND, IDropTarget *> m_mapTargets;
 };
 
 } // namespace swinx
@@ -561,20 +561,20 @@ BOOL WINAPI Shell_NotifyIconW(DWORD dwMessage, PNOTIFYICONDATAW lpData)
 
 BOOL WINAPI PathMatchSpecExW(LPCWSTR pszFile, LPCWSTR pszSpec, DWORD dwFlags)
 {
-    std::string strFile, strSpec;
+    swinx_stl::string strFile, strSpec;
     tostring(pszFile, -1, strFile);
     tostring(pszSpec, -1, strSpec);
     return PathMatchSpecExA(strFile.c_str(), strSpec.c_str(), dwFlags);
 }
 
 // 实现 trim 函数
-static void str_trim(std::string &str)
+static void str_trim(swinx_stl::string &str)
 {
     // 定义空白字符集合
-    const std::string whitespace = " \t\n\r\f\v";
+    const swinx_stl::string whitespace = " \t\n\r\f\v";
     // 找到第一个非空白字符的位置
     size_t start = str.find_first_not_of(whitespace);
-    if (start == std::string::npos)
+    if (start == swinx_stl::string::npos)
     {
         str = "";
         return; // 如果字符串全是空白字符，返回空字符串
@@ -589,7 +589,7 @@ static void str_trim(std::string &str)
 
 static int myfnmatch(LPCSTR pszFile, LPCSTR pszSpec, BOOL bStrip)
 {
-    std::string strFile(pszFile), strSpec(pszSpec);
+    swinx_stl::string strFile(pszFile), strSpec(pszSpec);
     std::transform(strFile.begin(), strFile.end(), strFile.begin(), [](unsigned char c) { return std::tolower(c); });
     std::transform(strSpec.begin(), strSpec.end(), strSpec.begin(), [](unsigned char c) { return std::tolower(c); });
     if (!bStrip)
@@ -1329,7 +1329,7 @@ BOOL WINAPI ShellExecuteA(HWND hwnd __attribute__((unused)), LPCSTR lpOperation,
         if (strncmp(lpParameters, selectPrefix, prefixLen) == 0)
         {
             // 提取要选中的文件路径
-            std::string filePath = lpParameters + prefixLen;
+            swinx_stl::string filePath = lpParameters + prefixLen;
             if (filePath.front() == '\"')
             {
                 filePath.erase(0, 1);
@@ -1338,10 +1338,10 @@ BOOL WINAPI ShellExecuteA(HWND hwnd __attribute__((unused)), LPCSTR lpOperation,
             }
 #ifdef __linux__
             // Linux: 使用 xdg-open 打开文件所在目录
-            std::string dirPath = filePath;
+            swinx_stl::string dirPath = filePath;
 
             size_t lastSlash = dirPath.find_last_of('/');
-            if (lastSlash != std::string::npos)
+            if (lastSlash != swinx_stl::string::npos)
             {
                 dirPath = dirPath.substr(0, lastSlash);
             }
@@ -1370,7 +1370,7 @@ BOOL WINAPI ShellExecuteA(HWND hwnd __attribute__((unused)), LPCSTR lpOperation,
     {
         // 检查是否为网址（含.且无本地文件）
         const char *url = lpFile;
-        std::string urlBuf;
+        swinx_stl::string urlBuf;
         if (is_probably_url(lpFile))
         {
             if (strncmp(lpFile, "http://", 7) != 0 && strncmp(lpFile, "https://", 8) != 0)
@@ -1427,7 +1427,7 @@ BOOL WINAPI ShellExecuteA(HWND hwnd __attribute__((unused)), LPCSTR lpOperation,
 
 BOOL WINAPI ShellExecuteW(HWND hwnd, LPCWSTR lpOperation, LPCWSTR lpFile, LPCWSTR lpParameters, LPCWSTR lpDirectory, INT nShowCmd)
 {
-    std::string strOp, strFile, strParam, strDir;
+    swinx_stl::string strOp, strFile, strParam, strDir;
     tostring(lpOperation, -1, strOp);
     tostring(lpFile, -1, strFile);
     tostring(lpParameters, -1, strParam);
@@ -1493,7 +1493,7 @@ BOOL WINAPI ShellExecuteExW(LPSHELLEXECUTEINFOW lpExecInfo)
     SHELLEXECUTEINFOA infoA;
     infoA.cbSize = sizeof(infoA);
     infoA.fMask = lpExecInfo->fMask;
-    std::string strVerb, strFile, strParam, strDir;
+    swinx_stl::string strVerb, strFile, strParam, strDir;
     tostring(lpExecInfo->lpVerb, -1, strVerb);
     tostring(lpExecInfo->lpFile, -1, strFile);
     tostring(lpExecInfo->lpParameters, -1, strParam);
@@ -1513,14 +1513,14 @@ HRESULT SHCreateStreamOnFileA(LPCSTR pszFile, DWORD grfMode, IStream **ppstm)
 }
 HRESULT SHCreateStreamOnFileW(LPCWSTR pszFile, DWORD grfMode, IStream **ppstm)
 {
-    std::string strFile;
+    swinx_stl::string strFile;
     tostring(pszFile, -1, strFile);
     return SHCreateStreamOnFileA(strFile.c_str(), grfMode, ppstm);
 }
 
 HRESULT SHCreateStreamOnFileExW(LPCWSTR pszFile, DWORD grfMode, DWORD dwAttributes, BOOL fCreate, IStream *pstmTemplate, IStream **ppstm)
 {
-    std::string strFile;
+    swinx_stl::string strFile;
     tostring(pszFile, -1, strFile);
     return SHCreateStreamOnFileExA(strFile.c_str(), grfMode, dwAttributes, fCreate, pstmTemplate, ppstm);
 }
@@ -1793,9 +1793,9 @@ static bool path_has_wildcard(const char *path)
 }
 
 // 展开通配符为实际文件列表
-static std::vector<std::string> expand_wildcard(const std::string &path, bool filesOnly)
+static swinx_stl::vector<swinx_stl::string> expand_wildcard(const swinx_stl::string &path, bool filesOnly)
 {
-    std::vector<std::string> result;
+    swinx_stl::vector<swinx_stl::string> result;
     if (!path_has_wildcard(path.c_str()))
     {
         result.push_back(path);
@@ -1803,9 +1803,9 @@ static std::vector<std::string> expand_wildcard(const std::string &path, bool fi
     }
 
     // 分离目录和通配模式
-    std::string dir, pattern;
+    swinx_stl::string dir, pattern;
     size_t lastSlash = path.find_last_of('/');
-    if (lastSlash != std::string::npos)
+    if (lastSlash != swinx_stl::string::npos)
     {
         dir = path.substr(0, lastSlash);
         pattern = path.substr(lastSlash + 1);
@@ -1846,12 +1846,12 @@ static std::vector<std::string> expand_wildcard(const std::string &path, bool fi
 }
 
 // 从路径提取文件名
-static std::string get_base_name(const std::string &path)
+static swinx_stl::string get_base_name(const swinx_stl::string &path)
 {
     size_t lastSlash = path.find_last_of('/');
-    if (lastSlash == std::string::npos)
+    if (lastSlash == swinx_stl::string::npos)
         lastSlash = path.find_last_of('\\');
-    if (lastSlash != std::string::npos)
+    if (lastSlash != swinx_stl::string::npos)
         return path.substr(lastSlash + 1);
     return path;
 }
@@ -1864,11 +1864,11 @@ static bool is_dir(const char *path)
 }
 
 // 生成避免冲突的新文件名（Windows 风格 "Copy of X" / "Copy 2 of X"）
-static std::string generate_collision_name(const std::string &destPath)
+static swinx_stl::string generate_collision_name(const swinx_stl::string &destPath)
 {
-    std::string dir, name;
+    swinx_stl::string dir, name;
     size_t lastSlash = destPath.find_last_of('/');
-    if (lastSlash != std::string::npos)
+    if (lastSlash != swinx_stl::string::npos)
     {
         dir = destPath.substr(0, lastSlash);
         name = destPath.substr(lastSlash + 1);
@@ -1881,13 +1881,13 @@ static std::string generate_collision_name(const std::string &destPath)
 
     for (int count = 2;; ++count)
     {
-        std::string newName;
+        swinx_stl::string newName;
         if (count == 2)
             newName = "Copy of " + name;
         else
             newName = "Copy " + std::to_string(count) + " of " + name;
 
-        std::string fullPath = dir + "/" + newName;
+        swinx_stl::string fullPath = dir + "/" + newName;
         struct stat st;
         if (stat(fullPath.c_str(), &st) != 0)
             return fullPath; // 不存在，可以使用
@@ -1895,7 +1895,7 @@ static std::string generate_collision_name(const std::string &destPath)
 }
 
 // 复制文件或目录（目录时递归）
-static bool copy_path(const std::string &from, const std::string &to)
+static bool copy_path(const swinx_stl::string &from, const swinx_stl::string &to)
 {
     if (is_dir(from.c_str()))
         return CopyDirA(from.c_str(), to.c_str()) == 0;
@@ -1926,13 +1926,13 @@ static bool copy_path(const std::string &from, const std::string &to)
 }
 
 // 删除文件或目录（目录时递归），支持回收站
-static bool delete_path(const std::string &path, bool allowUndo)
+static bool delete_path(const swinx_stl::string &path, bool allowUndo)
 {
     return DelDirA(path.c_str(), allowUndo) == 0;
 }
 
 // 移动文件或目录（rename 失败则复制+删除）
-static bool move_path(const std::string &from, const std::string &to)
+static bool move_path(const swinx_stl::string &from, const swinx_stl::string &to)
 {
     if (rename(from.c_str(), to.c_str()) == 0)
         return true;
@@ -1945,7 +1945,7 @@ static bool move_path(const std::string &from, const std::string &to)
 }
 
 // 确保目标路径完整（如果目标为已存在的目录，将源文件名追加到目标路径后）
-static std::string resolve_dest(const std::string &from, const std::string &to)
+static swinx_stl::string resolve_dest(const swinx_stl::string &from, const swinx_stl::string &to)
 {
     if (is_dir(to.c_str()))
     {
@@ -1969,7 +1969,7 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp)
     int result = 0;
 
     // 解析双 NULL 结尾的源路径列表
-    std::vector<std::string> rawFrom;
+    swinx_stl::vector<swinx_stl::string> rawFrom;
     if (lpFileOp->pFrom)
     {
         const char *p = lpFileOp->pFrom;
@@ -1981,7 +1981,7 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp)
     }
 
     // 解析双 NULL 结尾的目标路径列表
-    std::vector<std::string> toPaths;
+    swinx_stl::vector<swinx_stl::string> toPaths;
     if (lpFileOp->pTo)
     {
         const char *p = lpFileOp->pTo;
@@ -1996,7 +1996,7 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp)
         return ERROR_INVALID_PARAMETER;
 
     // 展开通配符，合并为最终源路径列表
-    std::vector<std::string> fromPaths;
+    swinx_stl::vector<swinx_stl::string> fromPaths;
     for (const auto &raw : rawFrom)
     {
         auto expanded = expand_wildcard(raw, bFilesOnly);
@@ -2021,10 +2021,10 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp)
     {
         for (size_t i = 0; i < fromPaths.size(); ++i)
         {
-            const std::string &from = fromPaths[i];
+            const swinx_stl::string &from = fromPaths[i];
 
             // 确定目标路径
-            std::string to;
+            swinx_stl::string to;
             if (bMultiDest && i < toPaths.size())
             {
                 // 多目标模式：一一对应
@@ -2080,7 +2080,7 @@ int WINAPI SHFileOperationA(LPSHFILEOPSTRUCTA lpFileOp)
         size_t count = std::min(fromPaths.size(), toPaths.size());
         for (size_t i = 0; i < count; ++i)
         {
-            std::string to = toPaths[i];
+            swinx_stl::string to = toPaths[i];
 
             // 处理目标冲突
             struct stat st;
@@ -2110,7 +2110,7 @@ int WINAPI SHFileOperationW(LPSHFILEOPSTRUCTW lpFileOp)
     SHFILEOPSTRUCTA op;
     op.hwnd = lpFileOp->hwnd;
     op.wFunc = lpFileOp->wFunc;
-    std::string strFrom, strTo, strTitle;
+    swinx_stl::string strFrom, strTo, strTitle;
     tostring_filter(lpFileOp->pFrom, strFrom);
     tostring_filter(lpFileOp->pTo, strTo);
     tostring(lpFileOp->lpszProgressTitle, -1, strTitle);

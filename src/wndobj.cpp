@@ -130,7 +130,7 @@ void WndObj::reset()
 }
 
 //---------------------------------------------------------
-static std::map<HWND, _Window *> s_wndMap;
+static swinx_stl::map<HWND, _Window *> s_wndMap;
 static std::recursive_mutex s_wndMapMutex;
 
 static _Window *get_win_ptr_and_lock(HWND hWnd)
@@ -185,6 +185,6 @@ BOOL WndMgr::insertWindow(HWND hWnd, _Window *pWnd)
 {
     std::unique_lock<std::recursive_mutex> lock(s_wndMapMutex);
     SLOG_STMD() << "insertWindow:" << hWnd;
-    auto res = s_wndMap.insert(std::make_pair(hWnd, pWnd));
+    auto res = s_wndMap.insert(swinx_stl::make_pair(hWnd, pWnd));
     return res.second;
 }

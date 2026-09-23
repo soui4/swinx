@@ -35,10 +35,10 @@ class CMessageBox : public CNativeWnd {
         struct ButtonInfo
         {
             int id;
-            std::string text;
+            swinx_stl::string text;
         };
-        std::list<ButtonInfo> _ButtonInfo;
-        // std::unordered_map<int, std::string> _ButtonInfo;
+        swinx_stl::list<ButtonInfo> _ButtonInfo;
+        // swinx_stl::unordered_map<int, swinx_stl::string> _ButtonInfo;
 
         switch (uType & 0x0f)
         {
@@ -244,7 +244,7 @@ int MessageBoxA(HWND hWnd, LPCSTR lpText, LPCSTR lpCaption, UINT uType)
 
 int MessageBoxW(HWND hWnd, LPCWSTR lpText, LPCWSTR lpCaption, UINT uType)
 {
-    std::string strText, strCaption;
+    swinx_stl::string strText, strCaption;
     tostring(lpText, -1, strText);
     tostring(lpCaption, -1, strCaption);
     return MessageBoxA(hWnd, strText.c_str(), strCaption.c_str(), uType);

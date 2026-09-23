@@ -192,7 +192,7 @@ void SDragDrop::drag_enter(HWND target)
 {
 
     assert(dataObject);
-    std::vector<xcb_atom_t> types;
+    swinx_stl::vector<xcb_atom_t> types;
     FORMATETC fmtEtc={CF_HDROP,NULL,0,0, TYMED_HGLOBAL};
     if(dataObject->QueryGetData(&fmtEtc)==S_OK)
     {

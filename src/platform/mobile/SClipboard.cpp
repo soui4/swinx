@@ -8,7 +8,7 @@
 #include <vector>
 
 static std::recursive_mutex s_clipFmtMutex;
-static std::map<std::string, UINT> s_clipFmtMap;
+static swinx_stl::map<swinx_stl::string, UINT> s_clipFmtMap;
 static UINT s_nextClipFmt = 0xC000;
 
 class SAndroidClipboardDataObject : public SUnkImpl<IDataObject> {
@@ -160,7 +160,7 @@ public:
             return E_NOTIMPL;
 
         std::lock_guard<std::recursive_mutex> lock(m_mutex);
-        std::vector<FORMATETC> formats;
+        swinx_stl::vector<FORMATETC> formats;
         formats.reserve(m_entries.size());
         for (const DataEntry *entry : m_entries)
         {
@@ -293,7 +293,7 @@ private:
     }
 
     mutable std::recursive_mutex m_mutex;
-    std::vector<DataEntry *> m_entries;
+    swinx_stl::vector<DataEntry *> m_entries;
 };
 
 SClipboard::SClipboard()
@@ -326,7 +326,7 @@ UINT SClipboard::RegisterClipboardFormatA(LPCSTR pszName)
     if (!pszName || !*pszName)
         return 0;
     std::lock_guard<std::recursive_mutex> lock(s_clipFmtMutex);
-    std::string name(pszName);
+    swinx_stl::string name(pszName);
     auto it = s_clipFmtMap.find(name);
     if (it != s_clipFmtMap.end())
         return it->second;

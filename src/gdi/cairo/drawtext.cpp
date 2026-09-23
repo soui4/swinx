@@ -54,7 +54,7 @@ void TextLayoutEx::init(cairo_t *ctx, const char *text, size_t length, const REC
     else
     {
         m_prefix.clear();
-        std::vector<char> tmp;
+        swinx_stl::vector<char> tmp;
         tmp.resize(length);
         memcpy(tmp.data(), text, length);
         const char *p = tmp.data();

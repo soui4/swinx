@@ -16,8 +16,8 @@ private:
 
     static SAtoms &instance();
     SAtoms();
-    std::map<std::string, ATOM> m_atomsA;
-    std::map<ATOM, std::string> m_atomNamesA;
+    swinx_stl::map<swinx_stl::string, ATOM> m_atomsA;
+    swinx_stl::map<ATOM, swinx_stl::string> m_atomNamesA;
     std::recursive_mutex m_mutex;
     ATOM m_nextAtom;
 };

@@ -196,13 +196,13 @@ class SAtoms {
 
     void Init(xcb_connection_t *conn,int nScrNo);
 
-    const std::vector<xcb_atom_t> & textAtoms() const{return m_textAtoms;}
+    const swinx_stl::vector<xcb_atom_t> & textAtoms() const{return m_textAtoms;}
     static int getAtomName(xcb_atom_t atom,char *buf,int bufSize);
     static xcb_atom_t registerAtom(const char *name,xcb_connection_t *xcb_conn=nullptr);
 private:
     static xcb_atom_t internAtom(xcb_connection_t *connection, uint8_t onlyIfExist, const char *atomName);
 
-    std::vector<xcb_atom_t> m_textAtoms;
+    swinx_stl::vector<xcb_atom_t> m_textAtoms;
 };
 
 #endif //_SATOMH_

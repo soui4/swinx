@@ -41,14 +41,14 @@ using namespace swinx;
 
 struct AndroidSharedMemEntry
 {
-    std::string name;
+    swinx_stl::string name;
     int fd;
     size_t size;
     int refCount;
 };
 
 static std::mutex s_androidShmMutex;
-static std::map<std::string, AndroidSharedMemEntry *> s_androidShmRegistry;
+static swinx_stl::map<swinx_stl::string, AndroidSharedMemEntry *> s_androidShmRegistry;
 
 static int android_shm_open(const char *name, int oflag, mode_t mode)
 {
@@ -895,7 +895,7 @@ HANDLE WINAPI CreateWaitableTimerW(LPSECURITY_ATTRIBUTES lpTimerAttributes __att
 {
     if (lpTimerName && *lpTimerName)
     {
-        std::string strName;
+        swinx_stl::string strName;
         tostring(lpTimerName, -1, strName);
         NamedTimerObj *timer = new NamedTimerObj();
         TimerData data = { bManualReset, FALSE, {}, 0, NULL, NULL, NULL, FALSE };
@@ -941,7 +941,7 @@ struct TimerSchedEntry
 
 static std::mutex s_timerSchedMutex;
 static std::condition_variable s_timerSchedCv;
-static std::map<HANDLE, TimerSchedEntry> s_timerSched;
+static swinx_stl::map<HANDLE, TimerSchedEntry> s_timerSched;
 static bool s_timerSchedStarted = false;
 static bool s_timerSchedStop = false;
 static std::thread s_timerSchedThread;
@@ -955,7 +955,7 @@ static void timer_sched_loop()
         {
             // process is exiting: drop the scheduler's references on timers
             // that never fired, then leave (the guard below joins us)
-            std::vector<HANDLE> abandoned;
+            swinx_stl::vector<HANDLE> abandoned;
             for (auto &e : s_timerSched)
                 abandoned.push_back(e.second.hTimer);
             s_timerSched.clear();
@@ -981,7 +981,7 @@ static void timer_sched_loop()
             s_timerSchedCv.wait_until(lock, earliest);
 
         now = std::chrono::steady_clock::now();
-        std::vector<HANDLE> firedOnce;
+        swinx_stl::vector<HANDLE> firedOnce;
         for (auto it = s_timerSched.begin(); it != s_timerSched.end();)
         {
             if (it->second.due <= now)
@@ -1236,11 +1236,11 @@ class TimerQueue {
         ULONG Flags;
     };
 
-    std::map<UINT, TimerInfo> m_timers;
+    swinx_stl::map<UINT, TimerInfo> m_timers;
     UINT m_nextTimerId;
 };
 
-static std::map<HANDLE, TimerQueue *> s_timerQueues;
+static swinx_stl::map<HANDLE, TimerQueue *> s_timerQueues;
 static std::mutex s_timerQueueMutex;
 
 BOOL WINAPI DeleteTimerQueue(HANDLE hTimerQueue)
@@ -2196,7 +2196,7 @@ HANDLE CreateFileMappingA(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttributes __att
     fmData.offset.QuadPart = 0;
     fmData.size.HighPart = dwMaximumSizeHigh;
     fmData.size.LowPart = dwMaximumSizeLow;
-    std::string name(lpName ? lpName : "");
+    swinx_stl::string name(lpName ? lpName : "");
     if (name.empty())
     {
         // generate random name.
@@ -2247,7 +2247,7 @@ class MapViewMgr {
     void addMapView(const void *ptr, HANDLE handle)
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_fmviewMap.insert(std::make_pair(ptr, handle));
+        m_fmviewMap.insert(swinx_stl::make_pair(ptr, handle));
         AddHandleRef(handle);
     }
 
@@ -2272,7 +2272,7 @@ class MapViewMgr {
 
   protected:
     std::mutex m_mutex;
-    std::map<const void *, HANDLE> m_fmviewMap;
+    swinx_stl::map<const void *, HANDLE> m_fmviewMap;
 };
 
 static MapViewMgr s_mapViewMgr;

@@ -76,7 +76,7 @@ class HookMgr {
   private:
     UINT get_hook_timeout();
 
-    std::list<hook *> s_hooks[WH_MAXHOOK - WH_MINHOOK + 1];
+    swinx_stl::list<hook *> s_hooks[WH_MAXHOOK - WH_MINHOOK + 1];
     SRwLock s_mutex;
 } s_hookMgr;
 

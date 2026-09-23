@@ -1604,11 +1604,11 @@ int SConnection::ShowCursor(bool bShow) {
 }
 
 struct RawInputDeviceEntry {
-    std::string device_path;
+    swinx_stl::string device_path;
     DWORD device_type;
 };
 
-static std::map<int, RawInputDeviceEntry> s_rawInputDevices;
+static swinx_stl::map<int, RawInputDeviceEntry> s_rawInputDevices;
 static std::recursive_mutex s_rawInputMutex;
 static int s_nextDeviceId = 1;
 
@@ -1624,7 +1624,7 @@ UINT SConnection::GetRawInputDeviceInfoA(HRAWINPUT hDevice, UINT uiCommand, LPVO
         return (UINT)-1;
     UINT requiredSize = 0;
     int deviceId = (int)(intptr_t)hDevice;
-    std::string device_path;
+    swinx_stl::string device_path;
     DWORD device_type = RIM_TYPEMOUSE;
     {
         std::unique_lock<std::recursive_mutex> lock(s_rawInputMutex);
@@ -1693,7 +1693,7 @@ UINT SConnection::GetRawInputDeviceInfoW(HRAWINPUT hDevice, UINT uiCommand, LPVO
         return (UINT)-1;
     UINT requiredSize = 0;
     int deviceId = (int)(intptr_t)hDevice;
-    std::string device_path;
+    swinx_stl::string device_path;
     {
         std::unique_lock<std::recursive_mutex> lock(s_rawInputMutex);
         auto it = s_rawInputDevices.find(deviceId);

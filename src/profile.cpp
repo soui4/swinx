@@ -1183,7 +1183,7 @@ INT WINAPI GetPrivateProfileSectionA(LPCSTR section, LPSTR buffer, DWORD len, LP
             /* buffer_tmp holds NUL-separated "key=value" entries, double-NUL
                terminated; tostring_filter converts such multi-strings with
                the embedded NULs intact (str itself ends with one NUL) */
-            std::string str;
+            swinx_stl::string str;
             if (tostring_filter(buffer_tmp, str))
             {
                 ret = (int)str.size();
@@ -1390,7 +1390,7 @@ DWORD WINAPI GetPrivateProfileSectionNamesA(LPSTR buffer, DWORD size, LPCSTR fil
             /* tmp holds NUL-separated section names, double-NUL terminated;
                tostring_filter converts such multi-strings with the embedded
                NULs intact (str itself ends with one NUL) */
-            std::string str;
+            swinx_stl::string str;
             if (tostring_filter(tmp, str))
             {
                 ret = (DWORD)str.size();

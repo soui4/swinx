@@ -328,7 +328,7 @@ public:
         return m_hWndSet.find(hWnd) != m_hWndSet.end();
     }
 private:
-    std::set<HWND> m_hWndSet;
+    swinx_stl::set<HWND> m_hWndSet;
     std::recursive_mutex m_mutex;
 };
 
@@ -2844,7 +2844,7 @@ static BOOL EnumDataOjbectCb(WORD fmt, HGLOBAL hMem, NSPasteboardItem *item){
             if([[item types] containsObject:NSPasteboardTypeString])
                 return TRUE;
             const wchar_t *src = (const wchar_t *)GlobalLock(hMem);
-            std::string str;
+            swinx_stl::string str;
             tostring(src, -1, str);
             GlobalUnlock(hMem);
             [item setString:[NSString stringWithUTF8String:str.c_str()] forType:NSPasteboardTypeString];
@@ -3108,7 +3108,7 @@ static NSCursor *cursorFromHCursor(HCURSOR cursor){
         case CIDC_HELP:
             return [NSCursor pointingHandCursor];
     }
-    static std::map<HCURSOR, NSCursor *> s_cursorMap;
+    static swinx_stl::map<HCURSOR, NSCursor *> s_cursorMap;
     auto it = s_cursorMap.find(cursor);
     if(it != s_cursorMap.end())
         return it->second;
@@ -3116,7 +3116,7 @@ static NSCursor *cursorFromHCursor(HCURSOR cursor){
     POINT hotSpot = GetIconHotSpot(cursor);
     int height = nsImage.size.height;
     NSCursor *nsCursor = [[NSCursor alloc] initWithImage:nsImage hotSpot:NSMakePoint(hotSpot.x, hotSpot.y)];
-    s_cursorMap.insert(std::make_pair(cursor, nsCursor));
+    s_cursorMap.insert(swinx_stl::make_pair(cursor, nsCursor));
     return nsCursor;
     }
 }

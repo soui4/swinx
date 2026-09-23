@@ -260,16 +260,16 @@ public:
       HWND _GetParent(HWND hWnd);
   private:
       CountMutex m_mutex;
-      std::list<Msg*> m_msgQueue;
+      swinx_stl::list<Msg*> m_msgQueue;
       Msg * m_msgPeek=nullptr;
       bool m_bMsgNeedFree = false;
-      std::list<TimerInfo> m_lstTimer;
+      swinx_stl::list<TimerInfo> m_lstTimer;
       bool m_bBlockTimer = false;
       uint64_t m_tsLastMsg=-1;
       std::atomic<bool> m_bQuit;
 
-      std::list<Msg *> m_msgStack; // msg stack that are handling
-      std::list<CbTask *> m_lstCallbackTask;
+      swinx_stl::list<Msg *> m_msgStack; // msg stack that are handling
+      swinx_stl::list<CbTask *> m_lstCallbackTask;
       
       tid_t m_tid;
 
@@ -284,7 +284,7 @@ public:
       UINT m_caretBlinkTime = TS_CARET;
       SClipboard* m_clipboard;
       STrayIconMgr* m_trayIconMgr;
-      std::map<HWND,HCURSOR>          m_wndCursor;
+      swinx_stl::map<HWND,HCURSOR>          m_wndCursor;
       int m_cursorCount = 1;//default cursor is visible
 };
 

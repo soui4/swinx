@@ -97,7 +97,7 @@ const uint8_t *WindResResourceParser::FindDataSection() const
 }
 
 // 递归解析资源目录
-void WindResResourceParser::ParseResourceDirectory(const uint8_t *dirBase, uint32_t dirOffset, const std::vector<std::wstring> &typePath, std::vector<ResourceInfo> &resources, int depth)
+void WindResResourceParser::ParseResourceDirectory(const uint8_t *dirBase, uint32_t dirOffset, const swinx_stl::vector<std::wstring> &typePath, swinx_stl::vector<ResourceInfo> &resources, int depth)
 {
     // 防止无限递归（正常情况下最多3层）
     const int MAX_RESOURCE_DEPTH = 3;
@@ -153,7 +153,7 @@ void WindResResourceParser::ParseResourceDirectory(const uint8_t *dirBase, uint3
             currentName = std::wstring(buf);
         }
 
-        std::vector<std::wstring> newPath = typePath;
+        swinx_stl::vector<std::wstring> newPath = typePath;
         newPath.push_back(currentName);
 
         if (entry.DataIsDirectory)
@@ -226,8 +226,8 @@ BOOL WindResResourceParser::Parse()
         return FALSE;
     }
     // 开始递归解析
-    std::vector<ResourceInfo> resources;
-    ParseResourceDirectory(resourceBase, 0, std::vector<std::wstring>(), resources);
+    swinx_stl::vector<ResourceInfo> resources;
+    ParseResourceDirectory(resourceBase, 0, swinx_stl::vector<std::wstring>(), resources);
 
     SLOG_STMI() << "parse done, found " << resources.size() << " resources";
 #ifdef _DEBUG
@@ -329,7 +329,7 @@ BOOL WindResResourceParser::EnumResourceTypesA(HMODULE hModule, ENUMRESTYPEPROCA
     // 直接遍历第一级（类型）
     for (const auto &typeEntry : m_resourceMap)
     {
-        std::string strType;
+        swinx_stl::string strType;
         tostring(typeEntry.first.c_str(), typeEntry.first.length(), strType);
         if (!lpEnumFunc(hModule, (char *)strType.c_str(), lParam))
         {
@@ -379,7 +379,7 @@ BOOL WindResResourceParser::EnumResourceNamesA(HMODULE hModule, const char *lpTy
         // 遍历第二级（名称）
         for (const auto &nameEntry : typeIt->second)
         {
-            std::string name;
+            swinx_stl::string name;
             tostring(nameEntry.first.c_str(), nameEntry.first.length(), name);
             if (!lpEnumFunc(hModule, lpType, (char *)name.c_str(), lParam))
             {
@@ -652,7 +652,7 @@ void WindResResourceParser::DumpResources() const
                 const ResourceInfo &info = langEntry.second;
 
                 // 将 std::wstring 转换为 char* 进行打印
-                std::string typeNameA, nameNameA;
+                swinx_stl::string typeNameA, nameNameA;
                 tostring(typeName.c_str(), typeName.length(), typeNameA);
                 tostring(nameName.c_str(), nameName.length(), nameNameA);
 

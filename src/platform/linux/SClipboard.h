@@ -38,9 +38,9 @@ public:
 	bool isEmpty() const;
 	void lock() ;
 	void unlock() ;
-	const std::list<FormatedData*> & formatedData() const;
+	const swinx_stl::list<FormatedData*> & formatedData() const;
 protected:
-	std::list<FormatedData*> m_lstData;
+	swinx_stl::list<FormatedData*> m_lstData;
 	mutable std::recursive_mutex m_mutex;
 public:
 	HRESULT WINAPI GetData(FORMATETC* pformatetcIn,STGMEDIUM* pmedium)override;
@@ -162,7 +162,7 @@ public:
 protected:
     SConnection* m_conn;
     HWND m_hSource;
-    std::vector<uint32_t> m_lstTypes;
+    swinx_stl::vector<uint32_t> m_lstTypes;
 };
 
 class SClipboard {
@@ -197,13 +197,13 @@ public:
 	void handleSelectionClear(xcb_selection_clear_event_t *e);
     void incrTransactionPeeker(xcb_generic_event_t *ge, bool &accepted);
 
-	std::shared_ptr<std::vector<char>> getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom, int timeout);
-	std::shared_ptr<std::vector<char>> getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property,int timeout,  xcb_timestamp_t time);
+	std::shared_ptr<swinx_stl::vector<char>> getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom, int timeout);
+	std::shared_ptr<swinx_stl::vector<char>> getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property,int timeout,  xcb_timestamp_t time);
 protected:
     xcb_window_t getSelectionOwner(xcb_atom_t atom) const;	  
 	xcb_generic_event_t* waitForClipboardEvent(xcb_window_t win, int type, int timeout, xcb_atom_t selAtom,bool checkManager = false);
-	void clipboardReadIncrementalProperty(xcb_window_t win, xcb_atom_t property, xcb_atom_t selection, int nbytes, bool nullterm, std::shared_ptr<std::vector<char>> buf);
-	bool clipboardReadProperty(xcb_window_t win, xcb_atom_t property, bool deleteProperty, std::vector<char>* buffer, int* size, xcb_atom_t* type, int* format);
+	void clipboardReadIncrementalProperty(xcb_window_t win, xcb_atom_t property, xcb_atom_t selection, int nbytes, bool nullterm, std::shared_ptr<swinx_stl::vector<char>> buf);
+	bool clipboardReadProperty(xcb_window_t win, xcb_atom_t property, bool deleteProperty, swinx_stl::vector<char>* buffer, int* size, xcb_atom_t* type, int* format);
 	xcb_atom_t sendTargetsSelection(IDataObject* d, xcb_window_t window, xcb_atom_t property);
 	xcb_atom_t sendSelection(IDataObject* d, xcb_atom_t target, xcb_window_t window, xcb_atom_t property);
 

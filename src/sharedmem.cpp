@@ -29,14 +29,14 @@
 
 struct AndroidSharedMemEntry
 {
-    std::string name;
+    swinx_stl::string name;
     int fd;
     size_t size;
     int refCount;
 };
 
 static std::mutex s_androidShmMutex;
-static std::map<std::string, AndroidSharedMemEntry *> s_androidShmRegistry;
+static swinx_stl::map<swinx_stl::string, AndroidSharedMemEntry *> s_androidShmRegistry;
 
 static int android_shm_open(const char *name, int oflag, mode_t mode)
 {

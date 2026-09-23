@@ -145,13 +145,13 @@ namespace
         bool bRoot = false;  // /org/a11y/atspi/accessible/root
         bool bWindow = false; // 顶层窗口节点（OBJID_WINDOW）
         HWND hwnd = 0;
-        std::vector<LONG> chain; // client 之后的 MSAA child id 链（1-based）
+        swinx_stl::vector<LONG> chain; // client 之后的 MSAA child id 链（1-based）
     };
 
     /* 前向声明（定义在本文件后半部分） */
-    std::vector<HWND> TopLevelWindows();
+    swinx_stl::vector<HWND> TopLevelWindows();
     long NodeIndexInParent(const AccNode &node);
-    std::string NodePath(const AccNode &node);
+    swinx_stl::string NodePath(const AccNode &node);
     DBusHandlerResult AtSpiMessageFunction(DBusConnection *conn, DBusMessage *msg, void *userData);
     void CALLBACK AtSpiTimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
     void CALLBACK AtSpiWinEventHook(HWINEVENTHOOK hHook, DWORD event, HWND hwnd, LONG idObject,
@@ -162,9 +162,9 @@ namespace
     /* ------------------------------------------------------------------ */
 
     /* swinx 的 WCHAR 在 Linux 是 4 字节（UTF-32），不能按 UTF-16 处理。 */
-    std::string Utf8FromBstr(BSTR bstr)
+    swinx_stl::string Utf8FromBstr(BSTR bstr)
     {
-        std::string out;
+        swinx_stl::string out;
         if (!bstr)
             return out;
         const unsigned int *u = reinterpret_cast<const unsigned int *>(bstr);
@@ -208,9 +208,9 @@ namespace
         ACC_STR_DEFAULTACTION
     };
 
-    std::string GetAccString(IAccessible *acc, LONG childId, AccStrField field)
+    swinx_stl::string GetAccString(IAccessible *acc, LONG childId, AccStrField field)
     {
-        std::string ret;
+        swinx_stl::string ret;
         if (!acc)
             return ret;
         VARIANT varChild;
@@ -259,13 +259,13 @@ namespace
      * ——窗口节点的 ChildCount 恒为 1，客户区根路径再追加 'c'，形成
      * w1800002c -> w1800002cc -> w1800002ccc 的无限展开（leak.log 已复现）。
      * '_' 不是十六进制字符，strtoull 会在其处停住，编码自此无歧义。 */
-    std::string NodePath(const AccNode &node)
+    swinx_stl::string NodePath(const AccNode &node)
     {
         if (node.bRoot)
             return ATSPI_PATH_ROOT;
         char buf[64];
         snprintf(buf, sizeof(buf), "w%llx", (unsigned long long)(UINT_PTR)node.hwnd);
-        std::string path = ATSPI_PATH_PREFIX + std::string(buf);
+        swinx_stl::string path = ATSPI_PATH_PREFIX + swinx_stl::string(buf);
         if (node.bWindow)
             return path;
         path += "_c";
@@ -546,7 +546,7 @@ namespace
         }
     }
 
-    void AppendMsaAStates(std::vector<unsigned int> &states, DWORD msaa)
+    void AppendMsaAStates(swinx_stl::vector<unsigned int> &states, DWORD msaa)
     {
         struct Map
         {
@@ -588,9 +588,9 @@ namespace
             states.push_back(ATSPI_STATE_SHOWING);
     }
 
-    std::vector<unsigned int> NodeStates(const AccNode &node)
+    swinx_stl::vector<unsigned int> NodeStates(const AccNode &node)
     {
-        std::vector<unsigned int> states;
+        swinx_stl::vector<unsigned int> states;
         if (node.bRoot)
         {
             states.push_back(ATSPI_STATE_ACTIVE);
@@ -650,7 +650,7 @@ namespace
         return role;
     }
 
-    std::string NodeName(const AccNode &node)
+    swinx_stl::string NodeName(const AccNode &node)
     {
         if (node.bRoot)
             return "swinx application";
@@ -658,7 +658,7 @@ namespace
         {
             char szText[512] = { 0 };
             if (::GetWindowTextA(node.hwnd, szText, sizeof(szText) - 1) > 0)
-                return std::string(szText);
+                return swinx_stl::string(szText);
             return "window";
         }
         Resolved r;
@@ -667,7 +667,7 @@ namespace
         return GetAccString(r.acc, r.childId, ACC_STR_NAME);
     }
 
-    std::string NodeDescription(const AccNode &node)
+    swinx_stl::string NodeDescription(const AccNode &node)
     {
         if (node.bRoot || node.bWindow)
             return "";
@@ -713,9 +713,9 @@ namespace
      * 并剔除失效项——销毁/隐藏/层级变化都按调用瞬间的实时状态判定，不
      * 依赖事件不丢失（tooltip 平时隐藏，天然被可见性过滤排除，符合
      * AT-SPI 不暴露不可见窗口的语义）。 */
-    std::vector<HWND> &TopLevelCandidates()
+    swinx_stl::vector<HWND> &TopLevelCandidates()
     {
-        static std::vector<HWND> s_candidates;
+        static swinx_stl::vector<HWND> s_candidates;
         return s_candidates;
     }
 
@@ -723,7 +723,7 @@ namespace
     {
         if (!hwnd)
             return;
-        std::vector<HWND> &cands = TopLevelCandidates();
+        swinx_stl::vector<HWND> &cands = TopLevelCandidates();
         for (size_t i = 0; i < cands.size(); i++)
             if (cands[i] == hwnd)
                 return;
@@ -744,9 +744,9 @@ namespace
         ::EnumWindows(CbSeedTopLevelCandidates, 0);
     }
 
-    std::vector<HWND> &TopLevelWindowsCache(std::vector<HWND> *pOut)
+    swinx_stl::vector<HWND> &TopLevelWindowsCache(swinx_stl::vector<HWND> *pOut)
     {
-        static std::vector<HWND> cache;
+        static swinx_stl::vector<HWND> cache;
         static uint64_t tsCache = 0;
         uint64_t tsNow = GetTickCount64();
         if (pOut)
@@ -755,7 +755,7 @@ namespace
              * 里对每个节点都重新校验一遍。 */
             if (tsNow - tsCache > 100 || tsCache == 0)
             {
-                std::vector<HWND> &cands = TopLevelCandidates();
+                swinx_stl::vector<HWND> &cands = TopLevelCandidates();
                 /* 自愈：候选表为空说明种子时机早于窗口创建（首次
                  * NotifyWinEvent 可能发生在宿主窗口尚未登记时）。重新枚举
                  * 一次，节流 1s；候选表非空时不走这里，无额外开销。 */
@@ -765,7 +765,7 @@ namespace
                     tsLastSeed = tsNow;
                     SeedTopLevelCandidates();
                 }
-                std::vector<HWND> wins;
+                swinx_stl::vector<HWND> wins;
                 wins.reserve(cands.size());
                 for (size_t i = 0; i < cands.size(); i++)
                 {
@@ -774,7 +774,7 @@ namespace
                         wins.push_back(h);
                 }
                 /* 顺带剔除已销毁的候选，控制候选表规模。 */
-                std::vector<HWND> alive;
+                swinx_stl::vector<HWND> alive;
                 alive.reserve(cands.size());
                 for (size_t i = 0; i < cands.size(); i++)
                     if (::IsWindow(cands[i]))
@@ -788,9 +788,9 @@ namespace
         return cache;
     }
 
-    std::vector<HWND> TopLevelWindows()
+    swinx_stl::vector<HWND> TopLevelWindows()
     {
-        std::vector<HWND> out;
+        swinx_stl::vector<HWND> out;
         TopLevelWindowsCache(&out);
         return out;
     }
@@ -828,7 +828,7 @@ namespace
         dbus_message_iter_close_container(it, &sub);
     }
 
-    void IterAppendUint32Array(DBusMessageIter *it, const std::vector<unsigned int> &vals)
+    void IterAppendUint32Array(DBusMessageIter *it, const swinx_stl::vector<unsigned int> &vals)
     {
         DBusMessageIter sub;
         dbus_message_iter_open_container(it, DBUS_TYPE_ARRAY, "u", &sub);
@@ -840,7 +840,7 @@ namespace
         dbus_message_iter_close_container(it, &sub);
     }
 
-    void IterAppendStringArray(DBusMessageIter *it, const std::vector<std::string> &vals)
+    void IterAppendStringArray(DBusMessageIter *it, const swinx_stl::vector<swinx_stl::string> &vals)
     {
         DBusMessageIter sub;
         dbus_message_iter_open_container(it, DBUS_TYPE_ARRAY, "s", &sub);
@@ -849,7 +849,7 @@ namespace
         dbus_message_iter_close_container(it, &sub);
     }
 
-    void IterAppendVariantString(DBusMessageIter *it, const std::string &val)
+    void IterAppendVariantString(DBusMessageIter *it, const swinx_stl::string &val)
     {
         DBusMessageIter sub;
         dbus_message_iter_open_container(it, DBUS_TYPE_VARIANT, "s", &sub);
@@ -937,9 +937,9 @@ namespace
                                 const char *variantType, const void *variantVal);
 
         DBusConnection *m_conn;
-        std::string m_uniqueName;
-        std::string m_desktopName;
-        std::string m_desktopPath;
+        swinx_stl::string m_uniqueName;
+        swinx_stl::string m_desktopName;
+        swinx_stl::string m_desktopPath;
         bool m_bRegistered;
         bool m_bEmbedDone;
         UINT_PTR m_timerId;
@@ -954,15 +954,15 @@ namespace
          * 由泵线程在派发间隙统一发送。 */
         struct QueuedSig
         {
-            std::string path, klass, member, detail;
+            swinx_stl::string path, klass, member, detail;
             dbus_int32_t detail1, detail2;
-            std::string variantType; /* "" / "(so)" / "i" / "s" */
+            swinx_stl::string variantType; /* "" / "(so)" / "i" / "s" */
             dbus_int32_t iVal;
-            std::string sVal;
+            swinx_stl::string sVal;
             AccNode node;
         };
         std::mutex m_sigMtx;
-        std::deque<QueuedSig> m_sigQueue;
+        swinx_stl::deque<QueuedSig> m_sigQueue;
         void DrainSignals();
 
         /* 用可重入锁：Pump 处理 D-Bus 请求时会调用 MSAA，而后者可能经过
@@ -1037,7 +1037,7 @@ namespace
         DBusError err;
         dbus_error_init(&err);
 
-        std::string address;
+        swinx_stl::string address;
         const char *envAddr = getenv("AT_SPI_BUS");
         if (envAddr && envAddr[0])
         {
@@ -1278,7 +1278,7 @@ namespace
     {
         if (!m_conn)
             return;
-        std::deque<QueuedSig> queue;
+        swinx_stl::deque<QueuedSig> queue;
         {
             std::lock_guard<std::mutex> lock(m_sigMtx);
             m_sigQueue.swap(queue);
@@ -1305,7 +1305,7 @@ namespace
                         /* ChildrenChanged 规范要求 any 载荷为被增删子对象的 (so)
                          * 引用，否则 libatspi 会丢弃事件（缓存不更新），或按残缺
                          * 数据建树。 */
-                        std::string objPath = NodePath(q.node);
+                        swinx_stl::string objPath = NodePath(q.node);
                         DBusMessageIter subsub;
                         dbus_message_iter_open_container(&it, DBUS_TYPE_VARIANT, "(so)", &sub);
                         dbus_message_iter_open_container(&sub, DBUS_TYPE_STRUCT, NULL, &subsub);
@@ -1439,7 +1439,7 @@ namespace
                               const char *detail, dbus_int32_t detail1, dbus_int32_t detail2,
                               const char *variantType, const void *variantVal)
     {
-        std::string path = NodePath(node);
+        swinx_stl::string path = NodePath(node);
         EmitSignalInternal(path.c_str(), klass, member, detail, detail1, detail2, variantType,
                            variantVal);
     }
@@ -1481,9 +1481,9 @@ namespace
          * （leak.log 实测 70+），对根路径的 add 广播按 hwnd 去重，200ms 内
          * 重复事件只发第一条。 */
         {
-            static std::map<HWND, uint64_t> s_lastEmit;
+            static swinx_stl::map<HWND, uint64_t> s_lastEmit;
             uint64_t now = GetTickCount64();
-            std::map<HWND, uint64_t>::iterator it = s_lastEmit.find(hwnd);
+            swinx_stl::map<HWND, uint64_t>::iterator it = s_lastEmit.find(hwnd);
             if (it != s_lastEmit.end() && now - it->second < 200)
                 return;
             s_lastEmit[hwnd] = now;
@@ -1543,16 +1543,16 @@ namespace
             T_UINT,
             T_OBJREF
         } type = T_STRING;
-        std::string str;
+        swinx_stl::string str;
         int i = 0;
         unsigned int u = 0;
-        std::string refName;
-        std::string refPath;
+        swinx_stl::string refName;
+        swinx_stl::string refPath;
     };
 
-    std::vector<std::string> NodeInterfaces(const AccNode &node)
+    swinx_stl::vector<swinx_stl::string> NodeInterfaces(const AccNode &node)
     {
-        std::vector<std::string> v;
+        swinx_stl::vector<swinx_stl::string> v;
         v.push_back(ATSPI_IFACE_ACCESSIBLE);
         if (node.bRoot)
         {
@@ -1726,13 +1726,13 @@ namespace
      * 幕左上角。X 服务器的 translate_coordinates 是唯一可信的位置来源。 */
     bool QueryXWindowOrigin(HWND hwnd, long &ox, long &oy)
     {
-        static std::map<HWND, std::pair<long, long>> s_cache;
-        static std::map<HWND, uint64_t> s_cacheTs;
+        static swinx_stl::map<HWND, swinx_stl::pair<long, long>> s_cache;
+        static swinx_stl::map<HWND, uint64_t> s_cacheTs;
         uint64_t now = GetTickCount64();
-        std::map<HWND, uint64_t>::iterator itTs = s_cacheTs.find(hwnd);
+        swinx_stl::map<HWND, uint64_t>::iterator itTs = s_cacheTs.find(hwnd);
         if (itTs != s_cacheTs.end() && now - itTs->second < 200)
         {
-            std::map<HWND, std::pair<long, long>>::iterator it = s_cache.find(hwnd);
+            swinx_stl::map<HWND, swinx_stl::pair<long, long>>::iterator it = s_cache.find(hwnd);
             if (it != s_cache.end())
             {
                 ox = it->second.first;
@@ -1752,7 +1752,7 @@ namespace
         ox = rp->dst_x;
         oy = rp->dst_y;
         free(rp);
-        s_cache[hwnd] = std::make_pair(ox, oy);
+        s_cache[hwnd] = swinx_stl::make_pair(ox, oy);
         s_cacheTs[hwnd] = now;
         return true;
     }
@@ -1896,7 +1896,7 @@ namespace
         child.hwnd = node.hwnd;
         if (node.bRoot)
         {
-            std::vector<HWND> wins = TopLevelWindows();
+            swinx_stl::vector<HWND> wins = TopLevelWindows();
             if (index < 0 || index >= (long)wins.size())
             {
                 child.bRoot = true;
@@ -1924,7 +1924,7 @@ namespace
             return -1;
         if (node.bWindow)
         {
-            std::vector<HWND> wins = TopLevelWindows();
+            swinx_stl::vector<HWND> wins = TopLevelWindows();
             for (size_t i = 0; i < wins.size(); i++)
                 if (wins[i] == node.hwnd)
                     return (long)i;
@@ -1935,7 +1935,7 @@ namespace
         return node.chain.back() - 1;
     }
 
-    void CollectTree(const AccNode &node, std::vector<AccNode> &out, int depth, size_t maxNodes)
+    void CollectTree(const AccNode &node, swinx_stl::vector<AccNode> &out, int depth, size_t maxNodes)
     {
         if (depth > 20 || out.size() >= maxNodes)
             return;
@@ -1958,9 +1958,9 @@ namespace
         /* Cache.GetItems 一次会拉出整棵树。如果每个字段都各自走一遍
          * NodeName/NodeRole/NodeStates，每个节点就要重复导航 O(字段数 × 深度)
          * 次；这里在单个节点上只解析一次 MSAA 对象，把需要的字段一次取齐。 */
-        std::string name, description;
+        swinx_stl::string name, description;
         unsigned int role = ATSPI_ROLE_UNKNOWN;
-        std::vector<unsigned int> states;
+        swinx_stl::vector<unsigned int> states;
         long childCount = 0;
 
         if (node.bRoot)
@@ -2265,7 +2265,7 @@ namespace
             DBusMessage *reply = dbus_message_new_method_return(msg);
             DBusMessageIter it;
             dbus_message_iter_init_append(reply, &it);
-            std::string foundName, foundPath;
+            swinx_stl::string foundName, foundPath;
             long count = NodeChildCount(node);
             for (long i = 0; i < count; i++)
             {
@@ -2363,7 +2363,7 @@ namespace
                 Resolved r;
                 if (ResolveNode(node, r) && r.ok)
                 {
-                    std::string action = GetAccString(r.acc, r.childId, ACC_STR_DEFAULTACTION);
+                    swinx_stl::string action = GetAccString(r.acc, r.childId, ACC_STR_DEFAULTACTION);
                     if (!action.empty())
                     {
                         DBusMessageIter item;
@@ -2409,7 +2409,7 @@ namespace
         DBusMessage *reply = dbus_message_new_method_return(msg);
         DBusMessageIter it;
         dbus_message_iter_init_append(reply, &it);
-        std::string text;
+        swinx_stl::string text;
         if (!node.bRoot && !node.bWindow)
         {
             Resolved r;
@@ -2452,7 +2452,7 @@ namespace
         }
         AccNode root;
         root.bRoot = true;
-        std::vector<AccNode> nodes;
+        swinx_stl::vector<AccNode> nodes;
         CollectTree(root, nodes, 0, 2000);
 
         DBusMessage *reply = dbus_message_new_method_return(msg);

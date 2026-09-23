@@ -28,7 +28,7 @@ struct ResourceModule
 };
 
 // Global resource database
-static std::map<HMODULE, ResourceModule> g_resourceModules;
+static swinx_stl::map<HMODULE, ResourceModule> g_resourceModules;
 static std::recursive_mutex g_resourceMutex;
 static bool g_initialized = false;
 
@@ -429,7 +429,7 @@ int WINAPI LoadStringA(HINSTANCE hInstance, UINT uID, LPSTR lpBuffer, int cchBuf
         int need = WideCharToMultiByte(CP_ACP, 0, wbuf, len, NULL, 0, NULL, NULL);
         if (need > 0)
         {
-            std::string str;
+            swinx_stl::string str;
             str.resize(need);
             if (WideCharToMultiByte(CP_ACP, 0, wbuf, len, (char *)str.data(), need, NULL, NULL) > 0)
             {

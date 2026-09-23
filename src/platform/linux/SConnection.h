@@ -263,7 +263,7 @@ public:
       void SendXdndFinish(HWND hTarget, HWND hSource, BOOL accept, DWORD dwEffect);
       xcb_atom_t clipFormat2Atom(UINT uFormat);
       uint32_t atom2ClipFormat(xcb_atom_t atom);
-      std::shared_ptr< std::vector<char>> readSelection(bool bXdnd,uint32_t fmt);
+      std::shared_ptr< swinx_stl::vector<char>> readSelection(bool bXdnd,uint32_t fmt);
 
       HWND OnWindowCreate(_Window *wnd,CREATESTRUCT *cs,int depth);
       void OnWindowDestroy(HWND hWnd,_Window *wnd);
@@ -366,23 +366,23 @@ public:
     static void xim_logger(const char *fmt, ...);
   private:
     std::mutex m_mutex4Evt;
-    std::list<xcb_generic_event_t *> m_evtQueue;
+    swinx_stl::list<xcb_generic_event_t *> m_evtQueue;
 
     mutable CountMutex m_mutex4Msg;
-    std::list<Msg *> m_msgQueue;
+    swinx_stl::list<Msg *> m_msgQueue;
     xcb_timestamp_t m_tsSelection;
     xcb_timestamp_t m_tsPrevPress[3]={-1u,-1u,-1u};    
     xcb_timestamp_t m_tsDoubleSpan = 400;
 
-    std::list<Msg *> m_msgStack; // msg stack that are handling
-    std::list<CbTask *> m_lstCallbackTask;
+    swinx_stl::list<Msg *> m_msgStack; // msg stack that are handling
+    swinx_stl::list<CbTask *> m_lstCallbackTask;
 
     Msg *m_msgPeek;
     bool m_bMsgNeedFree;
     std::thread m_trdEvtReader;
     std::atomic<bool> m_bQuit;
 
-    std::list<TimerInfo> m_lstTimer;
+    swinx_stl::list<TimerInfo> m_lstTimer;
     bool m_bBlockTimer;
     uint64_t m_tsLastMsg=-1;
     HDC m_deskDC;
@@ -394,9 +394,9 @@ public:
     HWND m_hFocus;
 
     xcb_window_t m_setting_owner=0;
-    std::map<HCURSOR, xcb_cursor_t> m_sysCursor;
-    std::map<HWND,HCURSOR>          m_wndCursor;
-    std::map<HWND,HWND>  m_mapFocus;  //map of focus window, key is the active window, value is the window that receive key input, used for restore focus when active window changed
+    swinx_stl::map<HCURSOR, xcb_cursor_t> m_sysCursor;
+    swinx_stl::map<HWND,HCURSOR>          m_wndCursor;
+    swinx_stl::map<HWND,HWND>  m_mapFocus;  //map of focus window, key is the active window, value is the window that receive key input, used for restore focus when active window changed
     SKeyboard *m_keyboard;
     SClipboard* m_clipboard;
     STrayIconMgr* m_trayIconMgr;
@@ -417,7 +417,7 @@ public:
 
 class SConnMgr {
     swinx::SRwLock m_rwLock;
-    std::map<tid_t, SConnection *> m_conns;
+    swinx_stl::map<tid_t, SConnection *> m_conns;
     HANDLE m_hHeap;
 
     friend class SConnection;

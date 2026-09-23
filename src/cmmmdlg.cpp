@@ -8,7 +8,7 @@ extern BOOL SGetOpenFileNameA(LPOPENFILENAMEA p, DlgMode mode);
 extern BOOL SChooseColor(HWND parent, const COLORREF initClr[16], COLORREF *out);
 static BOOL _GetOpenFileNameW(LPOPENFILENAMEW p, DlgMode mode)
 {
-    std::string strFilter, strCustomFilter, strFile, strFileTitle, strInitDir, strTitle, strDefExt;
+    swinx_stl::string strFilter, strCustomFilter, strFile, strFileTitle, strInitDir, strTitle, strDefExt;
     tostring_filter(p->lpstrFilter, strFilter);
     tostring(p->lpstrCustomFilter, -1, strCustomFilter);
     tostring(p->lpstrFileTitle, -1, strFileTitle);

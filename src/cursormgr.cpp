@@ -136,7 +136,7 @@ HCURSOR CursorMgr::_LoadCursor(LPCSTR lpCursorName)
         ret = (HCURSOR)LoadImageBuf((PBYTE)data.buf, data.length, IMAGE_CURSOR, 0, 0, LR_DEFAULTSIZE | LR_DEFAULTCOLOR);
         assert(ret);
         SetCursorID((HICON)ret, wId);
-        m_stdCursor.insert(std::make_pair(wId, ret));
+        m_stdCursor.insert(swinx_stl::make_pair(wId, ret));
     }
     else
     {

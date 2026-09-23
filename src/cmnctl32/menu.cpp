@@ -84,7 +84,7 @@ class SMenuItem {
 
     WCHAR m_cHotKey;
     LPCSTR m_data = nullptr;
-    std::string m_strTitle;
+    swinx_stl::string m_strTitle;
 };
 
 class CMenu : public CNativeWnd {
@@ -94,7 +94,7 @@ class CMenu : public CNativeWnd {
 
     DWORD m_dwContextHelpId;
 
-    std::vector<SMenuItem> m_lsMenuItem;
+    swinx_stl::vector<SMenuItem> m_lsMenuItem;
 
     int m_iSelItem = -1;
     int m_iHoverItem = -1;
@@ -327,7 +327,7 @@ class SMenuRunData {
     }
 
   protected:
-    std::list<CMenu *> m_lstMenu;
+    swinx_stl::list<CMenu *> m_lstMenu;
     LPTPMPARAMS m_prcRect = nullptr;
     BOOL m_bExit;
     int m_nCmdID;
@@ -1697,7 +1697,7 @@ BOOL WINAPI ModifyMenuW(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNe
 {
     if (uFlags & MFT_STRING)
     {
-        std::string str;
+        swinx_stl::string str;
         tostring(lpNewItem, -1, str);
         return ModifyMenuA(hMenu, uPosition, uFlags, uIDNewItem, str.c_str());
     }
@@ -1838,7 +1838,7 @@ BOOL WINAPI InsertMenuW(HMENU hMenu, UINT uPosition, UINT uFlags, UINT_PTR uIDNe
 {
     if ((uFlags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && lpNewItem)
     {
-        std::string str;
+        swinx_stl::string str;
         tostring(lpNewItem, -1, str);
         return InsertMenuA(hMenu, uPosition, uFlags, uIDNewItem, str.c_str());
     }
@@ -1888,7 +1888,7 @@ BOOL WINAPI SetMenuItemInfoW(HMENU hMenu, UINT item, BOOL fByPosition, LPCMENUIT
 {
     if (lpmi->fMask & MIIM_STRING)
     {
-        std::string str;
+        swinx_stl::string str;
         tostring(lpmi->dwTypeData, lpmi->cch, str);
         MENUITEMINFOA info = *(MENUITEMINFOA *)lpmi;
         info.dwTypeData = (LPSTR)str.c_str();
@@ -1933,7 +1933,7 @@ BOOL WINAPI InsertMenuItemW(HMENU hMenu, UINT item, BOOL fByPosition, LPCMENUITE
 {
     if (lpmi->fMask & MIIM_STRING)
     {
-        std::string str;
+        swinx_stl::string str;
         tostring(lpmi->dwTypeData, lpmi->cch, str);
         MENUITEMINFOA info = *(MENUITEMINFOA *)lpmi;
         info.dwTypeData = (LPSTR)str.c_str();
@@ -1954,7 +1954,7 @@ BOOL WINAPI AppendMenuW(HMENU hMenu, UINT uFlags, UINT_PTR uIDNewItem, LPCWSTR l
 {
     if ((uFlags & (MF_BITMAP | MF_OWNERDRAW)) == 0 && lpNewItem)
     {
-        std::string str;
+        swinx_stl::string str;
         tostring(lpNewItem, -1, str);
         return AppendMenuA(hMenu, uFlags, uIDNewItem, str.c_str());
     }

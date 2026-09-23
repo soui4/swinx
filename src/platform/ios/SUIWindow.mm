@@ -53,7 +53,7 @@ public:
         return m_hWndSet.find(hWnd) != m_hWndSet.end();
     }
 private:
-    std::set<HWND> m_hWndSet;
+    swinx_stl::set<HWND> m_hWndSet;
     std::recursive_mutex m_mutex;
 };
 

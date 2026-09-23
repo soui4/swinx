@@ -607,7 +607,7 @@ DWORD GetFileAttributesA(LPCSTR lpFileName)
 
 DWORD GetFileAttributesW(LPCWSTR lpFileName)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpFileName, -1, str);
     return GetFileAttributesA(str.c_str());
 }
@@ -668,14 +668,14 @@ BOOL WINAPI SetFileAttributesA(LPCSTR lpFileName, DWORD dwFileAttributes)
 
 BOOL WINAPI SetFileAttributesW(LPCWSTR lpFileName, DWORD dwFileAttributes)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpFileName, -1, str);
     return SetFileAttributesA(str.c_str(), dwFileAttributes);
 }
 
 BOOL WINAPI SetCurrentDirectoryA(LPCSTR lpPathName)
 {
-    std::string strPath = lpPathName;
+    swinx_stl::string strPath = lpPathName;
     if (strPath[strPath.length() - 1] == '/')
         strPath = strPath.substr(0, strPath.length() - 1);
     return chdir(strPath.c_str()) == 0;
@@ -683,7 +683,7 @@ BOOL WINAPI SetCurrentDirectoryA(LPCSTR lpPathName)
 
 BOOL WINAPI SetCurrentDirectoryW(LPCWSTR lpPathName)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpPathName, -1, str);
     return SetCurrentDirectoryA(str.c_str());
 }
@@ -871,7 +871,7 @@ BOOL WINAPI FindClose(HANDLE hFindFile)
  */
 HANDLE WINAPI FindFirstFileExW(const wchar_t *filename, FINDEX_INFO_LEVELS level, void *data, FINDEX_SEARCH_OPS search_op, void *filter, DWORD flags)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(filename, -1, str);
 
     WIN32_FIND_DATAW *dataW = (WIN32_FIND_DATAW *)data;
@@ -898,7 +898,7 @@ HANDLE WINAPI FindFirstFileExA(LPCSTR filename, FINDEX_INFO_LEVELS level, LPVOID
 {
     if (!filename)
         return INVALID_HANDLE_VALUE;
-    std::string strName(filename);
+    swinx_stl::string strName(filename);
     FIND_FIRST_INFO *info = NULL;
     char *name = (char *)strrchr(strName.c_str(), '/');
     if (!name || strlen(name) >= MAX_PATH + 2)
@@ -969,7 +969,7 @@ HANDLE WINAPI FindFirstFileExA(LPCSTR filename, FINDEX_INFO_LEVELS level, LPVOID
 
 BOOL WINAPI CopyFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, BOOL bFailIfExists)
 {
-    std::string strFrom, strTo;
+    swinx_stl::string strFrom, strTo;
     tostring(lpExistingFileName, -1, strFrom);
     tostring(lpNewFileName, -1, strTo);
     return CopyFileA(strFrom.c_str(), strTo.c_str(), bFailIfExists);
@@ -1026,7 +1026,7 @@ BOOL WINAPI CopyFileA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName, BOOL bFai
 
 int CopyDirW(const wchar_t *src_dir, const wchar_t *dest_dir)
 {
-    std::string strFrom, strTo;
+    swinx_stl::string strFrom, strTo;
     tostring(src_dir, -1, strFrom);
     tostring(dest_dir, -1, strTo);
     return CopyDirA(strFrom.c_str(), strTo.c_str());
@@ -1105,7 +1105,7 @@ int CopyDirA(const char *src_dir_0, const char *dest_dir)
     DIR *dir;
     struct dirent *entry;
     struct stat stat_buf;
-    std::string strSrc(src_dir_0);
+    swinx_stl::string strSrc(src_dir_0);
     // 打开源目录
     if ((dir = opendir(strSrc.c_str())) == NULL)
     {
@@ -1387,7 +1387,7 @@ BOOL WINAPI DeleteFileA(LPCSTR lpFileName)
 
 BOOL WINAPI DeleteFileW(LPCWSTR lpFileName)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpFileName, -1, str);
     return DeleteFileA(str.c_str());
 }
@@ -1465,7 +1465,7 @@ int WINAPI DelDirA(const char *path, BOOL bAllowUndo)
 
 int WINAPI DelDirW(const wchar_t *src_dir, BOOL bAllowUndo)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(src_dir, -1, str);
     return DelDirA(str.c_str(), bAllowUndo);
 }
@@ -1501,7 +1501,7 @@ BOOL WINAPI MoveFileA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName)
 }
 BOOL WINAPI MoveFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName)
 {
-    std::string nameExisting, nameNew;
+    swinx_stl::string nameExisting, nameNew;
     tostring(lpExistingFileName, -1, nameExisting);
     tostring(lpNewFileName, -1, nameNew);
     return MoveFileA(nameExisting.c_str(), nameNew.c_str());
@@ -1524,7 +1524,7 @@ BOOL WINAPI RemoveDirectoryA(LPCSTR lpPathName)
 }
 BOOL WINAPI RemoveDirectoryW(LPCWSTR lpPathName)
 {
-    std::string name;
+    swinx_stl::string name;
     tostring(lpPathName, -1, name);
     return RemoveDirectoryA(name.c_str());
 }

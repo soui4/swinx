@@ -72,6 +72,6 @@ void AttachFontFallback(cairo_t *cr, const LOGFONTA *lf);
 // Split utf8 text into per-font runs using the data attached to `cr`.
 // Always fills `runs` with at least one entry covering [0, len).
 // When nothing is attached, a single run with scaled==NULL is returned.
-void SplitTextRuns(cairo_t *cr, const char *utf8, int len, std::vector<TextRun> &runs);
+void SplitTextRuns(cairo_t *cr, const char *utf8, int len, swinx_stl::vector<TextRun> &runs);
 
 #endif //_FONT_FALLBACK_H_

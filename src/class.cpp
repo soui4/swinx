@@ -40,7 +40,7 @@ ATOM WINAPI FindAtomA(LPCSTR lpString)
 
 ATOM WINAPI FindAtomW(LPCWSTR lpString)
 {
-    std::string str;
+    swinx_stl::string str;
     tostring(lpString, -1, str);
     return FindAtomA(str.c_str());
 }

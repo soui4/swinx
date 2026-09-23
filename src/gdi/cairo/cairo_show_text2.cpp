@@ -28,7 +28,7 @@ void cairo_draw_line(cairo_t *cr, float x0, float y0, float x1, float y1)
 // positioned glyph values to outGlyphs.  Advances x/y by the run's total
 // advance.  Returns the number of glyphs appended.
 static int ShapeAppend(cairo_scaled_font_t *font, const char *str, int len,
-                       double &x, double &y, std::vector<cairo_glyph_t> &outGlyphs)
+                       double &x, double &y, swinx_stl::vector<cairo_glyph_t> &outGlyphs)
 {
     cairo_glyph_t stack_glyphs[CAIRO_STACK_ARRAY_LENGTH(cairo_glyph_t)];
     cairo_glyph_t *glyphs = stack_glyphs;
@@ -52,7 +52,7 @@ static int ShapeAppend(cairo_scaled_font_t *font, const char *str, int len,
 
 size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxWidth)
 {
-    std::vector<TextRun> runs;
+    swinx_stl::vector<TextRun> runs;
     SplitTextRuns(cr, utf8, (int)length, runs);
     cairo_scaled_font_t *primary = cairo_get_scaled_font(cr);
     cairo_text_extents_t extents;
@@ -108,7 +108,7 @@ void cairo_show_text2(cairo_t *cr, const char *text, int len)
     if (len <= 0)
         return;
 
-    std::vector<TextRun> runs;
+    swinx_stl::vector<TextRun> runs;
     SplitTextRuns(cr, text, len, runs);
 
     has_show_text_glyphs = cairo_surface_has_show_text_glyphs(cairo_get_target(cr));
@@ -171,7 +171,7 @@ int cairo_text_extents2(cairo_t *cr, const char *utf8, int len, cairo_text_exten
     memset(extents, 0, sizeof(*extents));
     if (len == 0)
         return 0;
-    std::vector<TextRun> runs;
+    swinx_stl::vector<TextRun> runs;
     SplitTextRuns(cr, utf8, len, runs);
     cairo_scaled_font_t *primary = cairo_get_scaled_font(cr);
     int numGlyphs = 0;
@@ -181,7 +181,7 @@ int cairo_text_extents2(cairo_t *cr, const char *utf8, int len, cairo_text_exten
     for (size_t r = 0; r < runs.size(); r++)
     {
         cairo_scaled_font_t *font = runs[r].scaled ? runs[r].scaled : primary;
-        std::vector<cairo_glyph_t> glyphs;
+        swinx_stl::vector<cairo_glyph_t> glyphs;
         int n = ShapeAppend(font, utf8 + runs[r].offset, runs[r].len, x, y, glyphs);
         if (n > 0)
         {
@@ -229,7 +229,7 @@ int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_ex
         len = strlen(utf8);
     if (len == 0)
         return 0;
-    std::vector<TextRun> runs;
+    swinx_stl::vector<TextRun> runs;
     SplitTextRuns(cr, utf8, len, runs);
     cairo_scaled_font_t *primary = cairo_get_scaled_font(cr);
     memset(extents, 0, sizeof(*extents));
@@ -242,7 +242,7 @@ int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_ex
     for (size_t r = 0; r < runs.size(); r++)
     {
         cairo_scaled_font_t *font = runs[r].scaled ? runs[r].scaled : primary;
-        std::vector<cairo_glyph_t> glyphs;
+        swinx_stl::vector<cairo_glyph_t> glyphs;
         int n = ShapeAppend(font, utf8 + runs[r].offset, runs[r].len, x, y, glyphs);
         if (n <= 0)
             continue;
@@ -278,7 +278,7 @@ void cairo_text_path2(cairo_t *cr, const char *utf8, int length)
     if (length == 0)
         return;
 
-    std::vector<TextRun> runs;
+    swinx_stl::vector<TextRun> runs;
     SplitTextRuns(cr, utf8, length, runs);
 
     // Get current point for glyph positioning

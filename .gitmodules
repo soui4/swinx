@@ -1,0 +1,3 @@
+[submodule "thirdparty/ustl"]
+	path = thirdparty/ustl
+	url = https://gitee.com/setoutsoft/ustl

@@ -126,7 +126,7 @@ bool SMimeData::isEmpty() const
     return m_lstData.empty();
 }
 
-const std::list<FormatedData *> &SMimeData::formatedData() const
+const swinx_stl::list<FormatedData *> &SMimeData::formatedData() const
 {
     return m_lstData;
 }
@@ -176,7 +176,7 @@ HRESULT SMimeData::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
             DROPFILES *dropFiles = (DROPFILES *)src;
             const char *strBuf = (const char *)src+dropFiles->pFiles;
             int srcSize = GlobalSize(it->data) - dropFiles->pFiles;
-            std::string str;
+            swinx_stl::string str;
             if(dropFiles->fWide)
             {
                 tostring_filter((const wchar_t*)strBuf, str);
@@ -263,7 +263,7 @@ void SDataObjectProxy::fetchDataTypeList()
 {
     SLOG_STMI()<<"fetchDataTypeList";
     m_lstTypes.clear();
-    std::shared_ptr<std::vector<char>> data = m_conn->getClipboard()->getDataInFormat(m_conn->atoms.CLIPBOARD, m_conn->atoms.TARGETS,SClipboard::kReadFormatTimeout);
+    std::shared_ptr<swinx_stl::vector<char>> data = m_conn->getClipboard()->getDataInFormat(m_conn->atoms.CLIPBOARD, m_conn->atoms.TARGETS,SClipboard::kReadFormatTimeout);
     if (data)
     {
         const char *buf = data->data();
@@ -292,7 +292,7 @@ HRESULT SDataObjectProxy::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
             return DV_E_FORMATETC;
         bHDROP = TRUE;
     }
-    std::shared_ptr<std::vector<char>> buf = m_conn->readSelection(isXdnd(), fmtIn.cfFormat);
+    std::shared_ptr<swinx_stl::vector<char>> buf = m_conn->readSelection(isXdnd(), fmtIn.cfFormat);
     if (!buf)
         return DV_E_DVASPECT;
     size_t bufLen = buf->size();
@@ -318,14 +318,14 @@ HRESULT SDataObjectProxy::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium)
 
 //---------------------------------------------------------------------------
 class INCRTransaction;
-typedef std::map<xcb_window_t, INCRTransaction *> TransactionMap;
+typedef swinx_stl::map<xcb_window_t, INCRTransaction *> TransactionMap;
 static __thread TransactionMap *transactions = 0;
 static VOID CALLBACK OnClipboardTimeout(HWND hWnd, UINT msg, UINT_PTR timerId, DWORD ts);
 
 #define INCR_DEBUG 0
 class INCRTransaction {
   public:
-    INCRTransaction(SConnection *c, xcb_window_t w, xcb_atom_t p, std::shared_ptr<std::vector<char>> d, uint32_t inc, xcb_atom_t t, int to)
+    INCRTransaction(SConnection *c, xcb_window_t w, xcb_atom_t p, std::shared_ptr<swinx_stl::vector<char>> d, uint32_t inc, xcb_atom_t t, int to)
         : conn(c)
         , win(w)
         , property(p)
@@ -345,7 +345,7 @@ class INCRTransaction {
             transactions = new TransactionMap;
             conn->getClipboard()->setProcessIncr(true);
         }
-        transactions->insert(std::make_pair(win, this));
+        transactions->insert(swinx_stl::make_pair(win, this));
         abort_timer = SetTimer(0, 0, timeout, OnClipboardTimeout);
     }
 
@@ -419,7 +419,7 @@ class INCRTransaction {
     SConnection *conn;
     xcb_window_t win;
     xcb_atom_t property;
-    std::shared_ptr<std::vector<char>> data;
+    std::shared_ptr<swinx_stl::vector<char>> data;
     uint32_t increment;
     xcb_atom_t target;
     int timeout;
@@ -511,7 +511,7 @@ static inline int maxSelectionIncr(xcb_connection_t *c)
     return (l > 65536 ? 65536 * 4 : l * 4) - 100;
 }
 
-bool SClipboard::clipboardReadProperty(xcb_window_t win, xcb_atom_t property, bool deleteProperty, std::vector<char> *buffer, int *size, xcb_atom_t *type, int *format)
+bool SClipboard::clipboardReadProperty(xcb_window_t win, xcb_atom_t property, bool deleteProperty, swinx_stl::vector<char> *buffer, int *size, xcb_atom_t *type, int *format)
 {
     int maxsize = maxSelectionIncr(xcb_connection());
     unsigned long bytes_left; // bytes_after
@@ -604,7 +604,7 @@ bool SClipboard::clipboardReadProperty(xcb_window_t win, xcb_atom_t property, bo
 xcb_atom_t SClipboard::sendTargetsSelection(IDataObject *d, xcb_window_t window, xcb_atom_t property)
 {
     std::unique_lock<std::recursive_mutex> lock(m_mutex);
-    std::vector<xcb_atom_t> types;
+    swinx_stl::vector<xcb_atom_t> types;
     IEnumFORMATETC *enumFmt;
     if (d->EnumFormatEtc(DATADIR_GET, &enumFmt) == S_OK)
     {
@@ -675,7 +675,7 @@ xcb_atom_t SClipboard::sendSelection(IDataObject *d, xcb_atom_t target, xcb_wind
     if (len > (size_t)increment && allow_incr)
     {
         uint32_t bytes = increment;
-        std::shared_ptr<std::vector<char>> data = std::make_shared<std::vector<char>>(bytes);
+        std::shared_ptr<swinx_stl::vector<char>> data = std::make_shared<swinx_stl::vector<char>>(bytes);
         const char *src = (const char *)GlobalLock(hData);
         memcpy(data->data(), src, bytes);
         GlobalUnlock(hData);
@@ -739,7 +739,7 @@ void SClipboard::handleSelectionRequest(xcb_selection_request_event_t *req)
 
     if (req->target == m_conn->atoms.MULTIPLE)
     {
-        std::vector<char> multi_data;
+        swinx_stl::vector<char> multi_data;
         if (req->property == XCB_NONE || !clipboardReadProperty(req->requestor, req->property, false, &multi_data, 0, &multi_type, &multi_format) || multi_format != 32)
         {
             // MULTIPLE property not formatted correctly
@@ -1008,17 +1008,17 @@ void SClipboard::flushClipboard()
 bool SClipboard::hasFormat(UINT fmt)
 {
     // fatch formats
-    std::shared_ptr<std::vector<char>> data = getDataInFormat(m_conn->atoms.CLIPBOARD, m_conn->atoms.TARGETS,kReadFormatTimeout);
+    std::shared_ptr<swinx_stl::vector<char>> data = getDataInFormat(m_conn->atoms.CLIPBOARD, m_conn->atoms.TARGETS,kReadFormatTimeout);
     if (data)
     {
         xcb_atom_t fmtAtom = m_conn->clipFormat2Atom(fmt);
         const xcb_atom_t *buf = (const xcb_atom_t *)data->data();
         size_t len = data->size()/sizeof(xcb_atom_t);
-        std::vector<xcb_atom_t> atoms(buf,buf+len);
+        swinx_stl::vector<xcb_atom_t> atoms(buf,buf+len);
         if(std::find(atoms.begin(),atoms.end(),fmtAtom) != atoms.end())
             return true;
         if(fmt == CF_HDROP){
-            const std::vector<xcb_atom_t> & txtAtoms = m_conn->atoms.textAtoms();
+            const swinx_stl::vector<xcb_atom_t> & txtAtoms = m_conn->atoms.textAtoms();
             for(auto & txtAtom : txtAtoms){
                 if(std::find(atoms.begin(),atoms.end(),txtAtom) != atoms.end()){
                     return true;
@@ -1039,7 +1039,7 @@ HANDLE SClipboard::getClipboardData(UINT fmt)
     }
     BOOL bMockHdrop = FALSE;
     xcb_atom_t fmtAtom = m_conn->clipFormat2Atom(fmt);
-    std::shared_ptr<std::vector<char>> buf = getDataInFormat(m_conn->atoms.CLIPBOARD, fmtAtom, kWaitTimeout);
+    std::shared_ptr<swinx_stl::vector<char>> buf = getDataInFormat(m_conn->atoms.CLIPBOARD, fmtAtom, kWaitTimeout);
     if (!buf || buf->empty())
     {
         if(fmt == CF_HDROP){
@@ -1093,7 +1093,7 @@ HANDLE SClipboard::setClipboardData(UINT uFormat, HANDLE hMem)
         // convert to utf8
         const wchar_t *src = (const wchar_t *)GlobalLock(hMem);
         size_t len = GlobalSize(hMem) / sizeof(wchar_t);
-        std::string str;
+        swinx_stl::string str;
         tostring(src, len, str);
         GlobalUnlock(hMem);
         hMem = GlobalReAlloc(hMem, str.length()+1, 0);
@@ -1142,16 +1142,16 @@ BOOL SClipboard::closeClipboard()
     return TRUE;
 }
 
-std::shared_ptr<std::vector<char>> SClipboard::getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom, int timeout)
+std::shared_ptr<swinx_stl::vector<char>> SClipboard::getDataInFormat(xcb_atom_t modeAtom, xcb_atom_t fmtAtom, int timeout)
 {
     return getSelection(modeAtom, fmtAtom, m_conn->atoms.SO_SELECTION,timeout, 0);
 }
 
-static std::shared_ptr<std::vector<char>> _getSelectionFromThis(SConnection *pConn, IDataObject *pDo, xcb_atom_t fmtAtom){
-    std::shared_ptr<std::vector<char>> buf = std::make_shared<std::vector<char>>();
+static std::shared_ptr<swinx_stl::vector<char>> _getSelectionFromThis(SConnection *pConn, IDataObject *pDo, xcb_atom_t fmtAtom){
+    std::shared_ptr<swinx_stl::vector<char>> buf = std::make_shared<swinx_stl::vector<char>>();
     if (fmtAtom == pConn->atoms.TARGETS)
     {
-        std::vector<xcb_atom_t> types;
+        swinx_stl::vector<xcb_atom_t> types;
         IEnumFORMATETC *enumFmt;
         if (pDo->EnumFormatEtc(DATADIR_GET, &enumFmt) == S_OK)
         {
@@ -1186,7 +1186,7 @@ static std::shared_ptr<std::vector<char>> _getSelectionFromThis(SConnection *pCo
     return buf;
 }
 
-std::shared_ptr<std::vector<char>> SClipboard::getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property, int timeout, xcb_timestamp_t time)
+std::shared_ptr<swinx_stl::vector<char>> SClipboard::getSelection(xcb_atom_t selection, xcb_atom_t fmtAtom, xcb_atom_t property, int timeout, xcb_timestamp_t time)
 {
     if(selection == m_conn->atoms.CLIPBOARD){
         xcb_window_t owner = getClipboardOwner();
@@ -1210,7 +1210,7 @@ std::shared_ptr<std::vector<char>> SClipboard::getSelection(xcb_atom_t selection
     bool no_selection = !ge || ((xcb_selection_notify_event_t *)ge)->property == XCB_NONE;
     free(ge);
 
-    std::shared_ptr<std::vector<char>> buf = std::make_shared<std::vector<char>>();
+    std::shared_ptr<swinx_stl::vector<char>> buf = std::make_shared<swinx_stl::vector<char>>();
 
     if (no_selection)
     {
@@ -1219,7 +1219,7 @@ std::shared_ptr<std::vector<char>> SClipboard::getSelection(xcb_atom_t selection
     }    
 
     xcb_atom_t type;
-    std::vector<char> buf2;
+    swinx_stl::vector<char> buf2;
     if (clipboardReadProperty(m_requestor, property, true, &buf2, 0, &type, 0))
     {
         if (type == m_conn->atoms.INCR)
@@ -1348,9 +1348,9 @@ xcb_generic_event_t *SClipboard::waitForClipboardEvent(xcb_window_t win, int typ
     return nullptr;
 }
 
-void SClipboard::clipboardReadIncrementalProperty(xcb_window_t win, xcb_atom_t property, xcb_atom_t selection, int nbytes __attribute__((unused)), bool nullterm __attribute__((unused)), std::shared_ptr<std::vector<char>> bufOut)
+void SClipboard::clipboardReadIncrementalProperty(xcb_window_t win, xcb_atom_t property, xcb_atom_t selection, int nbytes __attribute__((unused)), bool nullterm __attribute__((unused)), std::shared_ptr<swinx_stl::vector<char>> bufOut)
 {
-    std::vector<char> tmp_buf;
+    swinx_stl::vector<char> tmp_buf;
     xcb_timestamp_t prev_time = m_incr_receive_time;
 
     for (;;)

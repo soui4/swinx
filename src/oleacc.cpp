@@ -107,7 +107,7 @@ class SAccHandleTable {
     IUnknown *Lookup(LONG handle, WPARAM wParam)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        std::map<LONG, Entry>::iterator it = m_byHandle.find(handle);
+        swinx_stl::map<LONG, Entry>::iterator it = m_byHandle.find(handle);
         if (it == m_byHandle.end())
             return NULL;
         if (it->second.wParam != wParam)
@@ -126,7 +126,7 @@ class SAccHandleTable {
     };
     std::mutex m_mutex;
     LONG m_next = 1;
-    std::map<LONG, Entry> m_byHandle;
+    swinx_stl::map<LONG, Entry> m_byHandle;
 };
 
 SAccHandleTable &AccTable()
@@ -158,7 +158,7 @@ std::mutex &EventHookMutex()
     static std::mutex mtx;
     return mtx;
 }
-std::vector<WinEventHookEntry> g_winEventHooks;
+swinx_stl::vector<WinEventHookEntry> g_winEventHooks;
 HWINEVENTHOOK g_nextHook = (HWINEVENTHOOK)1;
 
 /* 待派发事件队列：NotifyWinEvent 只入队（与 user32 一样立即返回），
@@ -180,7 +180,7 @@ struct PendingWinEvent
      * 列、泄漏给之后注册的钩子，leak.log 的 unhooked_is_safe 失败即此。）
      * 已入队的事件不受随后注销影响，照常投递（与测试固化的"已入队的事
      * 件不受影响"口径一致）。 */
-    std::vector<WinEventHookEntry> matched;
+    swinx_stl::vector<WinEventHookEntry> matched;
 };
 
 #define OLEACC_EVENT_QUEUE_CAP 512
@@ -190,7 +190,7 @@ std::mutex &PendingEventMutex()
     static std::mutex mtx;
     return mtx;
 }
-std::vector<PendingWinEvent> g_pendingWinEvents;
+swinx_stl::vector<PendingWinEvent> g_pendingWinEvents;
 
 /* 防重入：钩子回调里可能再调 PeekMessage（模态循环/测试泵），此时不再
  * 嵌套派发，剩余事件留给下一轮泵处理。 */
@@ -198,9 +198,9 @@ thread_local bool t_inDispatchWinEvents = false;
 
 /* 计算事件产生时刻匹配的钩子快照（user32 语义：接收者在事件发出时确定，
  * 而非派发时再匹配）。 */
-std::vector<WinEventHookEntry> SnapshotWinEventMatches(const PendingWinEvent &ev)
+swinx_stl::vector<WinEventHookEntry> SnapshotWinEventMatches(const PendingWinEvent &ev)
 {
-    std::vector<WinEventHookEntry> matched;
+    swinx_stl::vector<WinEventHookEntry> matched;
     std::lock_guard<std::mutex> lock(EventHookMutex());
     for (size_t i = 0; i < g_winEventHooks.size(); i++)
     {
