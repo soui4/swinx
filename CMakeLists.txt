@@ -29,6 +29,33 @@ else()
 include(linux.cmake)
 endif()
 
+# ---- uSTL substitution (swinx-internal container/string replacement) --------
+# Moved out of the top-level SOUI CMake so the SOUI layer stays uSTL-free.
+# OFF by default => zero behaviour change; the mechanical replacement in swinx
+# source resolves swinx_stl:: to std:: either way. When swinx/thirdparty/ustl is
+# already built as the 'ustl' target (e.g. the FreeRTOS platform config), that
+# config owns the wiring and this block is skipped (see the NOT TARGET guard).
+option(SOUI_USE_USTL "Substitute swinx std containers/strings with uSTL" OFF)
+if(SOUI_USE_USTL AND NOT TARGET ustl)
+    if(NOT DEFINED USTL_INCLUDE_DIR)
+        # Default matches a sibling checkout: ../ustl relative to soui4.
+        set(USTL_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/../ustl" CACHE PATH "uSTL include dir (must contain ustl/ustl.h)")
+    endif()
+    if(NOT DEFINED USTL_LIBRARY)
+        set(USTL_LIBRARY "${USTL_INCLUDE_DIR}/libustl.a" CACHE FILEPATH "uSTL static library")
+    endif()
+    if(NOT EXISTS "${USTL_INCLUDE_DIR}/ustl/ustl.h")
+        message(FATAL_ERROR "SOUI_USE_USTL=ON but <ustl/ustl.h> not found under ${USTL_INCLUDE_DIR}. "
+            "Build/install uSTL so its headers land in a 'ustl/' subdir "
+            "(e.g. copy *.h into ${USTL_INCLUDE_DIR}/ustl/), then re-run. "
+            "See doc/SOUI-FreeRTOS可行性分析报告 for the exact steps.")
+    endif()
+    include_directories(${USTL_INCLUDE_DIR})
+    add_definitions(-DSOUI_USE_USTL)
+    set(SOUI_USTL_LIB ${USTL_LIBRARY} CACHE INTERNAL "uSTL static lib for swinx")
+    message(STATUS "SOUI_USE_USTL=ON  uSTL headers: ${USTL_INCLUDE_DIR}  lib: ${USTL_LIBRARY}")
+endif()
+
 if(SOUI_ENABLE_CORE_LIB)
 	target_compile_options(swinx PRIVATE -fPIC)
 endif()

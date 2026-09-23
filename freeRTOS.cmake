@@ -22,8 +22,10 @@
 # =============================================================================
 
 # ---- uSTL (swinx/thirdparty/ustl submodule, built with CMake) ----------------
-# Self-contained wiring: the top-level SOUI_USE_USTL block runs BEFORE
-# add_subdirectory(swinx), so we cannot rely on it. Force it here.
+# Self-contained wiring: this platform config builds the 'ustl' target and
+# forces SOUI_USE_USTL ON. The generic swinx uSTL option block
+# (swinx/CMakeLists.txt) guards on NOT TARGET ustl, so it is skipped here -- no
+# need to duplicate the include/lib defaulting.
 set(SOUI_USE_USTL ON CACHE BOOL "Substitute swinx std containers/strings with uSTL" FORCE)
 
 set(USTL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ustl")
