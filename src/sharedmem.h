@@ -1,6 +1,7 @@
 #ifndef _SHARED_MEM_H_
 #define _SHARED_MEM_H_
 #include <ctypes.h>
+#if !defined(SOUI_PLATFORM_FREERTOS)
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -18,6 +19,18 @@
 #include <string.h>
 #include <stdio.h>
 #include <sys/file.h>
+#else
+// 裸金属 FreeRTOS：无多进程/文件系统，跨进程 IPC 与 fcntl 文件锁不存在。
+// 只保留进程内同步原语（TSemRwLock 走下方移动端的 mutex+cv 实现分支）。
+#include <assert.h>
+#include <string>
+#include <map>
+#include <mutex>
+#include <condition_variable>
+#include <errno.h>
+#include <string.h>
+#include <stdio.h>
+#endif
 namespace swinx{
 struct ISemRwLock
 {
@@ -30,6 +43,7 @@ struct ISemRwLock
     virtual void unlockExclusive() = 0;
 };
 
+#if !defined(SOUI_PLATFORM_FREERTOS)
 // ---------------------------------------------------------------------------
 // 进程内线程串行化辅助层（fcntl 文件锁的配套层）
 //
@@ -147,6 +161,7 @@ inline void flockGateRelease(const swinx_stl::string &path)
 {
     FlockGateTable::instance().release(path);
 }
+#endif // !SOUI_PLATFORM_FREERTOS
 
 // ---------------------------------------------------------------------------
 // TSemRwLock：swinx 唯一的读写锁实现，跨平台以同一个模板类暴露，移动端与
@@ -171,7 +186,7 @@ inline void flockGateRelease(const swinx_stl::string &path)
 // （GlobalMutex 用 TSemRwLock<1>、SharedMemory 用 TSemRwLock<kSharedNumber>），
 // 记录锁不需要显式槽位计数，故以 static_assert 引用以满足 -Wall -Wextra。
 // ---------------------------------------------------------------------------
-#if defined(__ANDROID__) || defined(__OHOS__) || defined(__IOS__)
+#if defined(__ANDROID__) || defined(__OHOS__) || defined(__IOS__) || defined(SOUI_PLATFORM_FREERTOS)
 
 // 移动端实现：进程内匿名读写锁。
 //

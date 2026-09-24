@@ -15,7 +15,7 @@ endif()
 # Explicit platform override. Empty => auto-select by CMAKE_SYSTEM_NAME (unchanged
 # Linux/macOS/OHOS/Android/iOS behaviour). Set to "freertos" to build the swinx
 # FreeRTOS port: a Linux-host compile test driven by the FreeRTOS STL-compat
-# layer in src/freertos/stl/ (no uSTL; only the missing concurrency primitives
+# layer in src/platform/freertos/stl/ (no uSTL; only the missing concurrency primitives
 # are wrapped with FreeRTOS/pthread-backed std:: types).
 set(SOUI_PLATFORM "" CACHE STRING "swinx platform override: linux|freertos (empty = auto)")
 

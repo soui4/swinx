@@ -141,6 +141,9 @@ int GetLocaleInfoA(LCID Locale __attribute__((unused)), LCTYPE LCType __attribut
     const char *locale = setlocale(LC_ALL, NULL);
     if (!locale)
         locale = "C";
+#elif defined(SOUI_PLATFORM_FREERTOS)
+    // bare metal: no OS locale; fixed "C"
+    const char *locale = "C";
 #else
 #error "Unsupported platform"
     return 0;

@@ -5,7 +5,7 @@
  * src/syncapi.cpp (Linux/Win32) on the FreeRTOS platform: that file leans on
  * pthread_rwlock_t and the full <windows.h>, neither of which exists on a
  * bare-metal arm-none-eabi toolchain. Here every primitive is backed by the
- * FreeRTOS STL shims in src/freertos/stl (which resolve <mutex>/<thread>/
+ * FreeRTOS STL shims in src/platform/freertos/stl (which resolve <mutex>/<thread>/
  * <condition_variable> to FreeRTOS-kernel objects), so swinx stays compatible
  * with FreeRTOS without changing any other platform's behaviour.
  *

@@ -72,16 +72,18 @@ typedef unsigned int UINT;
 typedef int64_t __int64;
 #endif // DEFINED_INT64
 
-typedef uint32_t ULONG;
+typedef unsigned int ULONG;
 typedef uint8_t BYTE;
 typedef uint8_t byte;
 typedef BYTE *LPBYTE;
-typedef uint32_t DWORD;
-typedef uint16_t WORD;
-typedef int32_t LONG;
+typedef unsigned int DWORD;
+typedef unsigned short WORD;
+typedef int LONG;
 typedef int64_t LONGLONG;
 typedef uint64_t ULONGLONG;
-typedef int32_t INT;
+typedef int INT; // must match the fallback at the bottom of this header; newlib
+                 // (arm-none-eabi) defines int32_t as long int, so int32_t here
+                 // would hard-conflict with the re-declaration below.
 typedef wchar_t WCHAR;
 typedef void *LPVOID;
 typedef intptr_t INT_PTR;

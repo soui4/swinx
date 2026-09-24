@@ -21,6 +21,16 @@
 
     #include "swinx_freertos_api.h"
     #include <cstddef>
+    // A real libstdc++ <mutex> pulls the pthread declarations in transitively
+    // (gthr); core swinx files (e.g. wnd.cpp) rely on that for pthread_self.
+    // newlib guards ALL pthread declarations behind _POSIX_THREADS, which is
+    // undefined on a bare-metal target, so define it here (declarations only;
+    // there is no POSIX thread implementation to link against --
+    // pthread_self itself is provided by src/platform/freertos/winobjs.cpp).
+    #ifndef _POSIX_THREADS
+        #define _POSIX_THREADS 1
+    #endif
+    #include <pthread.h>
 
     namespace std {
 

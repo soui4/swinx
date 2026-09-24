@@ -6,7 +6,7 @@
  * process-heavy parts of src/sysapi.cpp) on the FreeRTOS platform. Those rely
  * on pipes, pthreads, fork, SIGCHLD self-pipes and dlopen -- none of which
  * exist on a bare-metal arm-none-eabi toolchain. Here every object is backed by
- * the FreeRTOS STL shims in src/freertos/stl (std::mutex / std::condition_variable
+ * the FreeRTOS STL shims in src/platform/freertos/stl (std::mutex / std::condition_variable
  * / std::thread resolve to FreeRTOS-kernel objects), so swinx stays compatible
  * with FreeRTOS without changing any other platform's behaviour.
  *
@@ -679,3 +679,17 @@ int64_t WINAPI InterlockedDecrement64(int64_t volatile *v)
 }
 
 } // extern "C"
+
+// ---------------------------------------------------------------------------
+// POSIX thread bridge -- core swinx files (e.g. wnd.cpp) call pthread_self()
+// on POSIX platforms to identify the owning thread.  newlib declares the
+// pthread_t type but ships no implementation, so map it onto the FreeRTOS
+// task identity (same value GetCurrentThreadId() returns).
+// ---------------------------------------------------------------------------
+#include <pthread.h>
+
+pthread_t pthread_self(void)
+{
+    return (pthread_t)GetCurrentThreadId();
+}
+
