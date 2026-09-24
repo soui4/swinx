@@ -37,10 +37,10 @@ typedef int BOOL;
 #endif
 typedef unsigned char BOOLEAN;
 #ifndef LONG
-typedef int32_t LONG;
+typedef int LONG;
 #endif
 #ifndef DWORD
-typedef uint32_t DWORD;
+typedef unsigned int DWORD;
 #endif
 typedef void *PVOID;
 typedef void *LPVOID;

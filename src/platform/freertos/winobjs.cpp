@@ -2,30 +2,37 @@
  * swinx/platform/freertos/winobjs.cpp
  *
  * FreeRTOS implementation of the swinx Win32 *sync-object* + thread compat
- * layer. It replaces the Linux/Win32 versions (src/sysobjs.cpp + the
- * process-heavy parts of src/sysapi.cpp) on the FreeRTOS platform. Those rely
- * on pipes, pthreads, fork, SIGCHLD self-pipes and dlopen -- none of which
- * exist on a bare-metal arm-none-eabi toolchain. Here every object is backed by
- * the FreeRTOS STL shims in src/platform/freertos/stl (std::mutex / std::condition_variable
- * / std::thread resolve to FreeRTOS-kernel objects), so swinx stays compatible
- * with FreeRTOS without changing any other platform's behaviour.
+ * layer (declared in include/sysapi.h / include/wnd.h).  It replaces the
+ * Linux/Win32 versions (src/sysobjs.cpp + the process-heavy parts of
+ * src/sysapi.cpp) on the FreeRTOS platform: those rely on pipes, pthreads,
+ * fork, SIGCHLD self-pipes and dlopen -- none of which exist on a bare-metal
+ * arm-none-eabi toolchain.
  *
- *   * Event     -> std::mutex + std::condition_variable + bool signaled + bool manual
- *   * Mutex     -> FreeRTOS binary semaphore (non-recursive, matching swinx's pipe mutex)
- *   * Semaphore -> std::mutex + std::condition_variable + int count/max
+ * Framework conformance:
+ *   * All objects are wrapped in the core _Handle registry (src/handle.cpp):
+ *     HANDLE = struct _Handle*, CloseHandle()/AddHandleRef() come from the
+ *     core -- this file defines NO handle-lifecycle functions of its own.
+ *   * Object kind is encoded in _Handle::type as SYN_OBJ + kind.
+ *   * Named objects: a process-local name -> HANDLE registry (bare metal has
+ *     a single "process"); the registry keeps one reference for the lifetime
+ *     of the name, so a named object persists once created (documented
+ *     limitation -- Windows deletes named objects when the last handle
+ *     closes, we keep them until reboot).
+ *
+ * Backing primitives (FreeRTOS STL shims in src/platform/freertos/stl):
+ *   * Event     -> std::mutex + std::condition_variable + signaled/manual flags
+ *   * Mutex     -> FreeRTOS binary semaphore (non-recursive)
+ *   * Semaphore -> std::mutex + std::condition_variable + count/max
  *   * Thread    -> swinx_fr::task_create + a join semaphore + suspend counter
  *
  * KNOWN LIMITATIONS (documented, not bugs):
  *   * The condition_variable shim's notify_all() only wakes one waiter, so a
  *     manual-reset event signalled while MANY tasks are already blocked will
  *     wake one per SetEvent. The tested fun_test cases use at most one blocked
- *     waiter per event, so the contract holds for them. Waiters that poll
- *     (WaitForMultipleObjects) or re-check the flag are unaffected.
- *   * Named objects are process-local (no cross-process); the name registry is
- *     a small handle table with reference counting. This matches what the
- *     fun_test named-open cases need.
+ *     waiter per event, so the contract holds for them.
  */
-#include "winobjs.h"
+#include <windows.h>
+#include "handle.h"
 
 #include <cstring>
 #include <cstdint>
@@ -34,6 +41,8 @@
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
+#include <map>
+#include <string>
 
 #include "swinx_freertos_api.h"
 
@@ -73,8 +82,8 @@ struct ThreadObj
     LPVOID param;
 };
 
-// ---- handle table (fixed slots, ref-counted) -----------------------------
-enum ObjType
+// object kind, encoded as _Handle::type == SYN_OBJ + kind
+enum ObjKind
 {
     kEvent = 1,
     kMutex = 2,
@@ -82,30 +91,91 @@ enum ObjType
     kThread = 4
 };
 
-struct HandleEntry
+// _Handle::cbFree callbacks: plain functions, no capture.
+void free_event(void *p) { delete static_cast<EventObj *>(p); }
+void free_mutex(void *p)
 {
-    uint32_t magic;   // kMagic when live, 0 when free
-    int type;
-    int refcount;
-    char name[64];
-    void *obj;
+    MutexObj *o = static_cast<MutexObj *>(p);
+    swinx_fr::sem_delete(o->sem);
+    delete o;
+}
+void free_sem(void *p) { delete static_cast<SemObj *>(p); }
+void free_thread(void *p)
+{
+    ThreadObj *o = static_cast<ThreadObj *>(p);
+    swinx_fr::sem_delete(o->joinSem);
+    delete o;
+}
+
+FreeHandlePtr kFreeCb[] = { NULL, free_event, free_mutex, free_sem, free_thread };
+
+HANDLE make_handle(int kind, void *obj)
+{
+    return InitHandle(SYN_OBJ + kind, obj, kFreeCb[kind]);
+}
+
+// typed object accessor: NULL unless h is a live handle of the given kind
+void *obj_of(HANDLE h, int kind)
+{
+    if (!h || h == INVALID_HANDLE_VALUE || h->type != SYN_OBJ + kind)
+        return NULL;
+    return h->ptr;
+}
+
+// ---- named-object registry ----------------------------------------------
+// The lock MUST be reached through function-local statics: the bare-metal
+// startup does not run __libc_init_array, so namespace-scope objects with
+// constructors are never initialized.  Function-local statics initialize on
+// first use -- after the scheduler is running -- which the initonce test
+// already proved works.
+struct NamedRegistry
+{
+    std::mutex mtx;
+    std::map<std::string, HANDLE> byName;
 };
 
-const uint32_t kMagic = 0x48444C45u;   // "HDLE"
-const int kMaxHandles = 64;
-
-// POD table: zero-initialized in .bss. The bare-metal startup does NOT run
-// __libc_init_array, so nothing here may depend on static constructors.
-HandleEntry g_entries[kMaxHandles];
-
-// The table lock MUST be a function-local static: a namespace-scope std::mutex
-// would never be constructed on this target (no __libc_init_array). Function-
-// local statics initialize on first use -- after the scheduler is running --
-// which the initonce test already proved works.
-std::mutex &table_lock()
+NamedRegistry &named_registry()
 {
-    static std::mutex s_lock;
-    return s_lock;
+    static NamedRegistry s_reg;
+    return s_reg;
+}
+
+// create-with-name / open-by-name rule: an existing name returns the SAME
+// object with an extra reference.  On a name hit the freshly created `obj`
+// is disposed of through the same callback the handle would have used.
+HANDLE register_named(int kind, void *obj, const char *name)
+{
+    if (!name || !name[0])
+        return make_handle(kind, obj);
+
+    NamedRegistry &reg = named_registry();
+    std::lock_guard<std::mutex> lk(reg.mtx);
+    auto it = reg.byName.find(name);
+    if (it != reg.byName.end())
+    {
+        kFreeCb[kind](obj);          // dispose of the duplicate
+        AddHandleRef(it->second);
+        return it->second;
+    }
+    HANDLE h = make_handle(kind, obj);
+    if (h)
+    {
+        reg.byName[name] = h;
+        AddHandleRef(h);             // the registry's own reference
+    }
+    return h;
+}
+
+HANDLE open_named(const char *name)
+{
+    if (!name || !name[0])
+        return NULL;
+    NamedRegistry &reg = named_registry();
+    std::lock_guard<std::mutex> lk(reg.mtx);
+    auto it = reg.byName.find(name);
+    if (it == reg.byName.end())
+        return NULL;
+    return AddHandleRef(it->second);
 }
 
 // round ms -> FreeRTOS ticks (1:1 because configTICK_RATE_HZ == 1000)
@@ -131,33 +201,6 @@ inline void irq_restore(uint32_t pr)
         __asm volatile("cpsie i" ::: "memory");
 }
 
-HandleEntry *alloc_slot()
-{
-    for (int i = 0; i < kMaxHandles; ++i)
-        if (g_entries[i].magic == 0)
-            return &g_entries[i];
-    return NULL;
-}
-
-HandleEntry *entry_of(HANDLE h)
-{
-    HandleEntry *e = static_cast<HandleEntry *>(h);
-    if (!e || e->magic != kMagic)
-        return NULL;
-    return e;
-}
-
-HandleEntry *find_named(const char *name)
-{
-    if (!name || !name[0])
-        return NULL;
-    for (int i = 0; i < kMaxHandles; ++i)
-        if (g_entries[i].magic == kMagic && g_entries[i].name[0] &&
-            std::strcmp(g_entries[i].name, name) == 0)
-            return &g_entries[i];
-    return NULL;
-}
-
 // ---- thread trampoline ----------------------------------------------------
 void thread_trampoline(void *p)
 {
@@ -169,81 +212,16 @@ void thread_trampoline(void *p)
     vTaskDelete(nullptr);
 }
 
-void free_obj(HandleEntry *e)
-{
-    switch (e->type)
-    {
-    case kEvent:
-    {
-        EventObj *o = static_cast<EventObj *>(e->obj);
-        delete o;
-        break;
-    }
-    case kMutex:
-    {
-        MutexObj *o = static_cast<MutexObj *>(e->obj);
-        swinx_fr::sem_delete(o->sem);
-        delete o;
-        break;
-    }
-    case kSem:
-    {
-        SemObj *o = static_cast<SemObj *>(e->obj);
-        delete o;
-        break;
-    }
-    case kThread:
-    {
-        ThreadObj *o = static_cast<ThreadObj *>(e->obj);
-        swinx_fr::sem_delete(o->joinSem);
-        delete o;
-        break;
-    }
-    default:
-        break;
-    }
-    e->obj = NULL;
-}
-
-// allocate a handle, handling the "create-by-name returns existing" rule.
-HANDLE alloc_handle(int type, void *obj, const char *name)
-{
-    std::lock_guard<std::mutex> lk(table_lock());
-    if (name && name[0])
-    {
-        HandleEntry *ex = find_named(name);
-        if (ex)
-        {
-            ex->refcount++;
-            return (HANDLE)ex;
-        }
-    }
-    HandleEntry *e = alloc_slot();
-    if (!e)
-        return NULL;
-    e->magic = kMagic;
-    e->type = type;
-    e->refcount = 1;
-    e->name[0] = 0;
-    e->obj = obj;
-    if (name && name[0])
-    {
-        std::strncpy(e->name, name, sizeof(e->name) - 1);
-        e->name[sizeof(e->name) - 1] = 0;
-    }
-    return (HANDLE)e;
-}
-
+// readiness probe used by WaitForMultipleObjects' polling loop
 bool handle_ready(HANDLE h, bool consume)
 {
-    HandleEntry *e = entry_of(h);
-    if (!e)
+    if (!h || h == INVALID_HANDLE_VALUE)
         return false;
-    switch (e->type)
+    switch (h->type - SYN_OBJ)
     {
     case kEvent:
     {
-        EventObj *ev = static_cast<EventObj *>(e->obj);
+        EventObj *ev = static_cast<EventObj *>(h->ptr);
         std::lock_guard<std::mutex> lk(ev->mtx);
         if (!ev->signaled)
             return false;
@@ -253,12 +231,12 @@ bool handle_ready(HANDLE h, bool consume)
     }
     case kThread:
     {
-        ThreadObj *t = static_cast<ThreadObj *>(e->obj);
+        ThreadObj *t = static_cast<ThreadObj *>(h->ptr);
         return t->done;
     }
     case kMutex:
     {
-        MutexObj *m = static_cast<MutexObj *>(e->obj);
+        MutexObj *m = static_cast<MutexObj *>(h->ptr);
         bool ok = swinx_fr::sem_take(m->sem, 0);
         if (ok && !consume)
             swinx_fr::sem_give(m->sem);   // peek only
@@ -266,7 +244,7 @@ bool handle_ready(HANDLE h, bool consume)
     }
     case kSem:
     {
-        SemObj *s = static_cast<SemObj *>(e->obj);
+        SemObj *s = static_cast<SemObj *>(h->ptr);
         std::lock_guard<std::mutex> lk(s->mtx);
         if (s->count <= 0)
             return false;
@@ -287,32 +265,26 @@ extern "C"
 // ===========================================================================
 // Events
 // ===========================================================================
-HANDLE WINAPI CreateEventA(void *, BOOL bManualReset, BOOL bInitialState, const char *lpName)
+HANDLE WINAPI CreateEventA(LPSECURITY_ATTRIBUTES, BOOL bManualReset, BOOL bInitialState, LPCSTR lpName)
 {
     EventObj *o = new (std::nothrow) EventObj();
     if (!o)
         return NULL;
     o->signaled = bInitialState ? true : false;
     o->manual = bManualReset ? true : false;
-    return alloc_handle(kEvent, o, lpName);
+    return register_named(kEvent, o, lpName);
 }
 
-HANDLE WINAPI OpenEventA(DWORD, BOOL, const char *lpName)
+HANDLE WINAPI OpenEventA(DWORD, BOOL, LPCSTR lpName)
 {
-    std::lock_guard<std::mutex> lk(table_lock());
-    HandleEntry *e = find_named(lpName);
-    if (!e)
-        return NULL;
-    e->refcount++;
-    return (HANDLE)e;
+    return open_named(lpName);
 }
 
 BOOL WINAPI SetEvent(HANDLE h)
 {
-    HandleEntry *e = entry_of(h);
-    if (!e || e->type != kEvent)
+    EventObj *ev = static_cast<EventObj *>(obj_of(h, kEvent));
+    if (!ev)
         return FALSE;
-    EventObj *ev = static_cast<EventObj *>(e->obj);
     {
         std::lock_guard<std::mutex> lk(ev->mtx);
         ev->signaled = true;
@@ -323,10 +295,9 @@ BOOL WINAPI SetEvent(HANDLE h)
 
 BOOL WINAPI ResetEvent(HANDLE h)
 {
-    HandleEntry *e = entry_of(h);
-    if (!e || e->type != kEvent)
+    EventObj *ev = static_cast<EventObj *>(obj_of(h, kEvent));
+    if (!ev)
         return FALSE;
-    EventObj *ev = static_cast<EventObj *>(e->obj);
     std::lock_guard<std::mutex> lk(ev->mtx);
     ev->signaled = false;
     return TRUE;
@@ -335,7 +306,7 @@ BOOL WINAPI ResetEvent(HANDLE h)
 // ===========================================================================
 // Mutex
 // ===========================================================================
-HANDLE WINAPI CreateMutexA(void *, BOOL bInitialOwner, const char *lpName)
+HANDLE WINAPI CreateMutexA(LPSECURITY_ATTRIBUTES, BOOL bInitialOwner, LPCSTR lpName)
 {
     MutexObj *o = new (std::nothrow) MutexObj();
     if (!o)
@@ -348,25 +319,19 @@ HANDLE WINAPI CreateMutexA(void *, BOOL bInitialOwner, const char *lpName)
     }
     if (!bInitialOwner)
         swinx_fr::sem_give(o->sem);   // an unowned mutex starts unlocked
-    return alloc_handle(kMutex, o, lpName);
+    return register_named(kMutex, o, lpName);
 }
 
-HANDLE WINAPI OpenMutexA(DWORD, BOOL, const char *lpName)
+HANDLE WINAPI OpenMutexA(DWORD, BOOL, LPCSTR lpName)
 {
-    std::lock_guard<std::mutex> lk(table_lock());
-    HandleEntry *e = find_named(lpName);
-    if (!e)
-        return NULL;
-    e->refcount++;
-    return (HANDLE)e;
+    return open_named(lpName);
 }
 
 BOOL WINAPI ReleaseMutex(HANDLE h)
 {
-    HandleEntry *e = entry_of(h);
-    if (!e || e->type != kMutex)
+    MutexObj *m = static_cast<MutexObj *>(obj_of(h, kMutex));
+    if (!m)
         return FALSE;
-    MutexObj *m = static_cast<MutexObj *>(e->obj);
     swinx_fr::sem_give(m->sem);
     return TRUE;
 }
@@ -374,32 +339,26 @@ BOOL WINAPI ReleaseMutex(HANDLE h)
 // ===========================================================================
 // Semaphore
 // ===========================================================================
-HANDLE WINAPI CreateSemaphoreA(void *, LONG lInitialCount, LONG lMaximumCount, const char *lpName)
+HANDLE WINAPI CreateSemaphoreA(LPSECURITY_ATTRIBUTES, LONG lInitialCount, LONG lMaximumCount, LPCSTR lpName)
 {
     SemObj *o = new (std::nothrow) SemObj();
     if (!o)
         return NULL;
     o->count = (int)lInitialCount;
     o->max = (int)lMaximumCount;
-    return alloc_handle(kSem, o, lpName);
+    return register_named(kSem, o, lpName);
 }
 
-HANDLE WINAPI OpenSemaphoreA(DWORD, BOOL, const char *lpName)
+HANDLE WINAPI OpenSemaphoreA(DWORD, BOOL, LPCSTR lpName)
 {
-    std::lock_guard<std::mutex> lk(table_lock());
-    HandleEntry *e = find_named(lpName);
-    if (!e)
-        return NULL;
-    e->refcount++;
-    return (HANDLE)e;
+    return open_named(lpName);
 }
 
-BOOL WINAPI ReleaseSemaphore(HANDLE h, LONG lReleaseCount, LONG *lpPreviousCount)
+BOOL WINAPI ReleaseSemaphore(HANDLE h, LONG lReleaseCount, LPLONG lpPreviousCount)
 {
-    HandleEntry *e = entry_of(h);
-    if (!e || e->type != kSem)
+    SemObj *s = static_cast<SemObj *>(obj_of(h, kSem));
+    if (!s)
         return FALSE;
-    SemObj *s = static_cast<SemObj *>(e->obj);
     std::lock_guard<std::mutex> lk(s->mtx);
     if (lpPreviousCount)
         *lpPreviousCount = (LONG)s->count;
@@ -410,36 +369,16 @@ BOOL WINAPI ReleaseSemaphore(HANDLE h, LONG lReleaseCount, LONG *lpPreviousCount
     return TRUE;
 }
 
-// ===========================================================================
-// Handle
-// ===========================================================================
-BOOL WINAPI CloseHandle(HANDLE h)
-{
-    std::lock_guard<std::mutex> lk(table_lock());
-    HandleEntry *e = entry_of(h);
-    if (!e)
-        return FALSE;
-    e->refcount--;
-    if (e->refcount <= 0)
-    {
-        if (e->name[0])
-        {
-            // clear name so find_named won't resurrect a freed slot
-            e->name[0] = 0;
-        }
-        free_obj(e);
-        e->magic = 0;
-    }
-    return TRUE;
-}
+// CloseHandle() is provided by the core (src/handle.cpp): it releases the
+// _Handle reference and, when the last reference drops, invokes the cbFree
+// callback registered here via InitHandle().
 
 // ===========================================================================
 // Wait
 // ===========================================================================
 DWORD WINAPI WaitForSingleObject(HANDLE h, DWORD dwMilliseconds)
 {
-    HandleEntry *e = entry_of(h);
-    if (!e)
+    if (!h || h == INVALID_HANDLE_VALUE)
         return WAIT_FAILED;
 
     if (dwMilliseconds == 0)
@@ -450,11 +389,11 @@ DWORD WINAPI WaitForSingleObject(HANDLE h, DWORD dwMilliseconds)
         return WAIT_TIMEOUT;
     }
 
-    switch (e->type)
+    switch (h->type - SYN_OBJ)
     {
     case kEvent:
     {
-        EventObj *ev = static_cast<EventObj *>(e->obj);
+        EventObj *ev = static_cast<EventObj *>(h->ptr);
         std::unique_lock<std::mutex> lk(ev->mtx);
         while (!ev->signaled)
         {
@@ -468,12 +407,12 @@ DWORD WINAPI WaitForSingleObject(HANDLE h, DWORD dwMilliseconds)
     }
     case kMutex:
     {
-        MutexObj *m = static_cast<MutexObj *>(e->obj);
+        MutexObj *m = static_cast<MutexObj *>(h->ptr);
         return swinx_fr::sem_take(m->sem, ms_to_ticks(dwMilliseconds)) ? WAIT_OBJECT_0 : WAIT_TIMEOUT;
     }
     case kSem:
     {
-        SemObj *s = static_cast<SemObj *>(e->obj);
+        SemObj *s = static_cast<SemObj *>(h->ptr);
         std::unique_lock<std::mutex> lk(s->mtx);
         while (s->count <= 0)
         {
@@ -486,7 +425,7 @@ DWORD WINAPI WaitForSingleObject(HANDLE h, DWORD dwMilliseconds)
     }
     case kThread:
     {
-        ThreadObj *t = static_cast<ThreadObj *>(e->obj);
+        ThreadObj *t = static_cast<ThreadObj *>(h->ptr);
         if (t->done)
             return WAIT_OBJECT_0;
         bool ok = swinx_fr::sem_take(t->joinSem, ms_to_ticks(dwMilliseconds));
@@ -546,7 +485,7 @@ DWORD WINAPI WaitForMultipleObjects(DWORD nCount, const HANDLE *lpHandles, BOOL 
 // ===========================================================================
 // Threads
 // ===========================================================================
-HANDLE WINAPI CreateThread(void *, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress,
+HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lpStartAddress,
                            LPVOID lpParameter, DWORD dwCreationFlags, tid_t *lpThreadId)
 {
     ThreadObj *t = new (std::nothrow) ThreadObj();
@@ -577,7 +516,7 @@ HANDLE WINAPI CreateThread(void *, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lp
     if (lpThreadId)
         *lpThreadId = (tid_t)swinx_fr::task_id(t->task);
 
-    HANDLE h = alloc_handle(kThread, t, NULL);
+    HANDLE h = make_handle(kThread, t);
     if (!h)
     {
         vTaskDelete(t->task);
@@ -592,10 +531,9 @@ HANDLE WINAPI CreateThread(void *, SIZE_T dwStackSize, LPTHREAD_START_ROUTINE lp
 
 DWORD WINAPI SuspendThread(HANDLE h)
 {
-    HandleEntry *e = entry_of(h);
-    if (!e || e->type != kThread)
+    ThreadObj *t = static_cast<ThreadObj *>(obj_of(h, kThread));
+    if (!t)
         return (DWORD)-1;
-    ThreadObj *t = static_cast<ThreadObj *>(e->obj);
     int prev = t->suspendCount;
     if (prev == 0)
         vTaskSuspend(t->task);
@@ -605,10 +543,9 @@ DWORD WINAPI SuspendThread(HANDLE h)
 
 DWORD WINAPI ResumeThread(HANDLE h)
 {
-    HandleEntry *e = entry_of(h);
-    if (!e || e->type != kThread)
+    ThreadObj *t = static_cast<ThreadObj *>(obj_of(h, kThread));
+    if (!t)
         return (DWORD)-1;
-    ThreadObj *t = static_cast<ThreadObj *>(e->obj);
     int prev = t->suspendCount;
     if (prev > 0)
     {
@@ -635,6 +572,42 @@ DWORD WINAPI GetTickCount(VOID)
 tid_t WINAPI GetCurrentThreadId(VOID)
 {
     return (tid_t)swinx_fr::task_id(swinx_fr::task_current());
+}
+
+VOID WINAPI GetLocalTime(SYSTEMTIME *pSysTime)
+{
+    if (!pSysTime)
+        return;
+    // No RTC on bare metal: derive the date from a fixed epoch
+    // (2026-01-01 00:00:00) plus the tick counter.  Monotonic per power-on.
+    DWORD ms = swinx_fr::ticks_now();
+    uint64_t sec = (uint64_t)(ms / 1000u) + 1767225600ull; // 2026-01-01 epoch secs
+    uint64_t days = sec / 86400ull;
+    uint64_t tod = sec % 86400ull;
+    static const WORD kWeekdayByDay[7] = { 4, 5, 6, 0, 1, 2, 3 }; // day0 = 2026-01-01 = Thursday
+    WORD wday = kWeekdayByDay[days % 7ull];
+
+    // civil-from-days (Howard Hinnant's algorithm)
+    days += 719468ull;
+    uint64_t era = days / 146097ull;
+    unsigned doe = (unsigned)(days - era * 146097ull);              // [0, 146096]
+    unsigned yoe = (doe - doe / 1460u + doe / 36524u - doe / 146096u) / 365u; // [0, 399]
+    int64_t y = (int64_t)yoe + (int64_t)era * 400;
+    unsigned doy = doe - (365u * yoe + yoe / 4u - yoe / 100u);      // [0, 365]
+    unsigned mp = (5u * doy + 2u) / 153u;                           // [0, 11]
+    unsigned d = doy - (153u * mp + 2u) / 5u + 1u;                  // [1, 31]
+    unsigned m = mp < 10u ? mp + 3u : mp - 9u;                      // [1, 12]
+    if (m <= 2u)
+        y++;
+
+    pSysTime->wYear = (WORD)y;
+    pSysTime->wMonth = (WORD)m;
+    pSysTime->wDay = (WORD)d;
+    pSysTime->wDayOfWeek = wday;
+    pSysTime->wHour = (WORD)(tod / 3600ull);
+    pSysTime->wMinute = (WORD)((tod % 3600ull) / 60ull);
+    pSysTime->wSecond = (WORD)(tod % 60ull);
+    pSysTime->wMilliseconds = (WORD)(ms % 1000u);
 }
 
 // ===========================================================================
@@ -692,4 +665,3 @@ pthread_t pthread_self(void)
 {
     return (pthread_t)GetCurrentThreadId();
 }
-

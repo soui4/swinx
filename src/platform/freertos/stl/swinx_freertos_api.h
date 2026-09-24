@@ -112,7 +112,12 @@ constexpr uint32_t wait_forever() { return 0xFFFFFFFFu; }
     // 1024 words (4 KiB) per task keeps the multi-thread fun_test cases inside
     // the 48 KiB lm3s6965 SRAM heap (6 concurrent tasks worst case ~= 24 KiB
     // stacks + kernel objects). Bump per call site if a thread needs more.
-    constexpr uint32_t default_stack_depth_words() { return 1024u; }
+    // Overridable per build: -DSWINX_FR_DEFAULT_STACK_WORDS=2048 for boards
+    // with deep call stacks (whole-module / cairo paths) and RAM to spare.
+#ifndef SWINX_FR_DEFAULT_STACK_WORDS
+#define SWINX_FR_DEFAULT_STACK_WORDS 1024u
+#endif
+    constexpr uint32_t default_stack_depth_words() { return SWINX_FR_DEFAULT_STACK_WORDS; }
     constexpr unsigned default_priority()          { return 1u; }
 
 // ---------------------------------------------------------------------------

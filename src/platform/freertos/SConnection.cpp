@@ -285,6 +285,8 @@ void SConnection::updateMsgQueue(DWORD dwTimeout)
 
 bool SConnection::waitMsg(UINT timeOut)
 {
+    updateMsgQueue(0);   // fire due timers before computing the wait bound
+
     // wait bound: user timeout, or until the next timer is due
     uint64_t waitMs = timeOut;
     {
@@ -310,18 +312,19 @@ bool SConnection::waitMsg(UINT timeOut)
     for (;;)
     {
         DWORD wait = WaitForSingleObject(m_hQueueEvt, (DWORD)waitMs);
-        if (wait != WAIT_OBJECT_0)
-            return false; // timed out
+        // timers are driven inside waitMsg: a due timer enqueues WM_TIMER
+        // and sets the queue event, waking this very loop
+        updateMsgQueue(0);
         {
             std::unique_lock<CountMutex> lock(m_mutex);
             if (!m_msgQueue.empty())
                 return true;
         }
-        // spurious wake or a timer fired meanwhile: recompute the remainder
+        // spurious wake or timeout: recompute the remainder
         uint64_t elapsed = GetTickCount() - start;
-        waitMs = elapsed >= (uint64_t)timeOut ? 0 : (uint64_t)timeOut - elapsed;
-        if (waitMs == 0)
+        if (elapsed >= (uint64_t)timeOut)
             return false;
+        waitMs = (uint64_t)timeOut - elapsed;
     }
 }
 
@@ -431,16 +434,21 @@ static bool hasQueuedPaintMsg(const swinx_stl::list<Msg *> &queue, HWND hWnd)
 BOOL SConnection::peekMsg(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
 {
     std::unique_lock<CountMutex> lock(m_mutex);
+    // Win32 semantics: (0,0) means "no filter"
+    bool bNoFilter = (wMsgFilterMin == 0 && wMsgFilterMax == 0);
     for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); ++it)
     {
         Msg *msg = *it;
         if (hWnd && hWnd != msg->hwnd && msg->hwnd != NULL)
             continue;
         UINT id = msg->message;
-        if (wMsgFilterMin > wMsgFilterMax && (id > wMsgFilterMax && id < wMsgFilterMin))
-            continue;
-        if (wMsgFilterMin <= wMsgFilterMax && (id < wMsgFilterMin || id > wMsgFilterMax))
-            continue;
+        if (!bNoFilter)
+        {
+            if (wMsgFilterMin <= wMsgFilterMax && (id < wMsgFilterMin || id > wMsgFilterMax))
+                continue;
+            if (wMsgFilterMin > wMsgFilterMax && (id > wMsgFilterMax && id < wMsgFilterMin))
+                continue;   // wrapped range (Win32): only messages outside (max, min)
+        }
         memcpy((void *)pMsg, (MSG *)msg, sizeof(MSG));
         if (wRemoveMsg & PM_REMOVE)
         {
@@ -456,14 +464,21 @@ BOOL SConnection::getMsg(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFi
 {
     updateMsgQueue(0);
     std::unique_lock<CountMutex> lock(m_mutex);
+    // Win32 semantics: (0,0) means "no filter"
+    bool bNoFilter = (wMsgFilterMin == 0 && wMsgFilterMax == 0);
     for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); ++it)
     {
         Msg *msg = *it;
         if (hWnd && hWnd != msg->hwnd && msg->hwnd != NULL)
             continue;
         UINT id = msg->message;
-        if (wMsgFilterMin <= wMsgFilterMax && (id < wMsgFilterMin || id > wMsgFilterMax))
-            continue;
+        if (!bNoFilter)
+        {
+            if (wMsgFilterMin <= wMsgFilterMax && (id < wMsgFilterMin || id > wMsgFilterMax))
+                continue;
+            if (wMsgFilterMin > wMsgFilterMax && (id > wMsgFilterMax && id < wMsgFilterMin))
+                continue;   // wrapped range (Win32)
+        }
         m_msgQueue.erase(it);
         memcpy((void *)lpMsg, (MSG *)msg, sizeof(MSG));
         delete msg;

@@ -1,10 +1,16 @@
 #include <windows.h>
 #include <gdi.h>
 #include <cairo.h>
+#if defined(CAIRO_HAS_FT_FONT) && CAIRO_HAS_FT_FONT
 #include <cairo-ft.h>
+#endif
+#if !defined(SOUI_PLATFORM_FREERTOS)
 #include <fontconfig/fontconfig.h>
+#endif
 #include <math.h>
+#if defined(CAIRO_HAS_PNG_FUNCTIONS) && CAIRO_HAS_PNG_FUNCTIONS
 #include <png.h>
+#endif
 #include <assert.h>
 #include <vector>
 #include "handle.h"
@@ -18,12 +24,14 @@
 #include "log.h"
 #define kLogTag "gdi"
 
+#if defined(CAIRO_HAS_PNG_FUNCTIONS) && CAIRO_HAS_PNG_FUNCTIONS
 EXTERN_C BOOL Swinx_DumpBmp(HBITMAP bmp, const char *path)
 {
     if (!bmp)
         return FALSE;
     return CAIRO_STATUS_SUCCESS == cairo_surface_write_to_png((cairo_surface_t *)GetGdiObjPtr(bmp), path);
 }
+#endif
 
 struct CairoColor
 {
@@ -4721,6 +4729,14 @@ int AddFontResourceExA(LPCSTR lpszFilename, // font file name
                        PVOID pdv __attribute__((unused))            // reserved
 )
 {
+#if defined(SOUI_PLATFORM_FREERTOS)
+    // FreeRTOS has no font filesystem / fontconfig cache: font files cannot
+    // be registered.  Text renders through cairo's built-in toy font face.
+    (void)lpszFilename;
+    (void)fl;
+    (void)pdv;
+    return 0;
+#else
     int ret = 0;
     do
     {
@@ -4751,6 +4767,7 @@ int AddFontResourceExA(LPCSTR lpszFilename, // font file name
 #else
     return ret;
 #endif // CAIRO_HAS_QUARTZ_FONT
+#endif // SOUI_PLATFORM_FREERTOS
 }
 
 int AddFontResourceA(LPCSTR lpszFilename)

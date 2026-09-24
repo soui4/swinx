@@ -6,8 +6,8 @@
  * keyboard state and caret, and exposes the Win32 window-management surface
  * the swinx core (wnd.cpp / nativewnd.cpp / uimsg.cpp ...) expects.  All
  * blocking / waiting primitives are built on the FreeRTOS-backed Win32
- * compat layer in this directory (winobjs.h) plus the STL shims
- * (platform/freertos/stl).
+ * compat layer in this directory (winobjs.cpp, declared via sysapi.h) plus
+ * the STL shims (platform/freertos/stl).
  *
  * FreeRTOS specifics vs mobile:
  *   - no g_platformAPI injection point: the queue is driven directly by
