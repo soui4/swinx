@@ -82,6 +82,9 @@ constexpr uint32_t wait_forever() { return 0xFFFFFFFFu; }
     inline void  mutex_give_recursive(mutex_handle& h) { xSemaphoreGiveRecursive(h); }
 
     inline sem_handle sem_create()                 { return xSemaphoreCreateBinary(); }
+    inline sem_handle sem_create_counting(uint32_t max, uint32_t init) {
+        return xSemaphoreCreateCounting((UBaseType_t)max, (UBaseType_t)init);
+    }
     inline void  sem_delete(sem_handle& h)          { if (h) vSemaphoreDelete(h); }
     inline bool  sem_give(sem_handle& h)            { return xSemaphoreGive(h) == pdTRUE; }
     inline bool  sem_take(const sem_handle& h, uint32_t ticks) { return xSemaphoreTake(h, (TickType_t)ticks) == pdTRUE; }
@@ -106,7 +109,10 @@ constexpr uint32_t wait_forever() { return 0xFFFFFFFFu; }
     inline bool task_handle_valid(task_handle h)   { return h != nullptr; }
 
     // Sensible defaults for the FreeRTOS port; override per call site if needed.
-    constexpr uint32_t default_stack_depth_words() { return 2048u; }
+    // 1024 words (4 KiB) per task keeps the multi-thread fun_test cases inside
+    // the 48 KiB lm3s6965 SRAM heap (6 concurrent tasks worst case ~= 24 KiB
+    // stacks + kernel objects). Bump per call site if a thread needs more.
+    constexpr uint32_t default_stack_depth_words() { return 1024u; }
     constexpr unsigned default_priority()          { return 1u; }
 
 // ---------------------------------------------------------------------------
@@ -121,6 +127,7 @@ constexpr uint32_t wait_forever() { return 0xFFFFFFFFu; }
         pthread_mutex_t m;
         pthread_cond_t  c;
         int count;   // number of signals available
+        int max;     // capacity (1 for a binary sem, N for a counting sem)
     };
     struct task_handle {
         pthread_t t;
@@ -151,13 +158,24 @@ constexpr uint32_t wait_forever() { return 0xFFFFFFFFu; }
         pthread_mutex_init(&h.m, nullptr);
         pthread_cond_init(&h.c, nullptr);
         h.count = 0;
+        h.max = 1;   // binary semaphore
+        return h;
+    }
+    inline sem_handle sem_create_counting(uint32_t max, uint32_t init) {
+        sem_handle h;
+        pthread_mutex_init(&h.m, nullptr);
+        pthread_cond_init(&h.c, nullptr);
+        h.count = (int)init;
+        h.max = (int)max;
         return h;
     }
     inline void sem_delete(sem_handle& h) { pthread_mutex_destroy(&h.m); pthread_cond_destroy(&h.c); }
     inline bool sem_give(sem_handle& h) {
         pthread_mutex_lock(&h.m);
-        h.count++;
-        pthread_cond_signal(&h.c);
+        if (h.count < h.max) {      // counting sem: never exceed capacity
+            h.count++;
+            pthread_cond_signal(&h.c);
+        }
         pthread_mutex_unlock(&h.m);
         return true;
     }
