@@ -3628,7 +3628,7 @@ BOOL WINAPI GetTextExtentExPointA(HDC hdc, LPCSTR lpszString, int cchString, int
         cchString = (int)strlen(lpszString);
     CGFloat ascent = 0, descent = 0;
     bool gotMetrics = false;
-    int totalWid = 0;
+    CGFloat totalWid = 0;
     int i = 0;
     while (i < cchString)
     {
@@ -3652,17 +3652,17 @@ BOOL WINAPI GetTextExtentExPointA(HDC hdc, LPCSTR lpszString, int cchString, int
                 *lpnFit = i;
             break;
         }
-        totalWid += (int)chWid;
+        totalWid += chWid;
         if (lpnDx)
         {
             for (int j = 0; j < chLen; j++)
-                lpnDx[i + j] = totalWid;
+                lpnDx[i + j] = (int)totalWid;
         }
         i += chLen;
     }
     if (lpnFit && i == cchString)
         *lpnFit = cchString;
-    psizl->cx = totalWid;
+    psizl->cx = (int)totalWid;
     psizl->cy = (LONG)(ascent + descent);
     return TRUE;
 }
@@ -3677,7 +3677,7 @@ BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, in
     int cchStringA = (int)str.length();
     CGFloat ascent = 0, descent = 0;
     bool gotMetrics = false;
-    int totalWid = 0;
+    CGFloat totalWid = 0;
     int i = 0, iW = 0;
     while (i < cchStringA)
     {
@@ -3702,18 +3702,18 @@ BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, in
                 *lpnFit = iW;
             break;
         }
-        totalWid += (int)chWid;
+        totalWid += chWid;
         if (lpnDx)
         {
             for (int j = 0; j < wChars; j++)
-                lpnDx[iW + j] = totalWid;
+                lpnDx[iW + j] = (int)totalWid;
         }
         i += chLen;
         iW += wChars;
     }
     if (lpnFit && iW == cchString)
         *lpnFit = cchString;
-    psizl->cx = totalWid;
+    psizl->cx = (int)totalWid;
     psizl->cy = (LONG)(ascent + descent);
     return TRUE;
 }
