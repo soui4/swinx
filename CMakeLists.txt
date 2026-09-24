@@ -14,7 +14,9 @@ endif()
 
 # Explicit platform override. Empty => auto-select by CMAKE_SYSTEM_NAME (unchanged
 # Linux/macOS/OHOS/Android/iOS behaviour). Set to "freertos" to build the swinx
-# FreeRTOS port (currently a Linux-host compile test based on linux.cmake + uSTL).
+# FreeRTOS port: a Linux-host compile test driven by the FreeRTOS STL-compat
+# layer in src/freertos/stl/ (no uSTL; only the missing concurrency primitives
+# are wrapped with FreeRTOS/pthread-backed std:: types).
 set(SOUI_PLATFORM "" CACHE STRING "swinx platform override: linux|freertos (empty = auto)")
 
 if(SOUI_PLATFORM STREQUAL "freertos")
@@ -32,9 +34,9 @@ endif()
 # ---- uSTL substitution (swinx-internal container/string replacement) --------
 # Moved out of the top-level SOUI CMake so the SOUI layer stays uSTL-free.
 # OFF by default => zero behaviour change; the mechanical replacement in swinx
-# source resolves swinx_stl:: to std:: either way. When swinx/thirdparty/ustl is
-# already built as the 'ustl' target (e.g. the FreeRTOS platform config), that
-# config owns the wiring and this block is skipped (see the NOT TARGET guard).
+# source resolves swinx_stl:: to std:: either way. The FreeRTOS port no longer
+# uses uSTL (it keeps the toolchain's own containers and only wraps the missing
+# concurrency primitives), so this block stays OFF on that platform.
 option(SOUI_USE_USTL "Substitute swinx std containers/strings with uSTL" OFF)
 if(SOUI_USE_USTL AND NOT TARGET ustl)
     if(NOT DEFINED USTL_INCLUDE_DIR)

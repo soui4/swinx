@@ -1,0 +1,76 @@
+/*
+ * freertos/stl/condition_variable  --  FreeRTOS-backed replacement for
+ * <condition_variable>. A condition_variable is implemented on top of a FreeRTOS
+ * binary semaphore (or a pthread condvar in the host emulation). It is bound to
+ * std::mutex (this build's FreeRTOS-backed mutex) exactly like the standard one.
+ *
+ * Passthrough to the real <condition_variable> in every non-freeRTOS mode.
+ */
+#pragma once
+
+#if defined(SOUI_FREERTOS_REAL) || defined(SOUI_FREERTOS_HOST_EMU)
+
+    #include "swinx_freertos_api.h"
+    #include <cstddef>
+    #include <chrono>
+
+    namespace std {
+
+    enum class cv_status { no_timeout, timeout };
+
+    class condition_variable {
+        swinx_fr::sem_handle m_h;
+    public:
+        condition_variable() : m_h(swinx_fr::sem_create()) {}
+        ~condition_variable() { swinx_fr::sem_delete(m_h); }
+        condition_variable(const condition_variable&) = delete;
+        condition_variable& operator=(const condition_variable&) = delete;
+
+        void notify_one() noexcept { swinx_fr::sem_give(m_h); }
+        void notify_all() noexcept { swinx_fr::sem_give(m_h); }   // simplistic: wakes one waiter
+
+        void wait(unique_lock<mutex>& lk) {
+            lk.unlock();
+            swinx_fr::sem_take(m_h, swinx_fr::wait_forever());
+            lk.lock();
+        }
+
+        template <class Predicate>
+        void wait(unique_lock<mutex>& lk, Predicate pred) {
+            while (!pred()) wait(lk);
+        }
+
+        template <class Rep, class Period>
+        cv_status wait_for(unique_lock<mutex>& lk,
+                           const chrono::duration<Rep, Period>& rel) {
+            using namespace chrono;
+            uint32_t ms = (uint32_t)duration_cast<milliseconds>(rel).count();
+            lk.unlock();
+            bool got = swinx_fr::sem_take(m_h, ms);
+            lk.lock();
+            return got ? cv_status::no_timeout : cv_status::timeout;
+        }
+
+        template <class Clock, class Duration>
+        cv_status wait_until(unique_lock<mutex>& lk,
+                             const chrono::time_point<Clock, Duration>& abs) {
+            auto now = Clock::now();
+            if (abs <= now) {
+                // already expired: still release/reacquire the lock
+                lk.unlock();
+                bool got = swinx_fr::sem_take(m_h, 0);
+                lk.lock();
+                return got ? cv_status::no_timeout : cv_status::timeout;
+            }
+            return wait_for(lk, abs - now);
+        }
+
+        using native_handle_type = swinx_fr::sem_handle;
+        native_handle_type native_handle() { return m_h; }
+    };
+
+    } // namespace std
+
+#else
+    #include_next <condition_variable>
+#endif

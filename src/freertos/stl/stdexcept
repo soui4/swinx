@@ -1,0 +1,70 @@
+/*
+ * freertos/stl/stdexcept  --  std::runtime_error / std::invalid_argument etc.
+ * stubs for -fno-exceptions builds.
+ *
+ * Mirrors the subset of <stdexcept> that swinx actually throws. When
+ * SWINX_NO_EXCEPTIONS is defined we provide minimal classes that store the
+ * message and expose what(); otherwise it is a plain passthrough to the real
+ * header.
+ *
+ * NOTE: std::system_error is intentionally NOT stubbed (it drags in
+ * <system_error> / std::error_code). Add it here only if swinx starts throwing
+ * it on the FreeRTOS path.
+ */
+#pragma once
+
+#if defined(SWINX_NO_EXCEPTIONS)
+    #include <string>
+    #include <exception>
+
+    namespace std {
+
+    class logic_error : public exception {
+        std::string m_msg;
+    public:
+        explicit logic_error(const std::string& what) noexcept : m_msg(what) {}
+        explicit logic_error(const char* what) noexcept : m_msg(what ? what : "") {}
+        logic_error(const logic_error&) noexcept = default;
+        logic_error& operator=(const logic_error&) noexcept = default;
+        const char* what() const noexcept override { return m_msg.c_str(); }
+    };
+
+    class runtime_error : public exception {
+        std::string m_msg;
+    public:
+        explicit runtime_error(const std::string& what) noexcept : m_msg(what) {}
+        explicit runtime_error(const char* what) noexcept : m_msg(what ? what : "") {}
+        runtime_error(const runtime_error&) noexcept = default;
+        runtime_error& operator=(const runtime_error&) noexcept = default;
+        const char* what() const noexcept override { return m_msg.c_str(); }
+    };
+
+    class invalid_argument : public logic_error {
+    public:
+        explicit invalid_argument(const std::string& what) noexcept : logic_error(what) {}
+        explicit invalid_argument(const char* what) noexcept : logic_error(what) {}
+    };
+
+    class domain_error : public logic_error {
+    public:
+        explicit domain_error(const std::string& what) noexcept : logic_error(what) {}
+        explicit domain_error(const char* what) noexcept : logic_error(what) {}
+    };
+
+    class length_error : public logic_error {
+    public:
+        explicit length_error(const std::string& what) noexcept : logic_error(what) {}
+        explicit length_error(const char* what) noexcept : logic_error(what) {}
+    };
+
+    class out_of_range : public logic_error {
+    public:
+        explicit out_of_range(const std::string& what) noexcept : logic_error(what) {}
+        explicit out_of_range(const char* what) noexcept : logic_error(what) {}
+    };
+
+    } // namespace std
+
+#else
+    #include_next <stdexcept>
+#endif

@@ -37,6 +37,22 @@
 
 #pragma once
 
+// ---------------------------------------------------------------------------
+// Exception handling disabled (FreeRTOS target built with -fno-exceptions).
+// Neutralize `throw EXPR;` so swinx's few throw sites still compile: the macro
+// rewrites them into an unconditional abort. The FreeRTOS build does NOT
+// compile any swinx file that uses try/catch (those live only in the linux/
+// cocoa platform sources), so only `throw` needs handling. `try`/`catch` are
+// left as keywords. This block is force-included into every swinx TU, so the
+// macro is always defined before any throw site. It is a no-op on every other
+// platform (SWINX_NO_EXCEPTIONS is only set by freeRTOS.cmake).
+// ---------------------------------------------------------------------------
+#if defined(SWINX_NO_EXCEPTIONS)
+    #include <cstdlib>
+    namespace std { [[noreturn]] inline void __fr_abort() noexcept { std::abort(); } }
+    #define throw if (true) { ::std::__fr_abort(); } else (void)
+#endif
+
 #if defined(SOUI_USE_USTL)
     // Pull in uSTL. Try both the installed (<ustl/ustl.h>) and the
     // in-tree (<ustl.h>) layout; adjust USTL_INCLUDE_DIR if neither

@@ -1,0 +1,119 @@
+/*
+ * freertos/stl/mutex  --  FreeRTOS-backed replacement for <mutex>
+ *
+ * Found BEFORE the system <mutex> on the include path ONLY when building the
+ * swinx freeRTOS platform (see freeRTOS.cmake). It defines std::mutex /
+ * std::recursive_mutex / std::lock_guard / std::unique_lock backed by the
+ * FreeRTOS semaphore API (or a pthread emulation when SOUI_FREERTOS_HOST_EMU).
+ *
+ * In every other mode (normal Linux/Windows build, or the freeRTOS config built
+ * on a workstation for wiring validation) it simply does #include_next <mutex>
+ * and swinx keeps using the host's real standard library -- so existing systems
+ * are 100% untouched.
+ *
+ * NOTE: defining entities in namespace std is technically undefined behaviour,
+ * but it is the standard technique for embedded std-compat shims and is scoped
+ * strictly to the freeRTOS build.
+ */
+#pragma once
+
+#if defined(SOUI_FREERTOS_REAL) || defined(SOUI_FREERTOS_HOST_EMU)
+
+    #include "swinx_freertos_api.h"
+    #include <cstddef>
+
+    namespace std {
+
+    // ---- lock tags (mirror <mutex>) --------------------------------------
+    struct defer_lock_t   { explicit defer_lock_t() = default; };
+    struct try_to_lock_t  { explicit try_to_lock_t() = default; };
+    struct adopt_lock_t   { explicit adopt_lock_t() = default; };
+    constexpr defer_lock_t   defer_lock{};
+    constexpr try_to_lock_t  try_to_lock{};
+    constexpr adopt_lock_t   adopt_lock{};
+
+    // ---- mutex -----------------------------------------------------------
+    class mutex {
+        swinx_fr::mutex_handle m_h;
+    public:
+        mutex()               : m_h(swinx_fr::mutex_create()) {}
+        ~mutex()             { swinx_fr::mutex_delete(m_h); }
+        mutex(const mutex&) = delete;
+        mutex& operator=(const mutex&) = delete;
+
+        void lock()        { swinx_fr::mutex_take(m_h, swinx_fr::wait_forever()); }
+        bool try_lock()    { return swinx_fr::mutex_take(m_h, 0); }
+        void unlock()      { swinx_fr::mutex_give(m_h); }
+
+        using native_handle_type = swinx_fr::mutex_handle;
+        native_handle_type native_handle() { return m_h; }
+    };
+
+    // ---- recursive_mutex -------------------------------------------------
+    class recursive_mutex {
+        swinx_fr::mutex_handle m_h;
+    public:
+        recursive_mutex()   : m_h(swinx_fr::mutex_create_recursive()) {}
+        ~recursive_mutex()  { swinx_fr::mutex_delete(m_h); }
+        recursive_mutex(const recursive_mutex&) = delete;
+        recursive_mutex& operator=(const recursive_mutex&) = delete;
+
+        void lock()        { swinx_fr::mutex_take_recursive(m_h, swinx_fr::wait_forever()); }
+        bool try_lock()    { return swinx_fr::mutex_take_recursive(m_h, 0); }
+        void unlock()      { swinx_fr::mutex_give_recursive(m_h); }
+
+        using native_handle_type = swinx_fr::mutex_handle;
+        native_handle_type native_handle() { return m_h; }
+    };
+
+    // ---- lock_guard ------------------------------------------------------
+    template <class Mutex>
+    class lock_guard {
+        Mutex* m_m;
+    public:
+        explicit lock_guard(Mutex& m) : m_m(&m) { m_m->lock(); }
+        lock_guard(Mutex& m, adopt_lock_t) noexcept : m_m(&m) {}
+        ~lock_guard() { if (m_m) m_m->unlock(); }
+        lock_guard(const lock_guard&) = delete;
+        lock_guard& operator=(const lock_guard&) = delete;
+    };
+
+    // ---- unique_lock -----------------------------------------------------
+    template <class Mutex>
+    class unique_lock {
+        Mutex* m_m   = nullptr;
+        bool   m_own = false;
+    public:
+        unique_lock() noexcept = default;
+        explicit unique_lock(Mutex& m) : m_m(&m), m_own(false) { m_m->lock(); m_own = true; }
+        unique_lock(Mutex& m, defer_lock_t) noexcept : m_m(&m), m_own(false) {}
+        unique_lock(Mutex& m, try_to_lock_t) : m_m(&m), m_own(false) { m_own = m_m->try_lock(); }
+        unique_lock(Mutex& m, adopt_lock_t) noexcept : m_m(&m), m_own(true) {}
+        ~unique_lock() { if (m_own && m_m) m_m->unlock(); }
+
+        unique_lock(const unique_lock&) = delete;
+        unique_lock& operator=(const unique_lock&) = delete;
+
+        unique_lock(unique_lock&& o) noexcept
+            : m_m(o.m_m), m_own(o.m_own) { o.m_m = nullptr; o.m_own = false; }
+        unique_lock& operator=(unique_lock&& o) noexcept {
+            if (m_own && m_m) m_m->unlock();
+            m_m = o.m_m; m_own = o.m_own;
+            o.m_m = nullptr; o.m_own = false;
+            return *this;
+        }
+
+        void lock()           { m_m->lock();    m_own = true; }
+        bool try_lock()       { m_own = m_m->try_lock(); return m_own; }
+        void unlock()         { m_m->unlock();  m_own = false; }
+        bool owns_lock() const noexcept { return m_own; }
+        explicit operator bool() const noexcept { return m_own; }
+        Mutex* mutex()   const noexcept { return m_m; }
+        Mutex* release()      noexcept { Mutex* r = m_m; m_m = nullptr; m_own = false; return r; }
+    };
+
+    } // namespace std
+
+#else
+    #include_next <mutex>
+#endif

@@ -1,50 +1,68 @@
 # =============================================================================
-# freeRTOS.cmake  --  swinx platform config for the FreeRTOS port (WIP)
+# freeRTOS.cmake  --  swinx platform config for the FreeRTOS port
 #
-# Derived from linux.cmake. PURPOSE (temporary): let the swinx -> uSTL container
-# substitution be COMPILE-TESTED on a Linux host before real FreeRTOS
-# cross-compilation. Select it with  -DSOUI_PLATFORM=freertos ; the normal
-# Linux build is completely untouched when that is not set.
+# Derived from linux.cmake. Select it with  -DSOUI_PLATFORM=freertos ; the
+# normal Linux/Windows/macOS/Android/iOS/OHOS build is completely untouched
+# when that is not set.
 #
-# What is FreeRTOS-specific here TODAY:
-#   * uSTL is forced ON (swinx/thirdparty/ustl submodule) -- see swinx_stl.h shim.
-# The rest (cairo / X11 / xkbcommon / dbus / ALSA) is still the Linux stack so
-# the build links & compiles on a host. For the REAL target you must:
-#   TODO  replace cairo+X11 with a software framebuffer renderer (route A in the
-#         feasibility report: cairo image-surface blitted to /dev/fb0),
-#   TODO  drop xkbcommon / libxcb / xcb-imdkit / dbus-1 (no X11/DBus on FreeRTOS),
-#   TODO  make ALSA optional / replace with a FreeRTOS audio driver,
-#   TODO  add -fno-rtti -fno-exceptions and link newlib-nano + FreeRTOS libs,
-#   TODO  cross-compile uSTL with the FreeRTOS toolchain instead of the host build,
-#   TODO  move src/platform/linux/*.cpp -> src/platform/freertos/*.cpp.
-# NOTE  on a real cross-compile (CMAKE_SYSTEM_NAME=Generic) find_package(PkgConfig)
-#       and pkg_check_modules(ALSA) will fail -- those are host-only for now.
+# PURPOSE OF THIS FILE (current): provide the FreeRTOS STL-compat layer so that
+# swinx compiles on a FreeRTOS toolchain that lacks the C++ concurrency
+# primitives (mutex / thread / condition_variable / chrono clock) but ships the
+# containers/strings (typical arm-none-eabi-gcc + newlib-nano). The compat layer
+# lives in src/freertos/stl/ and overrides the standard <mutex>/<thread>/
+# <condition_variable>/<exception>/<stdexcept> headers ONLY on this platform,
+# injecting FreeRTOS-backed std:: types. Existing systems are unaffected.
+#
+# Three backends are selected by macro (never by editing the layer):
+#   * SOUI_FREERTOS_REAL      -> real FreeRTOS kernel API (cross-compile target)
+#   * SOUI_FREERTOS_HOST_EMU  -> pthreads emulation (compile+run the wrappers on
+#                                a Linux/macOS host, for validation)
+#   * (neither)               -> the compat headers pass through to the host's
+#                                real std library, so the freeRTOS config can be
+#                                BUILD-VALIDATED on a workstation without target
+#                                hardware (this is the default for the Ubuntu
+#                                compile test the maintainer runs).
+#
+# The rest of the stack (cairo / X11 / xkbcommon / dbus / ALSA) is still the
+# Linux stack so the build links & compiles on a host. For the REAL target you
+# must (TODO): replace cairo+X11 with a software framebuffer renderer, drop
+# xkbcommon / libxcb / xcb-imdkit / dbus-1 (no X11/DBus on FreeRTOS), make ALSA
+# optional, and move src/platform/linux/*.cpp -> src/platform/freertos/*.cpp.
+# NOTE on a real cross-compile (CMAKE_SYSTEM_NAME=Generic) find_package(PkgConfig)
+# and pkg_check_modules(ALSA) will fail -- those are host-only for now.
 # =============================================================================
 
-# ---- uSTL (swinx/thirdparty/ustl submodule, built with CMake) ----------------
-# Self-contained wiring: this platform config builds the 'ustl' target and
-# forces SOUI_USE_USTL ON. The generic swinx uSTL option block
-# (swinx/CMakeLists.txt) guards on NOT TARGET ustl, so it is skipped here -- no
-# need to duplicate the include/lib defaulting.
-set(SOUI_USE_USTL ON CACHE BOOL "Substitute swinx std containers/strings with uSTL" FORCE)
+# ---- FreeRTOS STL-compat layer (this is the only FreeRTOS-specific wiring) ----
+add_definitions(-DSOUI_PLATFORM_FREERTOS)
 
-set(USTL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ustl")
-if(NOT IS_DIRECTORY "${USTL_SRC_DIR}")
-    message(FATAL_ERROR
-        "uSTL submodule not found at ${USTL_SRC_DIR}.\n"
-        "Initialise it first:\n"
-        "  git -C ${CMAKE_CURRENT_SOURCE_DIR} submodule update --init thirdparty/ustl")
+# Build the FreeRTOS shims WITHOUT uSTL. uSTL is no longer used for the
+# FreeRTOS port: we keep the toolchain's own containers/strings and only wrap
+# the concurrency primitives that newlib-nano cannot provide. (The uSTL
+# submodule is left in the repo for reference but is NOT built here.)
+
+# ---- optional: -fno-exceptions -fno-rtti (size-optimized FreeRTOS target) ----
+# OFF by default so the freeRTOS config can still be build-validated on a host
+# (which keeps exceptions on). Turn it ON (or set it in the real target's
+# toolchain file) to disable exceptions/RTTI and activate the exception stubs +
+# `throw` neutralization in swinx_stl.h / freertos/stl/exception/stdexcept.
+option(SOUI_FREERTOS_NO_EXCEPTIONS
+       "Build the FreeRTOS port with -fno-exceptions -fno-rtti" OFF)
+if(SOUI_FREERTOS_NO_EXCEPTIONS)
+    add_definitions(-DSWINX_NO_EXCEPTIONS)
+    add_compile_options(-fno-exceptions -fno-rtti)
 endif()
 
-# Build uSTL with CMake as part of this build -- no ./configure && make needed.
-# Its CMakeLists.txt generates config.h and compiles a static 'ustl' library.
-# The 'ustl' target exports its include dir (which contains ustl/ustl.h and the
-# generated ustl/config.h), so swinx picks it up automatically via
-# target_link_libraries below.
-add_subdirectory(${USTL_SRC_DIR})
-
-add_definitions(-DSOUI_USE_USTL)
-set(SOUI_USTL_LIB ustl CACHE INTERNAL "uSTL target name for swinx")
+# ---- optional: exercise the FreeRTOS-backed wrappers on a host (pthread) ----
+# OFF by default. Enable to compile+run the FreeRTOS-backed std::thread /
+# mutex / condition_variable against a pthread emulation instead of the host's
+# real std library (validates the wrapper logic without target hardware).
+option(SOUI_FREERTOS_EMULATE_HOST
+       "Emulate the FreeRTOS RTOS primitives with pthreads on the host" OFF)
+if(SOUI_FREERTOS_EMULATE_HOST)
+    add_definitions(-DSOUI_FREERTOS_HOST_EMU)
+endif()
+# SOUI_FREERTOS_REAL is expected to be defined by the real target toolchain
+# file (e.g. -DSOUI_FREERTOS_REAL=ON); it needs no CMake option here.
 
 # ---- platform sources (currently = Linux stack; prune for real FreeRTOS) ----
 add_compile_options(-Wno-format-truncation)
@@ -114,7 +132,7 @@ endif()
 
 # Add dependencies to ensure proper build order for all internal libraries
 add_dependencies(swinx cairo fontconfig freetype pixman-1 xcb-imdkit xkbcommon dbus-1)
-set(SWINX_LIBS dl xcb uuid atomic m stdc++ ${ALSA_LIBRARIES} ${SOUI_USTL_LIB})
+set(SWINX_LIBS dl xcb uuid atomic m stdc++ ${ALSA_LIBRARIES})
 if(SOUI_ENABLE_CORE_LIB)
     set(SWINX_DEP_LIBS ${SWINX_DEP_LIBS} ${SWINX_LIBS} CACHE INTERNAL "swinx_dep_libs")
 endif()
@@ -128,12 +146,11 @@ target_link_libraries(swinx
 )
 
 target_include_directories(swinx
-    # Make uSTL's freshly generated headers + config.h win over any stray uSTL
-    # checkout on the include path (e.g. swinx/thirdparty/ustl from an
-    # autotools ./configure). Our generated config.h has WITHOUT_LIBSTDCPP
-    # undefined, so uSTL uses libstdc++'s std primitives instead of defining
-    # its own (which would clash with libstdc++ and break the build).
-    PRIVATE BEFORE ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/ustl/include
+    # Make the FreeRTOS STL-compat headers win over the system <mutex> /
+    # <thread> / <condition_variable> / <exception> / <stdexcept> so those
+    # resolve to our FreeRTOS-backed (or pass-through) versions on this
+    # platform only. Other platforms never see this directory.
+    PRIVATE BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/src/freertos/stl
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src

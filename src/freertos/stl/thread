@@ -1,0 +1,161 @@
+/*
+ * freertos/stl/thread  --  FreeRTOS-backed replacement for <thread>.
+ *
+ * std::thread is mapped to a FreeRTOS task (xTaskCreate) on the real target, or
+ * a pthread on the host emulation. The API surface implemented is the subset
+ * swinx relies on: construction (spawn), join, detach, get_id, joinable,
+ * hardware_concurrency, swap/move, plus std::this_thread::{get_id, yield,
+ * sleep_for}. std::thread::hardware_concurrency() returns 1.
+ *
+ * KNOWN LIMITATIONS (documented, not bugs):
+ *   * FreeRTOS tasks have a fixed stack size / priority taken from the defaults
+ *     in swinx_freertos_api.h; there is no per-thread attribute like std::thread.
+ *   * detach() simply lets the task run free; the control block + join semaphore
+ *     are freed when the task actually exits (matches std::thread's "detached
+ *     keeps running" semantics). KNOWN EDGE: calling detach() on a thread whose
+ *     task has ALREADY finished without a prior join leaks that block -- do not
+ *     do that.
+ *   * A joinable thread whose destructor runs is joined (waited), not detached:
+ *     std::thread would call std::terminate; we join to stay safe on small
+ *     targets. Call join()/detach() explicitly if you need different behavior.
+ *
+ * Passthrough to the real <thread> in every non-freeRTOS mode.
+ */
+#pragma once
+
+#if defined(SOUI_FREERTOS_REAL) || defined(SOUI_FREERTOS_HOST_EMU)
+
+    #include "swinx_freertos_api.h"
+    #include <functional>
+    #include <chrono>
+    #include <utility>
+    #include <type_traits>
+
+    namespace std {
+
+    namespace __fr {
+        struct thread_ctrl {
+            swinx_fr::task_handle m_h   = swinx_fr::task_handle{};
+            swinx_fr::sem_handle  m_join = swinx_fr::sem_handle{};
+            bool                  m_detached = false;
+            void (*m_invoke)(void*) = nullptr;
+            void*                 m_arg = nullptr;
+        };
+        inline void thread_trampoline(void* p) {
+            auto* c = static_cast<thread_ctrl*>(p);
+            c->m_invoke(c->m_arg);                 // runs user fn, frees functor
+            swinx_fr::sem_give(c->m_join);
+            if (c->m_detached) {
+                swinx_fr::sem_delete(c->m_join);
+                delete c;
+            }
+            // A FreeRTOS task function MUST NOT return: doing so runs the task
+            // off the end of its stack and corrupts the scheduler. Terminate
+            // the task cleanly here. (On the host emulation the trampoline runs
+            // as a pthread, where returning is the correct way to exit.)
+#if defined(SOUI_FREERTOS_REAL)
+            vTaskDelete(nullptr);
+#endif
+        }
+    } // namespace __fr
+
+    class thread {
+    public:
+        class id {
+            swinx_fr::task_handle m_h;
+        public:
+            id() noexcept : m_h() {}
+            explicit id(swinx_fr::task_handle h) noexcept : m_h(h) {}
+            bool operator==(const id& o) const noexcept { return swinx_fr::task_id(m_h) == swinx_fr::task_id(o.m_h); }
+            bool operator!=(const id& o) const noexcept { return !(*this == o); }
+            bool operator< (const id& o) const noexcept { return swinx_fr::task_id(m_h) <  swinx_fr::task_id(o.m_h); }
+            bool operator<=(const id& o) const noexcept { return !(o < *this); }
+            bool operator> (const id& o) const noexcept { return  (o < *this); }
+            bool operator>=(const id& o) const noexcept { return !(*this < o); }
+        };
+
+        thread() noexcept : m_c(nullptr) {}
+
+        template <class F, class... Args>
+        explicit thread(F&& f, Args&&... args) : m_c(new __fr::thread_ctrl()) {
+            m_c->m_join = swinx_fr::sem_create();
+            // Bind the callable + arguments into a type-erased void() functor.
+            auto* fp = new std::function<void()>(
+                std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+            m_c->m_invoke = [](void* p) {
+                auto* fn = static_cast<std::function<void()>*>(p);
+                (*fn)();
+                delete fn;
+            };
+            m_c->m_arg = fp;
+            m_c->m_h = swinx_fr::task_create(__fr::thread_trampoline, m_c,
+                                             "swinx-thr",
+                                             swinx_fr::default_stack_depth_words(),
+                                             swinx_fr::default_priority());
+            if (!swinx_fr::task_handle_valid(m_c->m_h)) {   // creation failed
+                delete fp;
+                swinx_fr::sem_delete(m_c->m_join);
+                delete m_c;
+                m_c = nullptr;
+            }
+        }
+
+        ~thread() { if (joinable()) detach(); }
+
+        thread(const thread&) = delete;
+        thread& operator=(const thread&) = delete;
+
+        thread(thread&& o) noexcept : m_c(o.m_c) { o.m_c = nullptr; }
+        thread& operator=(thread&& o) noexcept {
+            if (joinable()) detach();
+            m_c = o.m_c; o.m_c = nullptr;
+            return *this;
+        }
+
+        void join() {
+            if (!m_c || !swinx_fr::task_handle_valid(m_c->m_h)) { m_c = nullptr; return; }
+            // m_join is always created when the task started; the trampoline
+            // only frees it for a detached thread, so for a joinable thread we
+            // own the cleanup here (m_c being non-null rules out detach()).
+            swinx_fr::sem_take(m_c->m_join, swinx_fr::wait_forever());
+            swinx_fr::sem_delete(m_c->m_join);
+            delete m_c;
+            m_c = nullptr;
+        }
+        void detach() {
+            if (!m_c || !swinx_fr::task_handle_valid(m_c->m_h)) { m_c = nullptr; return; }
+            // Transfer lifetime ownership to the trampoline: it frees the
+            // control block + join semaphore once the task actually exits.
+            m_c->m_detached = true;
+            m_c = nullptr;
+        }
+        bool joinable() const noexcept {
+            return m_c != nullptr && swinx_fr::task_handle_valid(m_c->m_h);
+        }
+        id get_id() const noexcept { return m_c ? id(m_c->m_h) : id(); }
+
+        static unsigned hardware_concurrency() noexcept { return 1u; }
+
+        void swap(thread& o) noexcept { __fr::thread_ctrl* t = m_c; m_c = o.m_c; o.m_c = t; }
+
+    private:
+        __fr::thread_ctrl* m_c;
+    };
+
+    namespace this_thread {
+        inline thread::id get_id() noexcept { return thread::id(swinx_fr::task_current()); }
+        inline void yield() noexcept { swinx_fr::task_yield(); }
+
+        template <class Rep, class Period>
+        inline void sleep_for(const chrono::duration<Rep, Period>& d) {
+            using namespace chrono;
+            uint32_t ms = (uint32_t)duration_cast<milliseconds>(d).count();
+            swinx_fr::delay_ticks(ms);
+        }
+    } // namespace this_thread
+
+    } // namespace std
+
+#else
+    #include_next <thread>
+#endif
