@@ -125,8 +125,9 @@ HRESULT SMimeData::GetData(FORMATETC *pformatetcIn, STGMEDIUM *pmedium) {
     GlobalUnlock(pmedium->hGlobal);
     std::wstring wstr;
     towstring(pData, len, wstr);
-    pmedium->hGlobal = GlobalReAlloc(pmedium->hGlobal, GMEM_MOVEABLE,
-                                     (wstr.length() + 1) * sizeof(wchar_t));
+    pmedium->hGlobal = GlobalReAlloc(pmedium->hGlobal,
+                                     (wstr.length() + 1) * sizeof(wchar_t),
+                                     GMEM_MOVEABLE);
     void *dst = GlobalLock(pmedium->hGlobal);
     memcpy(dst, wstr.c_str(), (wstr.length() + 1) * sizeof(wchar_t));
     GlobalUnlock(pmedium->hGlobal);
@@ -181,7 +182,7 @@ void SMimeData::flush() {
     [pasteboard clearContents];
     for (auto it : m_lstData) {
       NSPasteboardType type = SNsDataObjectProxy::getPasteboardType(it->fmt);
-      if (!type) {
+      if (!type || !it->data) {
         continue;
       }
       NSData *data = [NSData dataWithBytes:GlobalLock(it->data)
@@ -373,6 +374,10 @@ HANDLE SClipboard::setClipboardData(UINT uFormat, HANDLE hMem) {
     GlobalFree(hMem);
     return 0;
   }
+  // NULL 句柄表示延迟渲染格式（Windows 惯用法），NSPasteboard 无法支持，
+  // 丢弃该格式，避免写出空的自定义类型导致 IsClipboardFormatAvailable 误判。
+  if (!hMem)
+    return hMem;
   if (uFormat == CF_UNICODETEXT) {
     // convert to utf8
     const wchar_t *src = (const wchar_t *)GlobalLock(hMem);

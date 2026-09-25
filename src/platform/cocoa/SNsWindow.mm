@@ -733,6 +733,11 @@ defer:(BOOL)flag;
         [self onKeyDown:event];
         return;
     }
+    // Escape 无组合文本时直接下发，避免被 NSTextInputContext 消费并触发 NSBeep
+    if ([event keyCode] == 53 && ![self hasMarkedText]) {
+        [self onKeyDown:event];
+        return;
+    }
     if (self.inputContext && [self.inputContext handleEvent:event]) {
         return;
     }
@@ -760,6 +765,11 @@ defer:(BOOL)flag;
         return;
     }
     if(!m_bIsImeEnabled || [event modifierFlags] & NSEventModifierFlagCommand){
+        [self onKeyUp:event];
+        return;
+    }
+    // Escape 无组合文本时直接下发，避免被 NSTextInputContext 消费并触发 NSBeep
+    if ([event keyCode] == 53 && ![self hasMarkedText]) {
         [self onKeyUp:event];
         return;
     }

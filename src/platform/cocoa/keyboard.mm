@@ -16,6 +16,7 @@ KeyMapping keyMappings[] = {
     {"Backspace", 51, 0x08},
     {"Tab", 48, 0x09},
     {"Space", 49, 0x20},
+    {"Escape",53, 0x1B},
     {"0", 29, 0x30},
     {"1", 18, 0x31},
     {"2", 19, 0x32},
