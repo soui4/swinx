@@ -78,7 +78,17 @@ class HookMgr {
 
     swinx_stl::list<hook *> s_hooks[WH_MAXHOOK - WH_MINHOOK + 1];
     SRwLock s_mutex;
-} s_hookMgr;
+};
+
+// Function-local static accessor, NOT a namespace-scope object: bare metal
+// (FreeRTOS) startup.c never runs __libc_init_array, so a namespace-scope
+// HookMgr (std::list / SRwLock members) would never be constructed and its
+// lock would dead-lock on first use.  Leak-on-purpose, never destructed.
+static HookMgr &hookMgr()
+{
+    static HookMgr *s = new HookMgr();
+    return *s;
+}
 
 /***********************************************************************
  *		get_hook_timeout
@@ -255,7 +265,7 @@ HHOOK WINAPI SetWindowsHookW(INT id, HOOKPROC proc)
  */
 HHOOK WINAPI SetWindowsHookExA(INT id, HOOKPROC proc, HINSTANCE inst, tid_t tid)
 {
-    return s_hookMgr.set_windows_hook(id, proc, inst, tid, FALSE);
+    return hookMgr().set_windows_hook(id, proc, inst, tid, FALSE);
 }
 
 /***********************************************************************
@@ -263,12 +273,12 @@ HHOOK WINAPI SetWindowsHookExA(INT id, HOOKPROC proc, HINSTANCE inst, tid_t tid)
  */
 HHOOK WINAPI SetWindowsHookExW(INT id, HOOKPROC proc, HINSTANCE inst, tid_t tid)
 {
-    return s_hookMgr.set_windows_hook(id, proc, inst, tid, TRUE);
+    return hookMgr().set_windows_hook(id, proc, inst, tid, TRUE);
 }
 
 BOOL WINAPI UnhookWindowsHookEx(HHOOK hhk)
 {
-    return s_hookMgr.unhook(hhk);
+    return hookMgr().unhook(hhk);
 }
 
 LRESULT WINAPI CallNextHookEx(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
@@ -276,12 +286,12 @@ LRESULT WINAPI CallNextHookEx(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam
     // hhk stays valid because the in-flight call_hook holds a reference for
     // the duration of the hook proc. get_next_hook returns a referenced hook
     // whose reference is consumed by call_hook.
-    HHOOK next = s_hookMgr.get_next_hook(hhk);
-    return s_hookMgr.call_hook(next, nCode, wParam, lParam);
+    HHOOK next = hookMgr().get_next_hook(hhk);
+    return hookMgr().call_hook(next, nCode, wParam, lParam);
 }
 
 BOOL WINAPI CallHook(INT id, int nCode, WPARAM wParam, LPARAM lParam)
 {
-    HHOOK hhk = s_hookMgr.get_first_hook(id); // referenced, consumed by call_hook
-    return s_hookMgr.call_hook(hhk, nCode, wParam, lParam);
+    HHOOK hhk = hookMgr().get_first_hook(id); // referenced, consumed by call_hook
+    return hookMgr().call_hook(hhk, nCode, wParam, lParam);
 }

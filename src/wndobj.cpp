@@ -130,16 +130,30 @@ void WndObj::reset()
 }
 
 //---------------------------------------------------------
-static swinx_stl::map<HWND, _Window *> s_wndMap;
-static std::recursive_mutex s_wndMapMutex;
+// Function-local statics behind accessors, NOT namespace-scope objects:
+// bare metal (FreeRTOS) startup.c never runs __libc_init_array, so globals
+// with constructors (std::map / std::recursive_mutex) are never initialized
+// and locking them dead-locks.  Local statics construct on first use and are
+// leak-on-purpose (never destructed) -- same rule as winobjs named objects.
+static swinx_stl::map<HWND, _Window *> &WndMap()
+{
+    static swinx_stl::map<HWND, _Window *> *s_map = new swinx_stl::map<HWND, _Window *>();
+    return *s_map;
+}
+
+static std::recursive_mutex &WndMapMutex()
+{
+    static std::recursive_mutex *s_mutex = new std::recursive_mutex();
+    return *s_mutex;
+}
 
 static _Window *get_win_ptr_and_lock(HWND hWnd)
 {
     _Window *wnd = nullptr;
-    { //重要：这里必须及时释放全局锁s_wndMapMutex防止死锁。调用wnd->AddRef防止wnd被释放掉。
-        std::unique_lock<std::recursive_mutex> lock(s_wndMapMutex);
-        auto it = s_wndMap.find(hWnd);
-        if (it == s_wndMap.end())
+    { //重要：这里必须及时释放全局锁WndMapMutex()防止死锁。调用wnd->AddRef防止wnd被释放掉。
+        std::unique_lock<std::recursive_mutex> lock(WndMapMutex());
+        auto it = WndMap().find(hWnd);
+        if (it == WndMap().end())
             return nullptr;
         wnd = it->second;
         wnd->AddRef();
@@ -167,13 +181,13 @@ WndObj WndMgr::fromHwnd(HWND hWnd)
 
 BOOL WndMgr::freeWindow(HWND hWnd)
 {
-    std::unique_lock<std::recursive_mutex> lock(s_wndMapMutex);
-    auto it = s_wndMap.find(hWnd);
-    if (it == s_wndMap.end())
+    std::unique_lock<std::recursive_mutex> lock(WndMapMutex());
+    auto it = WndMap().find(hWnd);
+    if (it == WndMap().end())
         return FALSE;
 
     _Window *wndObj = it->second;
-    s_wndMap.erase(it);
+    WndMap().erase(it);
 
     // delete wndObj and release resource of the window object
     SLOG_STMD() << "freeWindow:" << hWnd;
@@ -183,8 +197,8 @@ BOOL WndMgr::freeWindow(HWND hWnd)
 
 BOOL WndMgr::insertWindow(HWND hWnd, _Window *pWnd)
 {
-    std::unique_lock<std::recursive_mutex> lock(s_wndMapMutex);
+    std::unique_lock<std::recursive_mutex> lock(WndMapMutex());
     SLOG_STMD() << "insertWindow:" << hWnd;
-    auto res = s_wndMap.insert(swinx_stl::make_pair(hWnd, pWnd));
+    auto res = WndMap().insert(swinx_stl::make_pair(hWnd, pWnd));
     return res.second;
 }

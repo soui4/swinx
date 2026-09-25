@@ -1,4 +1,4 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <wnd.h>
 #include <map>
 #include <mutex>
@@ -1206,7 +1206,11 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     case WM_SIZE:
         wp = wndObj->state;
         SIZE sz = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
-#if defined(__APPLE__)
+// Apple and FreeRTOS rebuild the window bitmap on resize (new image surface
+// + SelectObject rebinds hdc->cairo); the linux path swaps the surface inside
+// the same HBITMAP object, which leaves hdc's cairo target stale on the
+// software (FreeRTOS) renderer.
+#if defined(__APPLE__) || defined(SOUI_PLATFORM_FREERTOS)
         if (wndObj->bmp && (sz.cx != wndObj->rc.right - wndObj->rc.left || sz.cy != wndObj->rc.bottom - wndObj->rc.top))
         {
             wndObj->rc.right = wndObj->rc.left + sz.cx;
@@ -1278,7 +1282,9 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             bSkipMsg = CallHook(WH_CALLWNDPROC, HC_ACTION, 0, (LPARAM)&st);
         }
         if (!bSkipMsg)
+        {
             ret = CallWindowObjProc(wndObj, proc, hWnd, msg, wp, lp2);
+        }
         {
             CWPRETSTRUCT st;
             st.hwnd = hWnd;

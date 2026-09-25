@@ -9,20 +9,26 @@
  *   - waitMsg() blocks on an auto-reset Win32-compat event (winobjs); the cv
  *     shim only accepts std::mutex locks, so a recursive CountMutex cannot
  *     wait on it;
- *   - rendering surface / canvas commit are stubbed until the framebuffer
- *     renderer lands (TODO).
+ *   - rendering: window canvases are cairo image surfaces (software), and
+ *     commitCanvas() blits dirty regions into the framebuffer (framebuffer.h).
  */
 #include "SConnection.h"
 #include "wndobj.h"
+#include "framebuffer.h"
+#include <gdi.h>
+#include <cairo.h>
 #include <log.h>
 
 #define kLogTag "SConnection"
 
 static UINT s_nextRegisteredMessage = WM_USER + 100000;
 
-std::recursive_mutex SClipboard::s_fmtMutex;
-swinx_stl::map<swinx_stl::string, UINT> SClipboard::s_fmtNames;
-UINT SClipboard::s_nextFmt = 0xC000;
+SClipboard::FmtTable &SClipboard::fmtTable()
+{
+    // leak-on-purpose: format names live for the process lifetime
+    static FmtTable *s_table = new FmtTable();
+    return *s_table;
+}
 
 //=============================================================================
 // SClipboard (in-memory)
@@ -42,13 +48,14 @@ UINT SClipboard::RegisterClipboardFormatA(LPCSTR pszName)
 {
     if (!pszName || !*pszName)
         return 0;
-    std::lock_guard<std::recursive_mutex> lock(s_fmtMutex);
+    FmtTable &table = fmtTable();
+    std::lock_guard<std::recursive_mutex> lock(table.mutex);
     swinx_stl::string name(pszName);
-    auto it = s_fmtNames.find(name);
-    if (it != s_fmtNames.end())
+    auto it = table.names.find(name);
+    if (it != table.names.end())
         return it->second;
-    UINT fmt = s_nextFmt++;
-    s_fmtNames[name] = fmt;
+    UINT fmt = table.nextFmt++;
+    table.names[name] = fmt;
     return fmt;
 }
 
@@ -948,17 +955,22 @@ uint32_t SConnection::GetIpcAtom() const
     return 0;
 }
 
-cairo_surface_t *SConnection::CreateWindowSurface(HWND, uint32_t, int, int)
+cairo_surface_t *SConnection::CreateWindowSurface(HWND, uint32_t, int cx, int cy)
 {
-    // TODO: software-framebuffer renderer
-    return NULL;
+    // software renderer: every window paints into its own ARGB32 image
+    // surface; commitCanvas() blits dirty regions into the framebuffer.
+    if (cx < 1)
+        cx = 1;
+    if (cy < 1)
+        cy = 1;
+    return cairo_image_surface_create(CAIRO_FORMAT_ARGB32, cx, cy);
 }
 
-cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND, uint32_t, int, int)
+cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd, uint32_t visualId, int cx, int cy)
 {
-    (void)surface;
-    // TODO: software-framebuffer renderer
-    return NULL;
+    if (surface)
+        cairo_surface_destroy(surface);
+    return CreateWindowSurface(hWnd, visualId, cx, cy);
 }
 
 DWORD SConnection::GetWndProcessId(HWND)
@@ -1028,14 +1040,75 @@ HMONITOR SConnection::GetScreen(DWORD) const
     return (HMONITOR)1;
 }
 
-void SConnection::updateWindow(HWND, const RECT &)
+void SConnection::updateWindow(HWND hWnd, const RECT &)
 {
-    // TODO: framebuffer flush region
+    // synchronous paint of the current invalid region (same as the X11 port)
+    SendMessageA(hWnd, WM_PAINT, 0, 0);
 }
 
-void SConnection::commitCanvas(HWND, const RECT &)
+void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
 {
-    // TODO: framebuffer flush region
+    // blit the window canvas region (rc is window-local) into the software
+    // framebuffer at the window's screen position, then notify the presenter.
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return;
+    cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(wndObj->bmp);
+    if (!surface || cairo_surface_get_type(surface) != CAIRO_SURFACE_TYPE_IMAGE)
+        return;
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
+        return;
+    cairo_surface_flush(surface);
+
+    int sw = cairo_image_surface_get_width(surface);
+    int sh = cairo_image_surface_get_height(surface);
+    int stride = cairo_image_surface_get_stride(surface) / 4;
+    uint32_t *srcBase = (uint32_t *)cairo_image_surface_get_data(surface);
+    if (!srcBase)
+        return;
+
+    // clip rc to the window canvas
+    RECT rcSrc = rc;
+    if (rcSrc.left < 0)
+        rcSrc.left = 0;
+    if (rcSrc.top < 0)
+        rcSrc.top = 0;
+    if (rcSrc.right > sw)
+        rcSrc.right = sw;
+    if (rcSrc.bottom > sh)
+        rcSrc.bottom = sh;
+    if (rcSrc.left >= rcSrc.right || rcSrc.top >= rcSrc.bottom)
+        return;
+
+    // screen-space dirty rect, clipped to the framebuffer
+    int ox = wndObj->rc.left, oy = wndObj->rc.top;
+    RECT rcFb = { ox + rcSrc.left, oy + rcSrc.top, ox + rcSrc.right, oy + rcSrc.bottom };
+    if (rcFb.left < 0)
+    {
+        rcSrc.left -= rcFb.left;
+        rcFb.left = 0;
+    }
+    if (rcFb.top < 0)
+    {
+        rcSrc.top -= rcFb.top;
+        rcFb.top = 0;
+    }
+    if (rcFb.right > SWINX_FB_WIDTH)
+        rcFb.right = SWINX_FB_WIDTH;
+    if (rcFb.bottom > SWINX_FB_HEIGHT)
+        rcFb.bottom = SWINX_FB_HEIGHT;
+    if (rcFb.left >= rcFb.right || rcFb.top >= rcFb.bottom)
+        return;
+
+    int w = rcFb.right - rcFb.left;
+    for (int y = 0; y < rcFb.bottom - rcFb.top; ++y)
+    {
+        memcpy(SwinxFbBits() + (size_t)(rcFb.top + y) * SwinxFbStride() + rcFb.left,
+               srcBase + (size_t)(rcSrc.top + y) * stride + rcSrc.left,
+               w * sizeof(uint32_t));
+    }
+    RECT dirty = rcFb;
+    swinxFbPresent(&dirty);
 }
 
 void SConnection::EnableWindow(HWND, BOOL)

@@ -33,10 +33,17 @@ private:
     std::recursive_mutex m_mutex;
     HWND m_hOwner;
     std::atomic<bool> m_bOpen;
-    // registered (non-standard) format name table
-    static std::recursive_mutex s_fmtMutex;
-    static swinx_stl::map<swinx_stl::string, UINT> s_fmtNames;
-    static UINT s_nextFmt;
+
+    // registered (non-standard) format name table.  Function-local statics,
+    // NOT namespace-scope members: bare metal never runs __libc_init_array,
+    // so a namespace-scope mutex/map would be constructed only by accident.
+    struct FmtTable
+    {
+        std::recursive_mutex mutex;
+        swinx_stl::map<swinx_stl::string, UINT> names;
+        UINT nextFmt = 0xC000;
+    };
+    static FmtTable &fmtTable();
 };
 
 #endif // _SWINX_FREERTOS_SCLIPBOARD_H_

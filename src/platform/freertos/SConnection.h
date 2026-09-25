@@ -14,7 +14,8 @@
  *     postMsg() from input drivers / app code;
  *   - timers are managed inside the connection (tick based) instead of the
  *     OS timer service;
- *   - rendering surface APIs are stubbed until the framebuffer renderer lands.
+ *   - rendering is software: windows paint into cairo image surfaces and
+ *     commitCanvas() blits dirty regions into framebuffer.h's framebuffer.
  */
 #ifndef _SWINX_FREERTOS_SCONNECTION_H_
 #define _SWINX_FREERTOS_SCONNECTION_H_
