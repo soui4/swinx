@@ -87,7 +87,8 @@ class CDropDataMgr {
     }
 
   private:
-    struct PendingDrop {
+    struct PendingDrop
+    {
         STGMEDIUM medium;
     };
 
@@ -1388,9 +1389,7 @@ BOOL WINAPI ShellExecuteA(HWND hwnd __attribute__((unused)), LPCSTR lpOperation,
         // Android/OHOS：swinx 无 JNI/N-API 通道，走宿主应用注册的
         // g_platformAPI.shell.shellExecute 回调（ACTION_VIEW Intent /
         // Want + startAbility）。回调未注册时返回 FALSE，与 Win32 失败语义一致。
-        return g_platformAPI.shell.shellExecute
-                   ? g_platformAPI.shell.shellExecute("open", url, NULL)
-                   : FALSE;
+        return g_platformAPI.shell.shellExecute ? g_platformAPI.shell.shellExecute("open", url, NULL) : FALSE;
 #elif defined(__linux__)
         int len = strlen(url);
         char *cmd = new char[len + 12];
@@ -1456,9 +1455,7 @@ BOOL WINAPI ShellExecuteExA(LPSHELLEXECUTEINFOA lpExecInfo)
 #if defined(__IOS__)
         return swinx_iosShellExecute("open", lpFile, NULL);
 #elif defined(__ANDROID__) || defined(__OHOS__) || defined(OHOS)
-        return g_platformAPI.shell.shellExecute
-                   ? g_platformAPI.shell.shellExecute("open", lpFile, NULL)
-                   : FALSE;
+        return g_platformAPI.shell.shellExecute ? g_platformAPI.shell.shellExecute("open", lpFile, NULL) : FALSE;
 #else
         int len = strlen(lpFile);
         char *cmd = new char[len + 10];

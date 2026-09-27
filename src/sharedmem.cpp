@@ -188,7 +188,7 @@ SharedMemory::~SharedMemory()
         // 堆内存回退：缓冲区由 new[] 分配。注意 nRef 是引用别名（绑定到
         // m_dwSize，链接期不可重绑），&nRef 指向对象自身成员而非缓冲区，不能
         // 用来释放；真实缓冲区基址 = m_pBuf - sizeof(uint32_t)。
-        delete[] (m_pBuf - sizeof(uint32_t));
+        delete[](m_pBuf - sizeof(uint32_t));
     }
     else
     {
@@ -259,8 +259,7 @@ SharedMemory::InitStat SharedMemory::init(const char *name, uint32_t size)
     {
         // 临时文件（OHOS/iOS 无 ASharedMemory；Android 的 ASharedMemory 失败时也走这里）
         char tempPath[256];
-        snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d",
-                 name ? name : "anon", (int)getpid());
+        snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d", name ? name : "anon", (int)getpid());
         fd = open(tempPath, O_RDWR | O_CREAT | O_EXCL, 0666);
         if (fd >= 0 && ftruncate(fd, memSize) == -1)
         {
