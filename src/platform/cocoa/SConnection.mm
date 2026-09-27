@@ -13,6 +13,7 @@
 #include "SConnection.h"
 #include <synhandle.h>
 #include <sdc.h>
+#include <imm.h>
 #include <wndobj.h>
 #include <log.h>
 #include "os_state.h"
@@ -1885,10 +1886,19 @@ HRESULT SConnection::DoDragDrop(IDataObject *pDataObject,
                           }
 
 HWND SConnection::OnWindowCreate(_Window *wnd, CREATESTRUCT *cs, int depth) {
-    return createNsWindow(cs->hwndParent, cs->style, cs->dwExStyle, wnd->bAutoDblClick, cs->lpszName, cs->x, cs->y, cs->cx, cs->cy,this);
+    HWND hWnd = createNsWindow(cs->hwndParent, cs->style, cs->dwExStyle, wnd->bAutoDblClick, cs->lpszName, cs->x, cs->y, cs->cx, cs->cy,this);
+    // 每个输入窗口持有一个 HIMC，保存输入法上下文状态（候选窗/组合窗光标跟随等）。
+    if (hWnd && !wnd->hIMC)
+        wnd->hIMC = ImmCreateContext();
+    return hWnd;
 }
 
 void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd) {
+    if (wnd->hIMC)
+    {
+        ImmDestroyContext(wnd->hIMC);
+        wnd->hIMC = nullptr;
+    }
     closeNsWindow(hWnd);
     if(hWnd == m_hWndCapture)
         m_hWndCapture = 0;

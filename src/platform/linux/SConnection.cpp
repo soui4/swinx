@@ -2680,7 +2680,7 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
         pMsg->wParam = vk;
         BYTE scanCode = (BYTE)e2->detail;
         pMsg->lParam = (scanCode << 16) | m_keyboard->getRepeatCount();
-        SLOG_FMTI("onkeydown, hfocus=%u, detail=%d,vk=%d, repeat=%d", (uint32_t)m_hFocus, e2->detail, vk, (int)m_keyboard->getRepeatCount());
+        //SLOG_FMTI("onkeydown, hfocus=%u, detail=%d,vk=%d, repeat=%d", (uint32_t)m_hFocus, e2->detail, vk, (int)m_keyboard->getRepeatCount());
         break;
     }
     case XCB_KEY_RELEASE:

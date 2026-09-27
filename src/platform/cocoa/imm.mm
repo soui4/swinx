@@ -5,7 +5,7 @@
 
 HIMC WINAPI ImmCreateContext(void)
 {
-    return 0;
+    return new IMContext();
 }
 
 BOOL ImmDestroyContext(HIMC hIMC)
@@ -48,7 +48,12 @@ HIMC ImmAssociateContext(HWND hWnd, HIMC hIMC)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return nullptr;
-    HIMC hRet = wndObj->hIMC;
+    HIMC hRet = wndObj->hIMC;   // 返回旧上下文（本函数已 Release 其引用，调用方无需再释放）
+    if (hRet)
+        hRet->Release();
+    wndObj->hIMC = hIMC;        // 先清旧引用，再接管新引用
+    if (hIMC)
+        hIMC->AddRef();
     wndObj->mConnection->AssociateHIMC(hWnd, wndObj.data(), hIMC);
     return hRet;
 }
@@ -62,29 +67,51 @@ LONG WINAPI ImmGetCompositionStringW(IN HIMC, IN DWORD, __out_bcount_opt(dwBufLe
     return 0;
 }
 
-BOOL WINAPI ImmGetStatusWindowPos(IN HIMC, _Out_ LPPOINT lpptPos)
+BOOL WINAPI ImmGetStatusWindowPos(IN HIMC hIMC, _Out_ LPPOINT lpptPos)
 {
-    return FALSE;
+    if (!hIMC || !lpptPos)
+        return FALSE;
+    *lpptPos = hIMC->ptStatus;
+    return TRUE;
 }
-BOOL WINAPI ImmSetStatusWindowPos(IN HIMC, _In_ LPPOINT lpptPos)
+BOOL WINAPI ImmSetStatusWindowPos(IN HIMC hIMC, _In_ LPPOINT lpptPos)
 {
-    return FALSE;
+    if (!hIMC || !lpptPos)
+        return FALSE;
+    hIMC->ptStatus = *lpptPos;
+    return TRUE;
 }
-BOOL WINAPI ImmGetCompositionWindow(IN HIMC, _Out_ LPCOMPOSITIONFORM lpCompForm)
+BOOL WINAPI ImmGetCompositionWindow(IN HIMC hIMC, _Out_ LPCOMPOSITIONFORM lpCompForm)
 {
-    return FALSE;
+    if (!hIMC || !lpCompForm)
+        return FALSE;
+    *lpCompForm = hIMC->compForm;
+    return TRUE;
 }
-BOOL WINAPI ImmSetCompositionWindow(IN HIMC, _In_ LPCOMPOSITIONFORM lpCompForm)
+BOOL WINAPI ImmSetCompositionWindow(IN HIMC hIMC, _In_ LPCOMPOSITIONFORM lpCompForm)
 {
-    return FALSE;
+    if (!hIMC || !lpCompForm)
+        return FALSE;
+    hIMC->compForm = *lpCompForm;
+    return TRUE;
 }
-BOOL WINAPI ImmGetCandidateWindow(IN HIMC, IN DWORD, _Out_ LPCANDIDATEFORM lpCandidate)
+BOOL WINAPI ImmGetCandidateWindow(IN HIMC hIMC, IN DWORD dwIndex, _Out_ LPCANDIDATEFORM lpCandidate)
 {
-    return FALSE;
+    if (!hIMC || !lpCandidate)
+        return FALSE;
+    if (dwIndex >= IMC_MAXCANDIDATEWINDOW)
+        return FALSE;
+    *lpCandidate = hIMC->candForm[dwIndex];
+    return TRUE;
 }
-BOOL WINAPI ImmSetCandidateWindow(IN HIMC, _In_ LPCANDIDATEFORM lpCandidate)
+BOOL WINAPI ImmSetCandidateWindow(IN HIMC hIMC, _In_ LPCANDIDATEFORM lpCandidate)
 {
-    return FALSE;
+    if (!hIMC || !lpCandidate)
+        return FALSE;
+    if (lpCandidate->dwIndex >= IMC_MAXCANDIDATEWINDOW)
+        return FALSE;
+    hIMC->candForm[lpCandidate->dwIndex] = *lpCandidate;
+    return TRUE;
 }
 
 BOOL WINAPI ImmNotifyIME(IN HIMC, IN DWORD dwAction, IN DWORD dwIndex, IN DWORD dwValue)
@@ -127,11 +154,16 @@ DWORD WINAPI ImmGetProperty(HKL hKL, DWORD fdwIndex)
 
 BOOL ImmGetOpenStatus(HIMC hIMC)
 {
-    return FALSE;
+    if (!hIMC)
+        return FALSE;
+    return hIMC->fOpen;
 }
 BOOL ImmSetOpenStatus(HIMC hIMC, BOOL fOpen)
 {
-    return FALSE;
+    if (!hIMC)
+        return FALSE;
+    hIMC->fOpen = fOpen;
+    return TRUE;
 }
 
 UINT ImmGetVirtualKey(HWND hWnd)
@@ -146,12 +178,22 @@ HWND ImmGetDefaultIMEWnd(HWND hWnd)
 
 BOOL ImmSetConversionStatus(HIMC hIMC, DWORD fdwConversion, DWORD fdwSentence)
 {
-    return FALSE;
+    if (!hIMC)
+        return FALSE;
+    hIMC->fdwConversion = fdwConversion;
+    hIMC->fdwSentence = fdwSentence;
+    return TRUE;
 }
 
 BOOL ImmGetConversionStatus(HIMC hIMC, LPDWORD lpfdwConversion, LPDWORD lpfdwSentence)
 {
-    return FALSE;
+    if (!hIMC)
+        return FALSE;
+    if (lpfdwConversion)
+        *lpfdwConversion = hIMC->fdwConversion;
+    if (lpfdwSentence)
+        *lpfdwSentence = hIMC->fdwSentence;
+    return TRUE;
 }
 BOOL ImmIsIME(HKL hKL)
 {

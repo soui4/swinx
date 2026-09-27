@@ -9,6 +9,7 @@
 #include <assert.h>
 #include <windows.h>
 #include "SNsWindow.h"
+#include "SConnection.h"
 #include "SNsDataObjectProxy.h"
 #include "wndobj.h"
 #include "keyboard.h"
@@ -19,6 +20,7 @@
 #include "log.h"
 
 #undef interface    //interface is keyword usedd in macos sdk.
+#include <imm.h>     // ImmGetContext/ImmGetCandidateWindow 等 IME 接口
 #define kLogTag "SNsWindow"
 
 // 多显示器坐标辅助函数（定义在文件后部 hwndFromPoint 附近），供
@@ -418,6 +420,7 @@ defer:(BOOL)flag;
     BOOL      _bEnabled;
     IDataObject *_doDragging;
     DWORD _dwDragEffect;
+    NSTextInputContext *_textInputContext;
 }
 
 - (instancetype)initWithFrame:(NSRect)frameRect withListener:(SConnBase*)listener withParent:(HWND)hParent withDblClick:(BOOL)bAutoDblClick{
@@ -540,6 +543,26 @@ defer:(BOOL)flag;
 
 - (BOOL)isFlipped {
     return YES;
+}
+
+// 提供稳定自建的 NSTextInputContext，保证视图始终可作为输入法客户端。
+// 默认 [NSView inputContext] 在当前输入源为直接（英文）时可能返回 nil/不
+// 装配，导致"启动为英文→之后切到中文无法输入"。给出非 nil 的上下文后，
+// keyDown 中的 [self.inputContext handleEvent:] 才能真正进入输入法组合。
+- (NSTextInputContext *)inputContext {
+    if (!_textInputContext) {
+        _textInputContext = [[NSTextInputContext alloc] initWithClient:self];
+    }
+    return _textInputContext;
+}
+
+- (BOOL)becomeFirstResponder {
+    BOOL ok = [super becomeFirstResponder];
+    // 显式激活输入上下文：无论启动时输入源是英文还是中文，都在获得焦点时
+    // 让系统把当前输入源锁定到本客户端（NSTextInputClient）。否则英文下启动
+    // 时输入上下文从未被激活，之后用 Caps Lock/地球键或菜单切到中文都不生效。
+    [[self inputContext] activate];
+    return ok;
 }
 
 - (BOOL)acceptsFirstResponder {
@@ -691,14 +714,12 @@ defer:(BOOL)flag;
 - (void)scrollWheel:(NSEvent *)event{
     CGFloat deltaY = [event scrollingDeltaY];  // 垂直滚动量
     CGFloat deltaX = [event scrollingDeltaX];  // 水平滚动量
-    // WM_MOUSEWHEEL 的 lParam 为屏幕坐标（Win32 约定，与 linux 后端一致）：
-    // swinx 全局坐标 = 主屏左上为原点、y 向下、物理像素，与窗口/显示器矩形
-    // 同一坐标系。旧实现按"鼠标所在屏"的高度翻转并乘 backingScaleFactor，
-    // 多屏时高度取错；现统一以主屏高度 H1 为全局翻转基准。
+    short delta = ([self getKeyModifiers] & NSEventModifierFlagOption) ?(short)deltaX:(short)deltaY;
     NSPoint location = [NSEvent mouseLocation];
     POINT ptWin;
     swinxNsWinPointFromCocoa(location, &ptWin);
-    WPARAM wParam = MAKEWPARAM([self getKeyModifiers], (short)(deltaY * 120));
+
+    WPARAM wParam = MAKEWPARAM([self getKeyModifiers], (short)(delta * 120));
     LPARAM lParam = MAKELPARAM(ptWin.x, ptWin.y);
     // 发送到 Windows 窗口
     m_pListener->OnNsEvent(m_hWnd, WM_MOUSEWHEEL, wParam, lParam);
@@ -722,10 +743,40 @@ defer:(BOOL)flag;
     return vk >= VK_F1 && vk <= VK_F12;
 }
 
+// 导航/单键编辑类按键（无组合文本）在 IME 启用时也必须绕过
+// NSTextInputContext 直接走 onKeyDown/onKeyUp。否则方向键等会被
+// inputContext 截获并触发 NSBeep，编辑器收不到 WM_KEYDOWN 无法扩展选区。
+// 与 Escape(53) 的处理逻辑一致：这类键不参与文字组合。
+-(BOOL)isNavigationKey: (NSInteger)keyCode{
+    int vk = convertKeyCodeToVK(keyCode);
+    switch(vk){
+        case VK_BACK:       // 退格
+        case VK_TAB:        // Tab
+        case VK_RETURN:     // 回车
+        case VK_PRIOR:      // Page Up
+        case VK_NEXT:       // Page Down
+        case VK_END:
+        case VK_HOME:
+        case VK_LEFT:
+        case VK_UP:
+        case VK_RIGHT:
+        case VK_DOWN:
+        case VK_DELETE:     // Delete
+        case VK_INSERT:
+            return YES;
+        default:
+            return NO;
+    }
+}
+
 - (void)keyDown:(NSEvent *)event {
     if(!_bEnabled)
         return;
     if([self isFunKey: [event keyCode]]){
+        [self onKeyDown:event];
+        return;
+    }
+    if([self isNavigationKey: [event keyCode]]){
         [self onKeyDown:event];
         return;
     }
@@ -761,6 +812,10 @@ defer:(BOOL)flag;
     if(!_bEnabled)
         return;
     if([self isFunKey: [event keyCode]]){
+        [self onKeyUp:event];
+        return;
+    }
+    if([self isNavigationKey: [event keyCode]]){
         [self onKeyUp:event];
         return;
     }
@@ -1021,7 +1076,7 @@ defer:(BOOL)flag;
             }
             
             if (str) {
-                SLOG_STMI()<<"hjx insertText:"<<str<<" hWnd="<<m_hWnd;
+                //SLOG_STMI()<<"hjx insertText:"<<str<<" hWnd="<<m_hWnd;
                 std::wstring wstr;
                 towstring(str, -1, wstr);
                 for(int i=0;i<wstr.length();i++){
@@ -1098,14 +1153,58 @@ defer:(BOOL)flag;
 - (NSRect)firstRectForCharacterRange:(NSRange)aRange actualRange:(NSRangePointer)actualRange
 {
     NSWindow *window = [self window];
-    NSRect contentRect = [window contentRectForFrameRect:[window frame]];
-    float windowHeight = contentRect.size.height;
     NSRect rect = _inputRect;
+
+    // 输入法光标跟随：优先取 HIMC 中候选窗表单（编辑器/richedit 通过
+    // ImmSetCandidateWindow 主动保存的光标位置），其次取系统插入符位置。
+    POINT pt = {-1, -1};
+    HIMC hIMC = ImmGetContext(m_hWnd);
+    if (hIMC) {
+        CANDIDATEFORM cf;
+        if (ImmGetCandidateWindow(hIMC, 0, &cf) && cf.dwStyle != CFS_DEFAULT) {
+            pt = cf.ptCurrentPos;
+        }
+        ImmReleaseContext(m_hWnd, hIMC);
+    }
+    if (pt.x < 0 || pt.y < 0) {
+        if (!GetCaretPos(&pt)) {
+            pt.x = 0;
+            pt.y = 0;
+        }
+    }
+
+    // pt 来自 swinx/SOUI 系统插入符或 HIMC 候选窗表单，均为物理像素坐标
+    // （相对宿主窗口客户区，y 向下）。convertRectToScreen: 期望视图
+    // （self 即 contentView，isFlipped=YES，左上原点）的逻辑点坐标，
+    // 因此先扣除视图原点相对窗口 frame 的偏移（标题栏等），再除以 scale。
+    float scale = [window backingScaleFactor];
+    NSRect winFrame = [window frame];
+    NSRect contentRect = [window contentRectForFrameRect:winFrame];
+    // 视图原点相对窗口 frame 左上角的偏移（逻辑点，屏幕坐标系 y 向上）
+    CGFloat offsetX = contentRect.origin.x - winFrame.origin.x;
+    CGFloat offsetY = (winFrame.origin.y + winFrame.size.height) -
+                      (contentRect.origin.y + contentRect.size.height);
+    rect.origin.x = pt.x / scale - offsetX;
+    rect.origin.y = pt.y / scale - offsetY;
+    rect.size.width = 1;
+    // 返回矩形高度用系统插入符高度：IME 把候选窗显示在该矩形下方，
+    // 若只返回 1 点高，候选窗会紧贴光标顶部、覆盖当前输入位置。
+    int caretH = 0;
+    SConnection *conn = dynamic_cast<SConnection *>(m_pListener);
+    if (conn && conn->GetCaretInfo()) {
+        caretH = conn->GetCaretInfo()->nHeight;
+    }
+    rect.size.height = (caretH > 0 ? caretH : 16) / scale;
 
     if (actualRange) {
         *actualRange = aRange;
     }
 
+    // 先由视图（self，isFlipped=YES）把视图坐标转换为窗口 base 坐标
+    // （左下原点、y 向上），再由窗口坐标转到屏幕坐标。若把视图坐标
+    // 直接交给 NSWindow 的 convertRectToScreen:（期望窗口坐标）会导致
+    // y 方向镜像。
+    rect = [self convertRect:rect toView:nil];
     rect = [window convertRectToScreen:rect];
 
     return rect;
