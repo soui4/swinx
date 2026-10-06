@@ -615,6 +615,14 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
                 {
                     bool bForward = false;
                     uint8_t event_code = it->response_type & 0x7f;
+                    if (event_code == XCB_MOTION_NOTIFY || event_code == XCB_BUTTON_PRESS || event_code == XCB_BUTTON_RELEASE)
+                    { // remember pointer position from X events so timer synthesis
+                      // does not need a blocking xcb_query_pointer round trip.
+                        xcb_motion_notify_event_t *motion = (xcb_motion_notify_event_t *)it;
+                        m_ptCursorCache.x = motion->root_x;
+                        m_ptCursorCache.y = motion->root_y;
+                        m_bCursorCache = true;
+                    }
                     if (event_code == XCB_KEY_PRESS || event_code == XCB_KEY_RELEASE)
                     {
                         HIMC hIMC = ImmGetContext(m_hFocus);
@@ -641,12 +649,21 @@ bool SConnection::event2Msg(bool bTimeout, int elapse, uint64_t ts)
         std::unique_lock<CountMutex> lock(m_mutex4Msg);
         int msgQueueSize = (int)m_msgQueue.size();
         int elapse2 = elapse + std::min(msgQueueSize, kMaxDalayMsg);
-        POINT pt;
-        GetCursorPos(&pt);
+        POINT pt = {0, 0};
+        bool bPtReady = false;
         for (auto &it : m_lstTimer)
         {
             if ((int)it.fireRemain <= elapse2)
             {
+                if (!bPtReady)
+                { // lazy: query the pointer only when a timer really fires, and
+                  // prefer the position cached from X events over a round trip.
+                    if (m_bCursorCache)
+                        pt = m_ptCursorCache;
+                    else
+                        GetCursorPos(&pt);
+                    bPtReady = true;
+                }
                 // fire timer event
                 Msg *pMsg = new Msg;
                 pMsg->hwnd = it.hWnd;
@@ -2408,7 +2425,12 @@ BOOL SConnection::SetWindowRgn(HWND hWnd, HRGN hRgn)
             dst++;
         }
         free(pData);
-        xcb_shape_rectangles(connection, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING, XCB_CLIP_ORDERING_UNSORTED, hWnd, 0, 0, rects.size(), &rects[0]);
+        /* nCount==0 是"空区域"（窗口完全不可见、也不接收输入）。空 vector 取
+           &rects[0] 是未定义行为，必须显式给一个长度 0 的矩形表。注意这跟下面
+           else 分支的 xcb_shape_mask(NONE) 含义不同：后者是"取消形状"，即恢复成
+           普通矩形窗口。 */
+        static const xcb_rectangle_t kEmptyRect = {0, 0, 0, 0};
+        xcb_shape_rectangles(connection, XCB_SHAPE_SO_SET, XCB_SHAPE_SK_BOUNDING, XCB_CLIP_ORDERING_UNSORTED, hWnd, 0, 0, rects.size(), rects.empty() ? &kEmptyRect : &rects[0]);
     }
     else
     {

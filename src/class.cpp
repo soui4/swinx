@@ -55,7 +55,7 @@ ATOM WINAPI RegisterClassExA(const WNDCLASSEXA *wc)
 
 ATOM WINAPI RegisterClassExW(const WNDCLASSEXW *wc)
 {
-    WNDCLASSEXA wca;
+    WNDCLASSEXA wca = {};
     memcpy(&wca, wc, FIELD_OFFSET(WNDCLASSEXW, lpszMenuName));
     wca.cbSize = sizeof(wca);
     char szClsName[MAX_ATOM_LEN] = { 0 };
@@ -138,7 +138,7 @@ ATOM WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW *wc)
         SetLastError(ERROR_NOACCESS);
         return FALSE;
     }
-    WNDCLASSEXA wca;
+    WNDCLASSEXA wca = {};
     if (IS_INTRESOURCE(name))
     {
         atom = ClassMgr::instance()->get_class_info(hInstance, (LPCSTR)name, &wca);

@@ -21,6 +21,7 @@
 #endif // defined(__linux__) && !defined(__OHOS__)
 #include "synhandle.h"
 #include "cmnctl32/builtin_classname.h"
+#include "wndclip.h"
 #define kLogTag "wnd"
 
 using namespace swinx;
@@ -201,7 +202,9 @@ static RECT GetScrollBarPartRect(BOOL bVert, const SCROLLINFO *pSi, int iPart, L
     if ((pSi->nMax - pSi->nMin - pSi->nPage + 1) == 0)
         rcRet.bottom += nEmptyHei / 2;
     else
-        rcRet.bottom += (int)(nEmptyHei * nTrackPos / (pSi->nMax - pSi->nMin - pSi->nPage + 1));
+        // Offset by nMin so the thumb tracks (nPos - nMin) over the effective
+        // range, matching the Windows system scrollbar (nMin is not always 0).
+        rcRet.bottom += (int)(nEmptyHei * (nTrackPos - pSi->nMin) / (pSi->nMax - pSi->nMin - pSi->nPage + 1));
     if (iPart == SB_PAGEUP)
         goto end;
     rcRet.top = rcRet.bottom;
@@ -239,6 +242,75 @@ static int ScrollBarHitTest(BOOL bVert, const SCROLLINFO *pSi, LPCRECT rcAll, PO
     }
     return -1;
 }
+
+/* ---------------------------------------------------------------------------
+ * WS_CHILD 窗口的客户区裁剪
+ *
+ * Win32 契约是"子窗口不得出现在父窗口客户区之外"（规则与推导见 wndclip.h）。swinx 的
+ * 每扇 HWND 都是真实原生窗口，原生窗口系统不做这条裁剪，所以由这里补上：算出本窗口的
+ * 可行区域，与 app 自己 SetWindowRgn 设置的区域求交，再交给平台落地（X11 XShape /
+ * macOS CAShapeLayer 蒙版）。
+ * -------------------------------------------------------------------------*/
+
+/* 把本窗口的裁剪区域下发给平台。
+ * bForce 为 TRUE 时即使"整窗可见"也要下发一次——用于 app 撤销自己的区域。 */
+static BOOL SbRefreshWindowClip(HWND hWnd, BOOL bForce)
+{
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj || wndObj->bDestroyed)
+        return FALSE;
+    /* "整窗可见"的判据取平台真实矩形：wndObj->rc 在部分路径上未必已经更新 */
+    RECT rcWnd;
+    if (!GetWindowRect(hWnd, &rcWnd))
+        return FALSE;
+    OffsetRect(&rcWnd, -rcWnd.left, -rcWnd.top);
+
+    RECT rcClip;
+    BOOL bClipped = SbGetWindowClientClip(hWnd, &rcClip);
+    RECT rcWant;
+    BOOL bNeedClip = SbCalcClipWant(&rcWnd, bClipped, &rcClip, &rcWant);
+    /* 平台侧不会自己清理区域：下发过就必须显式撤销，所以这里比的是"平台侧现在挂
+       着什么"（判定见 wndclip.h 的 SbNeedPushClipRgn），而不是"期望状态是什么"。
+       漏掉撤销会让"先 0 尺寸建窗、再摆到真实几何"的子窗口永远挂着空区域——整片不
+       显示（demos/uieditor 的真实子窗口就是这样建出来的）。
+       反向同理：期望与现状一致时一次都不该下发。下发会动到平台的渲染表面
+       （macOS setNsWindowRgn 切 wantsLayer 并重绘），空转下发会把上层正在排队的
+       绘制/失效打断——子窗口自己的滚动条就是这么丢的。 */
+    BOOL bPush = SbNeedPushClipRgn(bNeedClip ? &rcWant : NULL, wndObj->bClipPushed, &wndObj->rcClipPushed, bForce);
+    if (!bPush)
+        return TRUE;
+
+    if (!bNeedClip)
+    {
+        /* 不需要裁剪：把 app 的区域原样下发；没有则传 NULL，即取消区域 */
+        wndObj->bClipPushed = FALSE;
+        return wndObj->mConnection->SetWindowRgn(hWnd, wndObj->hAppRgn);
+    }
+
+    HRGN hClip = CreateRectRgnIndirect(&rcWant);
+    if (!hClip)
+        return FALSE;
+    if (wndObj->hAppRgn)
+        CombineRgn(hClip, hClip, wndObj->hAppRgn, RGN_AND);
+    wndObj->bClipPushed = TRUE;
+    wndObj->rcClipPushed = rcWant;
+    BOOL bRet = wndObj->mConnection->SetWindowRgn(hWnd, hClip);
+    DeleteObject(hClip);
+    return bRet;
+}
+
+/* 子窗口的可行区域取决于父窗口的客户区，所以父窗口的几何/样式一变，就要带着直接
+   子窗口一起重算。只管直接子窗口：更深的层级由它们各自的父窗口触发。 */
+static void SbRefreshChildClips(HWND hWnd)
+{
+    HWND hChild = GetWindow(hWnd, GW_CHILD);
+    while (hChild)
+    {
+        SbRefreshWindowClip(hChild, FALSE);
+        hChild = GetWindow(hChild, GW_HWNDNEXT);
+    }
+}
+
 
 BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
 {
@@ -575,17 +647,28 @@ HWND SetCapture(HWND hWnd)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return 0;
+    
     HWND oldCapture = wndObj->mConnection->SetCapture(hWnd);
-    SendMessage(hWnd, WM_CAPTURECHANGED, 0, hWnd);
-    // SLOG_FMTI("SetCapture hWnd=%d",(int)hWnd);
+    if(oldCapture != hWnd)
+    {
+        if(oldCapture)
+            SendMessage(oldCapture, WM_CAPTURECHANGED, 0, hWnd);
+        SendMessage(hWnd, WM_CAPTURECHANGED, 0, hWnd);
+        // SLOG_FMTI("SetCapture hWnd=%d",(int)hWnd);
+    }
     return oldCapture;
 }
 
 BOOL ReleaseCapture()
 {
-    // SLOG_FMTI("ReleaseCapture hWnd=%d",(int)GetCapture());
+    // SLOG_FMTI("ReleaseCapture hWnd=%d",(int)GetCapture());    
     SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->ReleaseCapture();
+    HWND hCapture = conn->GetCapture();
+    if(!hCapture)
+        return FALSE; 
+    conn->ReleaseCapture();
+    SendMessage(hCapture, WM_CAPTURECHANGED, 0, 0);
+    return TRUE;
 }
 
 HWND GetCapture()
@@ -749,7 +832,7 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
 {
     if (htCode == HTCLIENT)
     {
-        WNDCLASSEXA wc;
+        WNDCLASSEXA wc={};
         GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCEA(wndObj->clsAtom), &wc);
         if (wc.hCursor)
         {
@@ -1339,7 +1422,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     }
     if (0 == --wndObj->msgRecusiveCount && wndObj->bDestroyed)
     {
-        // SLOG_FMTI("window destroy: %d",(int)hWnd);
+        //SLOG_STMI()<<"window destroy: hWnd="<<hWnd;
         wndObj->mConnection->OnWindowDestroy(hWnd, wndObj.data());
         WndMgr::freeWindow(hWnd);
     }
@@ -1468,25 +1551,33 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         else
         {
             MSG msg2;
+            uint64_t ts0 = GetTickCount64();
+            DWORD remain = uTimeout;
             for (;;)
             {
-                ret = connCur->waitMutliObjectAndMsg(&hEvt, 1, uTimeout, FALSE, QS_ALLINPUT);
-                if (ret == WAIT_OBJECT_0 + 1)
-                {
-                    if (PeekMessage(&msg2, 0, 0, 0, PM_REMOVE))
-                    {
-                        if (msg2.message == WM_QUIT)
-                        {
-                            connCur->postMsg(msg2.hwnd, msg2.message, msg2.wParam, msg2.lParam);
-                            break;
-                        }
-                        TranslateMessage(&msg2);
-                        DispatchMessage(&msg2);
-                    }
-                }
-                else
-                {
+                ret = connCur->waitMutliObjectAndMsg(&hEvt, 1, remain, FALSE, QS_ALLINPUT);
+                if (ret != WAIT_OBJECT_0 + 1)
                     break;
+                // uTimeout must be accounted across the whole pump loop: the wait
+                // returns early whenever *any* message (e.g. a WM_TIMER) is queued,
+                // so relying on the per-call timeout alone lets a continuously
+                // firing timer starve the deadline forever -> infinite pump.
+                uint64_t elapse = GetTickCount64() - ts0;
+                if (elapse >= uTimeout)
+                {
+                    ret = WAIT_TIMEOUT;
+                    break;
+                }
+                remain = (DWORD)(uTimeout - elapse);
+                if (PeekMessage(&msg2, 0, 0, 0, PM_REMOVE))
+                {
+                    if (msg2.message == WM_QUIT)
+                    {
+                        connCur->postMsg(msg2.hwnd, msg2.message, msg2.wParam, msg2.lParam);
+                        break;
+                    }
+                    TranslateMessage(&msg2);
+                    DispatchMessage(&msg2);
                 }
             }
         }
@@ -1546,18 +1637,41 @@ static LRESULT _SendMessageTimeout(BOOL bWideChar, HWND hWnd, UINT msg, WPARAM w
         else
         {
             MSG msg;
+            uint64_t ts0 = GetTickCount64();
+            DWORD remain = uTimeout;
             for (;;)
             {
-                ret = connCur->waitMutliObjectAndMsg(&hEvt, 1, uTimeout, FALSE, QS_ALLINPUT);
-                if (ret == WAIT_OBJECT_0 + 1)
+                ret = connCur->waitMutliObjectAndMsg(&hEvt, 1, remain, FALSE, QS_ALLINPUT);
+                if (ret != WAIT_OBJECT_0 + 1)
+                    break;
+                // deadline must be tracked across iterations: a continuously firing
+                // timer keeps the wait returning WAIT_OBJECT_0+1 forever (same trap
+                // as the ipc branch above).
+                uint64_t elapse = GetTickCount64() - ts0;
+                if (uTimeout != INFINITE)
                 {
-                    connCur->getMsg(&msg, hWnd, 0, 0);
+                    if (elapse >= uTimeout)
+                    {
+                        ret = WAIT_TIMEOUT;
+                        break;
+                    }
+                    remain = (DWORD)(uTimeout - elapse);
+                }
+                // Pump with NO hwnd filter: hWnd belongs to the *target* thread.
+                // Filtering by it skips every message of this thread's own windows,
+                // so a nested cross-thread send from the target thread (it may send
+                // back to us while handling our message) could never be answered and
+                // the pump would block forever. WM_QUIT is removed by the peek, so
+                // re-post it before leaving, like the ipc branch does.
+                if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
+                {
+                    if (msg.message == WM_QUIT)
+                    {
+                        connCur->postMsg(msg.hwnd, msg.message, msg.wParam, msg.lParam);
+                        break;
+                    }
                     TranslateMessage(&msg);
                     DispatchMessage(&msg);
-                }
-                else
-                {
-                    break;
                 }
             }
         }
@@ -1801,6 +1915,9 @@ static void onStyleChange(HWND hWnd, WndObj &wndObj, DWORD newStyle)
         wndObj->showSbFlags = sbflag;
         InvalidateRect(hWnd, &wndObj->rc, TRUE);
     }
+    /* 边框与滚动条都占客户区之外的空间：客户区一变，本窗口与直接子窗口都要重算 */
+    SbRefreshWindowClip(hWnd, FALSE);
+    SbRefreshChildClips(hWnd);
     wndObj->mConnection->OnStyleChanged(hWnd, wndObj.data(), dwOldStyle, newStyle);
 }
 
@@ -2183,7 +2300,11 @@ HWND SetParent(HWND hWnd, HWND hParent)
     if (!wndObj)
         return 0;
     wndObj->mConnection->SetParent(hWnd, wndObj.data(), hParent);
-    return (HWND)SetWindowLongPtrA(hWnd, GWLP_HWNDPARENT, hParent);
+    HWND hOld = (HWND)SetWindowLongPtrA(hWnd, GWLP_HWNDPARENT, hParent);
+    /* 换了父窗口：客户区裁剪的基准跟着换 */
+    SbRefreshWindowClip(hWnd, FALSE);
+    SbRefreshChildClips(hWnd);
+    return hOld;
 }
 
 BOOL GetCursorPos(LPPOINT ppt)
@@ -2384,6 +2505,10 @@ static BYTE GetScrollBarPartAlpha(const ScrollBar *sb __attribute__((unused)), i
     return byApha; // todo:hjx
 }
 
+/* 非客户区绘制实现体（WM_PRINT + PRF_NONCLIENT 的处理器，定义在本文件后面）。
+   OnNcPaint 直接调它，不再绕 SendMessage(WM_PRINT)——原因见 OnNcPaint 里的说明。 */
+static LRESULT handlePrint(HWND hWnd, WPARAM wp, LPARAM lp);
+
 static void OnNcPaint(HWND hWnd, WPARAM wp, LPARAM lp __attribute__((unused)))
 {
     // draw scrollbar and border
@@ -2406,7 +2531,7 @@ static void OnNcPaint(HWND hWnd, WPARAM wp, LPARAM lp __attribute__((unused)))
     }
     {
         HDC hdc = GetDCEx(hWnd, hrgn, DCX_WINDOW | DCX_INTERSECTRGN);
-        SendMessageA(hWnd, WM_PRINT, (WPARAM)hdc, PRF_NONCLIENT);
+        handlePrint(hWnd, (WPARAM)hdc, PRF_NONCLIENT);
         ReleaseDC(hWnd, hdc);
     }
     if ((int)wp <= 1)
@@ -2532,9 +2657,9 @@ static LRESULT handleNcLbuttonDown(HWND hWnd, WPARAM wp __attribute__((unused)),
                 {
                     nNewTrackPos = sb->nMin;
                 }
-                else if (nNewTrackPos > (int)(sb->nMax - sb->nMin - sb->nPage + 1))
+                else if (nNewTrackPos > (int)(sb->nMax - sb->nPage + 1))
                 {
-                    nNewTrackPos = sb->nMax - sb->nMin - sb->nPage + 1;
+                    nNewTrackPos = sb->nMax - sb->nPage + 1;
                 }
                 sb->nTrackPos = nNewTrackPos;
                 InvalidateRect(hWnd, &rcRail, TRUE);
@@ -2887,41 +3012,44 @@ static LRESULT OnNcMouseLeave(HWND hWnd, WndObj &wndObj, WPARAM wp __attribute__
 
 static LRESULT OnNcHitTest(HWND hWnd, WndObj &wndObj, WPARAM wp __attribute__((unused)), LPARAM lp)
 {
+    POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
+
+    /* 客户区原点在屏幕上的位置。滚动条矩形由 GetScrollBarRect 以**客户区坐标**给出，
+       换算必须用同一口径（ClientToScreen 会把 WS_BORDER 的 SM_CXEDGE 偏移算进去）；
+       原先用的 MapWindowPoints 基于 GetWindowRect（窗口坐标），带边框的窗口会整体偏
+       SM_CXEDGE，滚动条靠边的 1px 会误判到客户区。 */
+    POINT ptClientOrg = { 0, 0 };
+    ClientToScreen(hWnd, &ptClientOrg);
+
+    /* 滚动条在**非客户区**，必须先于客户区判断：Win32 的 DefWindowProc 也是这个顺序。
+       否则一旦客户区矩形算大了（或滚动条与客户区边界有 1px 缝），滚动条区域就会被
+       判成 HTCLIENT ⇒ 光标/悬停高亮/拖动全交给 app，而 app 只按客户区语义给光标。 */
+    RECT rcSb;
+    if ((wndObj->dwStyle & WS_HSCROLL) && GetScrollBarRect(hWnd, SB_HORZ, &rcSb))
+    {
+        OffsetRect(&rcSb, ptClientOrg.x, ptClientOrg.y);
+        if (PtInRect(&rcSb, pt))
+            return HTHSCROLL;
+    }
+    if ((wndObj->dwStyle & WS_VSCROLL) && GetScrollBarRect(hWnd, SB_VERT, &rcSb))
+    {
+        OffsetRect(&rcSb, ptClientOrg.x, ptClientOrg.y);
+        if (PtInRect(&rcSb, pt))
+            return HTVSCROLL;
+    }
+
     RECT rc;
     GetClientRect(hWnd, &rc);
     int wid = rc.right - rc.left;
     int hei = rc.bottom - rc.top;
-    ClientToScreen(hWnd, (LPPOINT)&rc);
+    rc.left = ptClientOrg.x;
+    rc.top = ptClientOrg.y;
     rc.right = rc.left + wid;
     rc.bottom = rc.top + hei;
-
-    POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
     if (PtInRect(&rc, pt))
         return HTCLIENT;
-    else
-    {
-        if (wndObj->dwStyle & WS_HSCROLL)
-        {
-            RECT rcSb;
-            GetScrollBarRect(hWnd, SB_HORZ, &rcSb);
-            MapWindowPoints(hWnd, 0, (LPPOINT)&rcSb, 2);
-            if (PtInRect(&rcSb, pt))
-            {
-                return HTHSCROLL;
-            }
-        }
-        if (wndObj->dwStyle & WS_VSCROLL)
-        {
-            RECT rcSb;
-            GetScrollBarRect(hWnd, SB_VERT, &rcSb);
-            MapWindowPoints(hWnd, 0, (LPPOINT)&rcSb, 2);
-            if (PtInRect(&rcSb, pt))
-            {
-                return HTVSCROLL;
-            }
-        }
-        return HTBORDER;
-    }
+
+    return HTBORDER;
 }
 
 static LRESULT OnNcCreate(HWND hWnd, WndObj &wndObj, WPARAM wp, LPARAM lp)
@@ -3117,6 +3245,10 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         }
         if (showCmd != -1)
             ShowWindow(wndPos.hwnd, showCmd);
+        /* 位置/尺寸变了：本窗口相对父窗口的可行区域、以及直接子窗口相对本窗口的
+           可行区域都要重算 */
+        SbRefreshWindowClip(hWnd, FALSE);
+        SbRefreshChildClips(hWnd);
         if (!(wndPos.flags & SWP_NOREDRAW))
         {
             InvalidateRect(hWnd, nullptr, TRUE);
@@ -3170,6 +3302,9 @@ LRESULT DefWindowProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         {
             SendMessage(hWnd, WM_SYSCOMMAND, SC_RESTORE, 0);
         }
+        /* 隐藏期间不必管裁剪，重新显示时要把裁剪补上 */
+        SbRefreshWindowClip(hWnd, FALSE);
+        SbRefreshChildClips(hWnd);
         return TRUE;
     }
     case WM_RBUTTONUP:
@@ -3426,7 +3561,21 @@ int SetWindowRgn(HWND hWnd, HRGN hRgn, BOOL bRedraw)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return 0;
-    if (!wndObj->mConnection->SetWindowRgn(hWnd, hRgn))
+    /* app 的区域单独留一份：客户区裁剪（见 wndclip.h）要与它求交后再下发，否则两者
+       会互相覆盖——后调用的那个会把先调用的抹掉。 */
+    if (hRgn)
+    {
+        if (!wndObj->hAppRgn && !(wndObj->hAppRgn = CreateRectRgn(0, 0, 0, 0)))
+            return 0;
+        if (!CombineRgn(wndObj->hAppRgn, hRgn, hRgn, RGN_COPY))
+            return 0;
+    }
+    else if (wndObj->hAppRgn)
+    {
+        DeleteObject(wndObj->hAppRgn);
+        wndObj->hAppRgn = NULL;
+    }
+    if (!SbRefreshWindowClip(hWnd, TRUE))
         return 0;
     if (bRedraw)
         InvalidateRect(hWnd, nullptr, TRUE);
@@ -3510,6 +3659,9 @@ BOOL ShowScrollBar(HWND hWnd, int wBar, BOOL bShow)
             wndObj->dwExStyle &= ~WS_HSCROLL;
         }
     }
+    /* 滚动条显示/隐藏会改变客户区的大小 */
+    SbRefreshWindowClip(hWnd, FALSE);
+    SbRefreshChildClips(hWnd);
     InvalidateRect(hWnd, NULL, TRUE);
     return TRUE;
 }
@@ -3644,6 +3796,12 @@ int SetScrollInfo(HWND hWnd, int fnBar, LPCSCROLLINFO lpsi, BOOL fRedraw)
     else
     {
         return FALSE;
+    }
+    if (bRet && bSwitch)
+    {
+        /* 滚动条出现/消失会改变客户区的大小 */
+        SbRefreshWindowClip(hWnd, FALSE);
+        SbRefreshChildClips(hWnd);
     }
     if (bRet && fRedraw)
     {

@@ -79,6 +79,9 @@ public:
     ScrollBar  sbVert;
     ScrollBar  sbHorz;
     UINT showSbFlags;
+    HRGN hAppRgn;        /* app 用 SetWindowRgn 设置的区域：客户区裁剪与它求交后下发 */
+    BOOL bClipPushed;    /* 平台侧是否挂着本逻辑下发的裁剪区域：TRUE 时"整窗可见"也要补一次撤销 */
+    RECT rcClipPushed;   /* 平台侧当前挂着的那块裁剪矩形（bClipPushed 为真时有效） */
     HWND parent;         /* Window parent */
     HWND owner;          /* Window owner */
     WNDPROC winproc;     /* Window procedure */

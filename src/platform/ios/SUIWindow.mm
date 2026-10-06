@@ -10,6 +10,7 @@
 #include "SConnection.h"
 #include "SUIDataObjectProxy.h"
 #include "wndobj.h"
+#include "wndclip.h"
 #include "keyboard.h"
 #include "tostring.h"
 #include <uimsg.h>
@@ -247,7 +248,21 @@ BOOL IsUiWindow(HWND hWnd){
 }
 
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event{
-    return self.bMsgTransparent ? nil : [super hitTest:point withEvent:event];
+    if(self.bMsgTransparent)
+        return nil;
+    // WS_CHILD 窗口只在父窗口客户区内可见、可点（规则见 swinx/src/wndclip.h）。
+    // UIKit 不做这条裁剪，盖住父窗口滚动条的子视图会把那块区域的触摸全吃掉。
+    // point 位于 superview 坐标系；swinx 的 RECT 是物理像素，故按 scale 换算。
+    RECT rcClip;
+    if(!SbGetWindowClientClip(m_hWnd, &rcClip))
+        return nil;
+    CGPoint ptInSelf = [self convertPoint:point fromView:self.superview];
+    CGFloat scale = [self screenScale];
+    int x = (int)(ptInSelf.x * scale);
+    int y = (int)(ptInSelf.y * scale);
+    if(x < rcClip.left || x >= rcClip.right || y < rcClip.top || y >= rcClip.bottom)
+        return nil;
+    return [super hitTest:point withEvent:event];
 }
 
 - (void)setAlphaValue:(BYTE)byAlpha{
@@ -1467,20 +1482,43 @@ BOOL setUiWindowRgn(HWND hWnd, const RECT *prc, int nCount){
         SUIView *view = getUiView(hWnd);
         if(!view)
             return FALSE;
-        if(prc && nCount){
+        // nCount==0 是"空区域"（完全不可见），不能当成"无区域"而把 mask 摘掉；
+        // 真正要取消区域时走下面 else 分支（prc==NULL）。
+        if(prc){
+            // 单位口径：本移植层的窗口坐标（RECT）一律是**物理像素**，而 UIView/CALayer
+            // 用的是**点**。这层换算只发生在这个桥接层——wnd.cpp 与 wndclip.h 全程物理像素，
+            // 不参与缩放（口径说明见 wndclip.h 末尾；macOS 侧同构实现见 setNsWindowRgn）。
+            UIScreen *screen = view.window ? view.window.screen : nil;
+            CGFloat scale = screen ? screen.scale : 1.0;
+            if(scale <= 0)
+                scale = 1.0;   // 比例不可信时按 1x 兜底：把蒙版放大比缩小更糟（放大=不裁）
+
+            // UIKit 坐标系本来就是左上原点、y 向下，与 RECT 的纵轴方向一致：
+            // 四个量整体除以 scale 换成点即可，**不要**取反、也没有 flip 概念可设。
             UIBezierPath *path = [UIBezierPath bezierPath];
             for(int i = 0; i < nCount; i++){
                 const RECT &rc = prc[i];
-                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(rc.left, rc.top, rc.right-rc.left, rc.bottom-rc.top)]];
+                [path appendPath:[UIBezierPath bezierPathWithRect:CGRectMake(rc.left / scale, rc.top / scale,
+                                                                             (rc.right - rc.left) / scale,
+                                                                             (rc.bottom - rc.top) / scale)]];
             }
             CAShapeLayer *maskLayer = [CAShapeLayer layer];
-            maskLayer.path = path.CGPath;
+            // 蒙版与视图同尺寸；path 的坐标是点，contentsScale 告诉合成器这个子层的
+            // 点-像素比例与宿主一致（缺了它 Retina 下蒙版会按 1x 光栅化，边缘发虚）。
+            maskLayer.frame = view.bounds;
+            maskLayer.contentsScale = scale;
+            maskLayer.path = path.CGPath; // CAShapeLayer 会拷贝一份 path
             view.layer.mask = maskLayer;
             view.layer.masksToBounds = YES;
         }else{
+            // 撤销只摘蒙版；UIView 天然 layer-backed，不存在 macOS 侧 wantsLayer 的问题。
             view.layer.mask = nil;
             view.layer.masksToBounds = NO;
         }
+        // 只标记重绘，不要在这里 [view layoutIfNeeded]/强制同步重绘：SetWindowRgn 可能
+        // 正被 app 在自己的绘制过程中调用（SOUI 的 autoShape 宿主每次 Present 都会调），
+        // 同步重绘会立刻重入绘制并把正在排队的失效区清掉（macOS 侧实测踩过的坑）。
+        // 蒙版是 layer 属性，下一次合成即生效。
         [view setNeedsDisplay];
         return TRUE;
     }

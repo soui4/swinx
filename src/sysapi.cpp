@@ -47,6 +47,7 @@ extern char **environ; // POSIX 约定的环境指针（execve 备用）
 #include "platform_api.h"
 #include "SwinxUtils.h"
 #include "cursormgr.h"
+#include "wndobj.h"
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif //__ANDROID__
@@ -1703,6 +1704,15 @@ extern "C" void WINAPI SwinxDispatchPendingWinEvents(void);
 BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
 {
     SwinxDispatchPendingWinEvents();
+    if(hWnd){
+        WndObj wndObj = WndMgr::fromHwnd(hWnd);
+        if(!wndObj){
+            return FALSE;
+        }
+        if(wndObj->tid != GetCurrentThreadId()){
+            return FALSE;
+        }
+    }
     SConnection *conn = SConnMgr::instance()->getConnection();
     BOOL bRet = conn->getMsg(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
     SwinxDispatchPendingWinEvents();
@@ -1717,6 +1727,15 @@ BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
 BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
 {
     SwinxDispatchPendingWinEvents();
+    if(hWnd){
+        WndObj wndObj = WndMgr::fromHwnd(hWnd);
+        if(!wndObj){
+            return FALSE;
+        }
+        if(wndObj->tid != GetCurrentThreadId()){
+            return FALSE;
+        }
+    }
     SConnection *conn = SConnMgr::instance()->getConnection();
     if (!conn)
         return FALSE;

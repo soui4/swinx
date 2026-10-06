@@ -12,6 +12,7 @@
 #include "SConnection.h"
 #include "SNsDataObjectProxy.h"
 #include "wndobj.h"
+#include "wndclip.h"
 #include "keyboard.h"
 #include "sdragsourcehelper.h"
 #include "tostring.h"
@@ -490,7 +491,22 @@ defer:(BOOL)flag;
 }
 
 -(nullable NSView *)hitTest:(NSPoint)point {
-    return  m_bMsgTransparent?nil:[super hitTest:point];
+    if(m_bMsgTransparent)
+        return nil;
+    // WS_CHILD 窗口只在父窗口客户区内可见、可点（规则见 swinx/src/wndclip.h）。原生
+    // AppKit 不做这条裁剪，于是盖住父窗口滚动条的子视图会把那块区域的点击全吃掉，
+    // 父窗口再也收不到滚动条消息。落点不在可行区域内就放过，让事件落到下层视图。
+    // point 位于 superview 坐标系，而 swinx 的 RECT 是物理像素，故换算后再比较。
+    RECT rcClip;
+    if(!SbGetWindowClientClip(m_hWnd, &rcClip))
+        return nil;
+    NSPoint ptInSelf = [self convertPoint:point fromView:self.superview];
+    float scale = self.window ? [self.window backingScaleFactor] : 1.0f;
+    int x = (int)(ptInSelf.x * scale);
+    int y = (int)(ptInSelf.y * scale);
+    if(x < rcClip.left || x >= rcClip.right || y < rcClip.top || y >= rcClip.bottom)
+        return nil;
+    return [super hitTest:point];
 }
 
 - (void)setAlpha:(BYTE)byAlpha{
@@ -569,6 +585,22 @@ defer:(BOOL)flag;
     return YES;
 }
 
+// 把事件坐标换算到本视图坐标系。跨窗口转发（如 dockbar float 后旧窗口继续
+// 派发拖动事件）时 locationInWindow 基于事件窗口坐标系，需经屏幕坐标换算。
+- (NSPoint)locationInViewForEvent:(NSEvent *)theEvent {
+    NSWindow *eventWindow = theEvent.window;
+    NSWindow *selfWindow = self.window;
+    NSPoint locInWindow;
+    if (eventWindow && selfWindow && eventWindow != selfWindow) {
+        NSRect rcInScreen = [eventWindow convertRectToScreen:NSMakeRect(theEvent.locationInWindow.x, theEvent.locationInWindow.y, 1, 1)];
+        NSRect rcInSelf = [selfWindow convertRectFromScreen:rcInScreen];
+        locInWindow = rcInSelf.origin;
+    } else {
+        locInWindow = theEvent.locationInWindow;
+    }
+    return [self convertPoint:locInWindow fromView:nil];
+}
+
 - (void) onMouseEvent: (NSEvent *) theEvent withMsgId:(UINT) msg{
     if(!_bEnabled && msg != WM_MOUSEMOVE)
         return;
@@ -596,7 +628,7 @@ defer:(BOOL)flag;
     if(pressedButtons & (1<<4)){
         uFlags |= MK_XBUTTON2;
     }
-    NSPoint locationInView = [self convertPoint:theEvent.locationInWindow fromView:nil];
+    NSPoint locationInView = [self locationInViewForEvent:theEvent];
     float scale = [self.window backingScaleFactor];
     locationInView.x *= scale;
     locationInView.y *= scale;
@@ -667,7 +699,7 @@ defer:(BOOL)flag;
         uFlags |= MK_XBUTTON2;
     }
 
-    NSPoint locationInView = [self convertPoint:theEvent.locationInWindow fromView:nil];
+    NSPoint locationInView = [self locationInViewForEvent:theEvent];
     float scale = [self.window backingScaleFactor];
     locationInView.x *= scale;
     locationInView.y *= scale;
@@ -1477,6 +1509,18 @@ defer:(BOOL)flag
     if(m_pCapture){
         [m_pCapture mouseMoved:(NSEvent *)event];
         return;
+    }
+    // dockbar float 等场景：拖动过程中鼠标捕获被转移到新窗口，但 AppKit 仍把
+    // 拖动事件派发给 mouseDown 起源的原窗口。这里把事件转发给持有全局捕获的
+    // 视图（位于其他窗口），保证跨窗口的拖动不中断。
+    SConnection *conn = SConnMgr::instance()->getConnection(0, 0);
+    HWND hCap = conn ? conn->GetCapture() : NULL;
+    if (hCap) {
+        SNsWindow *capView = getNsWindow(hCap);
+        if (capView && capView.window && capView.window != self) {
+            [capView mouseMoved:(NSEvent *)event];
+            return;
+        }
     }
     NSView * pHover = [self.contentView hitTest:event.locationInWindow];
     if(m_pHover != pHover){
@@ -3303,64 +3347,59 @@ HWND getHwndFromView(NSView *view){
     return NULL;
 }
 
-static CGPathRef CGPathCreateFromNSBezierPath(NSBezierPath *bezierPath) {
-    // 创建一个可变的 CGPath
-    CGMutablePathRef cgPath = CGPathCreateMutable();
-    
-    // 获取路径的各个部分
-    NSInteger elementCount = bezierPath.elementCount;
-    
-    for (NSInteger i = 0; i < elementCount; i++) {
-        NSPoint points[3]; // 存储贝塞尔曲线的点
-        NSBezierPathElement element = [bezierPath elementAtIndex:i associatedPoints:points];
-        
-        switch (element) {
-            case NSMoveToBezierPathElement:
-                CGPathMoveToPoint(cgPath, NULL, points[0].x, points[0].y);
-                break;
-            case NSLineToBezierPathElement:
-                CGPathAddLineToPoint(cgPath, NULL, points[0].x, points[0].y);
-                break;
-            case NSCurveToBezierPathElement:
-                CGPathAddCurveToPoint(cgPath, NULL, points[0].x, points[0].y, points[1].x, points[1].y, points[2].x, points[2].y);
-                break;
-            case NSClosePathBezierPathElement:
-                CGPathCloseSubpath(cgPath);
-                break;
-            default:
-                break;
-        }
-    }
-    
-    return cgPath; // 返回 CGPathRef
-}
-
 BOOL setNsWindowRgn(HWND hWnd, const RECT *prc, int nCount){
     @autoreleasepool{
         SNsWindow *win = getNsWindow(hWnd);
         if(!win)
             return FALSE;
-        if(prc && nCount){
-            NSBezierPath *path = [NSBezierPath bezierPath];
-            for(int i = 0; i < nCount; i++){
-                const RECT &rc = prc[i];
-                [path appendBezierPathWithRect: NSMakeRect(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top)];
-            }
+        // nCount==0 是"空区域"（完全不可见），不能当成"无区域"而把 mask 摘掉；
+        // 真正要取消区域时走下面 else 分支（prc==NULL）。
+        if(prc){
+            // 单位口径：本移植层的窗口坐标（RECT）一律是**物理像素**，而 CALayer 用的是
+            // **点**。这层换算只发生在这个桥接层——wnd.cpp 与 wndclip.h 全程物理像素，不
+            // 参与缩放（口径说明见 wndclip.h 末尾）。
+            NSScreen *screen = win.window ? [win.window screen] : nil;
+            if(!screen)
+                screen = getNsScreen(hWnd);
+            CGFloat scale = screen ? [screen backingScaleFactor] : 1.0;
+            if(scale <= 0)
+                scale = 1.0;   // 比例不可信时按 1x 兜底：把蒙版放大比缩小更糟（放大=不裁）
 
             CAShapeLayer *maskLayer = [CAShapeLayer layer];
-            CGPathRef cgPath = CGPathCreateFromNSBezierPath(path);  // 转换为CGPath
+            // 蒙版与视图同尺寸。swinx 的 NSView 一律 isFlipped=YES，10.8 起的 AppKit 会把
+            // backing layer 的 geometryFlipped 设为 YES，使图层坐标与视图坐标完全一致
+            // （左上原点、y 向下）；蒙版是这棵图层树上的子层，沿用同一坐标系。所以 RECT 只需
+            // 整体除以 scale 换成点，纵轴与横轴一样照搬，**不要**取反、也不要再设
+            // geometryFlipped（那会翻成相反方向，实测就是"上下颠倒"）。
+            maskLayer.frame = win.bounds;
+            maskLayer.contentsScale = scale;
+
+            CGMutablePathRef cgPath = CGPathCreateMutable();
+            for(int i = 0; i < nCount; i++){
+                const RECT &rc = prc[i];
+                // RECT 是物理像素、左上原点、y 向下 ⇒ 除以 scale 即得视图/蒙版的点坐标。
+                CGPathAddRect(cgPath, NULL, CGRectMake(rc.left / scale, rc.top / scale,
+                                                       (rc.right - rc.left) / scale,
+                                                       (rc.bottom - rc.top) / scale));
+            }
             maskLayer.path = cgPath;      // CAShapeLayer 会拷贝一份 path
             CGPathRelease(cgPath);        // 释放创建引用，避免每次调用泄漏
             win.wantsLayer = YES;
             win.layer.mask = maskLayer;
             win.layer.masksToBounds = YES;
         }else{
+            // 撤销只摘蒙版，不要顺手把 wantsLayer 切回 NO：那会让 AppKit 拆掉这棵图层树，
+            // 正在排队的绘制/失效安排随之丢失，而且"设区域/撤区域"来回抖动会反复重建图层。
             win.layer.mask = nil;
             win.layer.masksToBounds = NO;
-            win.wantsLayer = NO;
         }
+        // 只标记重绘，不要在这里 [win displayIfNeeded] 强制同步重绘：SetWindowRgn 可能
+        // 正被 app 在自己的绘制过程中调用（SOUI 的 autoShape 宿主每次 Present 都会调），
+        // 同步重绘会立刻重入绘制，并把正在排队的 invalid 区域清掉——外层那次 WM_NCPAINT
+        // 于是拿不到失效区，而滚动条/边框正是画在非客户区的，那之后就再也不画
+        // （demos/uieditor 的子窗口滚动条就是这么丢的）。蒙版是 layer 属性，下一次合成
+        // 即生效，不需要在这里强制重绘。
         [win setNeedsDisplay: YES];
-        [win displayIfNeeded];
         return TRUE;
     }
 }

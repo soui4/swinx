@@ -385,6 +385,11 @@ public:
     std::list<TimerInfo> m_lstTimer;
     bool m_bBlockTimer;
     uint64_t m_tsLastMsg=-1;
+    // last pointer position (root coords) seen in X events, updated in
+    // event2Msg. Used to avoid a synchronous xcb_query_pointer round trip
+    // when synthesizing WM_TIMER. Only touched by this connection's UI thread.
+    POINT m_ptCursorCache={0,0};
+    bool m_bCursorCache=false;
     HDC m_deskDC;
     HBITMAP m_deskBmp;
 

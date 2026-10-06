@@ -18,6 +18,9 @@ _Window::_Window(uint32_t extraLen)
     , crKey(CR_INVALID)
     , byAlpha(0xff)
     , showSbFlags(0)
+    , hAppRgn(NULL)
+    , bClipPushed(FALSE)
+    , rcClipPushed{0, 0, 0, 0}
     , parent(0)
     , owner(0)
     , wIDmenu(0)
@@ -75,6 +78,11 @@ _Window::~_Window()
     {
         DeleteObject(invalid.hRgn);
         invalid.hRgn = NULL;
+    }
+    if (hAppRgn)
+    {
+        DeleteObject(hAppRgn);
+        hAppRgn = NULL;
     }
     if (hSysMenu)
     {
