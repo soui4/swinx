@@ -2411,31 +2411,23 @@ static LPCSTR WordNext(LPCSTR pszBuf, bool bWordbreak)
     return p;
 }
 
-static LPCSTR nextChar(LPCSTR p)
-{
-    int len = mbtowc(nullptr, p, MB_CUR_MAX);
-    assert(len > 0);
-    return p + len;
-}
-
+// 逐字累加宽度用于折行判断。走 cairo_text_extents2_ex：它内部用总 advance 累加
+// （含侧边承距），而不是 cairo_text_extents 的墨迹宽——斜体/宽字形的字体用墨迹
+// 宽会被系统性测窄，导致折行位置偏后、行宽溢出。double 累加 + 单调钳制也一并复
+// 用，不必在这里再手写一遍逐字循环。这里只要整行宽，逐字数组传 NULL 即可。
 static SIZE OnMeasureText(HDC hdc, LPCSTR pszBuf, int cchText)
 {
-    cairo_text_extents_t ext;
-    char word[6];
-    LPCSTR p = pszBuf;
-    LPCSTR pEnd = p + cchText;
     cairo_font_extents_t font_ext;
     cairo_font_extents(hdc->cairo, &font_ext);
     SIZE ret = { 0, 0 };
-    while (p < pEnd)
+    if (cchText > 0)
     {
-        LPCSTR next = nextChar(p);
-        assert(next - p <= 5);
-        memcpy(word, p, (next - p));
-        word[next - p] = 0;
-        cairo_text_extents(hdc->cairo, word, &ext);
-        ret.cx += ext.width;
-        p = next;
+        cairo_text_extents_t ext;
+        // pndx 传 NULL：不产出逐字数组，ext 里已含总 advance
+        cairo_text_extents2_ex(hdc->cairo, pszBuf, cchText, &ext, NULL);
+        // 行宽取 ext.x_advance：末字 advance 为负（叠加字形）时逐字数组末位会
+        // 小于实际行宽
+        ret.cx = (LONG)floor(ext.x_advance + 0.5);
     }
     ret.cy = font_ext.ascent + font_ext.descent;
     return ret;
@@ -3022,41 +3014,53 @@ BOOL WINAPI GetTextExtentExPointA(HDC hdc, LPCSTR lpszString, int cchString, int
         return GetTextExtentPoint32A(hdc, lpszString, cchString, psizl);
     cairo_save(hdc->cairo);
     ApplyFont(hdc);
-    cairo_text_extents_t ext;
     cairo_font_extents_t font_ext;
     cairo_font_extents(hdc->cairo, &font_ext);
+    psizl->cx = 0;
+    psizl->cy = font_ext.ascent + font_ext.descent;
     if (cchString < 0)
-        cchString = strlen(lpszString);
-    int *pCharWid = new int[cchString];
-    int nWords = cairo_text_extents2_ex(hdc->cairo, lpszString, cchString, &ext, pCharWid);
-    if (lpnDx)
+    {
+        // Win32: a negative cchString is rejected outright (unlike the Extent
+        // family, which treats -1 as "strlen"); leave the output untouched.
+        if (lpnFit)
+            *lpnFit = 0;
+        cairo_restore(hdc->cairo);
+        return TRUE;
+    }
+    if (cchString == 0)
     {
         if (lpnFit)
-            *lpnFit = cchString;
-        for (int i = 0, ichar = 0; i < nWords; i++)
-        {
-            int chars = swinx::UTF8CharLength(lpszString[ichar]);
-            if (pCharWid[i] > nMaxExtent)
-            {
-                if (lpnFit)
-                    *lpnFit = ichar;
-                if (i > 0)
-                    ext.x_advance = pCharWid[i - 1];
-                else
-                    ext.x_advance = 0;
-                break;
-            }
-            for (int j = 0; j < chars; j++)
-            {
-                lpnDx[ichar + j] = pCharWid[i];
-            }
-            ichar += chars;
-        }
+            *lpnFit = 0;
+        cairo_restore(hdc->cairo);
+        return TRUE;
+    }
+    int *pCharWid = new int[cchString];
+    cairo_text_extents_t ext;
+    // one cumulative width per byte (all bytes of a multi-byte character get that
+    // character's width, matching GDI's ANSI behaviour); accumulated in double so
+    // no per-char is negative or drifted
+    cairo_text_extents2_ex(hdc->cairo, lpszString, cchString, &ext, pCharWid);
+    // line width comes from extents, not pndx[cchString-1]: a negative final
+    // advance (overlapping glyph) would make the last entry smaller than the line
+    int cx = (int)floor(ext.x_advance + 0.5);
+    // GDI quirk (verified against gdi32): the number of characters that fit is
+    // based on nMaxExtent, but psizl->cx is always the width of the *whole*
+    // string -- nMaxExtent only truncates how much of lpnDx gets filled.
+    int fit = 0;
+    while (fit < cchString && pCharWid[fit] <= nMaxExtent)
+        fit++;
+    if (lpnFit)
+        *lpnFit = fit;
+    if (lpnDx)
+    {
+        // only the fitting prefix is written; the tail is deliberately left
+        // untouched, exactly like gdi32 (callers size the buffer to cchString
+        // and only consume lpnFit entries)
+        for (int j = 0; j < fit; j++)
+            lpnDx[j] = pCharWid[j];
     }
     delete[] pCharWid;
-
-    psizl->cx = ext.x_advance;
-    psizl->cy = font_ext.ascent + font_ext.descent;
+    psizl->cx = cx;
     cairo_restore(hdc->cairo);
     return TRUE;
 }
@@ -3067,41 +3071,85 @@ BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, in
         return GetTextExtentPoint32W(hdc, lpszString, cchString, psizl);
     cairo_save(hdc->cairo);
     ApplyFont(hdc);
-    cairo_text_extents_t ext;
     cairo_font_extents_t font_ext;
     cairo_font_extents(hdc->cairo, &font_ext);
-    std::string str;
-    tostring(lpszString, cchString, str);
-    int *pCharWid = new int[str.length()];
-    int nWords = cairo_text_extents2_ex(hdc->cairo, str.c_str(), str.length(), &ext, pCharWid);
-    if (lpnDx)
+    psizl->cx = 0;
+    psizl->cy = font_ext.ascent + font_ext.descent;
+    if (cchString < 0)
     {
         if (lpnFit)
-            *lpnFit = cchString;
-        for (int i = 0, ichar = 0; i < nWords; i++)
-        {
-            int chars = swinx::WideCharLength(lpszString[ichar]);
-            if (pCharWid[i] > nMaxExtent)
-            {
-                if (lpnFit)
-                    *lpnFit = ichar;
-                if (i > 0)
-                    ext.x_advance = pCharWid[i - 1];
-                else
-                    ext.x_advance = 0;
-                break;
-            }
-            for (int j = 0; j < chars; j++)
-            {
-                lpnDx[ichar + j] = pCharWid[i];
-            }
-            ichar += chars;
-        }
+            *lpnFit = 0;
+        cairo_restore(hdc->cairo);
+        return TRUE;
     }
+    if (cchString == 0)
+    {
+        if (lpnFit)
+            *lpnFit = 0;
+        cairo_restore(hdc->cairo);
+        return TRUE;
+    }
+    // cchString counts WCHARs, but the text is handled as UTF-8 internally: one
+    // wide char may encode to 1..3 bytes, so the byte buffer has to be sized from
+    // wcslen(lpszString), NOT from cchString (which can be larger, e.g. UTF-32
+    // clients passing cchString == wcslen * 4).
+    int wchars = (int)wcslen(lpszString);
+    if (cchString < wchars)
+        wchars = cchString;
+    std::string str;
+    tostring(lpszString, wchars, str);
+    int bytes = (int)str.length();
+    if (bytes <= 0)
+    {
+        if (lpnFit)
+            *lpnFit = 0;
+        cairo_restore(hdc->cairo);
+        return TRUE;
+    }
+    int *pCharWid = new int[bytes];
+    cairo_text_extents_t ext;
+    cairo_text_extents2_ex(hdc->cairo, str.c_str(), bytes, &ext, pCharWid);
+    int cx = (int)floor(ext.x_advance + 0.5);
+    // lpnDx is indexed in wchars, but pCharWid is indexed in UTF-8 bytes: walk
+    // the UTF-8 string one character at a time and take the cumulative width at
+    // the *last* byte of each character.  The step must come from the UTF-8
+    // leading byte -- NOT from swinx::WideCharLength, which reports a UTF-16 /
+    // UTF-32 *code-unit* count (always 1 on Linux/Android, where wchar_t is
+    // 32-bit), not the UTF-8 byte length.  Using it desynchronises the two
+    // indices for any non-ASCII character (a CJK char is 3 UTF-8 bytes but 1
+    // code unit), leaving pWideWid short of the whole-string width.
+    int *pWideWid = new int[wchars];
+    const char *u8 = str.data();
+    int bi = 0; // byte offset of the current UTF-8 character
+    for (int w = 0; w < wchars; w++)
+    {
+        if (bi >= bytes)
+        {
+            // more wchars than UTF-8 characters (malformed input): repeat the
+            // final width so the array stays populated and monotonic
+            pWideWid[w] = pCharWid[bytes - 1];
+            continue;
+        }
+        int clen = (int)swinx::UTF8CharLength((unsigned char)u8[bi]);
+        int last = bi + clen - 1;
+        if (last >= bytes)
+            last = bytes - 1; // defensive: truncated multi-byte tail
+        pWideWid[w] = pCharWid[last];
+        bi += clen;
+    }
+    int fit = 0;
+    while (fit < wchars && pWideWid[fit] <= nMaxExtent)
+        fit++;
+    if (lpnFit)
+        *lpnFit = fit;
+    if (lpnDx)
+    {
+        for (int j = 0; j < fit; j++)
+            lpnDx[j] = pWideWid[j];
+    }
+    delete[] pWideWid;
     delete[] pCharWid;
-
-    psizl->cx = ext.x_advance;
-    psizl->cy = font_ext.ascent + font_ext.descent;
+    psizl->cx = cx;
     cairo_restore(hdc->cairo);
     return TRUE;
 }

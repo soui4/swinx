@@ -3625,15 +3625,27 @@ BOOL WINAPI GetTextExtentExPointA(HDC hdc, LPCSTR lpszString, int cchString, int
     if (!lpnFit && !lpnDx)
         return GetTextExtentPoint32A(hdc, lpszString, cchString, psizl);
     if (cchString < 0)
-        cchString = (int)strlen(lpszString);
+    {
+        // Win32 rejects a negative count; do not touch the outputs
+        if (lpnFit)
+            *lpnFit = 0;
+        return TRUE;
+    }
     CGFloat ascent = 0, descent = 0;
     bool gotMetrics = false;
-    CGFloat totalWid = 0;
+    // Accumulate in double: CoreText advances are fractional.  Two running
+    // totals are kept: totalWid covers the whole string (psizl->cx), fitWid
+    // covers only the fitting prefix (lpnDx / lpnFit).  nMaxExtent limits how
+    // many lpnDx entries are written, never psizl->cx, exactly like gdi32.
+    double totalWid = 0;
+    double fitWid = 0;
     int i = 0;
+    int fit = 0;  // chars that fit
     while (i < cchString)
     {
         int chLen = swinx::UTF8CharLength(lpszString[i]);
-        if(i + chLen > cchString) chLen = cchString - i;
+        if (i + chLen > cchString)
+            chLen = cchString - i;
         CGFloat chAscent = 0, chDescent = 0, chWid = 0;
         CTLineRef line = CreateCTLineWithDC(hdc, lpszString + i, chLen, &chAscent, &chDescent, &chWid);
         if (line)
@@ -3646,24 +3658,40 @@ BOOL WINAPI GetTextExtentExPointA(HDC hdc, LPCSTR lpszString, int cchString, int
             }
             CFRelease(line);
         }
-        if (totalWid + chWid > nMaxExtent)
+        if (chWid < 0)
+            chWid = 0; // never let a broken metric shrink the running total
+        totalWid += chWid; // cx always covers the whole string
+        double nextFitWid = fitWid + chWid;
+        // gdi32 decides the fit from the integer cumulative widths it also
+        // writes to lpnDx: a character whose (truncated) advance equals
+        // nMaxExtent still fits.  Comparing the raw fraction instead rejects
+        // such a character and reports one fewer than gdi32.
+        if ((LONG)nextFitWid > nMaxExtent)
         {
-            if (lpnFit)
-                *lpnFit = i;
-            break;
+            // does not fit: stop filling lpnDx/lpnFit, but keep measuring the
+            // rest of the string so psizl->cx is the whole-string width
+            i += chLen;
+            continue;
         }
-        totalWid += chWid;
+        fitWid = nextFitWid;
         if (lpnDx)
         {
-            for (int j = 0; j < chLen; j++)
-                lpnDx[i + j] = (int)totalWid;
+            // GDI fills lpnDx for the fitting prefix only; the tail stays as-is
+            for (int j = 0; j < chLen && i + j < cchString; j++)
+                lpnDx[i + j] = (int)fitWid;
         }
         i += chLen;
+        fit = i;
     }
-    if (lpnFit && i == cchString)
-        *lpnFit = cchString;
-    psizl->cx = (int)totalWid;
-    psizl->cy = (LONG)(ascent + descent);
+    if (lpnFit)
+        *lpnFit = fit;
+    // As in gdi32, psizl->cx is always the width of the whole string; nMaxExtent
+    // only limits how many lpnDx entries are written.  Truncate like gdi32's
+    // integer A-widths: rounding the accumulated fraction up could push cx one
+    // pixel past the last lpnDx entry (or GetTextExtentPoint32) on a fractional
+    // line.
+    psizl->cx = (LONG)totalWid;
+    psizl->cy = gotMetrics ? (LONG)(ascent + descent) : 16;
     return TRUE;
 }
 
@@ -3671,18 +3699,27 @@ BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, in
 {
     if (!lpnFit && !lpnDx)
         return GetTextExtentPoint32W(hdc, lpszString, cchString, psizl);
+    if (cchString < 0)
+    {
+        if (lpnFit)
+            *lpnFit = 0;
+        return TRUE;
+    }
     std::string str;
     tostring(lpszString, cchString, str);
     const char *lpszStringA = str.c_str();
     int cchStringA = (int)str.length();
     CGFloat ascent = 0, descent = 0;
     bool gotMetrics = false;
-    CGFloat totalWid = 0;
+    double totalWid = 0; // whole-string advance (psizl->cx)
+    double fitWid = 0;   // advance of the fitting prefix (lpnDx / lpnFit)
     int i = 0, iW = 0;
+    int fit = 0;
     while (i < cchStringA)
     {
         int chLen = swinx::UTF8CharLength(lpszStringA[i]);
-        if(i + chLen > cchStringA) chLen = cchStringA - i;
+        if (i + chLen > cchStringA)
+            chLen = cchStringA - i;
         CGFloat chAscent = 0, chDescent = 0, chWid = 0;
         CTLineRef line = CreateCTLineWithDC(hdc, lpszStringA + i, chLen, &chAscent, &chDescent, &chWid);
         if (line)
@@ -3695,26 +3732,42 @@ BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, in
             }
             CFRelease(line);
         }
-        int wChars = swinx::WideCharLength(lpszString[iW]);
-        if (totalWid + chWid > nMaxExtent)
+        if (chWid < 0)
+            chWid = 0;
+        int wChars = (iW < cchString) ? swinx::WideCharLength(lpszString[iW]) : 0;
+        if (wChars < 1 && iW < cchString)
+            wChars = 1;
+        if (iW + wChars > cchString)
+            wChars = cchString - iW;
+        totalWid += chWid; // cx always covers the whole string
+        double nextFitWid = fitWid + chWid;
+        // same rounding rule as the A variant: fit is decided from the truncated
+        // cumulative widths written to lpnDx, so a char that rounds to
+        // nMaxExtent still counts as fitting
+        if ((LONG)nextFitWid > nMaxExtent)
         {
-            if (lpnFit)
-                *lpnFit = iW;
-            break;
+            // does not fit: stop filling lpnDx/lpnFit, but keep measuring the
+            // rest of the string so psizl->cx is the whole-string width
+            i += chLen;
+            iW += wChars;
+            continue;
         }
-        totalWid += chWid;
+        fitWid = nextFitWid;
         if (lpnDx)
         {
             for (int j = 0; j < wChars; j++)
-                lpnDx[iW + j] = (int)totalWid;
+                lpnDx[iW + j] = (int)fitWid;
         }
         i += chLen;
         iW += wChars;
+        fit = iW;
     }
-    if (lpnFit && iW == cchString)
-        *lpnFit = cchString;
-    psizl->cx = (int)totalWid;
-    psizl->cy = (LONG)(ascent + descent);
+    if (lpnFit)
+        *lpnFit = fit;
+    // psizl->cx is always the whole-string width (truncated like gdi32's
+    // integer A-widths), never limited by nMaxExtent.
+    psizl->cx = (LONG)totalWid;
+    psizl->cy = gotMetrics ? (LONG)(ascent + descent) : 16;
     return TRUE;
 }
 

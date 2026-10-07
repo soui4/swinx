@@ -3,6 +3,7 @@
 #include "cairo_show_text2.h"
 #include "FontFallback.h"
 #include <assert.h>
+#include <math.h>
 #include <string.h>
 #include <vector>
 /* Size in bytes of the buffer to use off the stack per functions.
@@ -223,45 +224,141 @@ int cairo_text_extents2(cairo_t *cr, const char *utf8, int len, cairo_text_exten
     return numGlyphs;
 }
 
+// Per-character cumulative advances for utf8[0..len).
+//
+// Fills pndx[0..len-1] -- one entry per *byte*, so every byte of a multi-byte
+// character carries that character's cumulative width (GDI ANSI semantics) --
+// and returns len.  pndx must have room for len ints.  pndx may be NULL, in
+// which case no per-character array is produced (extents is still computed), so
+// callers that only need the line width can pass NULL.
+//
+// Measurements are accumulated in double and only rounded when stored, so a run
+// of small fractional advances does not drift, and every entry is clamped to be
+// >= the previous one so a caller never observes a shrinking (negative) width.
+//
+// The array is sized by the byte count on purpose: shaping may legitimately
+// return more glyphs than bytes (vertical writing, disassembling fonts), and the
+// caller always allocates by bytes.
+//
+// extents receives the bearings of the last glyph plus the total advance.
+// extents->x_advance can exceed the final entry of pndx when the final
+// character's advance is negative (an overlapping glyph, e.g. a combining mark);
+// callers that want a line width should read extents->x_advance.
 int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_extents_t *extents, int *pndx)
 {
     if (len < 0)
-        len = strlen(utf8);
+        len = (int)strlen(utf8);
+    memset(extents, 0, sizeof(*extents));
     if (len == 0)
         return 0;
     std::vector<TextRun> runs;
     SplitTextRuns(cr, utf8, len, runs);
     cairo_scaled_font_t *primary = cairo_get_scaled_font(cr);
-    memset(extents, 0, sizeof(*extents));
-    extents->x_advance = extents->y_advance = 0;
-    int total = 0;
     double x = 0, y = 0;
     cairo_scaled_font_t *lastFont = primary;
     cairo_glyph_t lastGlyph = {0, 0, 0};
     bool hasLast = false;
+    int byteDone = 0;    // bytes of utf8 already written to pndx
+    int prevByteVal = 0;
     for (size_t r = 0; r < runs.size(); r++)
     {
         cairo_scaled_font_t *font = runs[r].scaled ? runs[r].scaled : primary;
-        std::vector<cairo_glyph_t> glyphs;
-        int n = ShapeAppend(font, utf8 + runs[r].offset, runs[r].len, x, y, glyphs);
-        if (n <= 0)
-            continue;
-        // per-glyph cumulative advances (glyph i+1 x position == advance of glyph i)
-        for (int i = 0; i < n - 1; i++)
-            pndx[total + i] = (int)glyphs[i + 1].x;
-        lastFont = font;
-        lastGlyph = glyphs[n - 1];
-        hasLast = true;
-        total += n;
+        const char *rsrc = utf8 + runs[r].offset;
+        int rlen = runs[r].len;
+        cairo_glyph_t stack_glyphs[CAIRO_STACK_ARRAY_LENGTH(cairo_glyph_t)];
+        cairo_glyph_t *glyphs = stack_glyphs;
+        int num_glyphs = ARRAY_LENGTH(stack_glyphs);
+        cairo_text_cluster_t stack_clusters[CAIRO_STACK_ARRAY_LENGTH(cairo_text_cluster_t)];
+        cairo_text_cluster_t *clusters = stack_clusters;
+        int num_clusters = ARRAY_LENGTH(stack_clusters);
+        cairo_text_cluster_flags_t cluster_flags = CAIRO_TEXT_CLUSTER_FLAG_BACKWARD;
+        cairo_status_t status = cairo_scaled_font_text_to_glyphs(font, x, y, rsrc, rlen,
+                                                                 &glyphs, &num_glyphs,
+                                                                 &clusters, &num_clusters,
+                                                                 &cluster_flags);
+
+        double runEndX = x;
+        int rn = 0; // glyphs produced by this run (0 => do not advance x)
+        if (status == CAIRO_STATUS_SUCCESS && num_glyphs > 0)
+        {
+            // total advance of the run = last glyph position + its own advance
+            for (int i = 0; i < num_glyphs; i++)
+            {
+                cairo_text_extents_t ge;
+                cairo_scaled_font_glyph_extents(font, &glyphs[i], 1, &ge);
+                runEndX = glyphs[i].x + ge.x_advance;
+            }
+            // walk the cluster table (logical order) and paint every byte each
+            // cluster covers, so no byte of a multi-byte character is left out
+            int gi = 0, ci = 0;
+            cairo_bool_t backward = (cluster_flags & CAIRO_TEXT_CLUSTER_FLAG_BACKWARD) != 0;
+            while (gi < num_glyphs && ci < num_clusters)
+            {
+                // for BACKWARD the glyph field must be reversed to reach
+                // logical/visual glyph order
+                int g0 = backward ? num_glyphs - clusters[ci].num_glyphs - gi : gi;
+                int g1 = g0 + clusters[ci].num_glyphs - 1;
+                // The cumulative width of this cluster is the *end* of its last
+                // glyph, i.e. the glyph position plus its own advance -- not the
+                // position itself (which is the advance *before* the glyph and
+                // would make every entry one character short, leaving pndx[len-1]
+                // smaller than the line width).
+                double cum = runEndX;
+                if (g1 >= 0 && g1 < num_glyphs)
+                {
+                    cairo_text_extents_t ge;
+                    cairo_scaled_font_glyph_extents(font, &glyphs[g1], 1, &ge);
+                    cum = glyphs[g1].x + ge.x_advance;
+                }
+                int v = (int)floor(cum + 0.5);
+                if (v < prevByteVal)
+                    v = prevByteVal;
+                if(pndx){
+                for (int b = 0; b < clusters[ci].num_bytes; b++)
+                {
+                    if (byteDone < len)
+                        pndx[byteDone++] = v;
+                }
+                }
+                prevByteVal = v;
+                gi += clusters[ci].num_glyphs;
+                ci++;
+            }
+            rn = num_glyphs;
+        }
+        // defensive fill for bytes this run did not map (failed run, empty or
+        // truncated cluster table): never leave an entry unset / non-monotonic
+        int runBytesEnd = runs[r].offset + rlen;
+        while (pndx && byteDone < runBytesEnd && byteDone < len)
+            pndx[byteDone++] = prevByteVal;
+
+        if (rn > 0)
+        {
+            // only advance when the run produced glyphs, so a failed run cannot
+            // silently swallow the following runs
+            x = runEndX;
+            y = glyphs[rn - 1].y;
+            lastFont = font;
+            lastGlyph = glyphs[rn - 1];
+            hasLast = true;
+        }
+        if (glyphs && glyphs != stack_glyphs)
+            cairo_glyph_free(glyphs);
+        if (clusters && clusters != stack_clusters)
+            cairo_text_cluster_free(clusters);
     }
     if (!hasLast)
+    {
+        // nothing shaped: report zero widths rather than leaving garbage
+        if (len > 0 && pndx)
+            memset(pndx, 0, sizeof(int) * len);
         return 0;
+    }
     // keep original semantics: bearings from the last glyph, advance = total
     cairo_scaled_font_glyph_extents(lastFont, &lastGlyph, 1, extents);
     extents->x_advance = x; // x already accumulates the advance of every glyph
     extents->y_advance = y;
-    pndx[total - 1] = (int)extents->x_advance;
-    return total;
+    return len;
 }
 
 void cairo_text_path2(cairo_t *cr, const char *utf8, int length)
