@@ -6425,13 +6425,13 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ],
     [
      "platform/linux/imm.cpp",
@@ -6595,18 +6595,18 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/mobile/imm.cpp",
@@ -6629,18 +6629,18 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/mobile/imm.cpp",
@@ -6663,18 +6663,18 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/mobile/imm.cpp",
@@ -6697,18 +6697,18 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/mobile/imm.cpp",
@@ -6731,18 +6731,18 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/mobile/imm.cpp",
@@ -6765,18 +6765,18 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/mobile/imm.cpp",
@@ -7071,18 +7071,18 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/mobile/imm.cpp",
@@ -7105,18 +7105,18 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/mobile/imm.cpp",
@@ -7275,18 +7275,18 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/mobile/imm.cpp",
@@ -7309,18 +7309,18 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/mobile/imm.cpp",
@@ -12167,11 +12167,6 @@
      "strapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "strapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -12184,11 +12179,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "strapi.cpp",
      "impl",
@@ -12214,11 +12204,6 @@
      "strapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "strapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -12231,11 +12216,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "strapi.cpp",
      "impl",
@@ -12256,11 +12236,6 @@
      "strapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "strapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -12273,11 +12248,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "strapi.cpp",
      "impl",
@@ -12298,11 +12268,6 @@
      "strapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "strapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -12315,11 +12280,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "strapi.cpp",
      "impl",
@@ -13057,6 +13017,16 @@
      ""
     ],
     [
+     "sysapi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "sysapi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/SConnection.mm",
      "impl",
      ""
@@ -13077,6 +13047,16 @@
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "sysapi.cpp",
+     "impl",
+     ""
+    ],
     [
      "sysapi.cpp",
      "impl",
@@ -19021,6 +19001,11 @@
      ""
     ],
     [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
      "platform/linux/SAtSpi.cpp",
      "impl",
      ""
@@ -19111,6 +19096,11 @@
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
     [
      "wnd.cpp",
      "impl",
@@ -19531,11 +19521,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -19588,6 +19573,11 @@
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
     [
      "wnd.cpp",
      "impl",
@@ -19660,6 +19650,21 @@
      "wnd.cpp",
      "impl",
      ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -19673,6 +19678,21 @@
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
     [
      "wnd.cpp",
      "impl",

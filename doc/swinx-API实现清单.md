@@ -18,8 +18,8 @@
 
 | 分级 | 数量 |
 |---|---|
-| 实现 | 822 |
-| 简单实现 | 67 |
+| 实现 | 812 |
+| 简单实现 | 77 |
 | 部分实现 | 0 |
 | 空实现 / 语义桩 | 24 |
 | 未提供（仅声明） | 123 |
@@ -33,7 +33,7 @@
 | 图形设备接口（GDI32 等价） | 152 | 21 | 0 | 5 |
 | 系统、文件、进程与线程（KERNEL32 等价） | 286 | 15 | 0 | 2 |
 | COM / OLE（OLE32·OLEAUT32 等价） | 51 | 9 | 0 | 4 |
-| 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 75 | 6 | 0 | 0 |
+| 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 65 | 16 | 0 | 0 |
 | 多媒体、资源及其它（WINMM·杂项） | 74 | 4 | 0 | 7 |
 
 ## 4. 模块 API 明细
@@ -840,29 +840,19 @@
 | `ImmDestroyContext` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmEscapeA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmEscapeW` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetCandidateWindow` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmGetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmGetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetCompositionWindow` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmGetContext` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetConversionStatus` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmGetDefaultIMEWnd` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetOpenStatus` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmGetProperty` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetStatusWindowPos` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmGetVirtualKey` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmIsIME` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmNotifyIME` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmReleaseContext` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetCandidateWindow` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmSetCompositionFontA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmSetCompositionFontW` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmSetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `ImmSetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetCompositionWindow` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetConversionStatus` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetOpenStatus` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetStatusWindowPos` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `PathCanonicalizeA` | 实现 | src/shellapi.cpp |  |
 | `PathCanonicalizeW` | 实现 | src/shellapi.cpp |  |
 | `PathCommonPrefixA` | 实现 | src/shellapi.cpp |  |
@@ -897,6 +887,16 @@
 | `Shell_NotifyIconA` | 实现 | src/shellapi.cpp |  |
 | `Shell_NotifyIconW` | 实现 | src/shellapi.cpp |  |
 | `DragQueryPoint` | 简单实现 | src/shellapi.cpp |  |
+| `ImmGetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmGetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmGetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmGetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmGetStatusWindowPos` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmSetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmSetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmSetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmSetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmSetStatusWindowPos` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `PathFindExtensionW` | 简单实现 | src/shellapi.cpp |  |
 | `PathFindFileNameW` | 简单实现 | src/shellapi.cpp |  |
 | `PathIsRelativeA` | 简单实现 | src/shellapi.cpp |  |
@@ -1111,6 +1111,7 @@ swinx 将与宿主平台强相关的能力抽象为 C 结构体函数指针表�
 ## 8. 维护说明
 
 - 重新生成统计数据：`python doc/tools/api_scan.py`（产出 `api_scan.json`）
+- CI 门禁（只读源码比对、不写盘，清单与源码不同步即失败）：`python doc/tools/api_scan.py --check`
 - 核对个别函数实现：`python doc/tools/api_verify.py`（打印 stub/partial 函数体）
 - 人工覆盖分级或备注：编辑本脚本内的 `OVERRIDES` 表后重新运行 `python doc/tools/gen_doc.py`
 - 本文统计不含 `thirdparty/`（expat、zlib 等第三方库自身的 API）

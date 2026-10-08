@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 """扫描 swinx 头文件声明的 API，在 src 中定位定义并按函数体特征分类：
-implemented(完整实现) / partial(部分实现) / stub(空实现)"""
+implemented(完整实现) / partial(部分实现) / stub(空实现)
+
+用法：
+  python api_scan.py           重新扫描并刷新同目录的 api_scan.json（人工改源码后执行）
+  python api_scan.py --check   只比对不写盘：清单与源码不一致时打印差异并以 1 退出（CI 门禁）
+"""
 import re, os, json, sys
+
+CHECK = "--check" in sys.argv[1:]
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 INC = os.path.join(ROOT, "include")
@@ -184,7 +191,67 @@ out = {
     },
     "funcs": result,
 }
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "api_scan.json"), "w", encoding="utf-8") as fp:
+_here = os.path.dirname(os.path.abspath(__file__))
+
+if CHECK:
+    # ---- 门禁模式：与已提交的 api_scan.json 比对，不写盘 ----
+    jpath = os.path.join(_here, "api_scan.json")
+    if not os.path.exists(jpath):
+        print("[FAIL] 未找到 api_scan.json，无法比对；请先在本地运行 python api_scan.py 生成清单")
+        sys.exit(1)
+    old = json.load(open(jpath, encoding="utf-8"))
+    old_f = old.get("funcs", {})
+    new_f = out["funcs"]
+    RANK = {"impl": 3, "partial": 2, "stub": 1}
+    MAXSHOW = 50
+
+    added = sorted(set(new_f) - set(old_f))
+    removed = sorted(set(old_f) - set(new_f))
+    retreated, advanced, moved = [], [], []
+    for name in sorted(set(new_f) & set(old_f)):
+        o, n = old_f[name], new_f[name]
+        if o["agg"] != n["agg"]:
+            row = "%s: %s -> %s" % (name, o["agg"], n["agg"])
+            (retreated if RANK[n["agg"]] < RANK[o["agg"]] else advanced).append(row)
+        if o["files"] != n["files"]:
+            moved.append("%s: %s -> %s" % (name, ",".join(o["files"]) or "-", ",".join(n["files"]) or "-"))
+    meta_diff = []
+    om, nm = old.get("_meta", {}), out["_meta"]
+    for k in ("decl_total", "defined_total"):
+        if om.get(k) != nm.get(k):
+            meta_diff.append("%s: %s -> %s" % (k, om.get(k), nm[k]))
+    if om.get("no_def", []) != nm.get("no_def", []):
+        meta_diff.append("no_def 数量: %d -> %d" % (len(om.get("no_def", [])), len(nm.get("no_def", []))))
+
+    def _show(tag, rows):
+        if rows:
+            print("[%s] 共 %d 项（最多列 %d）：" % (tag, len(rows), MAXSHOW))
+            for r in rows[:MAXSHOW]:
+                print("   ", r)
+            if len(rows) > MAXSHOW:
+                print("    ...（其余 %d 项省略）" % (len(rows) - MAXSHOW))
+
+    print("== swinx API 面门禁（--check）==")
+    print("已提交清单: 声明 %s / 有定义 %s" % (om.get("decl_total"), om.get("defined_total")))
+    print("当前源码  : 声明 %s / 有定义 %s" % (nm.get("decl_total"), nm.get("defined_total")))
+    nbad = len(added) + len(removed) + len(retreated) + len(advanced) + len(moved) + len(meta_diff)
+    if nbad == 0:
+        print("[OK] 清单与源码一致，无差异")
+        sys.exit(0)
+    print("[FAIL] 清单与源码存在 %d 处差异，api_scan.json 与源码不同步：" % nbad)
+    _show("新增", added)
+    _show("消失", removed)
+    _show("实现回退", retreated)
+    _show("实现补齐", advanced)
+    _show("实现位置变化", moved)
+    if meta_diff:
+        print("[统计] 共 %d 项：" % len(meta_diff))
+        for r in meta_diff:
+            print("   ", r)
+    print("处置：本地运行 python api_scan.py 重新生成清单并提交 api_scan.json。")
+    sys.exit(1)
+
+with open(os.path.join(_here, "api_scan.json"), "w", encoding="utf-8") as fp:
     json.dump(out, fp, ensure_ascii=False, indent=1)
 
 # 摘要
