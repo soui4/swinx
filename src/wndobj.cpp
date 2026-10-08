@@ -20,7 +20,7 @@ _Window::_Window(uint32_t extraLen)
     , showSbFlags(0)
     , hAppRgn(NULL)
     , bClipPushed(FALSE)
-    , rcClipPushed{0, 0, 0, 0}
+    , rcClipPushed{ 0, 0, 0, 0 }
     , parent(0)
     , owner(0)
     , wIDmenu(0)

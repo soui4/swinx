@@ -1704,12 +1704,15 @@ extern "C" void WINAPI SwinxDispatchPendingWinEvents(void);
 BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
 {
     SwinxDispatchPendingWinEvents();
-    if(hWnd){
+    if (hWnd)
+    {
         WndObj wndObj = WndMgr::fromHwnd(hWnd);
-        if(!wndObj){
+        if (!wndObj)
+        {
             return FALSE;
         }
-        if(wndObj->tid != GetCurrentThreadId()){
+        if (wndObj->tid != GetCurrentThreadId())
+        {
             return FALSE;
         }
     }
@@ -1727,12 +1730,15 @@ BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
 BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
 {
     SwinxDispatchPendingWinEvents();
-    if(hWnd){
+    if (hWnd)
+    {
         WndObj wndObj = WndMgr::fromHwnd(hWnd);
-        if(!wndObj){
+        if (!wndObj)
+        {
             return FALSE;
         }
-        if(wndObj->tid != GetCurrentThreadId()){
+        if (wndObj->tid != GetCurrentThreadId())
+        {
             return FALSE;
         }
     }

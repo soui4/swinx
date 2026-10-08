@@ -311,7 +311,6 @@ static void SbRefreshChildClips(HWND hWnd)
     }
 }
 
-
 BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
@@ -647,11 +646,11 @@ HWND SetCapture(HWND hWnd)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return 0;
-    
+
     HWND oldCapture = wndObj->mConnection->SetCapture(hWnd);
-    if(oldCapture != hWnd)
+    if (oldCapture != hWnd)
     {
-        if(oldCapture)
+        if (oldCapture)
             SendMessage(oldCapture, WM_CAPTURECHANGED, 0, hWnd);
         SendMessage(hWnd, WM_CAPTURECHANGED, 0, hWnd);
         // SLOG_FMTI("SetCapture hWnd=%d",(int)hWnd);
@@ -661,11 +660,11 @@ HWND SetCapture(HWND hWnd)
 
 BOOL ReleaseCapture()
 {
-    // SLOG_FMTI("ReleaseCapture hWnd=%d",(int)GetCapture());    
+    // SLOG_FMTI("ReleaseCapture hWnd=%d",(int)GetCapture());
     SConnection *conn = SConnMgr::instance()->getConnection();
     HWND hCapture = conn->GetCapture();
-    if(!hCapture)
-        return FALSE; 
+    if (!hCapture)
+        return FALSE;
     conn->ReleaseCapture();
     SendMessage(hCapture, WM_CAPTURECHANGED, 0, 0);
     return TRUE;
@@ -832,7 +831,7 @@ static void UpdateWindowCursor(WndObj &wndObj, HWND hWnd, int htCode)
 {
     if (htCode == HTCLIENT)
     {
-        WNDCLASSEXA wc={};
+        WNDCLASSEXA wc = {};
         GetClassInfoExA(wndObj->hInstance, MAKEINTRESOURCEA(wndObj->clsAtom), &wc);
         if (wc.hCursor)
         {
@@ -1422,7 +1421,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     }
     if (0 == --wndObj->msgRecusiveCount && wndObj->bDestroyed)
     {
-        //SLOG_STMI()<<"window destroy: hWnd="<<hWnd;
+        // SLOG_STMI()<<"window destroy: hWnd="<<hWnd;
         wndObj->mConnection->OnWindowDestroy(hWnd, wndObj.data());
         WndMgr::freeWindow(hWnd);
     }
