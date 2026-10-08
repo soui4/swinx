@@ -82,11 +82,3 @@ The project is under active development, and contributions are welcome.
 ## License
 
 This project is open source but **not free of charge**: the source is open for learning and evaluation, while commercial use requires a license. See [license.txt](license_EN.txt) for details.
-
-## Version History
-
-| Version | Date |
-| ------- | ---- |
-| 1.1     | 2025-07-07 |
-| 1.0     | 2025-03-11 |
-| 0.1     | 2025-01-12 |
