@@ -14,7 +14,7 @@ int cairo_text_extents2(cairo_t *cr, const char *utf8, int len, cairo_text_exten
 // wanted and the per-character array is not needed.
 int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_extents_t *extents, int *pndx);
 
-size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxWidth);
+size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxWidth,int &endLen);
 
 void cairo_draw_line(cairo_t *cr, float x0, float y0, float x1, float y1);
 

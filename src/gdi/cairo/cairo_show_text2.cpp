@@ -51,7 +51,7 @@ static int ShapeAppend(cairo_scaled_font_t *font, const char *str, int len,
     return num_glyphs;
 }
 
-size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxWidth)
+size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxWidth,int &endLen)
 {
     std::vector<TextRun> runs;
     SplitTextRuns(cr, utf8, (int)length, runs);
@@ -62,6 +62,7 @@ size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxW
     const char *p1 = utf8;
     const char *p2 = utf8 + length;
     size_t runIdx = 0;
+    endLen = 0;
     while (p1 < p2 && wid < maxWidth)
     {
         const char *next = (const char *)_mbsinc((const uint8_t *)p1);
@@ -89,6 +90,18 @@ size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxW
         }
         ret += len;
         p1 = next;
+        if (p1+1 < p2 && p1[0] == '\r' && p1[1] == '\n')
+        {
+            ret += 2;
+            endLen = 2;
+            break;
+        }
+        if (p1[0] == '\r' || p1[0] == '\n')
+        {
+            ret += 1;
+            endLen = 1;
+            break;
+        }
     }
     return ret;
 }

@@ -3105,7 +3105,9 @@ void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uForm
         }
         ptX += szWordFrac;
         if (ptX > pRect->right && (uFormat & DT_CALCRECT))
-            pRect->right = (LONG)ptX;
+            // CoreText 的 advance 是小数，extent 需向上取整以保证足以容纳文本；
+            // 若向下截断，调用方按该宽度开窗绘制时行尾字符会因浮点累计超宽被折到下一行
+            pRect->right = (LONG)ceil(ptX);
         i += (int)(p2 - p1);
         pPrev = p1;
         pLineTail = p1 = p2;

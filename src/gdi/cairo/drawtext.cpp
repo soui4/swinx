@@ -1,37 +1,10 @@
 #include "drawtext.h"
 #include "cairo_show_text2.h"
+#include <math.h>
 
 #define DT_ELLIPSIS (DT_PATH_ELLIPSIS | DT_END_ELLIPSIS | DT_WORD_ELLIPSIS)
 #define CH_ELLIPSIS "..."
 #define MAX(a, b)   (((a) > (b)) ? (a) : (b))
-
-static size_t breakTextEx(cairo_t *ctx, const char *textD, size_t length, SkScalar maxWidth, int &endLen)
-{
-    size_t nLineLen = cairo_break_text(ctx, textD, length, maxWidth);
-    if (nLineLen == 0)
-        return 0;
-    endLen = 0;
-    int nRet = nLineLen;
-    const char *p = textD;
-    const char *p2 = textD + nLineLen;
-    while (p < p2)
-    {
-        if (*p == '\r' || *p == '\n')
-        {
-            nRet = p - textD;
-            break;
-        }
-        p = (const char *)_mbsinc((const uint8_t *)p);
-    }
-    if (nRet < (int)nLineLen)
-    {
-        if (p + 1 < p2 && *p == '\r' && *(p + 1) == '\n')
-            endLen = 2;
-        else if (*p == '\r' || *p == '\n')
-            endLen = 1;
-    }
-    return nRet;
-}
 
 void cairo_draw_text(cairo_t *ctx, const char *text, int len, RECT *box, UINT uFormat)
 {
@@ -110,7 +83,8 @@ void TextLayoutEx::buildLines()
         while (lineHead < (int)m_text.size())
         {
             int endLen = 0;
-            size_t line_len = breakTextEx(m_ctx, text, stop - text, maxWid, endLen);
+            size_t line_len = cairo_break_text(m_ctx, text, stop - text, maxWid, endLen);
+            line_len -= endLen;
             if (line_len + endLen == 0)
                 break;
             LineInfo info = { lineHead, (int)line_len };
@@ -218,7 +192,10 @@ RECT TextLayoutEx::draw()
     float y = m_rcBound.top + font_ext.ascent;
     if (m_uFormat & DT_SINGLELINE)
     { //单行显示
-        rcDraw.bottom = rcDraw.top + lineSpan;
+        // 浮点测量（cairo 的 advance 是小数）输出 extent 时向上取整，
+        // 保证返回矩形足以容纳文本；若向下截断，调用方按该宽度开窗
+        // 绘制时行尾会超出约束被折行/裁剪
+        rcDraw.bottom = rcDraw.top + (LONG)ceil(lineSpan);
         if (m_uFormat & DT_VCENTER)
         {
             y += (height - lineSpan) / 2.0f;
@@ -229,11 +206,11 @@ RECT TextLayoutEx::draw()
         }
         if (m_uFormat & DT_ELLIPSIS)
         { //只支持在行尾增加省略号
-            rcDraw.right = rcDraw.left + drawLineEndWithEllipsis(m_ctx, x1, x2, y, 0, m_text.size(), m_rcBound.right - m_rcBound.left);
+            rcDraw.right = rcDraw.left + (LONG)ceil(drawLineEndWithEllipsis(m_ctx, x1, x2, y, 0, m_text.size(), m_rcBound.right - m_rcBound.left));
         }
         else
         {
-            rcDraw.right = rcDraw.left + drawLine(m_ctx, x1, x2, y, 0, m_text.size());
+            rcDraw.right = rcDraw.left + (LONG)ceil(drawLine(m_ctx, x1, x2, y, 0, m_text.size()));
         }
     }
     else
@@ -267,8 +244,8 @@ RECT TextLayoutEx::draw()
             maxLineWid = MAX(maxLineWid, lineWid);
             y += lineSpan;
         }
-        rcDraw.right = rcDraw.left + maxLineWid;
-        rcDraw.bottom = y - font_ext.ascent;
+        rcDraw.right = rcDraw.left + (LONG)ceil(maxLineWid);
+        rcDraw.bottom = rcDraw.top + (LONG)ceil(y - font_ext.ascent);
     }
     cairo_restore(m_ctx);
     return rcDraw;
