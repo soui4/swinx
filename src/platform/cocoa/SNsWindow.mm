@@ -574,10 +574,11 @@ defer:(BOOL)flag;
 
 - (BOOL)becomeFirstResponder {
     BOOL ok = [super becomeFirstResponder];
-    // 显式激活输入上下文：无论启动时输入源是英文还是中文，都在获得焦点时
-    // 让系统把当前输入源锁定到本客户端（NSTextInputClient）。否则英文下启动
-    // 时输入上下文从未被激活，之后用 Caps Lock/地球键或菜单切到中文都不生效。
-    [[self inputContext] activate];
+    NSWindow *win = self.window;
+    BOOL bNonActivatingPanel = win && (win.styleMask & NSWindowStyleMaskNonactivatingPanel) != 0;
+    if (!bNonActivatingPanel) {
+        [[self inputContext] activate];
+    }
     return ok;
 }
 

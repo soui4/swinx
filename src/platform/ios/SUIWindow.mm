@@ -944,8 +944,12 @@ BOOL showUiWindow(HWND hWnd,int nCmdShow){
             }else{
                 view.frame = view.hostWindow.bounds;
             }
-            [view.hostWindow makeKeyAndVisible];
-            [view onActive:TRUE];
+            if(nCmdShow == SW_SHOWNA || nCmdShow == SW_SHOWNOACTIVATE){
+                view.hostWindow.hidden = NO;
+            }else{
+                [view.hostWindow makeKeyAndVisible];
+                [view onActive:TRUE];
+            }
             [view setNeedsDisplay];
         }else{
             view.hidden = NO;
