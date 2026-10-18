@@ -404,6 +404,7 @@ defer:(BOOL)flag;
 - (void)setEnabled:(BOOL)bEnabled;
 - (BOOL)isImeEnabled;
 - (void)setImeEnabled:(BOOL)bEnabled;
+- (void)setGLDirect:(BOOL)bDirect;
 @end
 
 @implementation SNsWindow{
@@ -419,6 +420,7 @@ defer:(BOOL)flag;
     NSRange   _selectedRange;
     NSRect    _inputRect;
     BOOL      _bEnabled;
+    BOOL      m_bGLDirect; /**< 由 NSOpenGLContext 直绘：不等 CGContext，且视为不透明 */
     IDataObject *_doDragging;
     DWORD _dwDragEffect;
     NSTextInputContext *_textInputContext;
@@ -446,6 +448,7 @@ defer:(BOOL)flag;
     m_modifierFlags = 0;
     _markedText = nil;
     _bEnabled = TRUE;
+    m_bGLDirect = FALSE;
     _doDragging = nil;
     _dwDragEffect = DROPEFFECT_NONE;
     m_bIsImeEnabled = TRUE;
@@ -459,6 +462,10 @@ defer:(BOOL)flag;
 -(void)setEnabled:(BOOL)bEnabled {
     _bEnabled = bEnabled;
     [self setNeedsDisplay:TRUE];
+}
+
+-(void)setGLDirect:(BOOL)bDirect {
+    m_bGLDirect = bDirect;
 }
 
 - (void) destroy{
@@ -541,10 +548,55 @@ defer:(BOOL)flag;
 
 - (void)drawRect:(NSRect)dirtyRect {
     CGContextRef cgContext = [[NSGraphicsContext currentContext] CGContext];
-    if (!cgContext || !m_pListener) return;
+    if (!m_pListener)
+        return;
+    // GL 直绘窗口在 AppKit 显示周期里拿不到 CGContext：它不经 CoreGraphics 绘制，
+    // 而是每帧用 GL 全幅重绘 + flushBuffer 提交（NSOpenGLView 也是这个模型）。这里
+    // 不能因 cgContext 为空就返回，否则 drawRect → OnDrawRect → WM_PAINT 的派发链
+    // 会断掉，GL 子窗口区域永远收不到绘制。
+    if (!cgContext && !m_bGLDirect)
+        return;
     float scale = [self.window backingScaleFactor];
-    CGContextSaveGState(cgContext);
-    CGContextScaleCTM(cgContext, 1.0 / scale, 1.0 / scale);
+
+    // WS_CLIPCHILDREN 语义：同一 NSWindow 的所有 view 共享 window backing store，
+    // 嵌在宿主里的原生子窗口（如 OpenGL 的 NSOpenGLContext 直绘）没有独立的
+    // HWND 物理遮挡，若父窗口的 DUI 绘制不裁掉子窗口区域，会把子窗口画出的
+    // 内容直接覆盖掉（Win32 上父窗口绘制被上层子窗口挡住，感知不到这个差异）。
+    // 因此绘制前把 dirtyRect 中被 swinx 子窗口占用的部分裁成“洞”。
+    BOOL bFullyCovered = NO;
+    NSMutableArray<NSValue *> *arrChild = [NSMutableArray array];
+    for (NSView *sub in self.subviews) {
+        HWND hSub = (HWND)(__bridge void *)sub;
+        if (!hSub || !getNsWindow(hSub))
+            continue; // 只裁 swinx 管理的子窗口，跳过无关 subview
+        if ([sub isHiddenOrHasHiddenAncestor])
+            continue;
+        NSRect fr = [sub frame];
+        if (NSIsEmptyRect(NSIntersectionRect(dirtyRect, fr)))
+            continue;
+        if (NSEqualRects(NSIntersectionRect(dirtyRect, fr), dirtyRect))
+            bFullyCovered = YES;
+        [arrChild addObject:[NSValue valueWithRect:fr]];
+    }
+    if (bFullyCovered)
+        return; // 整个失效区域都是子窗口，父窗口无可绘内容
+    // CGContext 为空时（GL 视图）没有可裁的 CoreGraphics 绘制，直接交给 OnDrawRect
+    BOOL bClipChildren = (cgContext != NULL) && ([arrChild count] > 0);
+    if (bClipChildren) {
+        CGContextSaveGState(cgContext);
+        CGMutablePathRef clipPath = CGPathCreateMutable();
+        CGPathAddRect(clipPath, NULL, dirtyRect);
+        for (NSValue *v in arrChild)
+            CGPathAddRect(clipPath, NULL, [v rectValue]);
+        CGContextAddPath(cgContext, clipPath);
+        CGContextEOClip(cgContext); // even-odd：子窗口区域成为绘制空洞
+        CGPathRelease(clipPath);
+    }
+
+    if (cgContext)
+        CGContextSaveGState(cgContext);
+    if (cgContext)
+        CGContextScaleCTM(cgContext, 1.0 / scale, 1.0 / scale);
     // 以物理像素构造裁剪矩形传入 OnDrawRect
     const NSRect physRect = NSMakeRect(dirtyRect.origin.x * scale,
                                        dirtyRect.origin.y * scale,
@@ -554,11 +606,24 @@ defer:(BOOL)flag;
                (LONG)(physRect.origin.x + physRect.size.width),
                (LONG)(physRect.origin.y + physRect.size.height)};
     m_pListener->OnDrawRect(m_hWnd, rc, cgContext);
-    CGContextRestoreGState(cgContext);
+    if (cgContext)
+        CGContextRestoreGState(cgContext);
+    if (bClipChildren)
+        CGContextRestoreGState(cgContext);
 }
 
 - (BOOL)isFlipped {
     return YES;
+}
+
+// 默认 NSView isOpaque=NO：AppKit 在窗口每次失效时都会先把该 view 的区域擦成
+// 窗口背景色再调 drawRect。对被 NSOpenGLContext 直绘的窗口（setNsWindowGLDirect），
+// drawRect 是空操作而 GL 每帧全幅重绘，这个擦除只会把 GL 帧清成透明背景
+// （标准 NSOpenGLView 正是靠 isOpaque=YES 避免此问题）。
+- (BOOL)isOpaque {
+    if (m_bGLDirect)
+        return YES; // GL 直绘窗口：内容每帧全幅更新，AppKit 无需也无法替它擦除
+    return [super isOpaque];
 }
 
 // 提供稳定自建的 NSTextInputContext，保证视图始终可作为输入法客户端。
@@ -3462,6 +3527,14 @@ void setNsWindowToolWindow(HWND hWnd, BOOL bToolWindow){
             // 重新显示窗口
             showNsWindow(hWnd, SW_SHOWNORMAL);
         }
+    }
+}
+
+void setNsWindowGLDirect(HWND hWnd, BOOL bDirect){
+    @autoreleasepool{
+        SNsWindow *win = getNsWindow(hWnd);
+        if(win)
+            [win setGLDirect:bDirect];
     }
 }
 

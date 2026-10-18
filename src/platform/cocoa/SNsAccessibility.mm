@@ -141,6 +141,125 @@ static NSString *SwinxAccRoleFromMsaA(DWORD role)
     }
 }
 
+/* 把 MSAA 的 get_accValue 文本解析成数值，口径与 Linux AT-SPI 桥完全一致
+ * （见 SAtSpi.cpp 的 ParseValueText）：
+ *   "42%"      -> 42，量程 0..100（百分号形态的量程是确定的）
+ *   "42"       -> 42，量程未知（MSAA 的 IAccessible 没有 range 接口，只能报 0）
+ *   其它文本    -> 不当作数值                                                  */
+static BOOL SwinxAccParseValue(NSString *s, double *cur, double *minv, double *maxv)
+{
+    if (!s || s.length == 0)
+        return NO;
+    NSScanner *sc = [NSScanner scannerWithString:s];
+    double v = 0;
+    if (![sc scanDouble:&v])
+        return NO;
+    /* 数字后面除了可选的 '%'（及空白）不允许有别的内容 */
+    while (![sc isAtEnd] && [[NSCharacterSet whitespaceCharacterSet]
+                                characterIsMember:[s characterAtIndex:sc.scanLocation]])
+        sc.scanLocation = sc.scanLocation + 1;
+    BOOL percent = NO;
+    if (![sc isAtEnd])
+    {
+        if ([s characterAtIndex:sc.scanLocation] != '%')
+            return NO;
+        percent = YES;
+    }
+    if (cur)
+        *cur = v;
+    if (minv)
+        *minv = 0.0;
+    if (maxv)
+        *maxv = percent ? 100.0 : 0.0;
+    return YES;
+}
+
+/* 取节点的"文本内容"。与 Linux 侧同一套判据：
+ *   静态文本 -> name（MSAA 里静态控件的内容就在 name 上）
+ *   编辑类正文 -> value，空则退回 name
+ *   密码框（STATE_SYSTEM_PROTECTED）-> 不返回文本
+ * 返回 nil 表示这个元素不该有文本语义。 */
+static NSString *SwinxAccTextOf(IAccessible *acc, LONG childId, DWORD role, DWORD state)
+{
+    if (!acc)
+        return nil;
+    if (role == ROLE_SYSTEM_STATICTEXT)
+    {
+        VARIANT child = SwinxAccChildVariant(childId);
+        BSTR name = NULL;
+        HRESULT hr = acc->get_accName(child, &name);
+        VariantClear(&child);
+        NSString *ret = (hr == S_OK && name) ? SwinxAccStringFromBstr(name) : nil;
+        if (name)
+            SysFreeString(name);
+        return ret ?: @"";
+    }
+    if (role == ROLE_SYSTEM_TEXT)
+    {
+        if (state & STATE_SYSTEM_PROTECTED)
+            return nil;
+        VARIANT child = SwinxAccChildVariant(childId);
+        BSTR val = NULL;
+        HRESULT hr = acc->get_accValue(child, &val);
+        if (hr == S_OK && val)
+        {
+            NSString *ret = SwinxAccStringFromBstr(val);
+            SysFreeString(val);
+            return ret ?: @"";
+        }
+        BSTR name = NULL;
+        hr = acc->get_accName(child, &name);
+        VariantClear(&child);
+        NSString *ret = (hr == S_OK && name) ? SwinxAccStringFromBstr(name) : nil;
+        if (name)
+            SysFreeString(name);
+        return ret ?: @"";
+    }
+    return nil;
+}
+
+/* -accessibilityValue 已返回 value 文本；这里再补数值量程与文本协议，
+ * 让 VoiceOver 对进度条/滑块能报百分比、对文本控件能按字符/区间朗读。 */
+
+/* 取 role/state（一次解析，供文本与数值判定复用） */
+static BOOL SwinxAccRoleState(IAccessible *acc, LONG childId, LONG *role, LONG *state)
+{
+    if (!acc)
+        return NO;
+    VARIANT child = SwinxAccChildVariant(childId);
+    VARIANT v;
+    VariantInit(&v);
+    HRESULT hr = acc->get_accRole(child, &v);
+    VariantClear(&child);
+    BOOL ok = (hr == S_OK) && SwinxAccVariantLong(&v, role);
+    VariantClear(&v);
+    if (!ok)
+        return NO;
+    if (state)
+        SwinxAccGetState(acc, childId, state);
+    return YES;
+}
+
+/* 取节点的数值量程；NO 表示该节点没有数值语义。
+ * 文本类控件排除在外——它们的 get_accValue 是正文，别把 "2024" 当量值。 */
+static BOOL SwinxAccNumericRange(IAccessible *acc, LONG childId, double *lo, double *hi)
+{
+    LONG role = 0, state = 0;
+    if (!SwinxAccRoleState(acc, childId, &role, &state))
+        return NO;
+    if (role == ROLE_SYSTEM_TEXT || role == ROLE_SYSTEM_STATICTEXT)
+        return NO;
+    BSTR val = NULL;
+    VARIANT child = SwinxAccChildVariant(childId);
+    HRESULT hr = acc->get_accValue(child, &val);
+    VariantClear(&child);
+    if (hr != S_OK || !val)
+        return NO;
+    NSString *s = SwinxAccStringFromBstr(val);
+    SysFreeString(val);
+    return SwinxAccParseValue(s, NULL, lo, hi);
+}
+
 #pragma mark - SwinxAccElement（身份壳，按需解析）
 
 @implementation SwinxAccElement {
@@ -318,6 +437,97 @@ static T SwinxAccQuery(SwinxAccElement *self, T (^block)(IAccessible *acc, LONG 
                              return s;
                          },
                          (NSString *)nil);
+}
+
+- (NSNumber *)accessibilityMinValue
+{
+    return SwinxAccQuery(self,
+                         ^NSNumber *(IAccessible *acc, LONG childId) {
+                             double lo = 0, hi = 0;
+                             if (!SwinxAccNumericRange(acc, childId, &lo, &hi))
+                                 return (NSNumber *)nil;
+                             return @(lo);
+                         },
+                         (NSNumber *)nil);
+}
+
+- (NSNumber *)accessibilityMaxValue
+{
+    return SwinxAccQuery(self,
+                         ^NSNumber *(IAccessible *acc, LONG childId) {
+                             double lo = 0, hi = 0;
+                             if (!SwinxAccNumericRange(acc, childId, &lo, &hi))
+                                 return (NSNumber *)nil;
+                             return @(hi);
+                         },
+                         (NSNumber *)nil);
+}
+
+- (NSNumber *)accessibilityNumberOfCharacters
+{
+    return SwinxAccQuery(self,
+                         ^NSNumber *(IAccessible *acc, LONG childId) {
+                             LONG role = 0, state = 0;
+                             if (!SwinxAccRoleState(acc, childId, &role, &state))
+                                 return (NSNumber *)nil;
+                             NSString *text =
+                                 SwinxAccTextOf(acc, childId, (DWORD)role, (DWORD)state);
+                             if (!text)
+                                 return (NSNumber *)nil;
+                             return @((NSUInteger)text.length);
+                         },
+                         (NSNumber *)nil);
+}
+
+- (NSString *)accessibilityStringForRange:(NSRange)range
+{
+    return SwinxAccQuery(self,
+                         ^NSString *(IAccessible *acc, LONG childId) {
+                             LONG role = 0, state = 0;
+                             if (!SwinxAccRoleState(acc, childId, &role, &state))
+                                 return (NSString *)nil;
+                             NSString *text =
+                                 SwinxAccTextOf(acc, childId, (DWORD)role, (DWORD)state);
+                             if (!text)
+                                 return (NSString *)nil;
+                             NSUInteger n = text.length;
+                             if (range.location >= n || range.length == 0)
+                                 return @"";
+                             NSUInteger len = range.length;
+                             if (range.location + len > n)
+                                 len = n - range.location;
+                             return [text substringWithRange:NSMakeRange(range.location, len)];
+                         },
+                         (NSString *)nil);
+}
+
+- (NSValue *)accessibilityVisibleCharacterRange
+{
+    return SwinxAccQuery(self,
+                         ^NSValue *(IAccessible *acc, LONG childId) {
+                             LONG role = 0, state = 0;
+                             if (!SwinxAccRoleState(acc, childId, &role, &state))
+                                 return (NSValue *)nil;
+                             NSString *text =
+                                 SwinxAccTextOf(acc, childId, (DWORD)role, (DWORD)state);
+                             if (!text)
+                                 return (NSValue *)nil;
+                             /* 没有逐行布局信息，整段都算可见（与 Linux 侧的
+                              * "整段退化"一致）。 */
+                             return [NSValue valueWithRange:NSMakeRange(0, text.length)];
+                         },
+                         (NSValue *)nil);
+}
+
+- (NSValue *)accessibilitySelectedTextRange
+{
+    /* MSAA 不暴露文本选区，按"无选区"应答；NSNotFound 是 AppKit 的约定值。 */
+    return [NSValue valueWithRange:NSMakeRange(NSNotFound, 0)];
+}
+
+- (NSString *)accessibilitySelectedText
+{
+    return @"";
 }
 
 /* accLocation 给出 swinx 全局像素矩形（主屏左上原点、y 向下）。
@@ -793,10 +1003,18 @@ static void CALLBACK SwinxAccEventHook(HWINEVENTHOOK hHook, DWORD event, HWND hw
     (void)hHook;
     (void)idEventThread;
     (void)dwmsEventTime;
-    (void)idObject;
-    (void)idChild;
     if (!hwnd)
         return;
+
+    /* 事件归因：MSAA 用 (idObject, idChild) 指出"变的是哪个节点"。
+     * 早先的实现把事件一律归到窗口根壳上，VoiceOver 收到通知后只能重新
+     * 枚举整棵树；现在 idObject == OBJID_CLIENT 且 idChild > 0 时，直接把
+     * 通知投递到 client 根的第 idChild 个子元素上（SOUI 的可访问树通常就
+     * 一层子节点，链长 1 足够定位）。其它情况（OBJID_WINDOW、idChild 为
+     * CHILDID_SELF、归因解析失败）仍然回落到窗口根。 */
+    NSArray *targetChain = nil;
+    if (idObject == OBJID_CLIENT && idChild > 0)
+        targetChain = @[ @(idChild) ];
 
     BOOL invalidate = NO;
     NSString *notification = SwinxAccNotificationForEvent(event, &invalidate);
@@ -841,7 +1059,16 @@ static void CALLBACK SwinxAccEventHook(HWINEVENTHOOK hHook, DWORD event, HWND hw
                     return;
             }
 
-            NSAccessibilityPostNotification(root, notification);
+            /* 有归因就发给那一层元素；解析不出来（子节点已被移除）就退回根，
+             * 宁可粗一点也不能丢通知。 */
+            id target = root;
+            if (targetChain)
+            {
+                id el = SwinxAccShellForChain(hwnd, targetChain);
+                if (el)
+                    target = el;
+            }
+            NSAccessibilityPostNotification(target, notification);
         }
     });
 }

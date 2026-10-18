@@ -62,6 +62,13 @@ Linux 上的无障碍对象树对外等于不存在：`NotifyWinEvent` 没有任
   `get_accDefaultAction` / `accDoDefaultAction`）
 - `org.a11y.atspi.Application`（仅根对象）— ToolkitName / AtspiVersion / Id 等
 - `org.a11y.atspi.Cache` — `GetItems`（Orca 主要靠它一次性拉全树）
+- `org.a11y.atspi.Text` — **按需挂载**（仅文本类节点，见第 6 节）：GetText /
+  GetTextAtOffset / GetStringAtOffset / GetCharacterAtOffset / GetCharacterExtents /
+  GetRangeExtents / GetNSelections / GetSelection / SetCaretOffset / GetOffsetAtPoint /
+  `CharacterCount` / `CaretOffset`
+- `org.a11y.atspi.Value` — **按需挂载**（进度条 / 滑块 / 微调框 / 滚动条、有量程的数值控件，
+  见第 6 节）：CurrentValue / MinimumValue / MaximumValue / MinimumIncrement /
+  SetCurrentValue
 - `org.freedesktop.DBus.Introspectable` — 静态 introspection XML
 
 ## 3. 对象路径编码：为什么不缓存 IAccessible*
@@ -146,12 +153,55 @@ swinx 的跨线程 `SendMessage` 会把消息 post 给窗口所属线程并等�
 | `EVENT_SYSTEM_FOREGROUND` | `Event.Window.Activate` |
 | `EVENT_SYSTEM_DIALOGSTART/END` | `Event.Window.Create/Destroy` |
 
-**归因粒度是已知限制**：SOUI 的 `SWindow::accNotifyEvent()` 用 `idObject` 传 **SWND**
-（不是 `OBJID_*`），桥无法从 SWND 反查到具体的 AT-SPI 节点，因此这类事件统一归因到
-该窗口的**客户区根节点**。AT 能收到通知并朗读变化，但定位不到精确控件。
-要做得更精确，需要 swinx/SOUI 额外提供 SWND → 节点 的反查通道。
+**归因粒度**：MSAA 的 `(idObject, idChild)` 指明"变的是哪个节点"，桥按标准约定翻译：
 
-## 6. 启用与验证
+| `idObject` | `idChild` | 落到的节点 |
+| --- | --- | --- |
+| `OBJID_CLIENT` | `> 0` | 客户区根的第 `idChild` 个子对象（控件节点） |
+| `OBJID_CLIENT` | `CHILDID_SELF` | 客户区根 |
+| `OBJID_WINDOW` | — | 顶层窗口节点 |
+| 其它 `OBJID_*` | — | 客户区根（SOUI 里没有对应节点） |
+
+**仍存在的口径缺口**：SOUI 的 `SWindow::accNotifyEvent()` 用 `idObject` 传 **SWND**
+（正值，不是合法 `OBJID_*`），桥无法从 SWND 反查到 AT-SPI 节点——swinx 不依赖 soui，
+拿不到 SWND → 控件链的映射。因此 SOUI 自己发出的事件仍统一归因到该窗口的
+**客户区根节点**：AT 能收到通知并朗读变化，但定位不到精确控件。补齐这条路要么由框架
+侧改发标准 `(OBJID_CLIENT, childId)`，要么由 swinx 额外提供 SWND → 节点 的反查通道
+（`SwinxAccGlue.h` 内加钩子，属内部 API 变更）。
+
+## 6. 内容接口 Text / Value（按需挂载）
+
+`IAccessible` 没有文本偏移与量程接口，能力只能从 `get_accRole` / `get_accValue` 反推，
+所以桥先做**能力判定**（`QueryNodeContent()`），再决定是否挂接口——`GetInterfaces`、
+`Cache.GetItems`、`Properties.GetAll` 三处口径一致，绝不无条件挂一个答不出话的接口。
+
+| 角色 | 判定 | 挂载 |
+| --- | --- | --- |
+| `ROLE_SYSTEM_TEXT` | 取 `get_accValue`（空则回退 `get_accName`）；`STATE_SYSTEM_PROTECTED`（密码框）不暴露文本 | Text |
+| `ROLE_SYSTEM_STATICTEXT` | 取 `get_accName` | Text |
+| `ROLE_SYSTEM_PROGRESSBAR` / `SLIDER` / `SPINBUTTON` / `SCROLLBAR` | `get_accValue` 能解析成"数字 + 可选 `%`" | Value |
+
+要点：
+
+- **Text 偏移量以字符（码点）计**，不是字节。桥内文本是 UTF-8 `std::string`，
+  所有 Text 方法都先经 `Utf8ByteOffset()` / `Utf8Substr()` 换算；非法字节序列按
+  "1 字节 1 字符"兜底，保证偏移单调、不会越界。
+- **分词（`GetTextAtOffset` 的 WORD 边界）** 用三分类 `Utf8CharClass()`：0 = 分隔符，
+  1 = 表意字（CJK / 假名 / 谚文，**一字一词**），2 = 词字符。CJK 不向两侧合并，
+  否则整段中文会变成一个"词"。
+- `GetCharacterExtents` / `GetRangeExtents` 退化为**整个控件的矩形**：MSAA 不给字形的
+  精确盒模型，与其编一个错的，不如给一个客户端能用的范围。
+- Value 是 `double`；`"42%"` 解析成 `cur=42, max=100`，裸 `"42"` 解析成 `cur=42,
+  max=0`（量程未知，客户端应按"无界"处理）。解析不出数字（`"50 items"`、空、`"%"`）
+  就不挂 Value 接口。
+- `SetCurrentValue` 用 `put_accValue` 写回：原本是百分比形态就回写 `"%d%%"`，否则回写
+  `"%d"`，因此 SOUI 控件不需要为无障碍新增任何 setter。
+- 选区类方法一律诚实应答：`GetNSelections → 0`、`GetSelection → (0,0)`、
+  `GetOffsetAtPoint → -1`，`AddSelection` / `RemoveSelection` / `SetSelection` /
+  `SetCaretOffset` / `ScrollSubstringTo*` 显式返回 `FALSE`——MSAA 侧没有对应能力，
+  谎报成功会让读屏器的选区模型错乱。
+
+## 7. 启用与验证
 
 桥接层随 swinx 一起编译（Linux 走 `swinx/linux.cmake`，`src/platform/linux/*.cpp`
 会被 glob 到），无需额外开关。想让**控件级**对象树完整，SOUI 侧还要开：
@@ -183,19 +233,35 @@ dbus-send --bus="$AT_SPI_BUS" --print-reply \
 
 # 5. Orca
 orca &
+
+# 6. 文本节点：读整段（<path> 换成 GetChildren 拿到的节点路径）
+dbus-send --bus="$AT_SPI_BUS" --print-reply --dest=<name> <path> \
+  org.a11y.atspi.Text.GetText 0 -1
+
+# 7. 数值节点：读量程与当前值
+dbus-send --bus="$AT_SPI_BUS" --print-reply --dest=<name> <path> \
+  org.freedesktop.DBus.Properties.Get string:org.a11y.atspi.Value string:MaximumValue
 ```
+
+判断某节点到底挂了哪些接口，看 `org.a11y.atspi.Accessible.GetInterfaces` 的返回；
+Text/Value 不在列表里就说明能力判定没通过（角色不符，或 `get_accValue` 解析不出数字）。
 
 没有自动化测试的原因：需要真实的 a11y bus 与桌面会话，CI 环境通常不具备；
 `demos/fun_test/test_oleacc.cpp` 覆盖的是 MSAA 接口面本身（与桥无关）。
 
-## 7. 已知限制
+## 8. 已知限制
 
 - 事件经标准 WinEvent 钩子接收；`NotifyWinEvent` 只入队，回调在消息泵里
   异步派发（与 user32 的 OUTOFCONTEXT 钩子一致），AT-SPI 桥随 UI 线程的
   timer 分发一并收到事件。
-- 事件归因到窗口客户区根节点，粒度偏粗（见第 5 节）。
-- 未实现 Text / Value / Selection / Table / Document 等扩展接口，文本控件对 AT
-  只暴露 name/value，不支持逐字符朗读与选区。
+- 事件归因按标准 `(idObject, idChild)` 解析，但 SOUI 自己发事件时传的是 SWND，
+  这类事件仍落到客户区根节点（见第 5 节的"仍存在的口径缺口"）。
+- Text / Value 已实现（见第 6 节），但**只读能力**：选区、`SetCaretOffset`、
+  `ScrollSubstringTo*` 均显式不支持；`GetCharacterExtents` 退化为控件矩形。
+- **仍未实现** `Selection` / `Table` / `Document` / `Hyperlink` 扩展接口——表格与
+  富文本控件的行列语义、超链接集合对 AT 不可见。
+- `Value` 只有"能解析出数字或百分比"的控件才挂；`"50 items"` 这类复合文案不挂，
+  读屏器只能读 `get_accName`。
 - `Component` 的 `SetExtents/SetPosition/SetSize/ScrollTo*`、`GetAlpha` 为固定值/不支持。
 - `Cache.GetItems` 限制为最多 2000 个节点、深度 20，超出的部分会被截断。
 - 顶层窗口列表有 100ms 缓存（`EnumWindows` 开销），极端情况下新建窗口可能延迟可见。

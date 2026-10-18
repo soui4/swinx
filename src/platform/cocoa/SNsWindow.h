@@ -64,6 +64,10 @@ BOOL isNsWindowEnableIme(HWND hWnd);
 
 void setNsWindowToolWindow(HWND hWnd, BOOL bToolWindow);
 
+// 标记窗口由 NSOpenGLContext 直绘：isOpaque 返回 YES，且 drawRect 不再依赖
+// CGContext（AppKit 显示周期里 GL 视图拿不到它），否则 GL 帧会被擦成透明。
+void setNsWindowGLDirect(HWND hWnd, BOOL bDirect);
+
 BOOL isNsWindowMinimized(HWND hWnd);
 BOOL isNsWindowMaximized(HWND hWnd);
 

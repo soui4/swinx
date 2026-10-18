@@ -83,6 +83,17 @@ Linux 对象路径编码（SAtSpi）：
   `s_accHitTestDepth` 防护；frame 契约兜底（结果 frame 外扩 2pt
   不含查询点则回退根元素）。
 - **事件节流**：WinEvent 钩子 50ms 节流（只丢通知不丢缓存失效）。
+- **内容能力（Text / Value）**：`IAccessible` 没有文本偏移与量程接口，属性从
+  `get_accRole`/`get_accValue` 反推后**按需暴露**——`accessibilityNumberOfCharacters` /
+  `accessibilityStringForRange:` / `accessibilityVisibleCharacterRange` /
+  `accessibilitySelectedText(Range)` 只对 TEXT / STATICTEXT 角色返回真值（密码框
+  `STATE_SYSTEM_PROTECTED` 一律 nil），`accessibilityMinValue/MaxValue` 只对
+  TEXT/STATICTEXT 之外且 `get_accValue` 能解析出数字或百分比的节点返回真值。
+  量程解析口径与 Linux 侧 `ParseValueText` 一致（`"42%"` → 0..100，裸 `"42"` →
+  量程未知返回 NO）。偏移量以**字符（码点）**计，与 AT-SPI 语义对齐。
+- **事件归因**：`idObject == OBJID_CLIENT && idChild > 0` 时把通知投递到
+  client 根的第 `idChild` 个子元素（`SwinxAccShellForChain`），否则回落到窗口
+  根壳——与 Linux 侧 `EventNode()` 同一口径。
 - **与消息循环无关**：AX 查询走独立 XPC/MIG 通道，不经过
   NSEvent 队列/sendEvent——自定义消息循环和鼠标事件特殊派发
   均与其无关（排障时走过的弯路）。
@@ -173,6 +184,15 @@ Linux 对象路径编码（SAtSpi）：
   `append_basic` 要求传 `const char **`（指向指针的指针）**——误传
   字符串指针本身会把字面量前 8 字节解引用成 `char*`，`strlen` 段
   错误（进程退出时崩溃的根因）。
+- **归因**：`EventNode(hwnd, idObject, idChild)` 把 MSAA 归因翻译成节点
+  路径——`(OBJID_CLIENT, idChild>0)` → 客户区根的第 `idChild` 个子对象，
+  `OBJID_WINDOW` → 顶层窗口节点，其余 `OBJID_*` → 客户区根。SOUI 的
+  `accNotifyEvent()` 传的是 SWND（非法 OBJID），桥无法反查，这类事件仍落
+  客户区根（已知口径缺口，见 `swinx-Linux无障碍(AT-SPI)桥接.md` 第 5 节）。
+- **Text / Value**：按 `QueryNodeContent()` 的能力判定挂接口（TEXT/STATICTEXT
+  → Text；PROGRESSBAR/SLIDER/SPINBUTTON/SCROLLBAR 且值可解析 → Value），
+  偏移量以字符计（`Utf8ByteOffset` 换算），选区类方法诚实返回"无选区/
+  不支持"。详见 Linux 桥文档第 6 节。
 
 ### 5.6 坐标：以 X 服务器为可信源
 

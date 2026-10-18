@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include <deque>
 #include <map>
@@ -23,6 +24,7 @@
 #include "SwinxAccGlue.h"
 
 #include "SConnection.h"
+#include "tostring.h"
 
 #include "log.h"
 #define kLogTag "SwinxAtSpi"
@@ -39,6 +41,10 @@
 #define ATSPI_IFACE_ACTION "org.a11y.atspi.Action"
 #define ATSPI_IFACE_APPLICATION "org.a11y.atspi.Application"
 #define ATSPI_IFACE_CACHE "org.a11y.atspi.Cache"
+/* 内容类接口：不是每个节点都有（见 QueryNodeContent 的判定），
+ * 有才在 GetInterfaces / Cache 里报出来。 */
+#define ATSPI_IFACE_TEXT "org.a11y.atspi.Text"
+#define ATSPI_IFACE_VALUE "org.a11y.atspi.Value"
 #define ATSPI_IFACE_PROPERTIES "org.freedesktop.DBus.Properties"
 #define ATSPI_IFACE_INTROSPECTABLE "org.freedesktop.DBus.Introspectable"
 
@@ -244,6 +250,91 @@ namespace
             SysFreeString(bstr);
         }
         return ret;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* UTF-8 与"字符偏移"的换算                                            */
+    /* ------------------------------------------------------------------ */
+
+    /* AT-SPI 的 Text 接口里所有偏移量都是"字符"（= Unicode 码点），
+     * 而桥内部把文本存成 UTF-8 的 std::string。下面几个助手负责换算，
+     * 顺便把非法字节按 1 字节 1 字符处理（宁可偏移错位，也不要越界）。 */
+
+    /* 返回第 index 个字符在 s 中的字节偏移；index 越界时返回 s.size()。 */
+    size_t Utf8ByteOffset(const std::string &s, size_t index)
+    {
+        size_t i = 0, n = 0;
+        while (i < s.size() && n < index)
+        {
+            unsigned char c = (unsigned char)s[i];
+            size_t step = 1;
+            if (c >= 0xF0)
+                step = 4;
+            else if (c >= 0xE0)
+                step = 3;
+            else if (c >= 0xC0)
+                step = 2;
+            i += step;
+            n++;
+        }
+        return i > s.size() ? s.size() : i;
+    }
+
+    size_t Utf8CharCount(const std::string &s)
+    {
+        size_t i = 0, n = 0;
+        while (i < s.size())
+        {
+            unsigned char c = (unsigned char)s[i];
+            size_t step = 1;
+            if (c >= 0xF0)
+                step = 4;
+            else if (c >= 0xE0)
+                step = 3;
+            else if (c >= 0xC0)
+                step = 2;
+            i += step;
+            n++;
+        }
+        return n;
+    }
+
+    /* 取第 index 个字符的码点；越界返回 false。 */
+    bool Utf8CharAt(const std::string &s, size_t index, unsigned int &cp)
+    {
+        size_t base = Utf8ByteOffset(s, index);
+        if (base >= s.size())
+            return false;
+        unsigned char c = (unsigned char)s[base];
+        size_t step = 1;
+        if (c >= 0xF0)
+            step = 4;
+        else if (c >= 0xE0)
+            step = 3;
+        else if (c >= 0xC0)
+            step = 2;
+        if (base + step > s.size())
+            step = 1;
+        cp = 0;
+        if (step == 1)
+        {
+            cp = c;
+            return true;
+        }
+        cp = c & (0xFF >> (step + 1));
+        for (size_t i = 1; i < step; i++)
+            cp = (cp << 6) | ((unsigned char)s[base + i] & 0x3F);
+        return true;
+    }
+
+    /* 按字符区间取子串；endChar <= startChar 时返回空串。 */
+    std::string Utf8Substr(const std::string &s, size_t startChar, size_t endChar)
+    {
+        size_t b = Utf8ByteOffset(s, startChar);
+        size_t e = Utf8ByteOffset(s, endChar);
+        if (e <= b || b >= s.size())
+            return std::string();
+        return s.substr(b, e - b);
     }
 
 
@@ -677,6 +768,132 @@ namespace
         return GetAccString(r.acc, r.childId, ACC_STR_DESCRIPTION);
     }
 
+    /* ------------------------------------------------------------------ */
+    /* 内容（Text / Value 接口用）                                          */
+    /* ------------------------------------------------------------------ */
+
+    /* MSAA 没有 Text/Value 这两套接口，只能从三条既有信息里"还原"：
+     *   - get_accRole：决定这个节点该不该有文本/数值语义；
+     *   - get_accValue：可编辑控件的正文、进度条/滑块的数值（SOUI 的进度条
+     *     给的是 "42%" 这种带百分号的文本，滑块给的是裸整数）；
+     *   - get_accName：静态文本控件的内容在 MSAA 里就存在 name 上。
+     * 三个字段一次查询算出，避免 NodeInterfaces / GetInterfaces / Cache
+     * 各自再跑一遍 MSAA。 */
+    struct NodeContent
+    {
+        bool bText = false;  // 提供 org.a11y.atspi.Text
+        bool bValue = false; // 提供 org.a11y.atspi.Value
+        std::string text;    // 文本内容（已按 UTF-8 存）
+        double cur = 0.0;
+        double minv = 0.0;
+        double maxv = 0.0;
+    };
+
+    /* 解析 MSAA 给过来的数值文本。SOUI 的进度条是 "42%"，滑块是 "42"，
+     * 其它控件可能是任意描述性文本（如 "50 items"）；只接受"数字 + 可选
+     * 百分号"这一种，其余一律当没有数值语义。
+     * 百分号形态量程天然是 0..100；裸数字形态的量程 MSAA 根本没暴露（
+     * IAccessible 没有 range 接口），只能报 0/0 表示"未知"，客户端应当
+     * 只用 CurrentValue。 */
+    bool ParseValueText(const std::string &s, NodeContent &out)
+    {
+        size_t i = 0;
+        while (i < s.size() && (s[i] == ' ' || s[i] == '\t'))
+            i++;
+        size_t begin = i;
+        while (i < s.size() && (isdigit((unsigned char)s[i]) || s[i] == '-' || s[i] == '.' ||
+                               s[i] == '+' || s[i] == ','))
+            i++;
+        if (i == begin)
+            return false;
+        std::string num = s.substr(begin, i - begin);
+        for (size_t k = 0; k < num.size(); k++)
+            if (num[k] == ',')
+                num[k] = '.';
+        char *end = NULL;
+        double v = strtod(num.c_str(), &end);
+        if (end == num.c_str())
+            return false;
+        bool bPercent = false;
+        size_t j = i;
+        while (j < s.size() && (s[j] == ' ' || s[j] == '\t'))
+            j++;
+        if (j < s.size() && s[j] == '%')
+            bPercent = true;
+        else if (j < s.size())
+            return false; // 数字后面还有别的东西（"50 items"）：不当数值
+        out.bValue = true;
+        out.cur = v;
+        out.minv = 0.0;
+        out.maxv = bPercent ? 100.0 : 0.0;
+        return true;
+    }
+
+    void QueryNodeContent(const AccNode &node, NodeContent &out)
+    {
+        out = NodeContent();
+        if (node.bRoot || node.bWindow)
+            return; // 根/窗口节点没有内容语义
+
+        Resolved r;
+        if (!ResolveNode(node, r) || !r.ok)
+            return;
+
+        VARIANT varChild, varRole, varState;
+        VariantInit(&varChild);
+        VariantInit(&varRole);
+        VariantInit(&varState);
+        varChild.vt = VT_I4;
+        varChild.lVal = r.childId;
+        long role = 0;
+        if (r.acc->get_accRole(varChild, &varRole) == S_OK && varRole.vt == VT_I4)
+            role = varRole.lVal;
+        DWORD state = 0;
+        if (r.acc->get_accState(varChild, &varState) == S_OK && varState.vt == VT_I4)
+            state = (DWORD)varState.lVal;
+        VariantClear(&varState);
+        VariantClear(&varRole);
+        VariantClear(&varChild);
+
+        switch (role)
+        {
+        case ROLE_SYSTEM_TEXT:
+        {
+            /* 可编辑控件：正文在 value 上；密码框（STATE_SYSTEM_PROTECTED）
+             * 不暴露文本，否则屏幕阅读器会把口令念出来。 */
+            if (state & STATE_SYSTEM_PROTECTED)
+                break;
+            std::string v = GetAccString(r.acc, r.childId, ACC_STR_VALUE);
+            if (v.empty())
+                v = GetAccString(r.acc, r.childId, ACC_STR_NAME);
+            out.bText = true;
+            out.text = v;
+            break;
+        }
+        case ROLE_SYSTEM_STATICTEXT:
+        {
+            /* 静态文本没有 value，内容就在 name 上。 */
+            std::string v = GetAccString(r.acc, r.childId, ACC_STR_NAME);
+            if (v.empty())
+                v = GetAccString(r.acc, r.childId, ACC_STR_VALUE);
+            out.bText = true;
+            out.text = v;
+            break;
+        }
+        case ROLE_SYSTEM_PROGRESSBAR:
+        case ROLE_SYSTEM_SLIDER:
+        case ROLE_SYSTEM_SPINBUTTON:
+        case ROLE_SYSTEM_SCROLLBAR:
+        {
+            std::string v = GetAccString(r.acc, r.childId, ACC_STR_VALUE);
+            ParseValueText(v, out);
+            break;
+        }
+        default:
+            break;
+        }
+    }
+
     long NodeChildCount(const AccNode &node)
     {
         if (node.bRoot)
@@ -891,11 +1108,14 @@ namespace
         /* 供 WinEvent 钩子调用 */
         void OnWinEvent(DWORD event, HWND hwnd, LONG idObject, LONG idChild);
 
-        /* MSAA 事件 -> AT-SPI 信号 */
-        void EmitStateChanged(HWND hwnd, const char *state, int value);
-        void EmitPropertyChange(HWND hwnd, const char *prop);
+        /* MSAA 事件 -> AT-SPI 信号。
+         * 后两个参数是 WinEvent 的归因信息（见 EventNode），决定信号从哪个
+         * 对象路径发出——落点粒度就是客户端读屏器"谁变了"的粒度。 */
+        void EmitStateChanged(HWND hwnd, LONG idObject, LONG idChild, const char *state,
+                              int value);
+        void EmitPropertyChange(HWND hwnd, LONG idObject, LONG idChild, const char *prop);
         void EmitChildrenChanged(HWND hwnd, bool bAdd);
-        void EmitFocusEvent(HWND hwnd);
+        void EmitFocusEvent(HWND hwnd, LONG idObject, LONG idChild);
         void EmitWindowEvent(HWND hwnd, const char *name);
         void EmitSignalFor(AccNode &node, const char *klass, const char *member,
                            const char *detail, dbus_int32_t detail1, dbus_int32_t detail2,
@@ -1359,8 +1579,6 @@ namespace
     {
         if (!hwnd)
             return;
-        (void)idChild;
-        (void)idObject;
         /* SetWinEventHook 是全局钩子，会收到桌面上所有进程窗口的事件。
          * 只桥接本进程窗口，避免把其他应用的事件以本应用的对象路径
          * 广播出去污染 a11y 总线。 */
@@ -1368,6 +1586,9 @@ namespace
         ::GetWindowThreadProcessId(hwnd, &pid);
         if (pid != ::GetCurrentProcessId())
             return;
+        /* idObject / idChild 是事件归属：标准调用方用
+         * (OBJID_CLIENT, childId) 指明"是哪个控件变了"，我们就从那个节点
+         * 路径发信号；拿不到可变现的归属时 EventNode 退回客户区根。 */
         switch (event)
         {
         case EVENT_OBJECT_CREATE:
@@ -1380,34 +1601,34 @@ namespace
                 EmitChildrenChanged(hwnd, true);
                 break;
             }
-            EmitStateChanged(hwnd, "visible", 1);
-            EmitStateChanged(hwnd, "showing", 1);
+            EmitStateChanged(hwnd, idObject, idChild, "visible", 1);
+            EmitStateChanged(hwnd, idObject, idChild, "showing", 1);
             break;
         case EVENT_OBJECT_DESTROY:
             EmitChildrenChanged(hwnd, false);
             break;
         case EVENT_OBJECT_HIDE:
-            EmitStateChanged(hwnd, "visible", 0);
-            EmitStateChanged(hwnd, "showing", 0);
+            EmitStateChanged(hwnd, idObject, idChild, "visible", 0);
+            EmitStateChanged(hwnd, idObject, idChild, "showing", 0);
             break;
         case EVENT_OBJECT_FOCUS:
-            EmitStateChanged(hwnd, "focused", 1);
-            EmitFocusEvent(hwnd);
+            EmitStateChanged(hwnd, idObject, idChild, "focused", 1);
+            EmitFocusEvent(hwnd, idObject, idChild);
             break;
         case EVENT_OBJECT_NAMECHANGE:
-            EmitPropertyChange(hwnd, "accessible-name");
+            EmitPropertyChange(hwnd, idObject, idChild, "accessible-name");
             break;
         case EVENT_OBJECT_VALUECHANGE:
-            EmitPropertyChange(hwnd, "accessible-value");
+            EmitPropertyChange(hwnd, idObject, idChild, "accessible-value");
             break;
         case EVENT_OBJECT_DESCRIPTIONCHANGE:
-            EmitPropertyChange(hwnd, "accessible-description");
+            EmitPropertyChange(hwnd, idObject, idChild, "accessible-description");
             break;
         case EVENT_OBJECT_SELECTION:
-            EmitStateChanged(hwnd, "selected", 1);
+            EmitStateChanged(hwnd, idObject, idChild, "selected", 1);
             break;
         case EVENT_OBJECT_STATECHANGE:
-            EmitStateChanged(hwnd, "enabled", 1);
+            EmitStateChanged(hwnd, idObject, idChild, "enabled", 1);
             break;
         case EVENT_SYSTEM_FOREGROUND:
             EmitWindowEvent(hwnd, "Activate");
@@ -1444,18 +1665,42 @@ namespace
                            variantVal);
     }
 
-    void AtSpi::EmitStateChanged(HWND hwnd, const char *state, int value)
+    /* WinEvent 的 (idObject, idChild) -> 桥内节点。
+     *
+     * 标准 MSAA 约定：事件由"变化发生在哪个对象上"决定 ——
+     *   idObject = OBJID_CLIENT 且 idChild > 0  =>  客户区根对象的第 idChild
+     *     个子对象（1-based），也就是控件节点；idChild = CHILDID_SELF 表示
+     *     客户区根本身；
+     *   idObject = OBJID_WINDOW => 顶层窗口节点（不是客户区）；
+     *   其余 OBJID_*（均 ≤ -1）在 SOUI 里没有对应节点，一律归到客户区根。
+     *
+     * 已知口径缺口：SOUI 的 SWindow::accNotifyEvent 把 swnd 句柄当 idObject
+     * 发出来（正值），那不是合法 OBJID，而 swinx 不依赖 soui、拿不到
+     * swnd -> 控件链的映射，因此这类事件仍归到客户区根（= 改造前的行为，
+     * 不影响既有客户端）。要让 SOUI 的事件真正做到节点级，需框架侧改发
+     * 标准 (OBJID_CLIENT, childId)。 */
+    AccNode EventNode(HWND hwnd, LONG idObject, LONG idChild)
     {
         AccNode node;
         node.hwnd = hwnd;
+        if (idObject == OBJID_WINDOW)
+            node.bWindow = true;
+        else if (idObject == OBJID_CLIENT && idChild > 0)
+            node.chain.push_back(idChild);
+        return node;
+    }
+
+    void AtSpi::EmitStateChanged(HWND hwnd, LONG idObject, LONG idChild, const char *state,
+                                 int value)
+    {
+        AccNode node = EventNode(hwnd, idObject, idChild);
         dbus_int32_t v = value ? 1 : 0;
         EmitSignalFor(node, "org.a11y.atspi.Event.Object", "StateChanged", state, v, 0, "i", &v);
     }
 
-    void AtSpi::EmitPropertyChange(HWND hwnd, const char *prop)
+    void AtSpi::EmitPropertyChange(HWND hwnd, LONG idObject, LONG idChild, const char *prop)
     {
-        AccNode node;
-        node.hwnd = hwnd;
+        AccNode node = EventNode(hwnd, idObject, idChild);
         const char *empty = "";
         /* 注意：dbus_message_iter_append_basic 对 DBUS_TYPE_STRING 要求
          * const char **（指向指针的指针）。此前误传字符串指针本身，libdbus
@@ -1492,10 +1737,9 @@ namespace
                            bAdd ? "add" : "remove", (dbus_int32_t)idx, 0, "(so)", &win);
     }
 
-    void AtSpi::EmitFocusEvent(HWND hwnd)
+    void AtSpi::EmitFocusEvent(HWND hwnd, LONG idObject, LONG idChild)
     {
-        AccNode node;
-        node.hwnd = hwnd;
+        AccNode node = EventNode(hwnd, idObject, idChild);
         const char *empty = "";
         /* "s" 载荷必须传 const char **（见 EmitPropertyChange 的注释）——
          * 此前的错误间接引用正是退出时段错误的元凶（崩溃栈
@@ -1541,11 +1785,13 @@ namespace
             T_STRING,
             T_INT,
             T_UINT,
+            T_DOUBLE,
             T_OBJREF
         } type = T_STRING;
         std::string str;
         int i = 0;
         unsigned int u = 0;
+        double d = 0.0;
         std::string refName;
         std::string refPath;
     };
@@ -1563,6 +1809,14 @@ namespace
         {
             v.push_back(ATSPI_IFACE_COMPONENT);
             v.push_back(ATSPI_IFACE_ACTION);
+            /* 内容类接口按节点能力给：把 Text/Value 挂到所有节点上会让
+             * AT 客户端对着按钮念"0 个字符"，反而更糟。 */
+            NodeContent content;
+            QueryNodeContent(node, content);
+            if (content.bText)
+                v.push_back(ATSPI_IFACE_TEXT);
+            if (content.bValue)
+                v.push_back(ATSPI_IFACE_VALUE);
         }
         return v;
     }
@@ -1670,6 +1924,73 @@ namespace
             }
             return false;
         }
+        if (strcmp(iface, ATSPI_IFACE_TEXT) == 0)
+        {
+            NodeContent content;
+            QueryNodeContent(node, content);
+            if (!content.bText)
+                return false;
+            if (strcmp(prop, "CharacterCount") == 0)
+            {
+                out.type = PropValue::T_INT;
+                out.i = (int)Utf8CharCount(content.text);
+                return true;
+            }
+            if (strcmp(prop, "CaretOffset") == 0)
+            {
+                /* MSAA 不提供文本插入点偏移，只能报 -1 表示"未知"；
+                 * 想拿到真实偏移需要控件侧另开接口，不在兼容层伪造。 */
+                out.type = PropValue::T_INT;
+                out.i = -1;
+                return true;
+            }
+            if (strcmp(prop, "version") == 0)
+            {
+                out.type = PropValue::T_UINT;
+                out.u = 1;
+                return true;
+            }
+            return false;
+        }
+        if (strcmp(iface, ATSPI_IFACE_VALUE) == 0)
+        {
+            NodeContent content;
+            QueryNodeContent(node, content);
+            if (!content.bValue)
+                return false;
+            if (strcmp(prop, "CurrentValue") == 0)
+            {
+                out.type = PropValue::T_DOUBLE;
+                out.d = content.cur;
+                return true;
+            }
+            if (strcmp(prop, "MinimumValue") == 0)
+            {
+                out.type = PropValue::T_DOUBLE;
+                out.d = content.minv;
+                return true;
+            }
+            if (strcmp(prop, "MaximumValue") == 0)
+            {
+                out.type = PropValue::T_DOUBLE;
+                out.d = content.maxv;
+                return true;
+            }
+            if (strcmp(prop, "MinimumIncrement") == 0)
+            {
+                /* 量程未知时增量也没有意义，统一报 0（客户端按"任意步进"理解）。 */
+                out.type = PropValue::T_DOUBLE;
+                out.d = content.maxv > content.minv ? 1.0 : 0.0;
+                return true;
+            }
+            if (strcmp(prop, "version") == 0)
+            {
+                out.type = PropValue::T_UINT;
+                out.u = 1;
+                return true;
+            }
+            return false;
+        }
         if (strcmp(iface, ATSPI_IFACE_COMPONENT) == 0 || strcmp(iface, ATSPI_IFACE_ACTION) == 0 ||
             strcmp(iface, ATSPI_IFACE_CACHE) == 0)
         {
@@ -1700,6 +2021,15 @@ namespace
             dbus_message_iter_open_container(it, DBUS_TYPE_VARIANT, "u", &sub);
             dbus_uint32_t val = (dbus_uint32_t)v.u;
             dbus_message_iter_append_basic(&sub, DBUS_TYPE_UINT32, &val);
+            dbus_message_iter_close_container(it, &sub);
+            break;
+        }
+        case PropValue::T_DOUBLE:
+        {
+            DBusMessageIter sub;
+            dbus_message_iter_open_container(it, DBUS_TYPE_VARIANT, "d", &sub);
+            double val = v.d;
+            dbus_message_iter_append_basic(&sub, DBUS_TYPE_DOUBLE, &val);
             dbus_message_iter_close_container(it, &sub);
             break;
         }
@@ -2349,6 +2679,313 @@ namespace
         SendReply(conn, reply);
     }
 
+    /* ------------------------------------------------------------------ */
+    /* Text / Value                                                       */
+    /* ------------------------------------------------------------------ */
+
+    /* 字符的"分词类别"：0 = 分隔符，1 = 表意字（CJK/假名/谚文），
+     * 2 = 字母数字词字符。表意字之间没有空格，按"一字一词"切分——这也是
+     * 没有词典的自然语言处理里的常规兜底；否则一整句中文会变成"一个词"，
+     * 客户端按词导航就失效了。 */
+    int Utf8CharClass(unsigned int c)
+    {
+        if (c < 0x80)
+            return (isalnum((int)c) || c == '_') ? 2 : 0;
+        if ((c >= 0x3040 && c <= 0x30FF) || (c >= 0x3400 && c <= 0x4DBF) ||
+            (c >= 0x4E00 && c <= 0x9FFF) || (c >= 0xAC00 && c <= 0xD7AF) ||
+            (c >= 0xF900 && c <= 0xFAFF))
+            return 1;
+        if (c == 0x3000 || (c >= 0x3001 && c <= 0x303F) || (c >= 0xFF00 && c <= 0xFF0F) ||
+            (c >= 0xFF1A && c <= 0xFF20))
+            return 0; // 全角标点/空格
+        return 2;     // 带重音的拉丁字母、希腊/西里尔等按词字符处理
+    }
+
+    /* 求 offset 所在的分词边界；offset 越界时夹到两端。
+     * 只做 AT-SPI 需要的四类：字符 / 词 / 行，其余（句、属性段）退化为整段。 */
+    void TextBoundary(const std::string &text, size_t offset, dbus_uint32_t type, size_t &start,
+                      size_t &end)
+    {
+        size_t n = Utf8CharCount(text);
+        if (offset > n)
+            offset = n;
+        switch (type)
+        {
+        case 0: // CHAR
+            start = offset;
+            end = offset < n ? offset + 1 : offset;
+            return;
+        case 1: // WORD
+        {
+            /* 落在分隔符上时，把"从该处开始的一段连续分隔符"当作一个词——
+             * 这样客户端逐词前进不会卡住。 */
+            unsigned int cp = 0;
+            if (!Utf8CharAt(text, offset, cp))
+            {
+                start = end = n;
+                return;
+            }
+            int cls = Utf8CharClass(cp);
+            start = offset;
+            if (cls != 1) // 表意字天然一字一词，不必再向两侧扩
+            {
+                while (start > 0)
+                {
+                    unsigned int prev = 0;
+                    if (!Utf8CharAt(text, start - 1, prev) || Utf8CharClass(prev) != cls)
+                        break;
+                    start--;
+                }
+            }
+            end = offset;
+            if (cls == 1)
+            {
+                /* 表意字一字一词：不再向前合并同类字符。 */
+                end = offset < n ? offset + 1 : offset;
+                return;
+            }
+            while (end < n)
+            {
+                unsigned int cur = 0;
+                if (!Utf8CharAt(text, end, cur) || Utf8CharClass(cur) != cls)
+                    break;
+                end++;
+            }
+            if (end == start)
+                end = start + 1;
+            return;
+        }
+        case 3: // LINE
+        {
+            start = offset;
+            while (start > 0)
+            {
+                unsigned int prev = 0;
+                if (Utf8CharAt(text, start - 1, prev) && prev == '\n')
+                    break;
+                start--;
+            }
+            end = offset;
+            while (end < n)
+            {
+                unsigned int cur = 0;
+                if (Utf8CharAt(text, end, cur) && cur == '\n')
+                    break;
+                end++;
+            }
+            return;
+        }
+        default: // SENTENCE / ATTRIBUTE_RUN：没有更细的信息，整段返回
+            start = 0;
+            end = n;
+            return;
+        }
+    }
+
+    void HandleText(DBusConnection *conn, DBusMessage *msg, const AccNode &node, const char *member)
+    {
+        NodeContent content;
+        QueryNodeContent(node, content);
+        if (!content.bText)
+        {
+            ReplyError(conn, msg, DBUS_ERROR_INVALID_ARGS, "no text content on this node");
+            return;
+        }
+        const std::string &text = content.text;
+        size_t n = Utf8CharCount(text);
+
+        if (strcmp(member, "GetText") == 0)
+        {
+            dbus_int32_t start = 0, end = 0;
+            if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INT32, &start, DBUS_TYPE_INT32, &end,
+                                       DBUS_TYPE_INVALID))
+            {
+                ReplyError(conn, msg, DBUS_ERROR_INVALID_ARGS, "expected (ii)");
+                return;
+            }
+            /* 负值按 0 处理，end 超过长度按长度截断；起点越界返回空串
+             * （AT-SPI 就是这么约定的，别回错误）。 */
+            size_t s = start < 0 ? 0 : (size_t)start;
+            size_t e = end < 0 ? 0 : (size_t)end;
+            if (s > n)
+                s = n;
+            if (e > n)
+                e = n;
+            std::string sub = e > s ? Utf8Substr(text, s, e) : std::string();
+            DBusMessage *reply = dbus_message_new_method_return(msg);
+            DBusMessageIter it;
+            dbus_message_iter_init_append(reply, &it);
+            IterAppendString(&it, sub.c_str());
+            SendReply(conn, reply);
+            return;
+        }
+        if (strcmp(member, "GetTextAtOffset") == 0 || strcmp(member, "GetStringAtOffset") == 0)
+        {
+            dbus_int32_t offset = 0;
+            dbus_uint32_t type = 0;
+            if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INT32, &offset, DBUS_TYPE_UINT32, &type,
+                                       DBUS_TYPE_INVALID))
+            {
+                ReplyError(conn, msg, DBUS_ERROR_INVALID_ARGS, "expected (iu)");
+                return;
+            }
+            size_t s = 0, e = 0;
+            TextBoundary(text, offset < 0 ? 0 : (size_t)offset, type, s, e);
+            std::string sub = Utf8Substr(text, s, e);
+            DBusMessage *reply = dbus_message_new_method_return(msg);
+            DBusMessageIter it;
+            dbus_message_iter_init_append(reply, &it);
+            IterAppendString(&it, sub.c_str());
+            dbus_int32_t si = (dbus_int32_t)s, ei = (dbus_int32_t)e;
+            dbus_message_iter_append_basic(&it, DBUS_TYPE_INT32, &si);
+            dbus_message_iter_append_basic(&it, DBUS_TYPE_INT32, &ei);
+            SendReply(conn, reply);
+            return;
+        }
+        if (strcmp(member, "GetCharacterAtOffset") == 0)
+        {
+            dbus_int32_t offset = 0;
+            if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INT32, &offset, DBUS_TYPE_INVALID))
+            {
+                ReplyError(conn, msg, DBUS_ERROR_INVALID_ARGS, "expected (i)");
+                return;
+            }
+            unsigned int cp = 0;
+            dbus_int32_t ret = 0;
+            if (offset >= 0 && Utf8CharAt(text, (size_t)offset, cp))
+                ret = (dbus_int32_t)cp;
+            DBusMessage *reply = dbus_message_new_method_return(msg);
+            DBusMessageIter it;
+            dbus_message_iter_init_append(reply, &it);
+            dbus_message_iter_append_basic(&it, DBUS_TYPE_INT32, &ret);
+            SendReply(conn, reply);
+            return;
+        }
+        if (strcmp(member, "GetCharacterExtents") == 0 || strcmp(member, "GetRangeExtents") == 0)
+        {
+            /* MSAA 没有"第 N 个字符的包围盒"，只有控件整体矩形。这里返回控件
+             * 矩形而不是空矩形：字形确实落在这个范围里，至少不会让放大器瞎跳。 */
+            dbus_uint32_t ct = 0;
+            if (strcmp(member, "GetCharacterExtents") == 0)
+            {
+                dbus_int32_t offset = 0;
+                if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INT32, &offset, DBUS_TYPE_UINT32,
+                                           &ct, DBUS_TYPE_INVALID))
+                {
+                    ReplyError(conn, msg, DBUS_ERROR_INVALID_ARGS, "expected (iu)");
+                    return;
+                }
+            }
+            else
+            {
+                dbus_int32_t start = 0, end = 0;
+                if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INT32, &start, DBUS_TYPE_INT32,
+                                           &end, DBUS_TYPE_UINT32, &ct, DBUS_TYPE_INVALID))
+                {
+                    ReplyError(conn, msg, DBUS_ERROR_INVALID_ARGS, "expected (iiu)");
+                    return;
+                }
+            }
+            RECT rc = NodeExtents(node, ct);
+            DBusMessage *reply = dbus_message_new_method_return(msg);
+            DBusMessageIter it;
+            dbus_message_iter_init_append(reply, &it);
+            IterAppendRect(&it, (int)rc.left, (int)rc.top, (int)(rc.right - rc.left),
+                           (int)(rc.bottom - rc.top));
+            SendReply(conn, reply);
+            return;
+        }
+        if (strcmp(member, "GetNSelections") == 0)
+        {
+            /* MSAA 侧的 IAccessible 不暴露文本选区，按"无选区"应答。 */
+            dbus_int32_t z = 0;
+            DBusMessage *reply = dbus_message_new_method_return(msg);
+            DBusMessageIter it;
+            dbus_message_iter_init_append(reply, &it);
+            dbus_message_iter_append_basic(&it, DBUS_TYPE_INT32, &z);
+            SendReply(conn, reply);
+            return;
+        }
+        if (strcmp(member, "GetSelection") == 0)
+        {
+            dbus_int32_t z = 0;
+            DBusMessage *reply = dbus_message_new_method_return(msg);
+            DBusMessageIter it;
+            dbus_message_iter_init_append(reply, &it);
+            dbus_message_iter_append_basic(&it, DBUS_TYPE_INT32, &z);
+            dbus_message_iter_append_basic(&it, DBUS_TYPE_INT32, &z);
+            SendReply(conn, reply);
+            return;
+        }
+        if (strcmp(member, "GetOffsetAtPoint") == 0)
+        {
+            /* 没有逐字符布局信息，只能报"未知"。 */
+            dbus_int32_t neg = -1;
+            DBusMessage *reply = dbus_message_new_method_return(msg);
+            DBusMessageIter it;
+            dbus_message_iter_init_append(reply, &it);
+            dbus_message_iter_append_basic(&it, DBUS_TYPE_INT32, &neg);
+            SendReply(conn, reply);
+            return;
+        }
+        /* 其余（AddSelection / RemoveSelection / SetSelection / SetCaretOffset /
+         * ScrollSubstringTo*）：MSAA 无对应能力，显式回 FALSE，让客户端知道没做成。 */
+        DBusMessage *reply = dbus_message_new_method_return(msg);
+        DBusMessageIter it;
+        dbus_message_iter_init_append(reply, &it);
+        dbus_bool_t ok = FALSE;
+        dbus_message_iter_append_basic(&it, DBUS_TYPE_BOOLEAN, &ok);
+        SendReply(conn, reply);
+    }
+
+    void HandleValue(DBusConnection *conn, DBusMessage *msg, const AccNode &node, const char *member)
+    {
+        if (strcmp(member, "SetCurrentValue") == 0)
+        {
+            double d = 0.0;
+            if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_DOUBLE, &d, DBUS_TYPE_INVALID))
+            {
+                ReplyError(conn, msg, DBUS_ERROR_INVALID_ARGS, "expected (d)");
+                return;
+            }
+            /* 能写就写回控件：把数值转成 MSAA 认的文本形式（整数优先，
+             * 百分号形态的控件额外带回 '%'，否则 SOUI 侧的解析会失败）。 */
+            NodeContent content;
+            QueryNodeContent(node, content);
+            bool bOk = false;
+            if (content.bValue)
+            {
+                Resolved r;
+                if (ResolveNode(node, r) && r.ok)
+                {
+                    char buf[64];
+                    if (content.maxv > content.minv)
+                        snprintf(buf, sizeof(buf), "%d%%", (int)(d + 0.5));
+                    else
+                        snprintf(buf, sizeof(buf), "%d", (int)(d < 0 ? d - 0.5 : d + 0.5));
+                    std::wstring w;
+                    towstring(buf, (int)strlen(buf), w);
+                    BSTR bstr = SysAllocStringLen(w.c_str(), (UINT)w.size());
+                    VARIANT varChild;
+                    VariantInit(&varChild);
+                    varChild.vt = VT_I4;
+                    varChild.lVal = r.childId;
+                    bOk = r.acc->put_accValue(varChild, bstr) == S_OK;
+                    SysFreeString(bstr);
+                    VariantClear(&varChild);
+                }
+            }
+            DBusMessage *reply = dbus_message_new_method_return(msg);
+            DBusMessageIter it;
+            dbus_message_iter_init_append(reply, &it);
+            dbus_bool_t ok = bOk ? TRUE : FALSE;
+            dbus_message_iter_append_basic(&it, DBUS_TYPE_BOOLEAN, &ok);
+            SendReply(conn, reply);
+            return;
+        }
+        ReplyError(conn, msg, DBUS_ERROR_UNKNOWN_METHOD, "unknown Value method");
+    }
+
     void HandleAction(DBusConnection *conn, DBusMessage *msg, const AccNode &node,
                       const char *member)
     {
@@ -2524,6 +3161,20 @@ namespace
                 props[nProps++] = "InterfaceVersion";
                 props[nProps++] = "Id";
             }
+            else if (strcmp(iface, ATSPI_IFACE_TEXT) == 0)
+            {
+                props[nProps++] = "CharacterCount";
+                props[nProps++] = "CaretOffset";
+                props[nProps++] = "version";
+            }
+            else if (strcmp(iface, ATSPI_IFACE_VALUE) == 0)
+            {
+                props[nProps++] = "CurrentValue";
+                props[nProps++] = "MinimumValue";
+                props[nProps++] = "MaximumValue";
+                props[nProps++] = "MinimumIncrement";
+                props[nProps++] = "version";
+            }
             else
             {
                 props[nProps++] = "version";
@@ -2592,6 +3243,64 @@ namespace
         "    <method name='GetActions'><arg type='a(ssss)' direction='out'/></method>\n"
         "    <method name='DoAction'><arg type='i' direction='in'/>"
         "<arg type='b' direction='out'/></method>\n"
+        "  </interface>\n"
+        /* Text / Value 只在节点确实有内容时才报进 GetInterfaces；introspection
+         * 是"该对象路径支持哪些接口"的超集，按全量列出（客户端以
+         * GetInterfaces 的结果为准）。 */
+        "  <interface name='org.a11y.atspi.Text'>\n"
+        "    <method name='GetText'>"
+        "<arg type='i' direction='in'/><arg type='i' direction='in'/>"
+        "<arg type='s' direction='out'/></method>\n"
+        "    <method name='GetTextAtOffset'>"
+        "<arg type='i' direction='in'/><arg type='u' direction='in'/>"
+        "<arg type='s' direction='out'/><arg type='i' direction='out'/>"
+        "<arg type='i' direction='out'/></method>\n"
+        "    <method name='GetStringAtOffset'>"
+        "<arg type='i' direction='in'/><arg type='u' direction='in'/>"
+        "<arg type='s' direction='out'/><arg type='i' direction='out'/>"
+        "<arg type='i' direction='out'/></method>\n"
+        "    <method name='GetCharacterAtOffset'>"
+        "<arg type='i' direction='in'/><arg type='i' direction='out'/></method>\n"
+        "    <method name='GetCharacterExtents'>"
+        "<arg type='i' direction='in'/><arg type='u' direction='in'/>"
+        "<arg type='(iiii)' direction='out'/></method>\n"
+        "    <method name='GetRangeExtents'>"
+        "<arg type='i' direction='in'/><arg type='i' direction='in'/>"
+        "<arg type='u' direction='in'/><arg type='(iiii)' direction='out'/></method>\n"
+        "    <method name='GetNSelections'><arg type='i' direction='out'/></method>\n"
+        "    <method name='GetSelection'>"
+        "<arg type='i' direction='in'/><arg type='i' direction='out'/>"
+        "<arg type='i' direction='out'/></method>\n"
+        "    <method name='AddSelection'>"
+        "<arg type='i' direction='in'/><arg type='i' direction='in'/>"
+        "<arg type='b' direction='out'/></method>\n"
+        "    <method name='RemoveSelection'>"
+        "<arg type='i' direction='in'/><arg type='b' direction='out'/></method>\n"
+        "    <method name='SetSelection'>"
+        "<arg type='i' direction='in'/><arg type='i' direction='in'/>"
+        "<arg type='i' direction='in'/><arg type='b' direction='out'/></method>\n"
+        "    <method name='SetCaretOffset'>"
+        "<arg type='i' direction='in'/><arg type='b' direction='out'/></method>\n"
+        "    <method name='GetOffsetAtPoint'>"
+        "<arg type='i' direction='in'/><arg type='i' direction='in'/>"
+        "<arg type='u' direction='in'/><arg type='i' direction='out'/></method>\n"
+        "    <method name='ScrollSubstringTo'>"
+        "<arg type='i' direction='in'/><arg type='i' direction='in'/>"
+        "<arg type='u' direction='in'/><arg type='b' direction='out'/></method>\n"
+        "    <method name='ScrollSubstringToPoint'>"
+        "<arg type='i' direction='in'/><arg type='i' direction='in'/>"
+        "<arg type='u' direction='in'/><arg type='i' direction='in'/>"
+        "<arg type='i' direction='in'/><arg type='b' direction='out'/></method>\n"
+        "    <property name='CharacterCount' type='i' access='read'/>\n"
+        "    <property name='CaretOffset' type='i' access='read'/>\n"
+        "  </interface>\n"
+        "  <interface name='org.a11y.atspi.Value'>\n"
+        "    <method name='SetCurrentValue'>"
+        "<arg type='d' direction='in'/><arg type='b' direction='out'/></method>\n"
+        "    <property name='CurrentValue' type='d' access='read'/>\n"
+        "    <property name='MinimumValue' type='d' access='read'/>\n"
+        "    <property name='MaximumValue' type='d' access='read'/>\n"
+        "    <property name='MinimumIncrement' type='d' access='read'/>\n"
         "  </interface>\n"
         "  <interface name='org.a11y.atspi.Application'>\n"
         "    <property name='ToolkitName' type='s' access='read'/>\n"
@@ -2669,6 +3378,16 @@ namespace
         if (strcmp(iface, ATSPI_IFACE_ACTION) == 0)
         {
             HandleAction(conn, msg, node, member);
+            return DBUS_HANDLER_RESULT_HANDLED;
+        }
+        if (strcmp(iface, ATSPI_IFACE_TEXT) == 0)
+        {
+            HandleText(conn, msg, node, member);
+            return DBUS_HANDLER_RESULT_HANDLED;
+        }
+        if (strcmp(iface, ATSPI_IFACE_VALUE) == 0)
+        {
+            HandleValue(conn, msg, node, member);
             return DBUS_HANDLER_RESULT_HANDLED;
         }
         if (strcmp(iface, ATSPI_IFACE_APPLICATION) == 0)

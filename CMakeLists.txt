@@ -6,6 +6,17 @@ set(CMAKE_CXX_STANDARD 11)
 add_compile_options(-Wno-deprecated-declarations)
 add_compile_options(-Wno-unused-result)
 
+# thirdparty（cairo / fontconfig）用 try_run 探测 __attribute__((constructor)) /
+# ((destructor)) 支持度。交叉编译时 try_run 生成的程序跑不起来，配置会直接报
+# "try_run() invoked in cross-compiling mode"，除非把结果固化进 cache —— 下游
+# （soui-android-lib / cnchess）一直是这么做的，swinx 单独交叉编译时也必须补上。
+if(CMAKE_CROSSCOMPILING)
+    set(TOOLCHAIN_SUPPORTS_ATTRIBUTE_CONSTRUCTOR_EXITCODE "0" CACHE STRING "cross-compiling: assume supported" FORCE)
+    set(TOOLCHAIN_SUPPORTS_ATTRIBUTE_CONSTRUCTOR_EXITCODE__TRYRUN_OUTPUT "" CACHE STRING "" FORCE)
+    set(TOOLCHAIN_SUPPORTS_ATTRIBUTE_DESTRUCTOR_EXITCODE "0" CACHE STRING "cross-compiling: assume supported" FORCE)
+    set(TOOLCHAIN_SUPPORTS_ATTRIBUTE_DESTRUCTOR_EXITCODE__TRYRUN_OUTPUT "" CACHE STRING "" FORCE)
+endif()
+
 add_subdirectory(thirdparty)
 
 if(SOUI_ENABLE_ACC)

@@ -1,7 +1,7 @@
 {
  "_meta": {
-  "decl_total": 1042,
-  "defined_total": 913,
+  "decl_total": 1066,
+  "defined_total": 937,
   "no_def": [
    "ChangeClipboardChain",
    "CountClipboardFormats",
@@ -16668,6 +16668,455 @@
      "platform/ios/SConnection.mm",
      "impl",
      ""
+    ]
+   ]
+  },
+  "ChoosePixelFormat": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "DescribePixelFormat": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ]
+   ]
+  },
+  "SetPixelFormat": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "wglCreateContext": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "wglDeleteContext": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "wglMakeCurrent": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "wglGetCurrentDC": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ]
+   ]
+  },
+  "wglGetCurrentContext": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "wglGetProcAddress": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "wglGetDefaultProcAddress": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "wglShareLists": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ]
+   ]
+  },
+  "wglCopyContext": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "wglCreateLayerContext": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "SwapBuffers": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "wglSwapMultipleBuffers": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "wglDescribeLayerPlane": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "wglSetLayerPaletteEntries": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "wglGetLayerPaletteEntries": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "wglRealizeLayerPalette": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "wglSwapLayerBuffers": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "wglUseFontBitmapsA": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "wglUseFontBitmapsW": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "wglUseFontOutlinesA": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "wglUseFontOutlinesW": {
+   "headers": [
+    "wgl.h"
+   ],
+   "files": [
+    "wgl.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "wgl.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },

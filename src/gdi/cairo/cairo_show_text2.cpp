@@ -96,7 +96,7 @@ size_t cairo_break_text(cairo_t *cr, const char *utf8, size_t length, float maxW
             endLen = 2;
             break;
         }
-        if (p1[0] == '\r' || p1[0] == '\n')
+        if (p1 < p2 && (p1[0] == '\r' || p1[0] == '\n'))
         {
             ret += 1;
             endLen = 1;

@@ -18,12 +18,12 @@
 
 | 分级 | 数量 |
 |---|---|
-| 实现 | 812 |
-| 简单实现 | 77 |
+| 实现 | 818 |
+| 简单实现 | 81 |
 | 部分实现 | 0 |
-| 空实现 / 语义桩 | 24 |
+| 空实现 / 语义桩 | 38 |
 | 未提供（仅声明） | 123 |
-| **合计（有定义）** | **913** |
+| **合计（有定义）** | **937** |
 
 ## 3. 模块分布
 
@@ -34,7 +34,7 @@
 | 系统、文件、进程与线程（KERNEL32 等价） | 286 | 15 | 0 | 2 |
 | COM / OLE（OLE32·OLEAUT32 等价） | 51 | 9 | 0 | 4 |
 | 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 65 | 16 | 0 | 0 |
-| 多媒体、资源及其它（WINMM·杂项） | 74 | 4 | 0 | 7 |
+| 多媒体、资源及其它（WINMM·杂项） | 80 | 8 | 0 | 21 |
 
 ## 4. 模块 API 明细
 
@@ -983,21 +983,45 @@
 | `timeEndPeriod` | 实现 | src/mmsystem.cpp |  |
 | `timeGetTime` | 实现 | src/mmsystem.cpp |  |
 | `wcscpy_s` | 实现 | src/strapi.cpp |  |
+| `wglCreateContext` | 实现 | src/wgl.cpp |  |
+| `wglDeleteContext` | 实现 | src/wgl.cpp |  |
+| `wglGetDefaultProcAddress` | 实现 | src/wgl.cpp |  |
+| `wglGetProcAddress` | 实现 | src/wgl.cpp |  |
+| `wglMakeCurrent` | 实现 | src/wgl.cpp |  |
+| `wglSwapMultipleBuffers` | 实现 | src/wgl.cpp |  |
+| `DescribePixelFormat` | 简单实现 | src/wgl.cpp |  |
 | `LockResource` | 简单实现 | src/coffparser.cpp 等 2 处 |  |
 | `PlatformAPI_Init` | 简单实现 | src/platform_api.cpp |  |
 | `SizeofResource` | 简单实现 | src/coffparser.cpp 等 2 处 |  |
+| `SwapBuffers` | 简单实现 | src/wgl.cpp |  |
 | `timeGetDevCaps` | 简单实现 | src/mmsystem.cpp |  |
+| `wglGetCurrentDC` | 简单实现 | src/wgl.cpp |  |
+| `wglShareLists` | 简单实现 | src/wgl.cpp |  |
 | `BeginUpdateResourceA` | 空实现 | src/resapi.cpp | 显式拒绝：SetLastError(ERROR_CALL_NOT_IMPLEMENTED) 并返回 NULL；资源层为只读实现 |
 | `BeginUpdateResourceW` | 空实现 | src/resapi.cpp | 显式拒绝：SetLastError(ERROR_CALL_NOT_IMPLEMENTED) 并返回 NULL；资源层为只读实现 |
+| `ChoosePixelFormat` | 空实现 | src/wgl.cpp |  |
 | `EndUpdateResourceA` | 空实现 | src/resapi.cpp | 显式拒绝：SetLastError(ERROR_CALL_NOT_IMPLEMENTED)；资源层为只读实现 |
 | `EndUpdateResourceW` | 空实现 | src/resapi.cpp | 显式拒绝：SetLastError(ERROR_CALL_NOT_IMPLEMENTED)；资源层为只读实现 |
 | `FreeResource` | 空实现 | src/resapi.cpp | 恒返回 TRUE。Win32 32 位模式下该 API 本身即为无操作，语义兼容 |
+| `SetPixelFormat` | 空实现 | src/wgl.cpp |  |
 | `UpdateResourceA` | 空实现 | src/resapi.cpp | 显式拒绝：SetLastError(ERROR_CALL_NOT_IMPLEMENTED)；资源层为只读实现 |
 | `UpdateResourceW` | 空实现 | src/resapi.cpp | 显式拒绝：SetLastError(ERROR_CALL_NOT_IMPLEMENTED)；资源层为只读实现 |
+| `wglCopyContext` | 空实现 | src/wgl.cpp |  |
+| `wglCreateLayerContext` | 空实现 | src/wgl.cpp |  |
+| `wglDescribeLayerPlane` | 空实现 | src/wgl.cpp |  |
+| `wglGetCurrentContext` | 空实现 | src/wgl.cpp |  |
+| `wglGetLayerPaletteEntries` | 空实现 | src/wgl.cpp |  |
+| `wglRealizeLayerPalette` | 空实现 | src/wgl.cpp |  |
+| `wglSetLayerPaletteEntries` | 空实现 | src/wgl.cpp |  |
+| `wglSwapLayerBuffers` | 空实现 | src/wgl.cpp |  |
+| `wglUseFontBitmapsA` | 空实现 | src/wgl.cpp |  |
+| `wglUseFontBitmapsW` | 空实现 | src/wgl.cpp |  |
+| `wglUseFontOutlinesA` | 空实现 | src/wgl.cpp |  |
+| `wglUseFontOutlinesW` | 空实现 | src/wgl.cpp |  |
 
 ## 5. 空实现 / 语义桩 API 详解
 
-以下 24 个 API 在 swinx 中提供符号但无实质逻辑。分两类：**协议占位**（为满足初始化/配对协议，返回成功值）与**能力缺失**（直接返回失败或空操作）。使用前请确认调用方不依赖其真实效果。
+以下 38 个 API 在 swinx 中提供符号但无实质逻辑。分两类：**协议占位**（为满足初始化/配对协议，返回成功值）与**能力缺失**（直接返回失败或空操作）。使用前请确认调用方不依赖其真实效果。
 
 ### 5.1 协议占位（返回成功，可正常配对调用）
 
@@ -1023,6 +1047,7 @@
 
 | API | 行为与影响 |
 |---|---|
+| `ChoosePixelFormat` |  |
 | `EnumDisplayDevicesW` | 恒返回 FALSE，枚举显示器请使用 EnumDisplayMonitors |
 | `FreeResource` | 恒返回 TRUE。Win32 32 位模式下该 API 本身即为无操作，语义兼容 |
 | `GetCurrentProcess_Priv` | 内部辅助符号，恒返回 INVALID_HANDLE_VALUE（伪句柄方案不用进程句柄） |
@@ -1034,9 +1059,22 @@
 | `SendNotifyMessageW` | 恒返回 FALSE，不投递消息 |
 | `SetGraphicsMode` | 恒返回 0（仅支持默认图形模式） |
 | `SetMenuItemBitmaps` | 恒返回 FALSE，不支持菜单项位图 |
+| `SetPixelFormat` |  |
 | `SetStretchBltMode` | 空操作（拉伸模式仅一种） |
 | `SetWindowExtEx` | 恒返回 FALSE，不支持窗口坐标 extents 变换 |
 | `TerminateThread` | 恒返回 0，不强制终止线程（Win32 本身也强烈不建议使用） |
+| `wglCopyContext` |  |
+| `wglCreateLayerContext` |  |
+| `wglDescribeLayerPlane` |  |
+| `wglGetCurrentContext` |  |
+| `wglGetLayerPaletteEntries` |  |
+| `wglRealizeLayerPalette` |  |
+| `wglSetLayerPaletteEntries` |  |
+| `wglSwapLayerBuffers` |  |
+| `wglUseFontBitmapsA` |  |
+| `wglUseFontBitmapsW` |  |
+| `wglUseFontOutlinesA` |  |
+| `wglUseFontOutlinesW` |  |
 
 ### 5.4 语义等效但口径不同的简化实现
 

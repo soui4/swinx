@@ -36,8 +36,9 @@ find_library(Carbon_LIBRARY Carbon)
 find_library(Audio_LIBRARY AudioToolbox)
 find_library(CoreFoundation_LIBRARY CoreFoundation)
 find_library(ImageIO_LIBRARY ImageIO)
+find_library(OPENGL_LIBRARY OpenGL) # wgl.h 兼容层的 NSOpenGLContext 落地（SGLBridge.mm）
 # Use internal compiled libraries
-set(SWINX_LIBS 
+set(SWINX_LIBS
     Iconv::Iconv       # System Iconv library
     ${COCOA_LIBRARY}
     ${QUARTZ_LIBRARY}
@@ -46,6 +47,7 @@ set(SWINX_LIBS
     ${Audio_LIBRARY}
     ${CoreFoundation_LIBRARY}
     ${ImageIO_LIBRARY}
+    ${OPENGL_LIBRARY}
     m
     stdc++
     )
