@@ -27,11 +27,16 @@ fetch-ohos-sdk 是给 CI 用的：OpenHarmony 公开 SDK 是一个 3GB 的 tar.g
 真正需要的只有 ohos-sdk/linux/native-linux-x64-*.zip（约 0.8~1GB）。这里用流式
 解包，读到需要的成员就停，剩下的字节不再下载，也不用落盘整个 tar.gz。
 
+注意解包时必须还原 unix 可执行位：zipfile.extractall() 只落内容不落权限，
+native/llvm/bin/* 在 zip 里是 0755，解出来是 0644，Linux 上直接
+`clang: Permission denied`（Windows 开发机不看这个位，本地无法复现）。
+
 退出码：0 = 配置+编译+产物校验全通过；非 0 = 失败（CI 直接用进程退出码）。
 """
 
 import argparse
 import fnmatch
+import glob
 import os
 import shutil
 import struct
@@ -165,6 +170,88 @@ def verify_artifacts(build_dir, expect_machine):
     return len(hits)
 
 
+def _chmod_x(path):
+    try:
+        os.chmod(path, 0o755)
+        return True
+    except OSError:
+        return False
+
+
+def ensure_executables(dir_list, recursive=False):
+    """补齐丢失的可执行位，返回修复个数。
+
+    三种来源都会丢 +x：zipfile.extractall（不解 external_attr 的权限位）、
+    tarfile 在 Windows 上解包、CI 缓存里躺着旧版本解出来的树。表现是
+    Linux 上 `clang: Permission denied`，而 Windows 开发机根本不看这个位，
+    本地永远复现不出来 —— 所以只能显式修。
+
+    判据刻意收窄：只认「无扩展名」或 `.sh` 的文件，且无扩展名的还要求是
+    ELF。这样 llvm/bin/* 能补上，lib/*.so、cmake 脚本、头文件不会被误伤。
+    Windows 上 os.access(X_OK) 恒为真（无此概念），因此这里是空操作。
+    """
+    fixed = 0
+    for base in dir_list:
+        if not base or not os.path.isdir(base):
+            continue
+        walker = os.walk(base) if recursive else [(base, [], os.listdir(base))]
+        for root, _dirs, files in walker:
+            for f in files:
+                p = os.path.join(root, f)
+                if not os.path.isfile(p) or os.access(p, os.X_OK):
+                    continue
+                if f.endswith(".sh"):
+                    fixed += 1 if _chmod_x(p) else 0
+                    continue
+                if "." in f:
+                    continue
+                try:
+                    with open(p, "rb") as fp:
+                        if fp.read(4) != b"\x7fELF":
+                            continue
+                except OSError:
+                    continue
+                fixed += 1 if _chmod_x(p) else 0
+    return fixed
+
+
+def extract_zip(zip_path, dest):
+    """解包 zip 并还原 external_attr 里的 unix 权限位。
+
+    不能直接用 extractall()：它只落内容不落权限，OHOS native zip 里
+    native/llvm/bin/* 是 0755，解出来变 0644。
+    """
+    with zipfile.ZipFile(zip_path) as z:
+        for zi in z.infolist():
+            z.extract(zi, dest)
+            if zi.is_dir():
+                continue
+            mode = (zi.external_attr >> 16) & 0o7777
+            if mode & 0o111:
+                try:
+                    os.chmod(os.path.join(dest, zi.filename), mode & 0o777)
+                except OSError:
+                    pass
+
+
+def ensure_ohos_toolchain(native):
+    """配置前确认工具链可执行；缺失则就地修复并复核。
+
+    CI 缓存可能带着上一版脚本解出来的 SDK（没有 +x），只在 fetch 时修是不够的，
+    所以每次 configure 前都过一遍；修不动就明确报错，别让 CMake 给出
+    "The C compiler is not able to compile a simple test program" 这种
+    把人往错误方向带的结论。
+    """
+    bin_dir = os.path.join(native, "llvm", "bin")
+    n = ensure_executables([bin_dir])
+    if n:
+        log("补齐 %d 个工具链文件的可执行位（解包或缓存丢失 +x）" % n)
+    clang = os.path.join(bin_dir, "clang")
+    if os.name != "nt" and os.path.exists(clang) and not os.access(clang, os.X_OK):
+        fail("工具链编译器不可执行：%s —— 解包丢了权限位，"
+             "可删除 SDK 目录后重跑 fetch-ohos-sdk" % clang)
+
+
 def cmd_fetch_ohos(argv):
     """流式取出 OHOS native SDK 的 zip 并解包到 dest（CI 用）。"""
     ap = argparse.ArgumentParser(prog="cross_build.py fetch-ohos-sdk")
@@ -177,6 +264,7 @@ def cmd_fetch_ohos(argv):
     tc = os.path.join(a.dest, "native", "build", "cmake", "ohos.toolchain.cmake")
     if not a.force and os.path.exists(tc):
         log("已存在 OHOS native SDK：%s" % a.dest)
+        ensure_ohos_toolchain(os.path.join(a.dest, "native"))
         return 0
 
     if a.url.startswith(("http://", "https://")):
@@ -210,8 +298,7 @@ def cmd_fetch_ohos(argv):
 
     os.makedirs(a.dest, exist_ok=True)
     log("解包到 %s" % a.dest)
-    with zipfile.ZipFile(tmp_zip) as z:
-        z.extractall(a.dest)
+    extract_zip(tmp_zip, a.dest)
     try:
         os.remove(tmp_zip)
     except OSError:
@@ -220,8 +307,13 @@ def cmd_fetch_ohos(argv):
     if not os.path.exists(tc):
         fail("解包后仍找不到 native/build/cmake/ohos.toolchain.cmake，"
              "归档布局可能变了（看 %s）" % a.dest)
-    log("OK：OHOS native SDK 就绪 -> %s"
-        % os.path.join(a.dest, "native").replace("\\", "/"))
+    # 兜底：万一 zip 是用不写 unix 权限位的工具打的，external_attr 就靠不住，
+    # 这里按 ELF 特征再补一遍。
+    native = os.path.join(a.dest, "native")
+    n = ensure_executables([native], recursive=True)
+    log("校验工具链可执行位：补齐 %d 个%s" % (n, "" if n else "（无缺失）"))
+    ensure_ohos_toolchain(native)
+    log("OK：OHOS native SDK 就绪 -> %s" % native.replace("\\", "/"))
     return 0
 
 
@@ -235,11 +327,18 @@ def build(platform, args):
         if not os.path.exists(toolchain):
             fail("NDK 里没有 %s" % toolchain)
         log("NDK: %s" % ndk)
+        # 同理防一手：NDK 若是从缓存/压缩包恢复的，bin 里也可能丢 +x。
+        host_bins = glob.glob(os.path.join(ndk, "toolchains", "llvm",
+                                           "prebuilt", "*", "bin"))
+        n = ensure_executables(host_bins)
+        if n:
+            log("补齐 %d 个 NDK 工具文件的可执行位" % n)
         plat_args = ["-DANDROID_ABI=%s" % args.abi,
                      "-DANDROID_PLATFORM=android-%d" % args.api]
     else:
         toolchain, native = ohos_toolchain(resolve_ohos_sdk(args.sdk))
         log("OHOS native SDK: %s" % native)
+        ensure_ohos_toolchain(native)
         plat_args = ["-DOHOS_ARCH=%s" % args.abi]
 
     expect = {"arm64-v8a": "aarch64", "armeabi-v7a": "arm",
