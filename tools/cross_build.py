@@ -27,9 +27,14 @@ fetch-ohos-sdk 是给 CI 用的：OpenHarmony 公开 SDK 是一个 3GB 的 tar.g
 真正需要的只有 ohos-sdk/linux/native-linux-x64-*.zip（约 0.8~1GB）。这里用流式
 解包，读到需要的成员就停，剩下的字节不再下载，也不用落盘整个 tar.gz。
 
-注意解包时必须还原 unix 可执行位：zipfile.extractall() 只落内容不落权限，
-native/llvm/bin/* 在 zip 里是 0755，解出来是 0644，Linux 上直接
-`clang: Permission denied`（Windows 开发机不看这个位，本地无法复现）。
+注意解包时必须还原创作者写在 zip 里的两样东西（Windows 开发机都看不出来，
+只有 Linux runner 会撞上）：
+  * unix 权限位 —— zipfile.extractall() 不还原，llvm/bin/* 从 0755 变 0644，
+    Linux 上直接 `clang: Permission denied`；
+  * 符号链接 —— zip 把链接存成"内容为目标路径的普通条目"，extractall() 就落成
+    一个存着 "clang-15" 的文本文件（chmod 也救不了）。native-linux zip 里有
+    36 个这种链接（llvm/bin/clang、clang++、ld.lld、llvm/lib/*.so ...），
+    不重建的话 clang 根本不能执行、共享库也链接不上。
 
 退出码：0 = 配置+编译+产物校验全通过；非 0 = 失败（CI 直接用进程退出码）。
 """
@@ -39,6 +44,7 @@ import fnmatch
 import glob
 import os
 import shutil
+import stat
 import struct
 import subprocess
 import sys
@@ -215,23 +221,70 @@ def ensure_executables(dir_list, recursive=False):
     return fixed
 
 
-def extract_zip(zip_path, dest):
-    """解包 zip 并还原 external_attr 里的 unix 权限位。
+def _extract_entry(z, zi, dest):
+    """解单个 zip 项；符号链接项必须重建链接而不是落成文本文件。
 
-    不能直接用 extractall()：它只落内容不落权限，OHOS native zip 里
-    native/llvm/bin/* 是 0755，解出来变 0644。
+    zip 里符号链接存的是"内容是目标路径的普通条目"，unix 模式记在
+    external_attr 的 S_IFLNK。zipfile.extract() 不认这个，会把
+    llvm/bin/clang 写成内容为 "clang-15" 的文本文件 —— 既不是可执行位
+    的问题（chmod 也救不了），执行时报 Exec format error。
+    """
+    path = os.path.join(dest, zi.filename)
+    fmode = (zi.external_attr >> 16) & 0o170000
+    if fmode == 0o120000 and os.name != "nt":
+        target = z.read(zi).decode("utf-8", "surrogateescape")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        if os.path.lexists(path):
+            os.remove(path)
+        try:
+            os.symlink(target, path)
+            return
+        except OSError:
+            pass  # 退化成普通文件（与 zipfile 默认行为一致）
+    z.extract(zi, dest)
+
+
+def extract_zip(zip_path, dest):
+    """解包 zip，还原符号链接与 unix 权限位。
+
+    不能直接用 extractall()：它既不还原 external_attr 里的权限位，也不重建
+    符号链接。前者让 llvm/bin/* 从 0755 变 0644（Linux 上 `clang: Permission
+    denied`），后者让 clang 变成一个存着 "clang-15" 的文本文件。两者在
+    Windows 上都看不出来（无 +x 概念、无 POSIX 链接），只有 CI 会撞上。
     """
     with zipfile.ZipFile(zip_path) as z:
         for zi in z.infolist():
-            z.extract(zi, dest)
+            _extract_entry(z, zi, dest)
             if zi.is_dir():
                 continue
+            if ((zi.external_attr >> 16) & 0o170000) == 0o120000:
+                continue  # 链接本身没有权限位，权限由目标文件决定
             mode = (zi.external_attr >> 16) & 0o7777
             if mode & 0o111:
                 try:
                     os.chmod(os.path.join(dest, zi.filename), mode & 0o777)
                 except OSError:
                     pass
+
+
+def _describe_path(path):
+    """给诊断用的文件画像：类型、权限、大小、符号链接目标、文件头。"""
+    try:
+        st = os.lstat(path)
+    except OSError as e:
+        return "stat 失败（%s）" % e
+    if stat.S_ISLNK(st.st_mode):
+        return "符号链接 -> %s" % os.readlink(path)
+    kind = "目录" if stat.S_ISDIR(st.st_mode) else "文件"
+    desc = "%s，mode=0o%o，%d 字节" % (kind, st.st_mode & 0o7777, st.st_size)
+    if kind == "文件" and st.st_size:
+        try:
+            with open(path, "rb") as fp:
+                head = fp.read(32)
+            desc += "，ELF" if head[:4] == b"\x7fELF" else "，文件头=%r" % head
+        except OSError:
+            pass
+    return desc
 
 
 def ensure_ohos_toolchain(native):
@@ -248,8 +301,9 @@ def ensure_ohos_toolchain(native):
         log("补齐 %d 个工具链文件的可执行位（解包或缓存丢失 +x）" % n)
     clang = os.path.join(bin_dir, "clang")
     if os.name != "nt" and os.path.exists(clang) and not os.access(clang, os.X_OK):
-        fail("工具链编译器不可执行：%s —— 解包丢了权限位，"
-             "可删除 SDK 目录后重跑 fetch-ohos-sdk" % clang)
+        fail("工具链编译器不可执行：%s（%s）—— 若是符号链接/文本文件说明解包"
+             "没重建链接，删掉 SDK 目录后重跑 fetch-ohos-sdk"
+             % (clang, _describe_path(clang)))
 
 
 def cmd_fetch_ohos(argv):
