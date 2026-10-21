@@ -1,10 +1,17 @@
+#include <sfr_config.h>
 #include <windows.h>
 #include <gdi.h>
 #include <cairo.h>
+#if defined(CAIRO_HAS_FT_FONT) && CAIRO_HAS_FT_FONT
 #include <cairo-ft.h>
+#endif
+#if !SFR_PLATFORM
 #include <fontconfig/fontconfig.h>
+#endif
 #include <math.h>
+#if defined(CAIRO_HAS_PNG_FUNCTIONS) && CAIRO_HAS_PNG_FUNCTIONS
 #include <png.h>
+#endif
 #include <assert.h>
 #include <vector>
 #include "handle.h"
@@ -18,12 +25,14 @@
 #include "log.h"
 #define kLogTag "gdi"
 
+#if defined(CAIRO_HAS_PNG_FUNCTIONS) && CAIRO_HAS_PNG_FUNCTIONS
 EXTERN_C BOOL Swinx_DumpBmp(HBITMAP bmp, const char *path)
 {
     if (!bmp)
         return FALSE;
     return CAIRO_STATUS_SUCCESS == cairo_surface_write_to_png((cairo_surface_t *)GetGdiObjPtr(bmp), path);
 }
+#endif
 
 struct CairoColor
 {
@@ -3028,12 +3037,12 @@ BOOL WINAPI GetTextExtentExPointA(HDC hdc, LPCSTR lpszString, int cchString, int
         return TRUE;
     }
     if (cchString == 0)
-    {
-        if (lpnFit)
+        {
+                if (lpnFit)
             *lpnFit = 0;
         cairo_restore(hdc->cairo);
         return TRUE;
-    }
+            }
     int *pCharWid = new int[cchString];
     cairo_text_extents_t ext;
     // one cumulative width per byte (all bytes of a multi-byte character get that
@@ -3052,13 +3061,13 @@ BOOL WINAPI GetTextExtentExPointA(HDC hdc, LPCSTR lpszString, int cchString, int
     if (lpnFit)
         *lpnFit = fit;
     if (lpnDx)
-    {
+            {
         // only the fitting prefix is written; the tail is deliberately left
         // untouched, exactly like gdi32 (callers size the buffer to cchString
         // and only consume lpnFit entries)
         for (int j = 0; j < fit; j++)
             lpnDx[j] = pCharWid[j];
-    }
+            }
     delete[] pCharWid;
     psizl->cx = cx;
     cairo_restore(hdc->cairo);
@@ -3083,7 +3092,7 @@ BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, in
         return TRUE;
     }
     if (cchString == 0)
-    {
+        {
         if (lpnFit)
             *lpnFit = 0;
         cairo_restore(hdc->cairo);
@@ -3100,12 +3109,12 @@ BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, in
     tostring(lpszString, wchars, str);
     int bytes = (int)str.length();
     if (bytes <= 0)
-    {
-        if (lpnFit)
+            {
+                if (lpnFit)
             *lpnFit = 0;
         cairo_restore(hdc->cairo);
         return TRUE;
-    }
+            }
     int *pCharWid = new int[bytes];
     cairo_text_extents_t ext;
     cairo_text_extents2_ex(hdc->cairo, str.c_str(), bytes, &ext, pCharWid);
@@ -3122,21 +3131,21 @@ BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, in
     const char *u8 = str.data();
     int bi = 0; // byte offset of the current UTF-8 character
     for (int w = 0; w < wchars; w++)
-    {
+            {
         if (bi >= bytes)
         {
             // more wchars than UTF-8 characters (malformed input): repeat the
             // final width so the array stays populated and monotonic
             pWideWid[w] = pCharWid[bytes - 1];
             continue;
-        }
+            }
         int clen = (int)swinx::UTF8CharLength((unsigned char)u8[bi]);
         int last = bi + clen - 1;
         if (last >= bytes)
             last = bytes - 1; // defensive: truncated multi-byte tail
         pWideWid[w] = pCharWid[last];
         bi += clen;
-    }
+        }
     int fit = 0;
     while (fit < wchars && pWideWid[fit] <= nMaxExtent)
         fit++;
@@ -4769,6 +4778,14 @@ int AddFontResourceExA(LPCSTR lpszFilename, // font file name
                        PVOID pdv __attribute__((unused))            // reserved
 )
 {
+#if SFR_PLATFORM
+    // FreeRTOS has no font filesystem / fontconfig cache: font files cannot
+    // be registered.  Text renders through cairo's built-in toy font face.
+    (void)lpszFilename;
+    (void)fl;
+    (void)pdv;
+    return 0;
+#else
     int ret = 0;
     do
     {
@@ -4799,6 +4816,7 @@ int AddFontResourceExA(LPCSTR lpszFilename, // font file name
 #else
     return ret;
 #endif // CAIRO_HAS_QUARTZ_FONT
+#endif // SFR_PLATFORM
 }
 
 int AddFontResourceA(LPCSTR lpszFilename)

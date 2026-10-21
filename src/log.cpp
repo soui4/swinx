@@ -73,7 +73,7 @@ SLogStream::SLogStream(char *buf, int len)
 
 SLogStream &SLogStream::writeLongLong(long long t)
 {
-#if defined(WIN32) || defined(_WIN64)
+#if defined(_MSC_VER)
     writeData("%I64d", t);
 #else
     writeFormat("%lld", t);
@@ -83,7 +83,7 @@ SLogStream &SLogStream::writeLongLong(long long t)
 
 SLogStream &SLogStream::writeULongLong(unsigned long long t)
 {
-#if defined(WIN32) || defined(_WIN64)
+#if defined(_MSC_VER)
     writeData("%I64u", t);
 #else
     writeFormat("%llu", t);

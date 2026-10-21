@@ -1,5 +1,13 @@
 #ifndef _PROCESS_H_
 #define _PROCESS_H_
+#include <stdint.h>
+// mingw's pthread.h pulls this header via <process.h>; keep the tid_t
+// definition identical to ctypes.h/sdef.h (unsigned int under _WIN32).
+#ifdef _WIN32
+typedef unsigned int tid_t;
+#else
+typedef uintptr_t tid_t;
+#endif
 #ifdef __cplusplus
 extern "C"
 {

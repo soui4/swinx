@@ -1,7 +1,7 @@
 {
  "_meta": {
-  "decl_total": 1066,
-  "defined_total": 937,
+  "decl_total": 1070,
+  "defined_total": 941,
   "no_def": [
    "ChangeClipboardChain",
    "CountClipboardFormats",
@@ -544,12 +544,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -560,12 +560,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -576,12 +576,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -592,12 +592,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -608,17 +608,17 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -629,12 +629,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -645,12 +645,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -661,12 +661,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -677,12 +677,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -693,22 +693,22 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -719,12 +719,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -735,23 +735,23 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp",
-    "sysobjs.cpp"
+    "platform/posix/fileapi.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -762,17 +762,17 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -783,17 +783,17 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -804,32 +804,38 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -840,12 +846,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -856,12 +862,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -872,12 +878,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -888,17 +894,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -909,17 +915,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -930,17 +936,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -951,17 +957,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -972,17 +978,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -993,17 +999,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1014,17 +1020,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1035,17 +1041,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1056,22 +1062,22 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1082,22 +1088,22 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1108,17 +1114,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1129,17 +1135,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1150,17 +1156,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1171,17 +1177,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1192,22 +1198,22 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1218,22 +1224,22 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1244,17 +1250,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1265,17 +1271,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1286,22 +1292,22 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1312,22 +1318,22 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1338,17 +1344,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1359,17 +1365,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1380,17 +1386,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1401,17 +1407,17 @@
     "fileapi.h"
    ],
    "files": [
-    "profile.cpp"
+    "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ],
     [
-     "profile.cpp",
+     "platform/posix/profile.cpp",
      "impl",
      ""
     ]
@@ -1422,12 +1428,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1438,12 +1444,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1454,12 +1460,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1470,12 +1476,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1486,12 +1492,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1502,12 +1508,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1518,12 +1524,18 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1534,12 +1546,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1550,17 +1562,23 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1571,12 +1589,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1587,27 +1605,27 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1618,17 +1636,17 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1639,12 +1657,18 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1655,12 +1679,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1671,17 +1695,17 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1692,22 +1716,22 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ],
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1718,12 +1742,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1734,12 +1758,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1750,12 +1774,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1766,12 +1790,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1782,12 +1806,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1798,12 +1822,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1814,12 +1838,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1830,12 +1854,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1846,12 +1870,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -1862,12 +1886,12 @@
     "fileapi.h"
    ],
    "files": [
-    "fileapi.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fileapi.cpp",
+     "platform/posix/fileapi.cpp",
      "impl",
      ""
     ]
@@ -2853,10 +2877,36 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
     [
      "gdi/apple/gdi.cpp",
      "impl",
@@ -3332,22 +3382,12 @@
     "gdi.h"
    ],
    "files": [
-    "cursoricon.cpp",
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "cursoricon.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cursoricon.cpp",
-     "impl",
-     ""
-    ],
     [
      "gdi/apple/gdi.cpp",
      "impl",
@@ -3355,6 +3395,16 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/cursoricon.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -4136,6 +4186,22 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "UpdateLayeredWindow": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "platform/freertos/sysbridge.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ]
@@ -4991,17 +5057,17 @@
     "gdi.h"
    ],
    "files": [
-    "cursoricon.cpp"
+    "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -5012,27 +5078,33 @@
     "gdi.h"
    ],
    "files": [
-    "cursoricon.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "cursoricon.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -5043,12 +5115,18 @@
     "gdi.h"
    ],
    "files": [
-    "cursoricon.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "cursoricon.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -5131,17 +5209,17 @@
     "gdi.h"
    ],
    "files": [
-    "cursoricon.cpp"
+    "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -5152,17 +5230,17 @@
     "gdi.h"
    ],
    "files": [
-    "cursoricon.cpp"
+    "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -6176,27 +6254,33 @@
     "gdi.h"
    ],
    "files": [
-    "cursoricon.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "cursoricon.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -6207,17 +6291,23 @@
     "gdi.h"
    ],
    "files": [
-    "cursoricon.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "cursoricon.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -6228,22 +6318,22 @@
     "gdi.h"
    ],
    "files": [
-    "cursoricon.cpp"
+    "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ],
     [
-     "cursoricon.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -6417,6 +6507,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/sysbridge.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp"
@@ -6427,6 +6518,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/imm.mm",
@@ -6451,6 +6547,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/sysbridge.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp"
@@ -6461,6 +6558,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/imm.mm",
@@ -6485,6 +6587,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/sysbridge.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp"
@@ -6495,6 +6598,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/imm.mm",
@@ -7165,6 +7273,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/sysbridge.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp"
@@ -7175,6 +7284,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/imm.mm",
@@ -7199,6 +7313,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/sysbridge.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp"
@@ -7209,6 +7324,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/imm.mm",
@@ -8108,12 +8228,12 @@
     "mmsystem.h"
    ],
    "files": [
-    "mmsystem.cpp"
+    "platform/posix/mmsystem.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "mmsystem.cpp",
+     "platform/posix/mmsystem.cpp",
      "impl",
      ""
     ]
@@ -8124,12 +8244,12 @@
     "mmsystem.h"
    ],
    "files": [
-    "mmsystem.cpp"
+    "platform/posix/mmsystem.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "mmsystem.cpp",
+     "platform/posix/mmsystem.cpp",
      "impl",
      ""
     ]
@@ -8140,12 +8260,12 @@
     "mmsystem.h"
    ],
    "files": [
-    "mmsystem.cpp"
+    "platform/posix/mmsystem.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "mmsystem.cpp",
+     "platform/posix/mmsystem.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -8156,12 +8276,12 @@
     "mmsystem.h"
    ],
    "files": [
-    "mmsystem.cpp"
+    "platform/posix/mmsystem.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "mmsystem.cpp",
+     "platform/posix/mmsystem.cpp",
      "impl",
      ""
     ]
@@ -8172,12 +8292,12 @@
     "mmsystem.h"
    ],
    "files": [
-    "mmsystem.cpp"
+    "platform/posix/mmsystem.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "mmsystem.cpp",
+     "platform/posix/mmsystem.cpp",
      "impl",
      ""
     ]
@@ -8429,12 +8549,12 @@
     [
      "malloc_impl.cpp",
      "impl",
-     "简单getter/setter/拷贝"
+     ""
     ],
     [
      "malloc_impl.cpp",
      "impl",
-     "简单getter/setter/拷贝"
+     ""
     ]
    ]
   },
@@ -8751,6 +8871,7 @@
    ],
    "files": [
     "platform/cocoa/ole2.mm",
+    "platform/freertos/dlghelper.cpp",
     "platform/ios/ole2.mm",
     "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp"
@@ -8759,6 +8880,11 @@
    "site_classes": [
     [
      "platform/cocoa/ole2.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/dlghelper.cpp",
      "impl",
      ""
     ],
@@ -8958,25 +9084,10 @@
     "platform/ios/ole2.mm",
     "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "shellapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "shellapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "shellapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/cocoa/ole2.mm",
      "impl",
@@ -8994,6 +9105,21 @@
     ],
     [
      "platform/mobile/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/shellapi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/shellapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -10742,18 +10868,18 @@
     "resapi.h"
    ],
    "files": [
-    "cursoricon.cpp",
+    "platform/posix/cursoricon.cpp",
     "resapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "cursoricon.cpp",
+     "resapi.cpp",
      "impl",
      ""
     ],
     [
-     "resapi.cpp",
+     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -11159,12 +11285,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11175,12 +11301,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11191,12 +11317,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -11207,27 +11333,27 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ],
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11238,12 +11364,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11254,12 +11380,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11270,12 +11396,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11286,12 +11412,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11302,17 +11428,17 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ],
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11323,12 +11449,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11339,12 +11465,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11355,12 +11481,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -11371,12 +11497,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -11387,12 +11513,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11403,12 +11529,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -11419,12 +11545,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11435,12 +11561,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -11451,12 +11577,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11467,12 +11593,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11483,12 +11609,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11499,12 +11625,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11515,12 +11641,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11531,12 +11657,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11547,12 +11673,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11563,12 +11689,18 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11579,12 +11711,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11595,12 +11727,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11611,12 +11743,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -11627,12 +11759,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11643,12 +11775,18 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/freertos/dlghelper.cpp",
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/freertos/dlghelper.cpp",
+     "partial",
+     "not-implemented"
+    ],
+    [
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11659,12 +11797,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11675,12 +11813,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11691,12 +11829,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11707,12 +11845,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11723,12 +11861,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11739,22 +11877,22 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ],
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ],
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11765,12 +11903,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11781,17 +11919,17 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ],
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11802,12 +11940,12 @@
     "shellapi.h"
    ],
    "files": [
-    "shellapi.cpp"
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11818,12 +11956,12 @@
     "shlobj.h"
    ],
    "files": [
-    "shellobj.cpp"
+    "platform/posix/shellobj.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellobj.cpp",
+     "platform/posix/shellobj.cpp",
      "impl",
      ""
     ]
@@ -11834,12 +11972,12 @@
     "shlobj.h"
    ],
    "files": [
-    "shellobj.cpp"
+    "platform/posix/shellobj.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellobj.cpp",
+     "platform/posix/shellobj.cpp",
      "impl",
      ""
     ]
@@ -11850,12 +11988,12 @@
     "shlobj.h"
    ],
    "files": [
-    "shellobj.cpp"
+    "platform/posix/shellobj.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "shellobj.cpp",
+     "platform/posix/shellobj.cpp",
      "impl",
      ""
     ]
@@ -12002,6 +12140,11 @@
      "strapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "strapi.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -12014,6 +12157,32 @@
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "strapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "strapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "_wtof": {
+   "headers": [
+    "strapi.h"
+   ],
+   "files": [
+    "strapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "strapi.cpp",
+     "impl",
+     ""
+    ],
     [
      "strapi.cpp",
      "impl",
@@ -12038,22 +12207,6 @@
    ]
   },
   "_snwprintf": {
-   "headers": [
-    "strapi.h"
-   ],
-   "files": [
-    "strapi.cpp"
-   ],
-   "agg": "impl",
-   "site_classes": [
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ]
-   ]
-  },
-  "_wtof": {
    "headers": [
     "strapi.h"
    ],
@@ -12420,12 +12573,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -12436,12 +12595,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12452,12 +12617,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12468,12 +12639,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12484,12 +12661,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12500,12 +12683,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12516,12 +12705,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12532,12 +12727,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12548,12 +12749,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12564,12 +12771,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12580,12 +12793,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12596,12 +12815,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12612,12 +12837,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12628,12 +12859,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -12644,12 +12881,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12660,12 +12903,18 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12676,17 +12925,23 @@
     "sysapi.h"
    ],
    "files": [
-    "syncapi.cpp"
+    "platform/freertos/syncapi.cpp",
+    "platform/posix/syncapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "syncapi.cpp",
+     "platform/freertos/syncapi.cpp",
      "impl",
      ""
     ],
     [
-     "syncapi.cpp",
+     "platform/posix/syncapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/syncapi.cpp",
      "impl",
      ""
     ]
@@ -12697,17 +12952,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12718,17 +12973,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12739,12 +12994,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12755,12 +13010,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12771,8 +13026,9 @@
     "sysapi.h"
    ],
    "files": [
-    "safearray.cpp",
-    "sysapi.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp",
+    "safearray.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -12782,12 +13038,22 @@
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12798,17 +13064,28 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12819,17 +13096,23 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12840,17 +13123,23 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12861,12 +13150,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12877,12 +13172,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12893,12 +13194,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12909,12 +13210,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12925,12 +13226,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12941,12 +13248,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -12957,12 +13264,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -12973,12 +13286,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -12989,12 +13308,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13006,28 +13331,24 @@
    ],
    "files": [
     "platform/cocoa/SConnection.mm",
+    "platform/freertos/winobjs.cpp",
     "platform/ios/SConnection.mm",
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/cocoa/SConnection.mm",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
     ],
     [
-     "sysapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
@@ -13035,6 +13356,21 @@
      "platform/ios/SConnection.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -13043,22 +13379,43 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13070,8 +13427,9 @@
    ],
    "files": [
     "log.cpp",
-    "resapi.cpp",
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp",
+    "resapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -13096,22 +13454,47 @@
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13122,12 +13505,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13138,12 +13521,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13154,12 +13543,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13170,12 +13559,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13186,12 +13581,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13202,12 +13597,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13218,27 +13613,27 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13249,12 +13644,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13265,12 +13660,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13281,12 +13676,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13297,12 +13692,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13313,17 +13714,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13334,12 +13735,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -13350,12 +13751,24 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13366,12 +13779,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13382,17 +13801,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13403,17 +13822,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13424,12 +13843,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13440,12 +13865,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13456,17 +13881,23 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13477,12 +13908,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13493,12 +13924,24 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/input.cpp",
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/input.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13509,18 +13952,24 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/sysbridge.cpp",
     "platform/linux/SDragdrop.cpp",
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
      "platform/linux/SDragdrop.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13531,12 +13980,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13629,12 +14084,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13645,17 +14106,13 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp",
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "wnd.cpp",
      "impl",
      ""
@@ -13787,6 +14244,21 @@
     ],
     [
      "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13797,12 +14269,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13814,19 +14292,15 @@
    ],
    "files": [
     "platform/cocoa/SConnection.mm",
+    "platform/freertos/SConnection.cpp",
     "platform/ios/SConnection.mm",
     "platform/linux/SConnection.cpp",
     "platform/mobile/SConnection.cpp",
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/cocoa/SConnection.mm",
      "impl",
      ""
@@ -13843,6 +14317,11 @@
     ],
     [
      "platform/cocoa/SConnection.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/SConnection.cpp",
      "impl",
      ""
     ],
@@ -13903,6 +14382,11 @@
     ],
     [
      "platform/mobile/SConnection.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13914,23 +14398,19 @@
    ],
    "files": [
     "platform/cocoa/SConnection.mm",
+    "platform/freertos/sysbridge.cpp",
     "platform/ios/SConnection.mm",
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "sysapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/cocoa/SConnection.mm",
      "impl",
      ""
     ],
     [
-     "platform/ios/SConnection.mm",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
@@ -13966,6 +14446,16 @@
     ],
     [
      "platform/ios/SConnection.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/SConnection.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13976,12 +14466,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13992,12 +14488,23 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14008,12 +14515,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14024,12 +14537,23 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14040,12 +14564,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14056,12 +14586,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14072,12 +14608,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14088,12 +14630,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14104,12 +14646,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14120,12 +14662,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14136,12 +14678,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14152,12 +14700,18 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14168,12 +14722,23 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14184,12 +14749,18 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14200,12 +14771,12 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14216,12 +14787,12 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14232,27 +14803,38 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -14263,17 +14845,23 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14284,17 +14872,23 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -14305,12 +14899,23 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14321,17 +14926,28 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14342,12 +14958,12 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14358,17 +14974,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14379,17 +14995,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14400,12 +15016,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14416,12 +15032,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14432,17 +15048,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14453,12 +15069,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14469,12 +15085,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14485,12 +15101,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14501,17 +15117,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14522,12 +15138,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14538,12 +15154,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14554,12 +15170,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14570,22 +15186,22 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14596,12 +15212,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -14612,27 +15228,33 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14643,12 +15265,12 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14659,17 +15281,23 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14680,12 +15308,12 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14696,12 +15324,12 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14712,28 +15340,34 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp",
-    "shellapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp",
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "shellapi.cpp",
+     "platform/freertos/sysbridge.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
     [
-     "shellapi.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/shellapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -14744,28 +15378,44 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp",
-    "shellapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp",
+    "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "shellapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
     [
-     "shellapi.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "shellapi.cpp",
+     "platform/posix/shellapi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/shellapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -14776,12 +15426,12 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14792,12 +15442,12 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14808,32 +15458,43 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14844,17 +15505,23 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14865,22 +15532,28 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14891,17 +15564,23 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14912,27 +15591,33 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14943,12 +15628,12 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14959,12 +15644,12 @@
     "sysapi.h"
    ],
    "files": [
-    "memory.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "memory.cpp",
+     "platform/posix/memory.cpp",
      "impl",
      ""
     ]
@@ -14976,7 +15661,8 @@
    ],
    "files": [
     "hook.cpp",
-    "sysapi.cpp"
+    "platform/freertos/dlfreertos.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -14986,12 +15672,22 @@
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/dlfreertos.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/dlfreertos.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15002,12 +15698,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15018,12 +15714,23 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/dlfreertos.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/dlfreertos.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/dlfreertos.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15034,12 +15741,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15050,17 +15757,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15071,17 +15778,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15092,17 +15799,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15113,12 +15820,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15129,12 +15836,23 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/dlfreertos.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/dlfreertos.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/dlfreertos.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15145,12 +15863,23 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/dlfreertos.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/dlfreertos.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/dlfreertos.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15161,12 +15890,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15177,12 +15912,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15193,12 +15928,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15209,12 +15950,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15225,12 +15966,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15241,12 +15988,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15257,12 +16010,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15273,12 +16026,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15289,12 +16048,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15305,12 +16064,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15321,12 +16086,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15337,12 +16102,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15353,12 +16124,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15369,12 +16146,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15385,12 +16162,23 @@
     "sysapi.h"
    ],
    "files": [
-    "handle.cpp"
+    "handle.cpp",
+    "platform/freertos/winobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "handle.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ]
@@ -15401,12 +16189,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15417,27 +16211,38 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15448,17 +16253,34 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/SConnection.cpp",
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/SConnection.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/freertos/SConnection.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15469,12 +16291,23 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15485,12 +16318,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15501,12 +16340,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15517,22 +16356,28 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15543,12 +16388,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15559,12 +16410,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15575,12 +16426,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -15591,12 +16442,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15607,12 +16458,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -15623,12 +16474,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15639,12 +16490,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15655,12 +16506,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15671,12 +16522,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15687,12 +16538,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15703,12 +16554,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15719,12 +16570,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15735,12 +16586,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15751,12 +16602,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15767,12 +16618,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15783,17 +16634,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysobjs.cpp"
+    "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysobjs.cpp",
+     "platform/posix/sysobjs.cpp",
      "impl",
      ""
     ]
@@ -15804,12 +16655,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15820,12 +16677,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15836,22 +16699,38 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15862,12 +16741,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15878,12 +16763,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -15894,12 +16779,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15910,12 +16801,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15926,12 +16823,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15942,17 +16839,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -15963,12 +16860,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -15979,12 +16876,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -15995,12 +16892,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16011,12 +16908,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16027,12 +16924,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16043,12 +16940,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16059,12 +16956,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16075,12 +16972,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16091,12 +16988,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16107,12 +17004,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16123,12 +17020,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16139,12 +17036,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16155,12 +17052,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16171,12 +17068,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16187,12 +17084,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16203,17 +17100,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16224,12 +17121,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -16240,12 +17137,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16256,12 +17153,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16272,12 +17169,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -16288,12 +17185,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16304,12 +17207,23 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/dlfreertos.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/dlfreertos.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/dlfreertos.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16320,12 +17234,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16336,12 +17250,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16352,12 +17266,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16368,12 +17282,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16384,12 +17298,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16400,12 +17314,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16416,12 +17330,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16432,12 +17346,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16448,12 +17362,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16464,12 +17378,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16480,22 +17394,22 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16506,12 +17420,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16522,17 +17436,17 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16543,12 +17457,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16559,12 +17473,18 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16575,17 +17495,23 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16596,22 +17522,33 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16622,12 +17559,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -16638,12 +17575,12 @@
     "sysapi.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -16676,12 +17613,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -16692,12 +17629,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -16708,12 +17645,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -16724,22 +17661,22 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ]
@@ -16750,12 +17687,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ]
@@ -16766,27 +17703,27 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ]
@@ -16797,12 +17734,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -16813,12 +17750,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -16829,22 +17766,22 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ]
@@ -16855,12 +17792,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ]
@@ -16871,27 +17808,27 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -16902,12 +17839,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -16918,12 +17855,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -16934,27 +17871,27 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ],
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ]
@@ -16965,12 +17902,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "impl",
      ""
     ]
@@ -16981,12 +17918,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -16997,12 +17934,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -17013,12 +17950,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -17029,12 +17966,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -17045,12 +17982,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -17061,12 +17998,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -17077,12 +18014,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -17093,12 +18030,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -17109,12 +18046,12 @@
     "wgl.h"
    ],
    "files": [
-    "wgl.cpp"
+    "platform/posix/wgl.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "wgl.cpp",
+     "platform/posix/wgl.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -17614,17 +18551,17 @@
     "winuser.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -18947,6 +19884,7 @@
    ],
    "files": [
     "platform/cocoa/SConnection.mm",
+    "platform/freertos/SConnection.cpp",
     "platform/ios/SConnection.mm",
     "platform/linux/SConnection.cpp",
     "platform/mobile/SConnection.cpp",
@@ -19008,6 +19946,11 @@
      "platform/cocoa/SConnection.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/freertos/SConnection.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/ios/SConnection.mm",
@@ -19092,17 +20035,23 @@
     "wnd.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/winobjs.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "sysapi.cpp",
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -19113,12 +20062,23 @@
     "wnd.h"
    ],
    "files": [
-    "sysapi.cpp"
+    "platform/freertos/sysbridge.cpp",
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "sysapi.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -19607,6 +20567,54 @@
      "wnd.cpp",
      "impl",
      ""
+    ]
+   ]
+  },
+  "SetProp": {
+   "headers": [
+    "wnd.h"
+   ],
+   "files": [
+    "platform/freertos/sysbridge.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "GetProp": {
+   "headers": [
+    "wnd.h"
+   ],
+   "files": [
+    "platform/freertos/sysbridge.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "RemoveProp": {
+   "headers": [
+    "wnd.h"
+   ],
+   "files": [
+    "platform/freertos/sysbridge.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },

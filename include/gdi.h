@@ -653,6 +653,13 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     BOOL WINAPI AlphaBlend(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, int hDest, HDC hdcSrc, int xoriginSrc, int yoriginSrc, int wSrc, int hSrc, BLENDFUNCTION ftn);
 
+#ifndef ULW_ALPHA
+#define ULW_ALPHA 0x00000002
+#endif
+    // layered windows have no meaning on a virtual-window platform; the
+    // freertos implementation always returns FALSE
+    BOOL WINAPI UpdateLayeredWindow(HWND hWnd, HDC hdcDst, POINT *pptDst, SIZE *psize, HDC hdcSrc, POINT *pptSrc, COLORREF crKey, BLENDFUNCTION *pblend, DWORD dwFlags);
+
 #define EXPEND_MODE_NONE    0
 #define EXPEND_MODE_STRETCH 1
 #define EXPEND_MODE_TILE    2

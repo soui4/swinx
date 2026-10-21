@@ -1,3 +1,4 @@
+#include <sfr_config.h>
 #include <windows.h>
 #include <winnls.h>
 #include <string>
@@ -141,6 +142,9 @@ int GetLocaleInfoA(LCID Locale __attribute__((unused)), LCTYPE LCType __attribut
     const char *locale = setlocale(LC_ALL, NULL);
     if (!locale)
         locale = "C";
+#elif SFR_PLATFORM
+    // bare metal: no OS locale; fixed "C"
+    const char *locale = "C";
 #else
 #error "Unsupported platform"
     return 0;

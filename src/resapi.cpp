@@ -5,6 +5,7 @@
  * from .rc files using MinGW's windres tool.
  */
 
+#include <sfr_config.h>
 #include <windows.h>
 #include <resapi.h>
 #include <memory>
@@ -19,6 +20,17 @@
 static const char *kCoof_o_start = "_binary_soui_coff_o_start";
 static const char *kCoof_o_end = "_binary_soui_coff_o_end";
 
+#if SFR_PLATFORM
+// Statically linked images (FreeRTOS target / Windows-host FreeRTOS
+// simulator) have no dynamic symbol table, so dlsym below can never find the
+// windres resource blob.  The build embeds the blob (windres -> COFF ->
+// .incbin, see __cmake/windres.cmake OHOS branch) and these weak linker
+// symbols locate it.  Weak + NULL-checked: images built without embedded
+// resources keep working (dlsym stubs return NULL, symbols stay undefined).
+extern "C" __attribute__((weak)) const unsigned char _binary_soui_coff_o_start[];
+extern "C" __attribute__((weak)) const unsigned char _binary_soui_coff_o_end[];
+#endif
+
 // Resource database per module
 struct ResourceModule
 {
@@ -28,8 +40,21 @@ struct ResourceModule
 };
 
 // Global resource database
-static std::map<HMODULE, ResourceModule> g_resourceModules;
-static std::recursive_mutex g_resourceMutex;
+// Function-local statics behind accessors, NOT namespace-scope objects:
+// bare metal (FreeRTOS) startup.c never runs __libc_init_array, so globals
+// with constructors are never initialized.  Local statics construct on first
+// use and are leak-on-purpose.
+static std::map<HMODULE, ResourceModule> &ResModules()
+{
+    static std::map<HMODULE, ResourceModule> *s = new std::map<HMODULE, ResourceModule>();
+    return *s;
+}
+
+static std::recursive_mutex &ResMutex()
+{
+    static std::recursive_mutex *s = new std::recursive_mutex();
+    return *s;
+}
 static bool g_initialized = false;
 
 // Forward declarations
@@ -62,10 +87,10 @@ static std::wstring MakeResourceString(LPCSTR lpRes)
 // Load resources from a module
 void LoadModuleResources(HMODULE hModule)
 {
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
     if (hModule == NULL)
         hModule = GetModuleHandle(NULL);
-    if (g_resourceModules.find(hModule) != g_resourceModules.end())
+    if (ResModules().find(hModule) != ResModules().end())
     {
         return; // Already loaded
     }
@@ -82,6 +107,14 @@ void LoadModuleResources(HMODULE hModule)
         startSym = dlsym((void *)hModule, kCoof_o_start);
         endSym = dlsym((void *)hModule, kCoof_o_end);
     }
+#if SFR_PLATFORM
+    if (!startSym || !endSym)
+    {
+        // static image: resolve the embedded COFF blob through the linker
+        startSym = (void *)_binary_soui_coff_o_start;
+        endSym = (void *)_binary_soui_coff_o_end;
+    }
+#endif
     ResourceModule mod;
     mod.hModule = hModule;
     mod.loaded = false;
@@ -93,7 +126,7 @@ void LoadModuleResources(HMODULE hModule)
         if (blobSize < sizeof(COFF_FILE_HEADER))
         {
             SLOG_STME() << "COFF data too small: " << blobSize;
-            g_resourceModules[hModule] = mod;
+            ResModules()[hModule] = mod;
             return;
         }
 
@@ -101,25 +134,25 @@ void LoadModuleResources(HMODULE hModule)
         mod.parser->Parse();
         mod.loaded = true;
     }
-    g_resourceModules[hModule] = mod;
+    ResModules()[hModule] = mod;
 }
 
 // Unload resources from a module
 void UnloadModuleResources(HMODULE hModule)
 {
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
 
-    auto it = g_resourceModules.find(hModule);
-    if (it != g_resourceModules.end())
+    auto it = ResModules().find(hModule);
+    if (it != ResModules().end())
     {
-        g_resourceModules.erase(it);
+        ResModules().erase(it);
     }
 }
 
 // Initialize resource system
 void WINAPI _InitResourceSystem(void)
 {
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
     if (g_initialized)
         return;
     g_initialized = true;
@@ -151,9 +184,9 @@ HRSRC WINAPI FindResourceExW(HMODULE hModule, LPCWSTR lpType, LPCWSTR lpName, WO
         hModule = GetModuleHandle(NULL);
     LoadModuleResources(hModule);
 
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
-    auto it = g_resourceModules.find(hModule);
-    if (it == g_resourceModules.end() || !it->second.parser)
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
+    auto it = ResModules().find(hModule);
+    if (it == ResModules().end() || !it->second.parser)
         return NULL;
 
     std::wstring typeStr = MakeResourceString(lpType);
@@ -177,9 +210,9 @@ DWORD WINAPI SizeofResource(HMODULE hModule, HRSRC hResInfo)
     if (!hModule)
         hModule = GetModuleHandle(NULL);
 
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
-    auto it = g_resourceModules.find(hModule);
-    if (it == g_resourceModules.end() || !it->second.parser)
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
+    auto it = ResModules().find(hModule);
+    if (it == ResModules().end() || !it->second.parser)
         return 0;
 
     return it->second.parser->SizeofResource(hModule, hResInfo);
@@ -194,9 +227,9 @@ HGLOBAL WINAPI LoadResource(HMODULE hModule, HRSRC hResInfo)
     if (!hModule)
         hModule = GetModuleHandle(NULL);
 
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
-    auto it = g_resourceModules.find(hModule);
-    if (it == g_resourceModules.end() || !it->second.parser)
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
+    auto it = ResModules().find(hModule);
+    if (it == ResModules().end() || !it->second.parser)
         return NULL;
 
     return it->second.parser->LoadResource(hModule, hResInfo);
@@ -227,9 +260,9 @@ BOOL WINAPI EnumResourceNamesW(HMODULE hModule, LPCWSTR lpType, ENUMRESNAMEPROCW
         hModule = GetModuleHandle(NULL);
     LoadModuleResources(hModule);
 
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
-    auto it = g_resourceModules.find(hModule);
-    if (it == g_resourceModules.end() || !it->second.parser)
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
+    auto it = ResModules().find(hModule);
+    if (it == ResModules().end() || !it->second.parser)
         return FALSE;
     return it->second.parser->EnumResourceNamesW(hModule, lpType, lpEnumFunc, lParam);
 }
@@ -245,9 +278,9 @@ BOOL WINAPI EnumResourceNamesA(HMODULE hModule, LPCSTR lpType, ENUMRESNAMEPROCA 
         hModule = GetModuleHandle(NULL);
     LoadModuleResources(hModule);
 
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
-    auto it = g_resourceModules.find(hModule);
-    if (it == g_resourceModules.end() || !it->second.parser)
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
+    auto it = ResModules().find(hModule);
+    if (it == ResModules().end() || !it->second.parser)
         return FALSE;
     return it->second.parser->EnumResourceNamesA(hModule, lpType, lpEnumFunc, lParam);
 }
@@ -264,9 +297,9 @@ BOOL WINAPI EnumResourceTypesW(HMODULE hModule, ENUMRESTYPEPROCW lpEnumFunc, LON
         hModule = GetModuleHandle(NULL);
     LoadModuleResources(hModule);
 
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
-    auto it = g_resourceModules.find(hModule);
-    if (it == g_resourceModules.end() || !it->second.parser)
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
+    auto it = ResModules().find(hModule);
+    if (it == ResModules().end() || !it->second.parser)
         return FALSE;
 
     return it->second.parser->EnumResourceTypesW(hModule, lpEnumFunc, lParam);
@@ -283,9 +316,9 @@ BOOL WINAPI EnumResourceTypesA(HMODULE hModule, ENUMRESTYPEPROCA lpEnumFunc, LON
         hModule = GetModuleHandle(NULL);
     LoadModuleResources(hModule);
 
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
-    auto it = g_resourceModules.find(hModule);
-    if (it == g_resourceModules.end() || !it->second.parser)
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
+    auto it = ResModules().find(hModule);
+    if (it == ResModules().end() || !it->second.parser)
         return FALSE;
 
     return it->second.parser->EnumResourceTypesA(hModule, lpEnumFunc, lParam);
@@ -303,9 +336,9 @@ BOOL WINAPI EnumResourceLanguagesW(HMODULE hModule, LPCWSTR lpType, LPCWSTR lpNa
         hModule = GetModuleHandle(NULL);
     LoadModuleResources(hModule);
 
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
-    auto it = g_resourceModules.find(hModule);
-    if (it == g_resourceModules.end() || !it->second.parser)
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
+    auto it = ResModules().find(hModule);
+    if (it == ResModules().end() || !it->second.parser)
         return FALSE;
 
     return it->second.parser->EnumResourceLanguagesW(hModule, lpType, lpName, lpEnumFunc, lParam);
@@ -322,9 +355,9 @@ BOOL WINAPI EnumResourceLanguagesA(HMODULE hModule, LPCSTR lpType, LPCSTR lpName
         hModule = GetModuleHandle(NULL);
     LoadModuleResources(hModule);
 
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
-    auto it = g_resourceModules.find(hModule);
-    if (it == g_resourceModules.end() || !it->second.parser)
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
+    auto it = ResModules().find(hModule);
+    if (it == ResModules().end() || !it->second.parser)
         return FALSE;
 
     return it->second.parser->EnumResourceLanguagesA(hModule, lpType, lpName, lpEnumFunc, lParam);
@@ -401,9 +434,9 @@ int WINAPI LoadStringW(HINSTANCE hInstance, UINT uID, LPWSTR lpBuffer, int cchBu
     LoadModuleResources((HMODULE)hInstance);
 
     // 获取模块的资源解析器
-    std::lock_guard<std::recursive_mutex> lock(g_resourceMutex);
-    auto modIt = g_resourceModules.find((HMODULE)hInstance);
-    if (modIt == g_resourceModules.end() || !modIt->second.parser)
+    std::lock_guard<std::recursive_mutex> lock(ResMutex());
+    auto modIt = ResModules().find((HMODULE)hInstance);
+    if (modIt == ResModules().end() || !modIt->second.parser)
     {
         if (cchBufferMax > 0)
             lpBuffer[0] = L'\0';

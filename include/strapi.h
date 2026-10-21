@@ -1,5 +1,14 @@
 #ifndef __STRFUN_H_
 #define __STRFUN_H_
+#include <sfr_config.h>
+
+#if SFR_HOSTED
+/* The freertos port's _mbs* surface is byte/UTF-8 semantics (see
+ * src/strapi.cpp), while mingw's <mbstring.h> (pulled in by <tchar.h>)
+ * declares the real DBCS-aware MBCS functions with conflicting signatures.
+ * Keep the shim macros authoritative and suppress the DBCS header. */
+#define _INC_MBSTRING
+#endif
 #include <stdio.h>
 #include <ctype.h>
 #include <wchar.h>
@@ -17,10 +26,6 @@ extern "C"
 // count the length of the formatted string
 #define _vscprintf(fmt, argList)  vsnprintf(nullptr, 0, fmt, argList)
 #define _vscwprintf(fmt, argList) vswprintf(nullptr, 0, fmt, argList)
-#define vsprintf_s                vsnprintf
-#define sprintf_s                 _snprintf
-#define strcat_s(dst, n, src)     strncat(dst, src, n)
-#define wcscat_s(dst, n, src)     wcsncat(dst, src, n)
 
 #define _mbslwr(x) _mbscvt((uint8_t *)(x), TRUE)
 #define _mbsupr(x) _mbscvt((uint8_t *)(x), FALSE)
@@ -32,12 +37,21 @@ extern "C"
 #define _mbsicmp(s1, s2)               strcasecmp((const char *)(s1), (const char *)(s2))
 #define _mbscmp(s1, s2)                strcmp((const char *)(s1), (const char *)(s2))
 #define _ismbcspace                    isspace
-#define vswprintf_s                    vswprintf
+#if !SFR_HOSTED
+	#define vswprintf_s                    vswprintf
+	#define memmove_s(dst, ndst, src, len) memmove(dst, src, len)
+	#define swscanf_s                      swscanf
+	#define vsprintf_s                vsnprintf
+	#define sprintf_s                 _snprintf
+	#define strcat_s(dst, n, src)     strncat(dst, src, n)
+	#define wcscat_s(dst, n, src)     wcsncat(dst, src, n)
+
+    void WINAPI strcpy_s(char *destination, size_t num, const char *source);
+    void WINAPI wcscpy_s(wchar_t *destination, size_t num, const wchar_t *source);
+    float WINAPI _wtof(const wchar_t *src);
+#endif
 #define _wtoi(x)                       wcstol(x, NULL, 10)
 #define _wtol(x)                       wcstol(x, NULL, 10)
-#define memmove_s(dst, ndst, src, len) memmove(dst, src, len)
-#define swscanf_s                      swscanf
-#define vswprintf_s                    vswprintf
 #define lstrlenA                       strlen
 #define lstrlenW                       wcslen
 #define lstrcpyA                       strcpy
@@ -53,15 +67,10 @@ extern "C"
 
     wchar_t *WINAPI _wcsupr(wchar_t *s);
 
-    void WINAPI strcpy_s(char *destination, size_t num, const char *source);
-
-    void WINAPI wcscpy_s(wchar_t *destination, size_t num, const wchar_t *source);
 
     int WINAPI _snprintf(char *buffer, size_t size, const char *format, ...);
 
     int WINAPI _snwprintf(wchar_t *buffer, size_t size, const wchar_t *format, ...);
-
-    float WINAPI _wtof(const wchar_t *src);
 
     const char *WINAPI CharNextA(const char *src);
 
@@ -80,8 +89,15 @@ extern "C"
 #define _trename    rename
 #endif // UNICODE
 
+#if SFR_HOSTED
+// mingw's CRT provides _wcsicmp/_wcsnicmp (no POSIX wcscasecmp there);
+// strcasecmp/strncasecmp do exist in mingw's string.h.
+#define _wcsicmp(s1, s2)       _wcsicmp(s1, s2)
+#define _wcsnicmp(s1, s2, num) _wcsnicmp(s1, s2, num)
+#else
 #define _wcsicmp(s1, s2)       wcscasecmp(s1, s2)
 #define _wcsnicmp(s1, s2, num) wcsncasecmp(s1, s2, num)
+#endif
 #define wcsnicmp               _wcsnicmp
 
 #define stricmp(s1, s2)       strcasecmp(s1, s2)

@@ -1279,12 +1279,15 @@ extern "C"
 #define GWL_USERDATA   (-21)
 #define GWL_OPAQUE     (-22)
 
-#define GWLP_HWNDPARENT GWL_HWNDPARENT
-#define GWLP_WNDPROC    GWL_WNDPROC
-#define GWLP_OPAQUE     GWL_OPAQUE
-#define GWLP_HINSTANCE  GWL_HINSTANCE
-#define GWLP_USERDATA   GWL_USERDATA
-#define GWLP_ID         GWL_ID
+// The GWLP_* aliases must be numeric, not aliases of GWL_*: SOUI redefines
+// GWL_WNDPROC as GWLP_WNDPROC under _WIN64, which would make the alias chain
+// circular (GWL_WNDPROC -> GWLP_WNDPROC -> GWL_WNDPROC).
+#define GWLP_HWNDPARENT (-8)
+#define GWLP_WNDPROC    (-4)
+#define GWLP_OPAQUE     (-22)
+#define GWLP_HINSTANCE  (-6)
+#define GWLP_USERDATA   (-21)
+#define GWLP_ID         (-12)
 
 #define EVENT_OBJECT_FOCUS           0x8005 // hwnd + ID + idChild is focused item
 #define EVENT_OBJECT_SELECTION       0x8006 // hwnd + ID + idChild is selected item (if only one), or idChild is OBJID_WINDOW if complex

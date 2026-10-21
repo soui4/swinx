@@ -19,6 +19,7 @@ file(GLOB SRCS
     src/*.cpp
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
+    src/platform/posix/*.cpp
     src/platform/ios/*.mm
     src/gdi/apple/*.cpp
     )

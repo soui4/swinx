@@ -1,4 +1,5 @@
-﻿#include <windows.h>
+#include <sfr_config.h>
+#include <windows.h>
 #include <wnd.h>
 #include <map>
 #include <mutex>
@@ -256,6 +257,13 @@ static int ScrollBarHitTest(BOOL bVert, const SCROLLINFO *pSi, LPCRECT rcAll, PO
  * bForce 为 TRUE 时即使"整窗可见"也要下发一次——用于 app 撤销自己的区域。 */
 static BOOL SbRefreshWindowClip(HWND hWnd, BOOL bForce)
 {
+#if SFR_PLATFORM
+    /* FreeRTOS 平台没有平台窗口系统（SConnection 为 mobile 形状），客户区
+       裁剪没有平台落地；且这里的深层窗口锁重入会触发 bare-metal 垫片
+       （FreeRTOS 递归互斥量）下的挂死，直接跳过。 */
+    (void)hWnd; (void)bForce;
+    return TRUE;
+#else
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj || wndObj->bDestroyed)
         return FALSE;
@@ -297,18 +305,23 @@ static BOOL SbRefreshWindowClip(HWND hWnd, BOOL bForce)
     BOOL bRet = wndObj->mConnection->SetWindowRgn(hWnd, hClip);
     DeleteObject(hClip);
     return bRet;
+#endif /* SFR_PLATFORM */
 }
 
 /* 子窗口的可行区域取决于父窗口的客户区，所以父窗口的几何/样式一变，就要带着直接
    子窗口一起重算。只管直接子窗口：更深的层级由它们各自的父窗口触发。 */
 static void SbRefreshChildClips(HWND hWnd)
 {
+#if !SFR_PLATFORM
     HWND hChild = GetWindow(hWnd, GW_CHILD);
     while (hChild)
     {
         SbRefreshWindowClip(hChild, FALSE);
         hChild = GetWindow(hChild, GW_HWNDNEXT);
     }
+#else
+    (void)hWnd;
+#endif
 }
 
 BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
@@ -1288,7 +1301,11 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     case WM_SIZE:
         wp = wndObj->state;
         SIZE sz = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
-#if defined(__APPLE__)
+// Apple and FreeRTOS rebuild the window bitmap on resize (new image surface
+// + SelectObject rebinds hdc->cairo); the linux path swaps the surface inside
+// the same HBITMAP object, which leaves hdc's cairo target stale on the
+// software (FreeRTOS) renderer.
+#if defined(__APPLE__) || SFR_PLATFORM
         if (wndObj->bmp && (sz.cx != wndObj->rc.right - wndObj->rc.left || sz.cy != wndObj->rc.bottom - wndObj->rc.top))
         {
             wndObj->rc.right = wndObj->rc.left + sz.cx;
@@ -1360,7 +1377,9 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             bSkipMsg = CallHook(WH_CALLWNDPROC, HC_ACTION, 0, (LPARAM)&st);
         }
         if (!bSkipMsg)
+        {
             ret = CallWindowObjProc(wndObj, proc, hWnd, msg, wp, lp2);
+        }
         {
             CWPRETSTRUCT st;
             st.hwnd = hWnd;

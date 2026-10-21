@@ -42,6 +42,7 @@ file(GLOB SRCS
     src/*.cpp
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
+    src/platform/posix/*.cpp
     src/platform/linux/*.cpp
     src/gdi/cairo/*.cpp
     )

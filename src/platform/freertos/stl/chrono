@@ -1,0 +1,11 @@
+/*
+ * freertos/stl/chrono  --  passthrough to the real <chrono> on every build.
+ *
+ * swinx's chrono usage is confined to platform files that are NOT compiled in
+ * the freeRTOS build, so we keep the standard <chrono> as-is. If a FreeRTOS-
+ * backed clock is ever required, add a custom clock type here (backed by
+ * swinx_fr::ticks_now) -- but do NOT redefine the standard clock names, since
+ * they are already declared by the real header and cannot be re-declared.
+ */
+#pragma once
+#include_next <chrono>

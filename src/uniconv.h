@@ -3,6 +3,12 @@
 #include <ctypes.h>
 #include <assert.h>
 
+/* WCHAR_SIZE: byte size of wchar_t on the compiling toolchain.
+ * Supplied by the build system (-DWCHAR_SIZE=__SIZEOF_WCHAR_T__, see
+ * freeRTOS.cmake / the soui-freertos projects) so the value always matches
+ * the actual compiler: 2 on MinGW/Windows hosts, 4 on ARM/POSIX targets.
+ * The flat fallback below only fires for ad-hoc builds without the
+ * CMake definition. */
 #ifndef WCHAR_SIZE
 #define WCHAR_SIZE 4
 #endif//WCHAR_SIZE

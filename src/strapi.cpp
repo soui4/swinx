@@ -1,3 +1,4 @@
+#include <sfr_config.h>
 #include <windows.h>
 #include <stdarg.h>
 #include "uniconv.h"
@@ -69,6 +70,9 @@ wchar_t *_wcsupr(wchar_t *s)
     return s;
 }
 
+#if !SFR_HOSTED
+// host: the MinGW CRT provides strcpy_s / wcscpy_s / _wtof with their MSVC
+// signatures; the shim variants below would be ambiguating redeclarations.
 void strcpy_s(char *destination, size_t num, const char *source)
 {
     strncpy(destination, source, num - 1);
@@ -94,6 +98,7 @@ float _wtof(const wchar_t *src)
         return value;
     }
 }
+#endif // !SFR_HOSTED
 
 const char *CharNextA(const char *src)
 {

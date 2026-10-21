@@ -2,7 +2,15 @@
 #include "cursors.hpp"
 #include <assert.h>
 #include "cursorid.h"
-static CursorMgr s_cursorMgr;
+/* NOTE: function-local static, NOT a namespace-scope global.  On bare metal
+ * (FreeRTOS) startup.c never runs __libc_init_array, so namespace-scope
+ * objects with constructors are never initialized; a locked member mutex
+ * then dead-locks.  A local static is constructed on first use instead. */
+static CursorMgr &s_cursorMgr()
+{
+    static CursorMgr inst; // leak-on-purpose: never destructed
+    return inst;
+}
 
 struct CData
 {
@@ -115,7 +123,7 @@ CursorMgr::~CursorMgr()
 
 HCURSOR CursorMgr::loadCursor(LPCSTR lpCursorName)
 {
-    return s_cursorMgr._LoadCursor(lpCursorName);
+    return s_cursorMgr()._LoadCursor(lpCursorName);
 }
 
 void SetCursorID(HICON hIcon, WORD cursorId);
@@ -134,7 +142,12 @@ HCURSOR CursorMgr::_LoadCursor(LPCSTR lpCursorName)
             getStdCursorCData(CIDC_ARROW, data);
         }
         ret = (HCURSOR)LoadImageBuf((PBYTE)data.buf, data.length, IMAGE_CURSOR, 0, 0, LR_DEFAULTSIZE | LR_DEFAULTCOLOR);
-        assert(ret);
+        if (!ret)
+        {
+            /* platform without cursor rendering (e.g. FreeRTOS framebuffer
+             * bridge): degrade gracefully instead of asserting */
+            return 0;
+        }
         SetCursorID((HICON)ret, wId);
         m_stdCursor.insert(std::make_pair(wId, ret));
     }
@@ -147,7 +160,7 @@ HCURSOR CursorMgr::_LoadCursor(LPCSTR lpCursorName)
 
 BOOL CursorMgr::destroyCursor(HCURSOR cursor)
 {
-    return s_cursorMgr._DestroyCursor(cursor);
+    return s_cursorMgr()._DestroyCursor(cursor);
 }
 
 BOOL CursorMgr::_DestroyCursor(HCURSOR cursor)

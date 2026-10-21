@@ -57,7 +57,14 @@ extern void UnloadModuleResources(HMODULE hModule);
 #define kLogTag "sysapi"
 
 #ifndef WCHAR_SIZE
+#ifdef __SIZEOF_WCHAR_T__
+/* gcc/clang builtin: 2 on Windows (wchar_t = 16-bit), 4 on POSIX.
+ * The old fallback of 4 was wrong for MinGW hosts (wchar_t = 2 bytes),
+ * which made MultiByteToWideChar emit UTF-32 into 16-bit wchar buffers. */
+#define WCHAR_SIZE __SIZEOF_WCHAR_T__
+#else
 #define WCHAR_SIZE 4
+#endif // __SIZEOF_WCHAR_T__
 #endif // WCHAR_SIZE
 
 using namespace swinx;

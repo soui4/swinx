@@ -2,3 +2,4 @@
 thirdparty/dbus-1.14.10/build/
 thirdparty/expat/build
 build
+build*

@@ -72,8 +72,22 @@ struct allocator
     DWORD blocks_length;
 };
 
-static CMalloc sys_malloc;
-static struct allocator allocator = { &sys_malloc, NULL, 0, FALSE, NULL, 0 };
+// Function-local static, NOT a namespace-scope object: bare metal (FreeRTOS)
+// startup.c never runs __libc_init_array, so a namespace-scope CMalloc would
+// keep its vtable pointer unset.  Local statics construct on first use.
+static CMalloc &sys_malloc()
+{
+    static CMalloc *s = new CMalloc();
+    return *s;
+}
+
+static struct allocator &sys_allocator()
+{
+    // function-local static: see sys_malloc() note -- bare metal never runs
+    // global dynamic initializers, so this must construct on first use.
+    static allocator *s = new allocator{ &sys_malloc(), NULL, 0, FALSE, NULL, 0 };
+    return *s;
+}
 
 static CRITICAL_SECTION allocspy_cs;
 
@@ -81,14 +95,14 @@ static BOOL mallocspy_grow(DWORD length)
 {
     void **blocks;
 
-    if (!allocator.blocks)
+    if (!sys_allocator().blocks)
         blocks = (void **)LocalAlloc(LMEM_ZEROINIT, length * sizeof(void *));
     else
-        blocks = (void **)LocalReAlloc((HLOCAL)allocator.blocks, length * sizeof(void *), LMEM_ZEROINIT | LMEM_MOVEABLE);
+        blocks = (void **)LocalReAlloc((HLOCAL)sys_allocator().blocks, length * sizeof(void *), LMEM_ZEROINIT | LMEM_MOVEABLE);
     if (blocks)
     {
-        allocator.blocks = blocks;
-        allocator.blocks_length = length;
+        sys_allocator().blocks = blocks;
+        sys_allocator().blocks_length = length;
     }
 
     return blocks != NULL;
@@ -98,35 +112,35 @@ static void mallocspy_add_mem(void *mem)
 {
     void **current;
 
-    if (!mem || (!allocator.blocks_length && !mallocspy_grow(0x1000)))
+    if (!mem || (!sys_allocator().blocks_length && !mallocspy_grow(0x1000)))
         return;
 
     /* Find a free location */
-    current = allocator.blocks;
+    current = sys_allocator().blocks;
     while (*current)
     {
         current++;
-        if (current >= allocator.blocks + allocator.blocks_length)
+        if (current >= sys_allocator().blocks + sys_allocator().blocks_length)
         {
-            DWORD old_length = allocator.blocks_length;
-            if (!mallocspy_grow(allocator.blocks_length + 0x1000))
+            DWORD old_length = sys_allocator().blocks_length;
+            if (!mallocspy_grow(sys_allocator().blocks_length + 0x1000))
                 return;
-            current = allocator.blocks + old_length;
+            current = sys_allocator().blocks + old_length;
         }
     }
 
     *current = mem;
-    allocator.spyed_allocations++;
+    sys_allocator().spyed_allocations++;
 }
 
 static void **mallocspy_is_allocation_spyed(const void *mem)
 {
-    void **current = allocator.blocks;
+    void **current = sys_allocator().blocks;
 
     while (*current != mem)
     {
         current++;
-        if (current >= allocator.blocks + allocator.blocks_length)
+        if (current >= sys_allocator().blocks + sys_allocator().blocks_length)
             return NULL;
     }
 
@@ -137,13 +151,13 @@ static BOOL mallocspy_remove_spyed_memory(const void *mem)
 {
     void **current;
 
-    if (!allocator.blocks_length)
+    if (!sys_allocator().blocks_length)
         return FALSE;
 
     if (!(current = mallocspy_is_allocation_spyed(mem)))
         return FALSE;
 
-    allocator.spyed_allocations--;
+    sys_allocator().spyed_allocations--;
     *current = NULL;
     return TRUE;
 }
@@ -152,7 +166,7 @@ HRESULT CMalloc::QueryInterface(REFIID riid, void **obj)
 {
     if (IsEqualIID(IID_IUnknown, riid) || IsEqualIID(IID_IMalloc, riid))
     {
-        *obj = &allocator.IMalloc_iface;
+        *obj = &sys_allocator().IMalloc_iface;
         return S_OK;
     }
 
@@ -178,12 +192,12 @@ void *CMalloc::Alloc(SIZE_T cb)
 {
     void *addr;
 
-    if (allocator.spy)
+    if (sys_allocator().spy)
     {
         SIZE_T preAllocResult;
 
         EnterCriticalSection(&allocspy_cs);
-        preAllocResult = allocator.spy->PreAlloc(cb);
+        preAllocResult = sys_allocator().spy->PreAlloc(cb);
         if (cb && !preAllocResult)
         {
             /* PreAlloc can force Alloc to fail, but not if cb == 0 */
@@ -194,9 +208,9 @@ void *CMalloc::Alloc(SIZE_T cb)
 
     addr = HeapAlloc(GetProcessHeap(), 0, cb);
 
-    if (allocator.spy)
+    if (sys_allocator().spy)
     {
-        addr = allocator.spy->PostAlloc(addr);
+        addr = sys_allocator().spy->PostAlloc(addr);
         mallocspy_add_mem(addr);
         LeaveCriticalSection(&allocspy_cs);
     }
@@ -208,28 +222,28 @@ void *CMalloc::Realloc(void *pv, SIZE_T cb)
 {
     void *addr;
 
-    if (allocator.spy)
+    if (sys_allocator().spy)
     {
         void *real_mem;
         BOOL spyed;
 
         EnterCriticalSection(&allocspy_cs);
         spyed = mallocspy_remove_spyed_memory(pv);
-        cb = allocator.spy->PreRealloc(pv, cb, &real_mem, spyed);
+        cb = sys_allocator().spy->PreRealloc(pv, cb, &real_mem, spyed);
 
         /* check if can release the spy */
-        if (allocator.spy_release_pending && !allocator.spyed_allocations)
+        if (sys_allocator().spy_release_pending && !sys_allocator().spyed_allocations)
         {
-            allocator.spy->Release();
-            allocator.spy_release_pending = FALSE;
-            allocator.spy = NULL;
+            sys_allocator().spy->Release();
+            sys_allocator().spy_release_pending = FALSE;
+            sys_allocator().spy = NULL;
             LeaveCriticalSection(&allocspy_cs);
         }
 
         if (!cb)
         {
             /* PreRealloc can force Realloc to fail */
-            if (allocator.spy)
+            if (sys_allocator().spy)
                 LeaveCriticalSection(&allocspy_cs);
             return NULL;
         }
@@ -247,9 +261,9 @@ void *CMalloc::Realloc(void *pv, SIZE_T cb)
         addr = NULL;
     }
 
-    if (allocator.spy)
+    if (sys_allocator().spy)
     {
-        addr = allocator.spy->PostRealloc(addr, TRUE);
+        addr = sys_allocator().spy->PostRealloc(addr, TRUE);
         mallocspy_add_mem(addr);
         LeaveCriticalSection(&allocspy_cs);
     }
@@ -264,26 +278,26 @@ void CMalloc::Free(void *mem)
     if (!mem)
         return;
 
-    if (allocator.spy)
+    if (sys_allocator().spy)
     {
         EnterCriticalSection(&allocspy_cs);
         spyed_block = mallocspy_remove_spyed_memory(mem);
         spy_active = TRUE;
-        mem = allocator.spy->PreFree(mem, spyed_block);
+        mem = sys_allocator().spy->PreFree(mem, spyed_block);
     }
 
     HeapFree(GetProcessHeap(), 0, mem);
 
     if (spy_active)
     {
-        allocator.spy->PostFree(spyed_block);
+        sys_allocator().spy->PostFree(spyed_block);
 
         /* check if can release the spy */
-        if (allocator.spy_release_pending && !allocator.spyed_allocations)
+        if (sys_allocator().spy_release_pending && !sys_allocator().spyed_allocations)
         {
-            allocator.spy->Release();
-            allocator.spy_release_pending = FALSE;
-            allocator.spy = NULL;
+            sys_allocator().spy->Release();
+            sys_allocator().spy_release_pending = FALSE;
+            sys_allocator().spy = NULL;
         }
 
         LeaveCriticalSection(&allocspy_cs);
@@ -304,19 +318,19 @@ SIZE_T CMalloc::GetSize(void *mem)
     if (!mem)
         return (SIZE_T)-1;
 
-    if (allocator.spy)
+    if (sys_allocator().spy)
     {
         EnterCriticalSection(&allocspy_cs);
         spyed_block = !!mallocspy_is_allocation_spyed(mem);
         spy_active = TRUE;
-        mem = allocator.spy->PreGetSize(mem, spyed_block);
+        mem = sys_allocator().spy->PreGetSize(mem, spyed_block);
     }
 
     size = HeapSize(GetProcessHeap(), 0, mem);
 
     if (spy_active)
     {
-        size = allocator.spy->PostGetSize(size, spyed_block);
+        size = sys_allocator().spy->PostGetSize(size, spyed_block);
         LeaveCriticalSection(&allocspy_cs);
     }
 
@@ -331,19 +345,19 @@ INT CMalloc::DidAlloc(void *mem)
     if (!mem)
         return -1;
 
-    if (allocator.spy)
+    if (sys_allocator().spy)
     {
         EnterCriticalSection(&allocspy_cs);
         spyed_block = !!mallocspy_is_allocation_spyed(mem);
         spy_active = TRUE;
-        mem = allocator.spy->PreDidAlloc(mem, spyed_block);
+        mem = sys_allocator().spy->PreDidAlloc(mem, spyed_block);
     }
 
     did_alloc = HeapValidate(GetProcessHeap(), 0, mem);
 
     if (spy_active)
     {
-        did_alloc = allocator.spy->PostDidAlloc(mem, spyed_block, did_alloc);
+        did_alloc = sys_allocator().spy->PostDidAlloc(mem, spyed_block, did_alloc);
         LeaveCriticalSection(&allocspy_cs);
     }
 
@@ -354,16 +368,16 @@ void CMalloc::HeapMinimize()
 {
     BOOL spy_active = FALSE;
 
-    if (allocator.spy)
+    if (sys_allocator().spy)
     {
         EnterCriticalSection(&allocspy_cs);
         spy_active = TRUE;
-        allocator.spy->PreHeapMinimize();
+        sys_allocator().spy->PreHeapMinimize();
     }
 
     if (spy_active)
     {
-        allocator.spy->PostHeapMinimize();
+        sys_allocator().spy->PostHeapMinimize();
         LeaveCriticalSection(&allocspy_cs);
     }
 }
@@ -379,7 +393,7 @@ HRESULT WINAPI CoGetMalloc(DWORD context, IMalloc **imalloc)
         return E_INVALIDARG;
     }
 
-    *imalloc = allocator.IMalloc_iface;
+    *imalloc = sys_allocator().IMalloc_iface;
 
     return S_OK;
 }
@@ -389,7 +403,7 @@ HRESULT WINAPI CoGetMalloc(DWORD context, IMalloc **imalloc)
  */
 void *WINAPI CoTaskMemAlloc(SIZE_T size)
 {
-    return allocator.IMalloc_iface->Alloc(size);
+    return sys_allocator().IMalloc_iface->Alloc(size);
 }
 
 /***********************************************************************
@@ -397,7 +411,7 @@ void *WINAPI CoTaskMemAlloc(SIZE_T size)
  */
 void WINAPI CoTaskMemFree(void *ptr)
 {
-    allocator.IMalloc_iface->Free(ptr);
+    sys_allocator().IMalloc_iface->Free(ptr);
 }
 
 /***********************************************************************
@@ -405,7 +419,7 @@ void WINAPI CoTaskMemFree(void *ptr)
  */
 void *WINAPI CoTaskMemRealloc(void *ptr, SIZE_T size)
 {
-    return allocator.IMalloc_iface->Realloc(ptr, size);
+    return sys_allocator().IMalloc_iface->Realloc(ptr, size);
 }
 
 /***********************************************************************
@@ -420,11 +434,11 @@ HRESULT WINAPI CoRegisterMallocSpy(IMallocSpy *spy)
 
     EnterCriticalSection(&allocspy_cs);
 
-    if (allocator.spy)
+    if (sys_allocator().spy)
         hr = CO_E_OBJISREG;
     else if (SUCCEEDED(spy->QueryInterface(IID_IMallocSpy, (void **)&spy)))
     {
-        allocator.spy = spy;
+        sys_allocator().spy = spy;
         hr = S_OK;
     }
 
@@ -442,17 +456,17 @@ HRESULT WINAPI CoRevokeMallocSpy(void)
 
     EnterCriticalSection(&allocspy_cs);
 
-    if (!allocator.spy)
+    if (!sys_allocator().spy)
         hr = CO_E_OBJNOTREG;
-    else if (allocator.spyed_allocations)
+    else if (sys_allocator().spyed_allocations)
     {
-        allocator.spy_release_pending = TRUE;
+        sys_allocator().spy_release_pending = TRUE;
         hr = E_ACCESSDENIED;
     }
     else
     {
-        allocator.spy->Release();
-        allocator.spy = NULL;
+        sys_allocator().spy->Release();
+        sys_allocator().spy = NULL;
     }
 
     LeaveCriticalSection(&allocspy_cs);

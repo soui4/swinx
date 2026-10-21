@@ -1,6 +1,7 @@
 
 #ifndef _SYN_HANDLE_H_
 #define _SYN_HANDLE_H_
+#include <sfr_config.h>
 #include <mutex>
 #include "log.h"
 
@@ -50,6 +51,13 @@ struct _SynHandle
 
     bool readSignal(bool bLock = true)
     {
+#if SFR_HOSTED
+        // host: POSIX select()/fd_set live in winsock2 there; the handle
+        // registry this class serves is provided by the freertos platform
+        // layer instead, so the pipe-based poll path is not used.
+        (void)bLock;
+        return true;
+#else
         if (bLock)
             lock();
         fd_set readfds;
@@ -70,11 +78,17 @@ struct _SynHandle
         if (bLock)
             unlock();
         return bSignal;
+#endif // SFR_HOSTED
     }
     bool writeSignal()
     {
+#if SFR_HOSTED
+        // host: see readSignal -- pipe-backed signalling is not used here
+        return true;
+#else
         int fd = getWriteFd();
         return write(fd, "a", 1) == 1;
+#endif
     }
 };
 
@@ -136,7 +150,13 @@ struct PipeSynHandle : _SynHandle
 
     bool init(LPCSTR pszName __attribute__((unused)), void *initData __attribute__((unused))) override
     {
+#if SFR_HOSTED
+        // host: no POSIX pipe(); this class is not used on the host build
+        (void)fd;
+        return false;
+#else
         return pipe(fd) != -1;
+#endif
     }
 
     virtual LPCSTR getName()  const override

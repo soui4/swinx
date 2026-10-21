@@ -11,6 +11,7 @@
 
 #ifndef _INC_COMMCTRL
 #define _INC_COMMCTRL
+#include <sfr_config.h>
 #include <windows.h>
 
 #ifndef _HRESULT_DEFINED
@@ -32,9 +33,11 @@
 // Define API decoration for direct importing of DLL references.
 //
 #ifndef WINCOMMCTRLAPI
-#if !defined(_COMCTL32_) && defined(_WIN32)
+#if !defined(_COMCTL32_) && defined(_WIN32) && !SFR_HOSTED
 #define WINCOMMCTRLAPI DECLSPEC_IMPORT
 #else
+// swinx (and its FreeRTOS host simulator) IMPLEMENTS this API surface; never
+// decorate with the DLL-import attribute.
 #define WINCOMMCTRLAPI
 #endif
 #endif // WINCOMMCTRLAPI
@@ -3224,6 +3227,7 @@ extern "C"
 #define LIS_DEFAULTCOLORS 0x00000010 // Don't use any custom text colors
 #endif
 
+#define SWINX_LITEM_DEFINED
     typedef struct tagLITEM
     {
         UINT mask;
@@ -4785,6 +4789,7 @@ extern "C"
 
     /* SysLink structures */
 
+#ifndef SWINX_LITEM_DEFINED
     typedef struct tagLITEM
     {
         UINT mask;
@@ -4794,6 +4799,7 @@ extern "C"
         WCHAR szID[MAX_LINKID_TEXT];
         WCHAR szUrl[L_MAX_URL_LENGTH];
     } LITEM, *PLITEM;
+#endif // SWINX_LITEM_DEFINED
 
     typedef struct tagNMLVLINK
     {

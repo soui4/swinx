@@ -1,3 +1,4 @@
+#include <sfr_config.h>
 #include <windows.h>
 #ifndef _FILE_API_H_
 #define _FILE_API_H_
@@ -128,7 +129,12 @@ extern "C"
 
     HANDLE WINAPI CreateFileW(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMode, LPSECURITY_ATTRIBUTES lpSecurityAttributes, DWORD dwCreationDisposition, DWORD dwFlagsAndAttributes, HANDLE hTemplateFile);
 
+#if SFR_HOSTED
+    /* host: MinGW <io.h> declares int _open_osfhandle(intptr_t, int); a shim
+       declaration would clash with the CRT prototype */
+#else
     int WINAPI _open_osfhandle(HANDLE hFile, int flags);
+#endif
 #ifdef UNICODE
 #define CreateFile CreateFileW
 #else

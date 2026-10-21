@@ -1,0 +1,27 @@
+/*
+ * freertos/stl/exception  --  std::exception stub for -fno-exceptions builds.
+ *
+ * When SWINX_NO_EXCEPTIONS is defined (FreeRTOS target built with
+ * -fno-exceptions -fno-rtti) this header provides a minimal std::exception so
+ * that #include <exception> resolves without pulling the toolchain's header
+ * (which may contain throw expressions). Otherwise it is a plain passthrough.
+ */
+#pragma once
+
+#if defined(SWINX_NO_EXCEPTIONS)
+    #include <string>
+    namespace std {
+        class exception {
+            std::string m_msg;
+        public:
+            exception() noexcept : m_msg() {}
+            explicit exception(const std::string& what) noexcept : m_msg(what) {}
+            exception(const exception&) noexcept = default;
+            exception& operator=(const exception&) noexcept = default;
+            virtual ~exception() noexcept {}
+            virtual const char* what() const noexcept { return m_msg.c_str(); }
+        };
+    }
+#else
+    #include_next <exception>
+#endif

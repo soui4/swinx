@@ -1,5 +1,6 @@
 ﻿#ifndef _SYS_API_H
 #define _SYS_API_H
+#include <sfr_config.h>
 #include <ctypes.h>
 #include <unistd.h>
 #include <guiddef.h>
@@ -297,9 +298,12 @@ extern "C"
 
     BOOL CallMsgFilter(LPMSG lpMsg, int nCode);
 
+#if !SFR_HOSTED
+    // host: the MinGW CRT declares these with __time64_t / int return types
     __time64_t _mktime64(const struct tm *ptime);
 
     __time64_t _time64(__time64_t *_Time);
+#endif
 
     HCURSOR LoadCursorA(HINSTANCE hInstance, LPCSTR lpCursorName);
     HCURSOR LoadCursorW(HINSTANCE hInstance, LPCWSTR lpCursorName);
@@ -977,8 +981,12 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
 #define GetModuleHandle        GetModuleHandleA
 #endif // UNICODE
 
+#if SFR_HOSTED
+    /* host: MinGW <io.h> declares intptr_t _get_osfhandle(int); a shim
+       declaration would clash with the CRT prototype */
+#else
     HANDLE WINAPI _get_osfhandle(int fd);
-
+#endif
     LPSTR WINAPI GetCommandLineA(void);
     LPWSTR WINAPI GetCommandLineW(void);
 

@@ -1,5 +1,6 @@
 ﻿#ifndef __PLATFORM_LINUX_
 #define __PLATFORM_LINUX_
+#include <sfr_config.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdarg.h>
@@ -50,6 +51,7 @@
 #define __RPC__deref_opt_inout_opt
 
 #define __RPC__deref_out
+#define __inout
 
 #ifndef _INTPTR_T
 #ifndef __intptr_t_defined
@@ -68,23 +70,29 @@ typedef __UINTPTR_TYPE__ uintptr_t;
 
 typedef unsigned int UINT;
 #ifndef DEFINED_INT64
+#if !SFR_HOSTED
+// MinGW predefines __int64 as a macro (== long long); skip the typedef there.
 #define DEFINED_INT64
 typedef int64_t __int64;
+#endif
 #endif // DEFINED_INT64
 
-typedef uint32_t ULONG;
+typedef unsigned int ULONG;
 typedef uint8_t BYTE;
 typedef uint8_t byte;
 typedef BYTE *LPBYTE;
-typedef uint32_t DWORD;
-typedef uint16_t WORD;
-typedef int32_t LONG;
+typedef unsigned int DWORD;
+typedef unsigned short WORD;
+typedef int LONG;
 typedef int64_t LONGLONG;
 typedef uint64_t ULONGLONG;
-typedef int32_t INT;
+typedef int INT; // must match the fallback at the bottom of this header; newlib
+                 // (arm-none-eabi) defines int32_t as long int, so int32_t here
+                 // would hard-conflict with the re-declaration below.
 typedef wchar_t WCHAR;
 typedef void *LPVOID;
 typedef intptr_t INT_PTR;
+typedef INT_PTR *PINT_PTR;
 typedef intptr_t LONG_PTR;
 typedef uintptr_t UINT_PTR;
 typedef intptr_t LONG_PTR;
@@ -234,7 +242,13 @@ typedef HGDIOBJ HMETAFILE;
 
 typedef struct _IconObj *HICON;
 
+// sdef.h (SOUI) defines tid_t as `unsigned int` under _WIN32; keep both
+// definitions identical (UINT_PTR is unsigned long on LLP64 hosts).
+#ifdef _WIN32
+typedef unsigned int tid_t;
+#else
 typedef UINT_PTR tid_t;
+#endif
 typedef struct _SDC *HDC;
 #ifndef HRSRC_DEFINED
 #define HRSRC_DEFINED

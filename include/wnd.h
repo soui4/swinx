@@ -254,6 +254,21 @@ extern "C"
 
     BOOL MoveWindow(HWND hWnd, int x, int y, int nWidth, int nHeight, BOOL bRepaint);
 
+#ifndef GWLP_WNDPROC
+#define GWLP_WNDPROC (-4)
+#endif
+#ifndef GWL_STYLE
+#define GWL_STYLE (-16)
+#endif
+#ifndef GCL_STYLE
+#define GCL_STYLE (-26)
+#endif
+    // window-property table (used by SOUI's menu subclassing hooks).  The
+    // freertos implementation is a no-op: hooks never fire on virtual windows.
+    BOOL WINAPI SetProp(HWND hWnd, LPCSTR lpString, HANDLE hData);
+    HANDLE WINAPI GetProp(HWND hWnd, LPCSTR lpString);
+    BOOL WINAPI RemoveProp(HWND hWnd, LPCSTR lpString);
+
     BOOL IsWindowVisible(HWND hWnd);
 
     BOOL IsZoomed(HWND hWnd);
