@@ -1331,7 +1331,7 @@ void qsort_s(void *base, size_t nmemb, size_t size,
     }
 }
 
-void OutputDebugStringA(LPCSTR s) { (void)s; }
+void OutputDebugStringA(LPCSTR s) { printf("%s\n",s); }
 
 void PostThreadMessageA(uint64_t tid, UINT msg, WPARAM wp, LPARAM lp)
 {
