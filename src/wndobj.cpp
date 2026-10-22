@@ -210,3 +210,10 @@ BOOL WndMgr::insertWindow(HWND hWnd, _Window *pWnd)
     auto res = WndMap().insert(std::make_pair(hWnd, pWnd));
     return res.second;
 }
+
+void WndMgr::enumerate(const std::function<void(HWND, _Window *)> &fn)
+{
+    std::unique_lock<std::recursive_mutex> lock(WndMapMutex());
+    for (auto &it : WndMap())
+        fn(it.first, it.second);
+}

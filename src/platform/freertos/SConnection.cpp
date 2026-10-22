@@ -18,8 +18,23 @@
 #include <gdi.h>
 #include <cairo.h>
 #include <log.h>
+#include <algorithm>
+#include <functional>
 
 #define kLogTag "SConnection"
+
+// Plain-value snapshot of the window registry (FreeRTOS-only: GetWindow needs
+// to navigate parent / child / sibling without locking every other window).  See
+// WndMgr::enumerate().
+namespace {
+struct WndBasicInfo
+{
+    HWND hwnd;
+    HWND parent;
+    HWND owner;
+    BOOL bDestroyed;
+};
+} // namespace
 
 static UINT s_nextRegisteredMessage = WM_USER + 100000;
 
@@ -711,9 +726,10 @@ HWND SConnection::WindowFromPoint(POINT, HWND hWnd) const
     return hWnd;
 }
 
-BOOL SConnection::IsWindow(HWND) const
+BOOL SConnection::IsWindow(HWND hWnd) const
 {
-    return TRUE;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    return wndObj ? !wndObj->bDestroyed : FALSE;
 }
 
 void SConnection::SetWindowPos(HWND, int, int) const
@@ -1042,9 +1058,93 @@ BOOL SConnection::IsWindowVisible(HWND hWnd)
     return hWnd != NULL;
 }
 
-HWND SConnection::GetWindow(HWND hWnd, _Window *, UINT)
+/* Window navigation.
+ *
+ * This port has no OS window manager: an HWND is a swinx _Window tracked in
+ * WndMgr, so parent/owner relations only exist in _Window.  The query used to
+ * return hWnd unconditionally, which is not "no relative window" -- the shared
+ * WM_DESTROY path in wnd.cpp walks the child list with
+ *
+ *     hChild = GetWindow(hWnd, GW_CHILDLAST);
+ *     while (hChild) { ... DestroyWindow(hChild); hChild = GetWindow(...); }
+ *
+ * so it kept getting the window being destroyed and re-entered DestroyWindow()
+ * from inside that window's own WM_DESTROY, recursing until the window locks
+ * dead-locked -- the app froze on close.  GW_HWNDNEXT has the same contract
+ * (GetDlgItem(), the WM_PRINT children walk): it must return 0 at the end of
+ * the list instead of repeating the last window forever.
+ *
+ * Sibling order is by HWND value.  There is no z-order on this port (windows
+ * are virtual), and the callers that matter only need "iterate all of them
+ * exactly once, then stop".
+ */
+HWND SConnection::GetWindow(HWND hWnd, _Window *wndObj, UINT uCmd)
 {
-    return hWnd;
+    if (!wndObj)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return 0;
+    }
+    if (uCmd == GW_OWNER)
+        return wndObj->owner;
+    if (uCmd == GW_PARENT)
+        return wndObj->parent;
+
+    const HWND hParent = wndObj->parent;
+    std::vector<WndBasicInfo> all;
+    WndMgr::enumerate([&](HWND hwnd, _Window *wnd) {
+        all.push_back({hwnd, wnd->parent, wnd->owner, wnd->bDestroyed});
+    });
+
+    // windows sharing hWnd's parent (hWnd itself included, at its sorted place)
+    std::vector<HWND> sibs;
+    std::vector<HWND> children;
+    sibs.reserve(all.size());
+    for (size_t i = 0; i < all.size(); i++)
+    {
+        const WndBasicInfo &info = all[i];
+        // a window already marked destroyed is on its way out of the registry:
+        // skipping it here is what makes the destroy loops terminate
+        if (info.hwnd != hWnd && info.bDestroyed)
+            continue;
+        if (info.parent == hParent)
+            sibs.push_back(info.hwnd);
+        if (info.parent == hWnd)
+            children.push_back(info.hwnd);
+    }
+    std::sort(sibs.begin(), sibs.end());
+    std::sort(children.begin(), children.end());
+
+    switch (uCmd)
+    {
+    case GW_CHILD: // == GW_CHILDFIRST
+        return children.empty() ? 0 : children.front();
+    case GW_CHILDLAST:
+        return children.empty() ? 0 : children.back();
+    case GW_HWNDFIRST:
+        return sibs.empty() ? 0 : sibs.front();
+    case GW_HWNDLAST:
+        return sibs.empty() ? 0 : sibs.back();
+    case GW_HWNDNEXT:
+    {
+        std::vector<HWND>::const_iterator it = std::find(sibs.begin(), sibs.end(), hWnd);
+        if (it == sibs.end())
+            return 0;
+        ++it;
+        return it == sibs.end() ? 0 : *it;
+    }
+    case GW_HWNDPREV:
+    {
+        std::vector<HWND>::const_iterator it = std::find(sibs.begin(), sibs.end(), hWnd);
+        if (it == sibs.end() || it == sibs.begin())
+            return 0;
+        --it;
+        return *it;
+    }
+    default:
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return 0;
+    }
 }
 
 UINT SConnection::RegisterMessage(LPCSTR lpString)

@@ -4,6 +4,8 @@
 #include "SConnection.h"
 #include "countmutex.h"
 #include "gdi/builtin_image.h"
+#include <vector>
+#include <functional>
 
 enum WndState
 {
@@ -169,5 +171,14 @@ public:
     static WndObj fromHwnd(HWND hWnd);
     static BOOL freeWindow(HWND hWnd);
     static BOOL insertWindow(HWND hWnd, _Window* pWnd);
+    /* Generic iteration over the live window registry.  `fn(hwnd, pWnd)` is
+     * called for every window with the *registry* lock held only; `pWnd` is NOT
+     * locked, so the callback must not retain it without AddRef/Lock.
+     *
+     * Window navigation (GetWindow: parent / child / sibling) uses this to walk
+     * the tree without locking every other window -- locking a sibling/child
+     * while the caller already holds the current window's lock would introduce
+     * a lock-order edge between two windows. */
+    static void enumerate(const std::function<void(HWND, _Window *)> &fn);
 };
 #endif//_WINDOBJ_H_
