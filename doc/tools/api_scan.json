@@ -12063,6 +12063,69 @@
     ]
    ]
   },
+  "strcpy_s": {
+   "headers": [
+    "strapi.h"
+   ],
+   "files": [
+    "strapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "strapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "strapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "wcscpy_s": {
+   "headers": [
+    "strapi.h"
+   ],
+   "files": [
+    "strapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "strapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "strapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "_wtof": {
+   "headers": [
+    "strapi.h"
+   ],
+   "files": [
+    "strapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "strapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "strapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
   "_mbsinc": {
    "headers": [
     "strapi.h"
@@ -12120,69 +12183,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ]
-   ]
-  },
-  "strcpy_s": {
-   "headers": [
-    "strapi.h"
-   ],
-   "files": [
-    "strapi.cpp"
-   ],
-   "agg": "impl",
-   "site_classes": [
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ]
-   ]
-  },
-  "wcscpy_s": {
-   "headers": [
-    "strapi.h"
-   ],
-   "files": [
-    "strapi.cpp"
-   ],
-   "agg": "impl",
-   "site_classes": [
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ]
-   ]
-  },
-  "_wtof": {
-   "headers": [
-    "strapi.h"
-   ],
-   "files": [
-    "strapi.cpp"
-   ],
-   "agg": "impl",
-   "site_classes": [
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "strapi.cpp",
      "impl",
@@ -16395,8 +16395,8 @@
    "site_classes": [
     [
      "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ],
     [
      "platform/posix/sysapi.cpp",
@@ -18757,12 +18757,23 @@
     "wnd.h"
    ],
    "files": [
+    "platform/freertos/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/SConnection.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/SConnection.cpp",
      "impl",
      ""
     ]
@@ -21130,6 +21141,7 @@
     "wnd.h"
    ],
    "files": [
+    "platform/freertos/SConnection.cpp",
     "platform/linux/SConnection.cpp",
     "wnd.cpp"
    ],
@@ -21312,6 +21324,21 @@
     ],
     [
      "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/SConnection.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/SConnection.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/SConnection.cpp",
      "impl",
      ""
     ],
