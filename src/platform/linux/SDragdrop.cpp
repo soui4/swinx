@@ -150,11 +150,11 @@ void SDragDrop::drag_leave(HWND target)
     xcb_client_message_event_t leave = {};
     leave.response_type = XCB_CLIENT_MESSAGE;
     leave.sequence = 0;
-    leave.window = target;
+    leave.window = xcbFromHwnd(target);
     leave.format = 32;
     leave.type = conn->atoms.XdndLeave;
-    leave.data.data32[0] = m_hWnd;
-    xcb_send_event32(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, leave);
+    leave.data.data32[0] = (uint32_t)xcbFromHwnd(m_hWnd);
+    xcb_send_event32(conn->connection, false, xcbFromHwnd(target), XCB_EVENT_MASK_NO_EVENT, leave);
     xcb_flush(conn->connection);
 }
 
@@ -176,15 +176,15 @@ void SDragDrop::drag_over(HWND target, int x, int y)
     xcb_client_message_event_t position = {};
     position.response_type = XCB_CLIENT_MESSAGE;
     position.sequence = 0;
-    position.window = target;
+    position.window = xcbFromHwnd(target);
     position.format = 32;
     position.type = conn->atoms.XdndPosition;
-    position.data.data32[0] = m_hWnd;
+    position.data.data32[0] = (uint32_t)xcbFromHwnd(m_hWnd);
     position.data.data32[1] = dwKeyState; // reserved, we use it to transfer the key state.
     position.data.data32[2] = MAKELONG(y, x);
     position.data.data32[3] = XCB_CURRENT_TIME;                // time
     position.data.data32[4] = getXdndAction(dwOKEffect, conn); // suggested action.
-    xcb_send_event32(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, position);
+    xcb_send_event32(conn->connection, false, xcbFromHwnd(target), XCB_EVENT_MASK_NO_EVENT, position);
     xcb_flush(conn->connection);
 }
 
@@ -214,15 +214,15 @@ void SDragDrop::drag_enter(HWND target)
     xcb_client_message_event_t enter = {};
     enter.response_type = XCB_CLIENT_MESSAGE;
     enter.sequence = 0;
-    enter.window = target;
+    enter.window = xcbFromHwnd(target);
     enter.format = 32;
     enter.type = conn->atoms.XdndEnter;
-    enter.data.data32[0] = m_hWnd;
+    enter.data.data32[0] = (uint32_t)xcbFromHwnd(m_hWnd);
     enter.data.data32[1] = xdnd_version << 24;
     if (types.size() > 3)
     {
         enter.data.data32[1] |= 1;
-        xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, m_hWnd, conn->atoms.XdndTypeList, XCB_ATOM_ATOM, 32, types.size(), (const void *)types.data());
+        xcb_change_property(conn->connection, XCB_PROP_MODE_REPLACE, xcbFromHwnd(m_hWnd), conn->atoms.XdndTypeList, XCB_ATOM_ATOM, 32, types.size(), (const void *)types.data());
     }
     else
     {
@@ -230,7 +230,7 @@ void SDragDrop::drag_enter(HWND target)
         enter.data.data32[3] = types.size() > 1 ? types.at(1) : 0;
         enter.data.data32[4] = types.size() > 2 ? types.at(2) : 0;
     }
-    xcb_send_event32(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, enter);
+    xcb_send_event32(conn->connection, false, xcbFromHwnd(target), XCB_EVENT_MASK_NO_EVENT, enter);
     drag_over(target, curMousePos.x, curMousePos.y);
 }
 
@@ -239,15 +239,15 @@ void SDragDrop::drag_drop(HWND target, DWORD dwEffect)
     xcb_client_message_event_t drop = {};
     drop.response_type = XCB_CLIENT_MESSAGE;
     drop.sequence = 0;
-    drop.window = target;
+    drop.window = xcbFromHwnd(target);
     drop.format = 32;
     drop.type = conn->atoms.XdndDrop;
-    drop.data.data32[0] = m_hWnd;
+    drop.data.data32[0] = (uint32_t)xcbFromHwnd(m_hWnd);
     drop.data.data32[1] = 0;
     drop.data.data32[2] = XCB_TIME_CURRENT_TIME;
     drop.data.data32[3] = 0;
     drop.data.data32[4] = dwEffect;
-    xcb_send_event32(conn->connection, false, target, XCB_EVENT_MASK_NO_EVENT, drop);
+    xcb_send_event32(conn->connection, false, xcbFromHwnd(target), XCB_EVENT_MASK_NO_EVENT, drop);
 }
 
 void SDragDrop::drag_end()
@@ -390,7 +390,7 @@ void XDndDataObjectProxy::initTypeList(const uint32_t data32[5])
     m_lstTypes.clear();
     if (data32[1] & 1)
     {
-        xcb_get_property_cookie_t cookie = xcb_get_property(m_conn->connection, false, m_hSource, m_conn->atoms.XdndTypeList, XCB_ATOM_ATOM, 0, SDragDrop::xdnd_max_type);
+        xcb_get_property_cookie_t cookie = xcb_get_property(m_conn->connection, false, xcbFromHwnd(m_hSource), m_conn->atoms.XdndTypeList, XCB_ATOM_ATOM, 0, SDragDrop::xdnd_max_type);
         xcb_get_property_reply_t *reply = xcb_get_property_reply(m_conn->connection, cookie, 0);
         if (reply && reply->type != XCB_NONE && reply->format == 32)
         {

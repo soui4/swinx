@@ -10,13 +10,22 @@
 #ifdef __linux__
 #include <sys/sysinfo.h>
 #include <sys/inotify.h>
+#include <ucontext.h>
 #include <unistd.h>
 #elif defined(__APPLE__) && defined(__MACH__)
 #include <mach-o/dyld.h>
 #include <sys/event.h>
 #include <crt_externs.h>
 #include <sys/sysctl.h>
+#include <sys/user.h>
+#include <sys/proc.h>
+#include <mach/mach.h>
+#include <mach/mach_vm.h>
+#include <mach/thread_act.h>
 #include <os/log.h>
+#if defined(__x86_64__)
+#include <mach/i386/thread_status.h>
+#endif
 #endif
 #include <fcntl.h>
 #include <sched.h>
@@ -590,6 +599,97 @@ int GetLastError()
     return errno;
 }
 
+/* FormatMessage 的公共实现。swinx 没有 Windows 的消息表：FROM_SYSTEM 时把
+ * 消息号当 errno 用 strerror 取描述，其它来源一律给 "unknown error <id>"。 */
+static DWORD FormatMessageImpl(DWORD dwFlags, DWORD dwMessageId, void *lpBuffer, DWORD nSize, bool bWide)
+{
+    char text[512];
+    const char *msg = nullptr;
+    if (dwFlags & FORMAT_MESSAGE_FROM_SYSTEM)
+        msg = strerror((int)dwMessageId);
+    if (msg && msg[0])
+        snprintf(text, sizeof(text), "%s", msg);
+    else
+        snprintf(text, sizeof(text), "unknown error %lu", (unsigned long)dwMessageId);
+    size_t cbText = strlen(text);
+
+    if (bWide)
+    {
+        int cch = MultiByteToWideChar(CP_UTF8, 0, text, (int)cbText, nullptr, 0);
+        if (cch <= 0)
+            return 0;
+        LPWSTR dst = (LPWSTR)lpBuffer;
+        DWORD cap = nSize;
+        if (dwFlags & FORMAT_MESSAGE_ALLOCATE_BUFFER)
+        {
+            // 此时 lpBuffer 是「接收指针的指针」，nSize 是最小字符数（0 表示不限）。
+            cap = (DWORD)cch + 1;
+            if (nSize > cap)
+                cap = nSize;
+            dst = (LPWSTR)LocalAlloc(LMEM_FIXED, (SIZE_T)cap * sizeof(wchar_t));
+            if (!dst)
+            {
+                SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+                return 0;
+            }
+        }
+        else if (cap < (DWORD)cch + 1)
+        {
+            return 0;
+        }
+        MultiByteToWideChar(CP_UTF8, 0, text, (int)cbText, dst, (int)cap - 1);
+        dst[cch] = 0;
+        if (dwFlags & FORMAT_MESSAGE_ALLOCATE_BUFFER)
+            *(LPWSTR *)lpBuffer = dst;
+        return (DWORD)cch;
+    }
+
+    DWORD cap = nSize;
+    LPSTR dst = (LPSTR)lpBuffer;
+    if (dwFlags & FORMAT_MESSAGE_ALLOCATE_BUFFER)
+    {
+        cap = (DWORD)cbText + 1;
+        if (nSize > cap)
+            cap = nSize;
+        dst = (LPSTR)LocalAlloc(LMEM_FIXED, (SIZE_T)cap);
+        if (!dst)
+        {
+            SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+            return 0;
+        }
+    }
+    else if (cap < (DWORD)cbText + 1)
+    {
+        return 0;
+    }
+    memcpy(dst, text, cbText + 1);
+    if (dwFlags & FORMAT_MESSAGE_ALLOCATE_BUFFER)
+        *(LPSTR *)lpBuffer = dst;
+    return (DWORD)cbText;
+}
+
+DWORD WINAPI FormatMessageA(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId,
+                            LPSTR lpBuffer, DWORD nSize, va_list *Arguments)
+{
+    (void)lpSource;
+    (void)dwLanguageId;
+    (void)Arguments;
+    if (!lpBuffer)
+        return 0;
+    return FormatMessageImpl(dwFlags, dwMessageId, lpBuffer, nSize, false);
+}
+
+DWORD WINAPI FormatMessageW(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId,
+                            LPWSTR lpBuffer, DWORD nSize, va_list *Arguments)
+{
+    (void)lpSource;
+    (void)dwLanguageId;
+    (void)Arguments;
+    if (!lpBuffer)
+        return 0;
+    return FormatMessageImpl(dwFlags, dwMessageId, lpBuffer, nSize, true);
+}
+
 int MulDiv(int a, int b, int c)
 {
     if (c == 0)
@@ -919,7 +1019,7 @@ class DllLoader {
 
     static HMODULE mydlopen(LPCSTR lpFileName, int mode)
     {
-        HMODULE ret = dlopen(lpFileName, mode);
+        HMODULE ret = (HMODULE)dlopen(lpFileName, mode);
         if (ret)
             return ret;
         SLOG_FMTE("LoadLibraryA: dlopen failed for %s, error: %s", lpFileName, dlerror());
@@ -942,7 +1042,7 @@ HMODULE WINAPI LoadLibraryA(LPCSTR lpFileName)
     HMODULE ret = 0;
     do
     {
-        ret = dlopen(lpFileName, RTLD_NOW);
+        ret = (HMODULE)dlopen(lpFileName, RTLD_NOW);
         if (ret)
             break;
         DWORD dwAttrib = GetFileAttributesA(lpFileName);
@@ -1003,6 +1103,48 @@ HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName)
     if (0 == WideCharToMultiByte(CP_UTF8, 0, lpFileName, -1, szName, MAX_PATH, NULL, NULL))
         return 0;
     return LoadLibraryA(szName);
+}
+
+HMODULE WINAPI LoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+{
+    (void)hFile;
+    if (!lpLibFileName)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return NULL;
+    }
+
+    // LOAD_LIBRARY_AS_DATAFILE 系列要的是"把 PE 当数据映射进来读资源"，
+    // dlopen 没有对应模式（POSIX 上没有 PE 资源目录这回事）。swinx 里需要
+    // 读 PE 的地方（版本资源、图标）都直接解析文件，所以这里明确拒绝，
+    // 而不是当成普通加载返回一个句柄让调用方去踩空。
+    if (dwFlags & (LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE | LOAD_LIBRARY_AS_IMAGE_RESOURCE))
+    {
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+        return NULL;
+    }
+
+    // 其余标志里只有 LOAD_WITH_ALTERED_SEARCH_PATH / DONT_RESOLVE_DLL_REFERENCES
+    // 有实际意义：
+    // - LOAD_WITH_ALTERED_SEARCH_PATH 要求优先在 DLL 自己所在目录找依赖，
+    //   而 LoadLibraryA 的搜索序列本来就包含镜像所在目录与当前目录；
+    // - DONT_RESOLVE_DLL_REFERENCES 是"只映射不解析依赖"，dlopen 做不到，
+    //   swinx 没有调用方依赖它。
+    // LOAD_LIBRARY_SEARCH_* 是额外追加的搜索目录，属于可选收紧，忽略即可。
+    return LoadLibraryA(lpLibFileName);
+}
+
+HMODULE WINAPI LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags)
+{
+    char szName[MAX_PATH];
+    if (!lpLibFileName)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return NULL;
+    }
+    if (0 == WideCharToMultiByte(CP_UTF8, 0, lpLibFileName, -1, szName, MAX_PATH, NULL, NULL))
+        return NULL;
+    return LoadLibraryExA(szName, hFile, dwFlags);
 }
 
 FARPROC WINAPI GetProcAddress(HMODULE hModule, LPCSTR lpProcName)
@@ -1337,6 +1479,12 @@ LONG InterlockedCompareExchange(LONG volatile *v, LONG Exchange, LONG Comparand)
     // Comparand; on success Comparand already holds it (it matched).
     __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
     return Comparand;
+}
+
+LONG InterlockedExchange(LONG volatile *Target, LONG Value)
+{
+    // Win32 semantics: unconditional swap, returning the ORIGINAL value.
+    return __atomic_exchange_n(Target, Value, __ATOMIC_SEQ_CST);
 }
 
 LONG InterlockedExchangeAdd(LONG volatile *v, LONG Increment)
@@ -1704,6 +1852,51 @@ DWORD MsgWaitForMultipleObjects(DWORD nCount, const HANDLE *pHandles, BOOL fWait
     return conn->waitMutliObjectAndMsg(pHandles, nCount, dwMilliseconds, fWaitAll, dwWakeMask);
 }
 
+DWORD WINAPI GetQueueStatus(UINT flags)
+{
+    SConnection *conn = SConnMgr::instance()->getConnection();
+    if (!conn)
+        return 0;
+    return conn->GetQueueStatus(flags);
+}
+
+/* GetLastInputInfo 的输入时间戳。
+ *
+ * Win32 在输入事件到达时就刷新它；swinx 选择在消息泵取出输入类消息时刷新：
+ * 对「用户空闲了多久」这个用途二者等价，而且不必给 4 个平台的 SConnection
+ * 各加一份 idle 追踪。 */
+static std::atomic<DWORD> s_lastInputTick(0);
+
+static bool IsInputMessage(UINT msg)
+{
+    if (msg >= 0x0100 && msg <= 0x0109) // WM_KEYFIRST..WM_KEYLAST
+        return true;
+    if (msg >= 0x00A0 && msg <= 0x00AD) // WM_NCMOUSEMOVE..WM_NCXBUTTONDBLCLK
+        return true;
+    if (msg >= 0x0200 && msg <= 0x020E) // WM_MOUSEFIRST..WM_MOUSELAST
+        return true;
+    if (msg == 0x00FF) // WM_INPUT（原始输入）
+        return true;
+    return false;
+}
+
+static void RefreshLastInputTick(UINT msg)
+{
+    if (IsInputMessage(msg))
+        s_lastInputTick.store(GetTickCount());
+}
+
+BOOL WINAPI GetLastInputInfo(PLASTINPUTINFO plii)
+{
+    if (!plii || plii->cbSize != sizeof(LASTINPUTINFO))
+        return FALSE;
+    DWORD tick = s_lastInputTick.load();
+    if (tick == 0)
+        tick = GetTickCount(); // 还没有收到过输入：按「刚有输入」处理
+    plii->dwTime = tick;
+    return TRUE;
+}
+
 /* WinEvent 异步派发（实现位于 src/oleacc.cpp，所有平台变体均在编译）：
  * OUTOFCONTEXT 钩子的回调与 user32 一致，在消息泵里投递。 */
 extern "C" void WINAPI SwinxDispatchPendingWinEvents(void);
@@ -1728,6 +1921,8 @@ BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
     SwinxDispatchPendingWinEvents();
     if (bRet)
     {
+        if (lpMsg)
+            RefreshLastInputTick(lpMsg->message);
         if (CallHook(WH_GETMESSAGE, HC_ACTION, 1, (LPARAM)lpMsg))
             return GetMessage(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
     }
@@ -1756,6 +1951,9 @@ BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, 
     SwinxDispatchPendingWinEvents();
     if (bRet)
     {
+        // 只有真正把消息取走（PM_REMOVE）才算「消费了这次输入」
+        if (pMsg && (wRemoveMsg & PM_REMOVE))
+            RefreshLastInputTick(pMsg->message);
         if (CallHook(WH_GETMESSAGE, HC_ACTION, wRemoveMsg & PM_REMOVE, (LPARAM)pMsg))
             return PeekMessage(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
     }
@@ -2642,6 +2840,149 @@ DWORD WINAPI GetModuleFileNameW(HMODULE hModule, LPWSTR lpFilename, DWORD nSize)
     return str.length();
 }
 
+//---------------------------------------------------
+// 系统目录 / 环境变量
+
+// POSIX 没有 System32。这里挑一个确实存在的"系统库目录"返回：桌面 Linux 与
+// macOS 是 /usr/lib，Android/OHOS 上根本没有 /usr，系统库在 /system/lib。
+// 调用方（WebKit 里是拼 shell32.dll、拼 Internet Explorer\Plugins 这类
+// Windows 专有路径）在 swinx 上都会因此走各自的回退分支，这与 Linux 上
+// 确实没有这些组件的事实相符——重要的是给出一个格式正确、不以分隔符结尾
+// 的目录，而不是编一个看起来像 Windows 的值。
+static const char *systemDirectory()
+{
+    static const char *const candidates[] = { "/usr/lib", "/system/lib" };
+    static const char *const resolved = []() -> const char * {
+        struct stat st;
+        for (size_t i = 0; i < sizeof(candidates) / sizeof(candidates[0]); ++i)
+        {
+            if (stat(candidates[i], &st) == 0 && S_ISDIR(st.st_mode))
+                return candidates[i];
+        }
+        return candidates[0];
+    }();
+    return resolved;
+}
+
+UINT WINAPI GetSystemDirectoryA(LPSTR lpBuffer, UINT uSize)
+{
+    const char *dir = systemDirectory();
+    size_t len = strlen(dir);
+    // Win32：缓冲区不够时返回所需的字符数（含结尾 0），且不写缓冲区
+    if (len + 1 > uSize)
+        return (UINT)(len + 1);
+    if (lpBuffer)
+    {
+        memcpy(lpBuffer, dir, len);
+        lpBuffer[len] = 0;
+    }
+    return (UINT)len;
+}
+
+UINT WINAPI GetSystemDirectoryW(LPWSTR lpBuffer, UINT uSize)
+{
+    const char *dir = systemDirectory();
+    std::wstring wide;
+    towstring(dir, -1, wide);
+    if (wide.length() + 1 > uSize)
+        return (UINT)(wide.length() + 1);
+    if (lpBuffer)
+        wcscpy(lpBuffer, wide.c_str());
+    return (UINT)wide.length();
+}
+
+// %NAME% 展开。Windows 的环境变量名不区分大小写，而 POSIX 的 environ 是
+// 区分大小写的，所以这里自己按不分大小写比对，而不是直接 getenv。
+// 找不到的变量按 Win32 语义原样保留（连同两侧的 %）。
+static bool lookupEnvironmentCaseInsensitive(const std::wstring &name, std::wstring &value)
+{
+    for (char **entry = environ; entry && *entry; ++entry)
+    {
+        const char *eq = strchr(*entry, '=');
+        if (!eq)
+            continue;
+        std::wstring wideName;
+        towstring(std::string(*entry, eq - *entry).c_str(), -1, wideName);
+        if (_wcsicmp(wideName.c_str(), name.c_str()) != 0)
+            continue;
+        towstring(eq + 1, -1, value);
+        return true;
+    }
+    return false;
+}
+
+static std::wstring expandEnvironment(const wchar_t *source)
+{
+    std::wstring result;
+    const wchar_t *p = source;
+    while (*p)
+    {
+        if (*p != L'%')
+        {
+            result.push_back(*p++);
+            continue;
+        }
+        const wchar_t *closing = wcschr(p + 1, L'%');
+        if (!closing || closing == p + 1)
+        {
+            // 没有配对的 % 或是空名字 %%，按原文保留这个字符继续走
+            result.push_back(*p++);
+            continue;
+        }
+        std::wstring name(p + 1, closing - p - 1);
+        std::wstring value;
+        if (lookupEnvironmentCaseInsensitive(name, value))
+            result += value;
+        else
+            result.append(p, closing - p + 1);
+        p = closing + 1;
+    }
+    return result;
+}
+
+DWORD WINAPI ExpandEnvironmentStringsW(LPCWSTR lpSrc, LPWSTR lpDst, DWORD nSize)
+{
+    if (!lpSrc)
+        return 0;
+
+    std::wstring expanded = expandEnvironment(lpSrc);
+    // Win32 的返回值是"含结尾 0 的字符数"，缓冲区不足或 lpDst 为 NULL 时
+    // 用它来告诉调用方需要多大
+    size_t required = expanded.length() + 1;
+    if (!lpDst || nSize < required)
+    {
+        // 缓冲区不足时 Win32 不保证内容，但留一个结尾 0 能让"先传小缓冲再
+        // 重试"的调用方不至于读到未初始化内存
+        if (lpDst && nSize > 0)
+            lpDst[0] = 0;
+        return (DWORD)required;
+    }
+    memcpy(lpDst, expanded.c_str(), required * sizeof(WCHAR));
+    return (DWORD)required;
+}
+
+DWORD WINAPI ExpandEnvironmentStringsA(LPCSTR lpSrc, LPSTR lpDst, DWORD nSize)
+{
+    if (!lpSrc)
+        return 0;
+
+    std::wstring wideSrc;
+    towstring(lpSrc, -1, wideSrc);
+    std::wstring expanded = expandEnvironment(wideSrc.c_str());
+
+    std::string utf8;
+    tostring(expanded.c_str(), -1, utf8);
+    size_t required = utf8.length() + 1;
+    if (!lpDst || nSize < required)
+    {
+        if (lpDst && nSize > 0)
+            lpDst[0] = 0;
+        return (DWORD)required;
+    }
+    memcpy(lpDst, utf8.c_str(), required);
+    return (DWORD)required;
+}
+
 void WINAPI OutputDebugStringA(LPCSTR lpOutputString)
 {
 #ifdef __ANDROID__
@@ -2729,6 +3070,60 @@ BOOL WINAPI SystemParametersInfoA(UINT action, UINT val __attribute__((unused)),
         *pv = 3;
         return TRUE;
     }
+    case SPI_GETFONTSMOOTHING:
+    {
+        // macOS text rendering is always antialiased.
+        BOOL *pv = (BOOL *)ptr;
+        if (!pv)
+            return FALSE;
+        *pv = TRUE;
+        return TRUE;
+    }
+    case SPI_GETFONTSMOOTHINGTYPE:
+    {
+        // swinx 的文本渲染是灰度抗锯齿（CoreGraphics），不是 Windows 的
+        // ClearType 子像素渲染。cairo 的 win32 字形光栅化会据此在
+        // _compute_mask 里选择算法：CLEARTYPE 分支按子像素取绿色通道并依赖
+        // DIB 的 alpha 字节为 0，而 swinx 的 32bpp DIB 由 CGBitmapContext 写出的
+        // 不透明像素 alpha 是 0xff，会造成整块 mask 无覆盖；STANDARD 分支只按
+        // 绿色通道算 alpha，与灰度抗锯齿一致。
+        UINT *pv = (UINT *)ptr;
+        if (!pv)
+            return FALSE;
+        *pv = FE_FONTSMOOTHINGSTANDARD;
+        return TRUE;
+    }
+    case SPI_GETNONCLIENTMETRICS:
+    {
+        /* There is no theming engine here: report the metrics of a plain
+         * 12pt sans-serif UI font. WebCore's DragImageWin only reads
+         * lfSmCaptionFont/lfMessageFont.lfFaceName. */
+        NONCLIENTMETRICSA *nm = (NONCLIENTMETRICSA *)ptr;
+        if (!nm)
+            return FALSE;
+        memset(nm, 0, sizeof(*nm));
+        nm->cbSize = sizeof(NONCLIENTMETRICSA);
+        nm->iBorderWidth = 1;
+        nm->iScrollWidth = 17;
+        nm->iScrollHeight = 17;
+        nm->iCaptionWidth = 17;
+        nm->iCaptionHeight = 17;
+        nm->iSmCaptionWidth = 15;
+        nm->iSmCaptionHeight = 15;
+        nm->iMenuWidth = 19;
+        nm->iMenuHeight = 19;
+        LOGFONTA *fonts[] = {&nm->lfCaptionFont, &nm->lfSmCaptionFont, &nm->lfMenuFont,
+                             &nm->lfStatusFont, &nm->lfMessageFont};
+        for (size_t i = 0; i < sizeof(fonts) / sizeof(fonts[0]); i++)
+        {
+            fonts[i]->lfHeight = -12;
+            fonts[i]->lfWeight = FW_NORMAL;
+            fonts[i]->lfCharSet = DEFAULT_CHARSET;
+            fonts[i]->lfQuality = DEFAULT_QUALITY;
+            strcpy(fonts[i]->lfFaceName, "Arial");
+        }
+        return TRUE;
+    }
     default:
         return FALSE;
     }
@@ -2736,6 +3131,34 @@ BOOL WINAPI SystemParametersInfoA(UINT action, UINT val __attribute__((unused)),
 
 BOOL WINAPI SystemParametersInfoW(UINT action, UINT val, void *ptr, UINT winini)
 {
+    if (action == SPI_GETNONCLIENTMETRICS)
+    {
+        NONCLIENTMETRICSW *nm = (NONCLIENTMETRICSW *)ptr;
+        if (!nm)
+            return FALSE;
+        memset(nm, 0, sizeof(*nm));
+        nm->cbSize = sizeof(NONCLIENTMETRICSW);
+        nm->iBorderWidth = 1;
+        nm->iScrollWidth = 17;
+        nm->iScrollHeight = 17;
+        nm->iCaptionWidth = 17;
+        nm->iCaptionHeight = 17;
+        nm->iSmCaptionWidth = 15;
+        nm->iSmCaptionHeight = 15;
+        nm->iMenuWidth = 19;
+        nm->iMenuHeight = 19;
+        LOGFONTW *fonts[] = {&nm->lfCaptionFont, &nm->lfSmCaptionFont, &nm->lfMenuFont,
+                             &nm->lfStatusFont, &nm->lfMessageFont};
+        for (size_t i = 0; i < sizeof(fonts) / sizeof(fonts[0]); i++)
+        {
+            fonts[i]->lfHeight = -12;
+            fonts[i]->lfWeight = FW_NORMAL;
+            fonts[i]->lfCharSet = DEFAULT_CHARSET;
+            fonts[i]->lfQuality = DEFAULT_QUALITY;
+            wcscpy(fonts[i]->lfFaceName, L"Arial");
+        }
+        return TRUE;
+    }
     return SystemParametersInfoA(action, val, ptr, winini);
 }
 
@@ -2747,6 +3170,55 @@ void WINAPI DebugBreak(void)
 VOID WINAPI DbgBreakPoint(VOID)
 {
     assert(0);
+}
+
+BOOL WINAPI IsDebuggerPresent(void)
+{
+#ifdef __linux__
+    // /proc/self/status 的 TracerPid 就是 ptrace 附加者的 pid，0 表示没有调试器
+    FILE *f = fopen("/proc/self/status", "r");
+    if (!f)
+        return FALSE;
+    char line[128];
+    BOOL traced = FALSE;
+    while (fgets(line, sizeof(line), f))
+    {
+        if (strncmp(line, "TracerPid:", 10) == 0)
+        {
+            traced = atoi(line + 10) != 0;
+            break;
+        }
+    }
+    fclose(f);
+    return traced;
+#elif defined(__APPLE__) && defined(__MACH__)
+    // macOS：查自己的 kinfo_proc.kp_proc.p_flag 里有没有 P_TRACED
+    int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid() };
+    struct kinfo_proc info;
+    size_t size = sizeof(info);
+    memset(&info, 0, sizeof(info));
+    if (sysctl(mib, 4, &info, &size, NULL, 0) != 0)
+        return FALSE;
+    return (info.kp_proc.p_flag & P_TRACED) != 0;
+#else
+    // 其它平台（含移动端沙箱）没有通用的"是否被调试"查询，按未调试处理
+    return FALSE;
+#endif
+}
+
+VOID WINAPI RaiseException(DWORD dwExceptionCode, DWORD dwExceptionFlags,
+                           DWORD nNumberOfArguments, const ULONG_PTR *lpArguments)
+{
+    // POSIX 没有 SEH，也就不存在"抛给调用方 __except 接住"的机制。
+    // 真正调用它的只有 MSVC 的线程命名协议（ThreadingWin.cpp 里包在
+    // #if COMPILER(MSVC) 内），而那个分支在 GCC/Clang 上根本不编译。
+    // 走到这里说明有人指望 SEH 语义，唯一诚实的处理是把异常码如实打出来
+    // 然后终止——静默返回会让调用方以为"异常已被处理"。
+    (void)nNumberOfArguments;
+    (void)lpArguments;
+    SLOG_FMTE("RaiseException(0x%08X, flags=0x%X): SEH is not available on this platform",
+              (unsigned)dwExceptionCode, (unsigned)dwExceptionFlags);
+    abort();
 }
 
 UINT WINAPI GetDoubleClickTime(VOID)
@@ -3032,6 +3504,59 @@ BOOL WINAPI GetUserNameW(LPWSTR lpBuffer, LPDWORD nSize)
 static std::mutex s_virtualMemMutex;
 static std::map<LPVOID, SIZE_T> s_virtualAllocs;
 
+// Win32 的页保护常量 <-> POSIX 的 PROT_*。Win32 允许一次给出多个位（例如
+// PAGE_EXECUTE_READ = EXECUTE|READ），所以这里是"按位叠加"而不是查表。
+static int protectToMmap(DWORD protect)
+{
+    int prot = 0;
+    if (protect & (PAGE_NOACCESS))
+        return PROT_NONE;
+    if (protect & PAGE_READONLY)
+        prot |= PROT_READ;
+    if (protect & PAGE_READWRITE)
+        prot |= PROT_READ | PROT_WRITE;
+    if (protect & PAGE_WRITECOPY)
+        prot |= PROT_READ | PROT_WRITE;
+    if (protect & PAGE_EXECUTE)
+        prot |= PROT_EXEC;
+    if (protect & PAGE_EXECUTE_READ)
+        prot |= PROT_READ | PROT_EXEC;
+    if (protect & PAGE_EXECUTE_READWRITE)
+        prot |= PROT_READ | PROT_WRITE | PROT_EXEC;
+    if (protect & PAGE_EXECUTE_WRITECOPY)
+        prot |= PROT_READ | PROT_WRITE | PROT_EXEC;
+    return prot;
+}
+
+// 反向映射，尽量挑能唯一表示原意的常量。
+static DWORD mmapToProtect(int prot)
+{
+    if ((prot & PROT_EXEC) && (prot & PROT_WRITE))
+        return PAGE_EXECUTE_READWRITE;
+    if (prot & PROT_EXEC)
+        return (prot & PROT_READ) ? PAGE_EXECUTE_READ : PAGE_EXECUTE;
+    if ((prot & PROT_READ) && (prot & PROT_WRITE))
+        return PAGE_READWRITE;
+    if (prot & PROT_READ)
+        return PAGE_READONLY;
+    return PAGE_NOACCESS;
+}
+
+static long pageSize()
+{
+    // mprotect 要求按页对齐，而页大小并不总是 4K（苹果 arm64 是 16K）。
+    // 平台拿不到查询入口时退回 4K：这是所有支持 mprotect 的平台的公约数，
+    // 对齐到它不会破坏 mprotect，只是可能比真实页更细。
+#if defined(__APPLE__) && defined(__MACH__)
+    return (long)vm_page_size;
+#elif defined(_SC_PAGESIZE)
+    static const long size = sysconf(_SC_PAGESIZE);
+    return size > 0 ? size : 4096;
+#else
+    return 4096;
+#endif
+}
+
 LPVOID WINAPI VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType __attribute__((unused)), DWORD flProtect)
 {
     if (dwSize == 0)
@@ -3093,6 +3618,131 @@ BOOL WINAPI VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType)
     }
 
     return FALSE;
+}
+
+// 查询 address 所在的内存区域。Linux 读 /proc/self/maps，macOS 走
+// mach_vm_region —— POSIX 本身没有"这块地址是什么"的通用查询，所以这里
+// 只能按平台实现；其余平台明确返回失败，而不是编一个区域出来。
+static bool queryMemoryRegion(const void *address, MEMORY_BASIC_INFORMATION *out)
+{
+#ifdef __linux__
+    FILE *maps = fopen("/proc/self/maps", "r");
+    if (!maps)
+        return false;
+
+    const uintptr_t target = (uintptr_t)address;
+    char line[512];
+    bool found = false;
+    while (fgets(line, sizeof(line), maps))
+    {
+        unsigned long start = 0, end = 0;
+        char perms[8] = { 0 };
+        int consumed = 0;
+        // 形如 "7f8e5c000000-7f8e5c021000 r-xp 00000000 08:02 1234   /lib/x.so"
+        if (sscanf(line, "%lx-%lx %7s %*s %*s %*s %n", &start, &end, perms, &consumed) < 3)
+            continue;
+        if (target < start || target >= end)
+            continue;
+
+        int prot = 0;
+        if (perms[0] == 'r')
+            prot |= PROT_READ;
+        if (perms[1] == 'w')
+            prot |= PROT_WRITE;
+        if (perms[2] == 'x')
+            prot |= PROT_EXEC;
+
+        out->BaseAddress = (PVOID)start;
+        out->AllocationBase = (PVOID)start;
+        out->AllocationProtect = mmapToProtect(prot);
+        out->RegionSize = (SIZE_T)(end - start);
+        // /proc/self/maps 里出现的都是已映射（已提交）的页
+        out->State = MEM_COMMIT;
+        out->Protect = mmapToProtect(prot);
+        // 有路径名的是文件映射（MEM_MAPPED），匿名映射当私有内存
+        const char *path = line + consumed;
+        out->Type = (*path && *path != '\n') ? MEM_MAPPED : MEM_PRIVATE;
+        found = true;
+        break;
+    }
+    fclose(maps);
+    return found;
+#elif defined(__APPLE__) && defined(__MACH__)
+    mach_vm_address_t regionAddress = (mach_vm_address_t)(uintptr_t)address;
+    mach_vm_size_t regionSize = 0;
+    vm_region_basic_info_data_64_t info;
+    mach_port_t objectName = MACH_PORT_NULL;
+    mach_msg_type_number_t count = VM_REGION_BASIC_INFO_COUNT_64;
+    kern_return_t kr = mach_vm_region(mach_task_self(), &regionAddress, &regionSize,
+                                      VM_REGION_BASIC_INFO_64, (vm_region_info_t)&info, &count, &objectName);
+    if (objectName != MACH_PORT_NULL)
+        mach_port_deallocate(mach_task_self(), objectName);
+    if (kr != KERN_SUCCESS)
+        return false;
+
+    int prot = 0;
+    if (info.protection & VM_PROT_READ)
+        prot |= PROT_READ;
+    if (info.protection & VM_PROT_WRITE)
+        prot |= PROT_WRITE;
+    if (info.protection & VM_PROT_EXECUTE)
+        prot |= PROT_EXEC;
+
+    out->BaseAddress = (PVOID)(uintptr_t)regionAddress;
+    out->AllocationBase = out->BaseAddress;
+    out->AllocationProtect = mmapToProtect(prot);
+    out->RegionSize = (SIZE_T)regionSize;
+    out->State = MEM_COMMIT;
+    out->Protect = mmapToProtect(prot);
+    // mach 的共享标志：非 shared 即私有内存
+    out->Type = (info.shared) ? MEM_MAPPED : MEM_PRIVATE;
+    return true;
+#else
+    (void)address;
+    (void)out;
+    return false;
+#endif
+}
+
+BOOL WINAPI VirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, LPDWORD lpflOldProtect)
+{
+    if (!lpAddress || dwSize == 0)
+        return FALSE;
+
+    const long page = pageSize();
+    const uintptr_t start = (uintptr_t)lpAddress & ~(uintptr_t)(page - 1);
+    const uintptr_t end = ((uintptr_t)lpAddress + dwSize + page - 1) & ~(uintptr_t)(page - 1);
+
+    // Win32 要求返回改之前那一页的保护属性
+    if (lpflOldProtect)
+    {
+        MEMORY_BASIC_INFORMATION old;
+        memset(&old, 0, sizeof(old));
+        *lpflOldProtect = queryMemoryRegion(lpAddress, &old) ? old.Protect : 0;
+    }
+
+    return mprotect((void *)start, end - start, protectToMmap(flNewProtect)) == 0;
+}
+
+SIZE_T WINAPI VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength)
+{
+    if (!lpBuffer || dwLength < sizeof(MEMORY_BASIC_INFORMATION))
+        return 0;
+
+    // 地址 0 在 Win32 上恒为"空闲"，而 /proc/self/maps 里根本不会出现它
+    if (!lpAddress)
+    {
+        memset(lpBuffer, 0, sizeof(MEMORY_BASIC_INFORMATION));
+        lpBuffer->State = MEM_FREE;
+        lpBuffer->Protect = PAGE_NOACCESS;
+        lpBuffer->RegionSize = (SIZE_T)(uintptr_t)0x10000; // 页面 0 所在的那一块
+        return sizeof(MEMORY_BASIC_INFORMATION);
+    }
+
+    memset(lpBuffer, 0, sizeof(MEMORY_BASIC_INFORMATION));
+    if (!queryMemoryRegion(lpAddress, lpBuffer))
+        return 0;
+    return sizeof(MEMORY_BASIC_INFORMATION);
 }
 
 HANDLE
@@ -4196,11 +4846,20 @@ struct ThreadObj
     std::atomic<DWORD> nSuspend;
     std::atomic<bool> bExited; // user routine has returned
     bool bCreateSuspended;
+#ifdef __linux__
+    // Register state captured when SIGPARK parked the thread; GetThreadContext
+    // reads it back. Only meaningful while the thread is suspended.
+    ucontext_t parkContext;
+    bool hasParkContext;
+#endif
     ThreadObj()
         : thread(0)
         , nSuspend(0)
         , bExited(false)
         , bCreateSuspended(false)
+#ifdef __linux__
+        , hasParkContext(false)
+#endif
     {
         type = HThread;
         init(NULL, NULL);
@@ -4276,11 +4935,18 @@ static void Swinx_ThreadWakeHandler(int)
     // is the whole effect
 }
 
-static void Swinx_ThreadParkHandler(int, siginfo_t *, void *)
+static void Swinx_ThreadParkHandler(int, siginfo_t *, void *ctx)
 {
     ThreadObj *self = tls_parkObj;
     if (!self)
         return; // not a swinx thread: nothing to park
+    if (ctx)
+    {
+        // Snapshot the interrupted register state before parking; this is what
+        // GetThreadContext reports to the caller.
+        memcpy(&self->parkContext, ctx, sizeof(ucontext_t));
+        self->hasParkContext = true;
+    }
     sigset_t mask;
     sigfillset(&mask);
     sigdelset(&mask, Swinx_SigPark());
@@ -4357,8 +5023,90 @@ HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES lpThreadAttributes __attribute_
     return NewSynHandle(trdObj);
 }
 
-// Resume thread: first call resumes a thread created with CREATE_SUSPENDED
-// (via the hEventResume bootstrap), later calls decrement the suspend count.
+BOOL WINAPI GetThreadTimes(HANDLE hThread, LPFILETIME lpCreationTime, LPFILETIME lpExitTime,
+                           LPFILETIME lpKernelTime, LPFILETIME lpUserTime)
+{
+    if (!lpCreationTime || !lpExitTime || !lpKernelTime || !lpUserTime)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+#if defined(__APPLE__)
+    // macOS 没有 pthread_getcpuclockid / CLOCK_THREAD_CPUTIME_ID，改用 mach
+    // thread_info 的 user+system time。
+    mach_port_t machThread = mach_thread_self();
+    BOOL ownThread = TRUE;
+    if (hThread != GetCurrentThread())
+    {
+        _SynHandle *synHandle = GetSynHandle(hThread);
+        if (!synHandle || synHandle->getType() != HThread)
+        {
+            SetLastError(ERROR_INVALID_HANDLE);
+            return FALSE;
+        }
+        ThreadObj *threadObj = (ThreadObj *)synHandle;
+        machThread = pthread_mach_thread_np(threadObj->thread);
+        ownThread = FALSE;
+    }
+
+    thread_basic_info_data_t basicInfo;
+    mach_msg_type_number_t count = THREAD_BASIC_INFO_COUNT;
+    kern_return_t kr = thread_info(machThread, THREAD_BASIC_INFO, (thread_info_t)&basicInfo, &count);
+    if (ownThread && machThread != MACH_PORT_NULL)
+        mach_port_deallocate(mach_task_self(), machThread);
+    if (kr != KERN_SUCCESS)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
+    const uint64_t ticks = ((uint64_t)basicInfo.user_time.seconds + (uint64_t)basicInfo.system_time.seconds) * 10000000ULL
+                         + ((uint64_t)basicInfo.user_time.microseconds + (uint64_t)basicInfo.system_time.microseconds) * 10ULL;
+#else
+
+    clockid_t clockId = CLOCK_THREAD_CPUTIME_ID;
+    if (hThread != GetCurrentThread())
+    {
+        _SynHandle *synHandle = GetSynHandle(hThread);
+        if (!synHandle || synHandle->getType() != HThread)
+        {
+            SetLastError(ERROR_INVALID_HANDLE);
+            return FALSE;
+        }
+        ThreadObj *threadObj = (ThreadObj *)synHandle;
+        if (pthread_getcpuclockid(threadObj->thread, &clockId) != 0)
+        {
+            SetLastError(ERROR_INVALID_HANDLE);
+            return FALSE;
+        }
+    }
+
+    struct timespec cpuTime;
+    if (clock_gettime(clockId, &cpuTime) != 0)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
+
+    // POSIX 只给"该线程一共花了多少 CPU 时间"，不区分内核态与用户态，
+    // 也没有查询线程创建/退出时间的入口。调用方（WebKit 的超时检查器）
+    // 算的是 user + kernel，所以把总时间记在 UserTime 里、其余记 0，
+    // 语义上"总 CPU 时间"是对的，只是拆分信息没有。
+    const uint64_t ticks = (uint64_t)cpuTime.tv_sec * 10000000ULL + (uint64_t)cpuTime.tv_nsec / 100ULL;
+#endif
+    lpUserTime->dwLowDateTime = (DWORD)(ticks & 0xFFFFFFFFu);
+    lpUserTime->dwHighDateTime = (DWORD)(ticks >> 32);
+
+    lpKernelTime->dwLowDateTime = 0;
+    lpKernelTime->dwHighDateTime = 0;
+    lpCreationTime->dwLowDateTime = 0;
+    lpCreationTime->dwHighDateTime = 0;
+    lpExitTime->dwLowDateTime = 0;
+    lpExitTime->dwHighDateTime = 0;
+    return TRUE;
+}
+
+// Resume thread: first call resumes a thread created with CREATE_SUSPENDED// (via the hEventResume bootstrap), later calls decrement the suspend count.
 // Real suspension parks the target thread inside the SIGPARK signal handler
 // (see Swinx_ThreadParkHandler); ResumeThread decrements the count and sends
 // SIGWAKE to interrupt the park loop. SIGSTOP/SIGCONT are NOT used: SIGSTOP
@@ -4394,6 +5142,10 @@ DWORD WINAPI ResumeThread(HANDLE hThread)
         pthread_kill(threadObj->thread, Swinx_SigWake());
     }
 #endif
+#ifdef __APPLE__
+    if (prev == 1 && !threadObj->bExited.load(std::memory_order_acquire))
+        thread_resume(pthread_mach_thread_np(threadObj->thread));
+#endif
     // Win32 returns the previous suspend count (0 when the thread was running)
     return prev;
 }
@@ -4414,6 +5166,12 @@ DWORD WINAPI SuspendThread(HANDLE hThread)
         pthread_kill(threadObj->thread, Swinx_SigPark());
     }
 #endif
+#ifdef __APPLE__
+    // Mach has real per-thread suspension; thread_get_state in GetThreadContext
+    // needs the target stopped to report a consistent register set.
+    if (prev == 0 && !threadObj->bExited.load(std::memory_order_acquire))
+        thread_suspend(pthread_mach_thread_np(threadObj->thread));
+#endif
     return prev;
 }
 
@@ -4421,6 +5179,95 @@ BOOL WINAPI TerminateThread(HANDLE hThread __attribute__((unused)), DWORD dwExit
 {
     // not support
     return 0;
+}
+
+BOOL WINAPI GetThreadContext(HANDLE hThread, LPCONTEXT lpContext)
+{
+    if (!lpContext)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    memset(lpContext, 0, sizeof(*lpContext));
+    if (hThread == GetCurrentThread() || hThread == INVALID_HANDLE_VALUE)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
+    _SynHandle *synHandle = GetSynHandle(hThread);
+    if (!synHandle || synHandle->getType() != HThread)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
+    ThreadObj *threadObj = (ThreadObj *)synHandle;
+    lpContext->ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
+
+#if defined(__APPLE__) && defined(__x86_64__)
+    mach_port_t machThread = pthread_mach_thread_np(threadObj->thread);
+    x86_thread_state64_t state;
+    mach_msg_type_number_t count = x86_THREAD_STATE64_COUNT;
+    if (thread_get_state(machThread, x86_THREAD_STATE64, (thread_state_t)&state, &count) != KERN_SUCCESS)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
+    lpContext->Rax = state.__rax;
+    lpContext->Rcx = state.__rcx;
+    lpContext->Rdx = state.__rdx;
+    lpContext->Rbx = state.__rbx;
+    lpContext->Rsp = state.__rsp;
+    lpContext->Rbp = state.__rbp;
+    lpContext->Rsi = state.__rsi;
+    lpContext->Rdi = state.__rdi;
+    lpContext->R8 = state.__r8;
+    lpContext->R9 = state.__r9;
+    lpContext->R10 = state.__r10;
+    lpContext->R11 = state.__r11;
+    lpContext->R12 = state.__r12;
+    lpContext->R13 = state.__r13;
+    lpContext->R14 = state.__r14;
+    lpContext->R15 = state.__r15;
+    lpContext->Rip = state.__rip;
+    lpContext->EFlags = state.__rflags;
+    lpContext->SegCs = state.__cs;
+    lpContext->SegFs = state.__fs;
+    lpContext->SegGs = state.__gs;
+    return TRUE;
+#elif defined(__linux__) && defined(__x86_64__)
+    // SuspendThread parked the thread inside the SIGPARK handler, which saved
+    // the interrupted register set. Only meaningful while it is parked.
+    if (!threadObj->hasParkContext)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+    const greg_t *gregs = threadObj->parkContext.uc_mcontext.gregs;
+    lpContext->Rax = (DWORD64)gregs[REG_RAX];
+    lpContext->Rcx = (DWORD64)gregs[REG_RCX];
+    lpContext->Rdx = (DWORD64)gregs[REG_RDX];
+    lpContext->Rbx = (DWORD64)gregs[REG_RBX];
+    lpContext->Rsp = (DWORD64)gregs[REG_RSP];
+    lpContext->Rbp = (DWORD64)gregs[REG_RBP];
+    lpContext->Rsi = (DWORD64)gregs[REG_RSI];
+    lpContext->Rdi = (DWORD64)gregs[REG_RDI];
+    lpContext->R8 = (DWORD64)gregs[REG_R8];
+    lpContext->R9 = (DWORD64)gregs[REG_R9];
+    lpContext->R10 = (DWORD64)gregs[REG_R10];
+    lpContext->R11 = (DWORD64)gregs[REG_R11];
+    lpContext->R12 = (DWORD64)gregs[REG_R12];
+    lpContext->R13 = (DWORD64)gregs[REG_R13];
+    lpContext->R14 = (DWORD64)gregs[REG_R14];
+    lpContext->R15 = (DWORD64)gregs[REG_R15];
+    lpContext->Rip = (DWORD64)gregs[REG_RIP];
+    lpContext->EFlags = (DWORD)gregs[REG_EFL];
+    lpContext->SegCs = (WORD)gregs[REG_CSGSFS];
+    return TRUE;
+#else
+    // No register capture on this architecture: report failure, never a bogus
+    // stack pointer (MachineStackMarker would scan from it).
+    return FALSE;
+#endif
 }
 
 VOID WINAPI ExitThread(DWORD dwExitCode)

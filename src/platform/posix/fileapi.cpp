@@ -1507,6 +1507,146 @@ BOOL WINAPI MoveFileW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName)
     return MoveFileA(nameExisting.c_str(), nameNew.c_str());
 }
 
+BOOL WINAPI MoveFileExA(LPCSTR lpExistingFileName, LPCSTR lpNewFileName, DWORD dwFlags)
+{
+    if (!lpExistingFileName || !lpNewFileName)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    // Win32 把"重启后再删/改"记在注册表里交给系统级延迟操作执行，POSIX 没有
+    // 对应机制（也没有重启语义），明确拒绝而不是假装成功——否则调用方会以为
+    // 文件已经处理掉了。
+    if (dwFlags & MOVEFILE_DELAY_UNTIL_REBOOT)
+    {
+        SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+        return FALSE;
+    }
+
+    // 移动到自身是成功的空操作（与 MoveFileA 一致）
+    if (strcmp(lpExistingFileName, lpNewFileName) == 0)
+        return TRUE;
+
+    // MoveFileEx 只有在给出 MOVEFILE_REPLACE_EXISTING 时才允许覆盖目标，
+    // 而 POSIX rename() 总是静默覆盖，所以要先自己挡一次。
+    if (!(dwFlags & MOVEFILE_REPLACE_EXISTING) && GetFileAttributesA(lpNewFileName) != INVALID_FILE_ATTRIBUTES)
+    {
+        SetLastError(ERROR_ALREADY_EXISTS);
+        return FALSE;
+    }
+
+    // MOVEFILE_CREATE_HARDLINK 是"建硬链接"而不是"改名"，语义完全不同
+    if (dwFlags & MOVEFILE_CREATE_HARDLINK)
+    {
+        if (link(lpExistingFileName, lpNewFileName) != 0)
+        {
+            SetLastError(ERROR_ACCESS_DENIED);
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    // MOVEFILE_WRITE_THROUGH 要求返回前数据已经落到介质上。POSIX rename()
+    // 本身是原子且对元数据有序的，但没有 fsync 就不保证数据页已下盘。
+    // 这里不做 fsync：swinx 的调用方（WebKit 的缓存/插件路径）用它来避免
+    // 崩溃后看到半截文件，而 rename 的原子性已经排除了"半截"这种状态。
+    if (rename(lpExistingFileName, lpNewFileName) == 0)
+        return TRUE;
+
+    // 跨文件系统 rename 会返回 EXDEV。Windows 上这属于"需不需要复制"的问题：
+    // 给了 MOVEFILE_COPY_ALLOWED 就复制再删源，否则失败。
+    if (errno == EXDEV && (dwFlags & MOVEFILE_COPY_ALLOWED))
+    {
+        if (!CopyFileA(lpExistingFileName, lpNewFileName, !(dwFlags & MOVEFILE_REPLACE_EXISTING)))
+            return FALSE;
+        if (unlink(lpExistingFileName) != 0)
+        {
+            SetLastError(ERROR_ACCESS_DENIED);
+            return FALSE;
+        }
+        return TRUE;
+    }
+
+    SetLastError(errno == ENOENT ? ERROR_FILE_NOT_FOUND : ERROR_ACCESS_DENIED);
+    return FALSE;
+}
+
+BOOL WINAPI MoveFileExW(LPCWSTR lpExistingFileName, LPCWSTR lpNewFileName, DWORD dwFlags)
+{
+    std::string nameExisting, nameNew;
+    tostring(lpExistingFileName, -1, nameExisting);
+    tostring(lpNewFileName, -1, nameNew);
+    return MoveFileExA(nameExisting.c_str(), nameNew.c_str(), dwFlags);
+}
+
+BOOL WINAPI GetFileAttributesExA(LPCSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId, LPVOID lpFileInformation)
+{
+    if (!lpFileName || !lpFileInformation)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    // Win32 目前只定义了这一档（GetFileExMaxInfoLevel 是枚举上界，不是合法入参）
+    if (fInfoLevelId != GetFileExInfoStandard)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    struct stat st;
+    if (stat(lpFileName, &st) != 0)
+    {
+        SetLastError(ERROR_FILE_NOT_FOUND);
+        return FALSE;
+    }
+
+    // 属性位与 GetFileAttributesA 共用一套判定，避免两处口径漂移
+    DWORD attributes = GetFileAttributesA(lpFileName);
+    if (attributes == INVALID_FILE_ATTRIBUTES)
+    {
+        SetLastError(ERROR_FILE_NOT_FOUND);
+        return FALSE;
+    }
+
+    WIN32_FILE_ATTRIBUTE_DATA *data = (WIN32_FILE_ATTRIBUTE_DATA *)lpFileInformation;
+    data->dwFileAttributes = attributes;
+
+    // POSIX 没有可移植的"创建时间"：Linux 要 statx 才拿得到 btime，macOS 有
+    // st_birthtimespec，其它平台干脆没有。这里统一用 st_ctime 兜底（它是
+    // inode 变更时间，在没有任何元数据改动时与创建时间相同），比填 0 更接近
+    // 调用方"这个文件多老了"的预期。
+    // 三处时间都按秒精度换算：带纳秒的字段名各平台不一致，而这里只是给
+    // 调用方做"文件是否变过"的比较，秒级足够。
+    struct timespec creationTime;
+    creationTime.tv_sec = st.st_ctime;
+    creationTime.tv_nsec = 0;
+    TimeSpec2FileTime(creationTime, &data->ftCreationTime);
+
+    struct timespec accessTime;
+    accessTime.tv_sec = st.st_atime;
+    accessTime.tv_nsec = 0;
+    TimeSpec2FileTime(accessTime, &data->ftLastAccessTime);
+
+    struct timespec writeTime;
+    writeTime.tv_sec = st.st_mtime;
+    writeTime.tv_nsec = 0;
+    TimeSpec2FileTime(writeTime, &data->ftLastWriteTime);
+
+    uint64_t size = (uint64_t)st.st_size;
+    data->nFileSizeHigh = (DWORD)(size >> 32);
+    data->nFileSizeLow = (DWORD)(size & 0xFFFFFFFFu);
+    return TRUE;
+}
+
+BOOL WINAPI GetFileAttributesExW(LPCWSTR lpFileName, GET_FILEEX_INFO_LEVELS fInfoLevelId, LPVOID lpFileInformation)
+{
+    std::string name;
+    tostring(lpFileName, -1, name);
+    return GetFileAttributesExA(name.c_str(), fInfoLevelId, lpFileInformation);
+}
+
 BOOL WINAPI RemoveDirectoryA(LPCSTR lpPathName)
 {
     if (!lpPathName)

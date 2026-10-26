@@ -235,7 +235,7 @@ LRESULT HookMgr::call_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
                 data.lp = lParam;
 #ifdef __linux__
                 // using clipboard owner of the target thread
-                SendMessageTimeoutA(conn->getClipboard()->getClipboardOwner(), UM_CALLHOOK, 0, (LPARAM)&data, 0, get_hook_timeout(), &ret);
+                SendMessageTimeoutA(hwndFromXcb(conn->getClipboard()->getClipboardOwner()), UM_CALLHOOK, 0, (LPARAM)&data, 0, get_hook_timeout(), &ret);
 #endif //__linux__
             }
         }

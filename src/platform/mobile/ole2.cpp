@@ -167,7 +167,7 @@ HANDLE WINAPI OleDuplicateData(HANDLE hSrc, CLIPFORMAT cfFormat, UINT uiFlags)
     if (!hSrc)
         return nullptr;
     if (cfFormat == CF_BITMAP)
-        return RefGdiObj(hSrc);
+        return (HANDLE)RefGdiObj(hSrc);
     if (isHGlobalClipboardFormat(cfFormat))
         return duplicateGlobalData(hSrc, uiFlags);
     return nullptr;

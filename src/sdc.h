@@ -15,7 +15,7 @@ typedef const struct CGPath *CGPathRef;
 #include <memory>
 
 struct DCState;
-typedef struct _SDC
+struct HDC__
 {
     HWND hwnd;
 #if defined(__APPLE__)
@@ -35,15 +35,16 @@ typedef struct _SDC
     HBITMAP bmp;
     COLORREF crText;
     COLORREF crBk;
-    HGDIOBJ pen;
-    HGDIOBJ brush;
-    HGDIOBJ hfont;
+    HPEN pen;
+    HBRUSH brush;
+    HFONT hfont;
     UINT    uGetFlags;
     int bkMode;
     int nSave;
     UINT textAlign;
     int rop2;
     int polyFillMode;
+    int graphicsMode;    // SetGraphicsMode/GetGraphicsMode: GM_COMPATIBLE / GM_ADVANCED
     POINT brushOrg;      // SetBrushOrgEx/GetBrushOrgEx: pattern brush origin (device coords)
 #ifdef __OHOS__
     BOOL hasDirty;
@@ -59,11 +60,20 @@ typedef struct _SDC
     // State stack for SaveDC/RestoreDC
     std::vector<std::shared_ptr<DCState>> stateStack;
 
-    _SDC(HWND _hwnd);
-    ~_SDC();
+    // EMF 录制句柄：非 NULL 表示本 DC 由 CreateEnhMetaFile 创建，
+    // SelectObject(OBJ_FONT) 会把一条 EMR_EXTCREATEFONTINDIRECTW 追加进去
+    // （见 src/metafile.cpp）。CloseEnhMetaFile 取走该句柄后置回 NULL；
+    // 若 DC 未关闭就被析构，则由 ~_SDC 负责释放。
+    HENHMETAFILE recording;
+
+    HDC__(HWND _hwnd);
+    ~HDC__();
     
     int SaveState();
     BOOL RestoreState(int nState);
-} * HDC;
+};
+
+/* 既有实现代码里的名称，保持不变。 */
+typedef HDC__ _SDC;
 
 #endif //_SDC_H_

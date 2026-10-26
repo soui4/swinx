@@ -22,6 +22,114 @@ typedef struct _DROPFILES
     BOOL fWide;   // WIDE character switch
 } DROPFILES, *LPDROPFILES;
 
+/*
+ * FILEDESCRIPTOR / FILEGROUPDESCRIPTOR — the CFSTR_FILEDESCRIPTOR payload used
+ * by drag-and-drop and clipboard file transfer (shlobj.h of the Windows SDK).
+ * WebCore's ClipboardWin/ClipboardUtilitiesWin build and parse these blobs.
+ */
+typedef struct _FILEDESCRIPTORA
+{
+    DWORD dwFlags;
+    CLSID clsid;
+    SIZEL sizel;
+    POINTL pointl;
+    DWORD dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD nFileSizeHigh;
+    DWORD nFileSizeLow;
+    CHAR cFileName[MAX_PATH];
+} FILEDESCRIPTORA, *LPFILEDESCRIPTORA;
+
+typedef struct _FILEDESCRIPTORW
+{
+    DWORD dwFlags;
+    CLSID clsid;
+    SIZEL sizel;
+    POINTL pointl;
+    DWORD dwFileAttributes;
+    FILETIME ftCreationTime;
+    FILETIME ftLastAccessTime;
+    FILETIME ftLastWriteTime;
+    DWORD nFileSizeHigh;
+    DWORD nFileSizeLow;
+    WCHAR cFileName[MAX_PATH];
+} FILEDESCRIPTORW, *LPFILEDESCRIPTORW;
+
+typedef struct _FILEGROUPDESCRIPTORA
+{
+    UINT cItems;
+    FILEDESCRIPTORA fgd[1];
+} FILEGROUPDESCRIPTORA, *LPFILEGROUPDESCRIPTORA;
+
+typedef struct _FILEGROUPDESCRIPTORW
+{
+    UINT cItems;
+    FILEDESCRIPTORW fgd[1];
+} FILEGROUPDESCRIPTORW, *LPFILEGROUPDESCRIPTORW;
+
+#ifdef UNICODE
+typedef FILEDESCRIPTORW FILEDESCRIPTOR, *LPFILEDESCRIPTOR;
+typedef FILEGROUPDESCRIPTORW FILEGROUPDESCRIPTOR, *LPFILEGROUPDESCRIPTOR;
+#else
+typedef FILEDESCRIPTORA FILEDESCRIPTOR, *LPFILEDESCRIPTOR;
+typedef FILEGROUPDESCRIPTORA FILEGROUPDESCRIPTOR, *LPFILEGROUPDESCRIPTOR;
+#endif
+
+#define FD_CLSID       0x00000001
+#define FD_SIZEPOINT   0x00000002
+#define FD_ATTRIBUTES  0x00000004
+#define FD_CREATETIME  0x00000008
+#define FD_ACCESSTIME  0x00000010
+#define FD_WRITESTIME  0x00000020
+#define FD_FILESIZE    0x00000040
+#define FD_PROGRESSUI  0x00004000
+#define FD_LINKUI      0x00008000
+
+/* Clipboard/drag format names (shlobj.h of the SDK). */
+#define CFSTR_SHELLIDLIST               TEXT("Shell IDList Array")
+#define CFSTR_SHELLIDLISTOFFSET         TEXT("Shell Object Offsets")
+#define CFSTR_NETRESOURCES              TEXT("Net Resource")
+#define CFSTR_FILEDESCRIPTORA           TEXT("FileGroupDescriptor")
+#define CFSTR_FILEDESCRIPTORW           TEXT("FileGroupDescriptorW")
+#define CFSTR_FILECONTENTS              TEXT("FileContents")
+#define CFSTR_FILENAMEA                 TEXT("FileName")
+#define CFSTR_FILENAMEW                 TEXT("FileNameW")
+#define CFSTR_PRINTERGROUP              TEXT("PrinterFriendlyName")
+#define CFSTR_FILENAMEMAPA              TEXT("FileNameMap")
+#define CFSTR_FILENAMEMAPW              TEXT("FileNameMapW")
+#define CFSTR_SHELLURL                  TEXT("UniformResourceLocator")
+#define CFSTR_INETURLA                  CFSTR_SHELLURL
+#define CFSTR_INETURLW                  TEXT("UniformResourceLocatorW")
+#define CFSTR_PREFERREDDROPEFFECT       TEXT("Preferred DropEffect")
+#define CFSTR_PERFORMEDDROPEFFECT       TEXT("Performed DropEffect")
+#define CFSTR_PASTESUCCEEDED            TEXT("Paste Succeeded")
+#define CFSTR_INDRAGLOOP                TEXT("InShellDragLoop")
+#define CFSTR_MOUNTEDVOLUME             TEXT("MountedVolume")
+#define CFSTR_PERSISTEDDATAOBJECT       TEXT("PersistedDataObject")
+#define CFSTR_TARGETCLSID               TEXT("TargetCLSID")
+#define CFSTR_LOGICALPERFORMEDDROPEFFECT TEXT("Logical Performed DropEffect")
+#define CFSTR_AUTOPLAY_SHELLIDLISTS     TEXT("Autoplay Enumerated IDList Array")
+#define CFSTR_UNTRUSTEDDRAGDROP         TEXT("UntrustedDragDrop")
+#define CFSTR_FILE_ATTRIBUTES_ARRAY     TEXT("File Attributes Array")
+#define CFSTR_INVOKECOMMAND_DROPPOSITION TEXT("InvokeCommand DropPosition")
+#define CFSTR_SHELLDROPHANDLER          TEXT("ShellDropHandler")
+#define CFSTR_DROPDESCRIPTION           TEXT("DropDescription")
+#define CFSTR_ZONEIDENTIFIER            TEXT("ZoneIdentifier")
+
+#ifdef UNICODE
+#define CFSTR_FILEDESCRIPTOR  CFSTR_FILEDESCRIPTORW
+#define CFSTR_FILENAME        CFSTR_FILENAMEW
+#define CFSTR_FILENAMEMAP     CFSTR_FILENAMEMAPW
+#define CFSTR_INETURL         CFSTR_INETURLW
+#else
+#define CFSTR_FILEDESCRIPTOR  CFSTR_FILEDESCRIPTORA
+#define CFSTR_FILENAME        CFSTR_FILENAMEA
+#define CFSTR_FILENAMEMAP     CFSTR_FILENAMEMAPA
+#define CFSTR_INETURL         CFSTR_INETURLA
+#endif
+
 #ifndef __IDragSourceHelper_FWD_DEFINED__
 #define __IDragSourceHelper_FWD_DEFINED__
 typedef struct IDragSourceHelper IDragSourceHelper;
@@ -191,6 +299,14 @@ extern "C"
 
 #define CSIDL_PROFILE 0x0028 // USERPROFILE
 
+/* CSIDL_* 的高字节是「标志位」，nFolder 必须先用 CSIDL_FLAG_MASK 掩掉才能比较。 */
+#define CSIDL_FLAG_PER_USER_INIT 0x0800
+#define CSIDL_FLAG_NO_ALIAS      0x1000
+#define CSIDL_FLAG_DONT_UNEXPAND 0x2000
+#define CSIDL_FLAG_DONT_VERIFY   0x4000
+#define CSIDL_FLAG_CREATE        0x8000
+#define CSIDL_FLAG_MASK          0xFF00
+
     BOOL WINAPI SHGetSpecialFolderPathA(HWND hwndOwner, LPSTR lpszPath, int nFolder, BOOL fCreate);
     BOOL WINAPI SHGetSpecialFolderPathW(HWND hwndOwner, LPWSTR lpszPath, int nFolder, BOOL fCreate);
 
@@ -198,6 +314,34 @@ extern "C"
 #define SHGetSpecialFolderPath SHGetSpecialFolderPathW
 #else
 #define SHGetSpecialFolderPath SHGetSpecialFolderPathA
+#endif // UNICODE
+
+/* SHGetFolderPath 的 dwFlags。swinx 两者等价（没有「默认用户」的概念）。 */
+#define SHGFP_TYPE_CURRENT 0
+#define SHGFP_TYPE_DEFAULT 1
+
+    /* 取 CSIDL_* 对应的目录路径。
+     * 返回值与 Win32 一致：成功 S_OK，失败是 HRESULT_FROM_WIN32(错误码)。
+     * nFolder 里的 CSIDL_FLAG_CREATE 会被解释为「目录不存在时创建」。 */
+    HRESULT WINAPI SHGetFolderPathA(HWND hwndOwner, int nFolder, HANDLE hToken, DWORD dwFlags, LPSTR pszPath);
+    HRESULT WINAPI SHGetFolderPathW(HWND hwndOwner, int nFolder, HANDLE hToken, DWORD dwFlags, LPWSTR pszPath);
+
+#ifdef UNICODE
+#define SHGetFolderPath SHGetFolderPathW
+#else
+#define SHGetFolderPath SHGetFolderPathA
+#endif // UNICODE
+
+    /* 递归创建目录（含所有中间目录），成功返回 ERROR_SUCCESS。
+     * hwnd 只用于失败时弹窗，swinx 不弹窗；psa 忽略（无 ACL 概念）。
+     * 返回值是 Win32 错误码，不是 BOOL —— 与 SHGetSpecialFolderPath 不同。 */
+    int WINAPI SHCreateDirectoryExA(HWND hwnd, LPCSTR pszPath, const SECURITY_ATTRIBUTES *psa);
+    int WINAPI SHCreateDirectoryExW(HWND hwnd, LPCWSTR pszPath, const SECURITY_ATTRIBUTES *psa);
+
+#ifdef UNICODE
+#define SHCreateDirectoryEx SHCreateDirectoryExW
+#else
+#define SHCreateDirectoryEx SHCreateDirectoryExA
 #endif // UNICODE
 
 #ifdef __cplusplus

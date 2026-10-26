@@ -95,11 +95,11 @@ BOOL STrayIconMgr::AddIcon(PNOTIFYICONDATAA lpData)
     // The size we pass here is just the initial request; the tray manager will
     // reparent the window into its container and resize it according to its layout.
     const int TRAY_ICON_SIZE = 24;
-    icon->hTray->CreateWindowA(dwExStyle, CLS_WINDOWA, "trayicon", dwStyle, 0, 0, TRAY_ICON_SIZE, TRAY_ICON_SIZE, m_pConn->screen->root, 0, 0);
+    icon->hTray->CreateWindowA(dwExStyle, CLS_WINDOWA, "trayicon", dwStyle, 0, 0, TRAY_ICON_SIZE, TRAY_ICON_SIZE, hwndFromXcb(m_pConn->screen->root), 0, 0);
 
 
     // Set WM_NAME for tooltip
-    xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, icon->hTray->m_hWnd, XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(icon->szTip), icon->szTip);
+    xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, xcbFromHwnd(icon->hTray->m_hWnd), XCB_ATOM_WM_NAME, XCB_ATOM_STRING, 8, strlen(icon->szTip), icon->szTip);
 
     xcb_size_hints_t size_hints = {};
     size_hints.flags = 0x30;  // PMinSize | PMaxSize
@@ -110,7 +110,7 @@ BOOL STrayIconMgr::AddIcon(PNOTIFYICONDATAA lpData)
 
     xcb_change_property(m_pConn->connection,
                         XCB_PROP_MODE_REPLACE,
-                        icon->hTray->m_hWnd,
+                        xcbFromHwnd(icon->hTray->m_hWnd),
                         m_pConn->atoms.WM_NORMAL_HINTS,
                         XCB_ATOM_WM_SIZE_HINTS,
                         32,
@@ -127,7 +127,7 @@ BOOL STrayIconMgr::AddIcon(PNOTIFYICONDATAA lpData)
     trayRequest.type = m_pConn->atoms._NET_SYSTEM_TRAY_OPCODE;
     trayRequest.data.data32[0] = XCB_CURRENT_TIME;
     trayRequest.data.data32[1] = SystemTrayRequestDock;
-    trayRequest.data.data32[2] = icon->hTray->m_hWnd;
+    trayRequest.data.data32[2] = (uint32_t)xcbFromHwnd(icon->hTray->m_hWnd);
     xcb_send_event32(m_pConn->connection, 0, m_trayMgr, XCB_EVENT_MASK_NO_EVENT, trayRequest);
     xcb_flush(m_pConn->connection);
 
@@ -162,7 +162,7 @@ BOOL STrayIconMgr::ModifyIcon(PNOTIFYICONDATAA lpData)
         strcpy_s(icon->szTip, 128, lpData->szTip);
         if (icon->hTray)
         {
-            xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, icon->hTray->m_hWnd, XCB_ATOM_WM_NAME, m_pConn->atoms.UTF8_STRING, 8, strlen(icon->szTip), icon->szTip);
+            xcb_change_property(m_pConn->connection, XCB_PROP_MODE_REPLACE, xcbFromHwnd(icon->hTray->m_hWnd), XCB_ATOM_WM_NAME, m_pConn->atoms.UTF8_STRING, 8, strlen(icon->szTip), icon->szTip);
         }
     }
     if (lpData->uFlags & NIF_INFO)

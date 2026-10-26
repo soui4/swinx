@@ -15,6 +15,22 @@ OVERRIDES = {
     "GetACP":            ("simple", "恒返回 CP_UTF8，swinx 全线采用 UTF-8 口径"),
     "IsValidCodePage":   ("simple", "恒返回 TRUE（配合 UTF-8 口径）"),
     "GetNearestColor":   ("simple", "无调色板概念，原样返回请求颜色"),
+    # ---- 纯分支逻辑，扫描器按"无外部调用"误判成 simple ----
+    "ScriptItemize":     ("impl", "把整串当成一个 run（sScript = SCRIPT_UNDEFINED），不做脚本分段；E_OUTOFMEMORY 表示 run 数组不足 2 项"),
+    "ScriptXtoCP":       ("impl", "按 Advance 累加定位字形，再按「落在字形后半段」给出 trailing 标志"),
+    "CancelIPChangeNotify": ("impl", "从挂起表里摘掉指定的 OVERLAPPED，不存在时返回 FALSE"),
+    "__WSAFDIsSet":      ("impl", "在 fd_array 里线性查表找句柄（Win32 里这个导出名就是给 FD_ISSET 宏调用的）"),
+    # ---- 语义上的显式取舍，扫描器只看函数体分不出来 ----
+    "WSAAsyncSelect":    ("partial", "显式拒绝：返回 WSAEOPNOTSUPP。它要把套接字事件翻译成窗口消息，需要 Winsock 与消息循环的耦合，swinx 没有那条线；吞掉事件比报错更糟"),
+    "WSARecv":           ("impl", "同步语义（多缓冲按序收全）；带 OVERLAPPED 时返回 WSAEOPNOTSUPP —— 没有完成端口，不假装异步"),
+    "WSARecvFrom":       ("impl", "同步语义；带 OVERLAPPED 时返回 WSAEOPNOTSUPP"),
+    "WSASend":           ("impl", "同步语义（多缓冲按序发出）；带 OVERLAPPED 时返回 WSAEOPNOTSUPP"),
+    "WSASendTo":         ("impl", "同步语义，多缓冲拼成一条数据报；带 OVERLAPPED 时返回 WSAEOPNOTSUPP"),
+    "select":            ("impl", "用 poll 实现：Win32 的 fd_set 本来就是句柄数组 + 计数，正好对上 pollfd 数组；三组都为空时按 select 语义纯睡眠等待"),
+    "WSAEventSelect":    ("impl", "后台线程 20ms 轮询就绪位并 SetEvent；同时把套接字切成非阻塞（这是接口契约，不是副作用）"),
+    "getaddrinfo":       ("impl", "结果是一条 malloc 块（每节 ADDRINFOA + SOCKADDR_STORAGE + canonname），freeaddrinfo 因此就是一次 free，与 Win32 的所有权约定一致"),
+    "WSAGetLastError":   ("simple", "返回线程局部的 WSA 错误码"),
+    "WSASetLastError":   ("simple", "写入线程局部的 WSA 错误码"),
     "ExitThread":        ("simple", "记录线程退出码供 GetExitCodeThread 查询；不支持在任意位置强制终止线程"),
     "DbgBreakPoint":     ("simple", "实现为 assert(0) 调试断言"),
     "SetLastError":      ("simple", "以线程局部 errno 模拟 last-error，错误码语义与 Win32 不完全一致"),
@@ -47,9 +63,10 @@ OVERRIDES = {
     "SelectPalette":           ("stub", "恒返回 NULL（无调色板概念）"),
     "SendNotifyMessageA":      ("stub", "恒返回 FALSE，不投递消息"),
     "SendNotifyMessageW":      ("stub", "恒返回 FALSE，不投递消息"),
-    "SetGraphicsMode":         ("stub", "恒返回 0（仅支持默认图形模式）"),
+    "SetGraphicsMode":         ("simple", "记录并返回旧的 graphicsMode，GM_ADVANCED / GM_COMPATIBLE 下绘制结果一致（world transform 始终直接合成进后端 CTM）。NULL HDC 必须按 Win32 语义置 ERROR_INVALID_HANDLE 并返回 0 而不解引用——WebKit 的 syncContext() 对 ImageBuffer 就是这么调的；也必须返回成功，否则 cairo 的 _get_global_font_dc() 认定 DC 不可用而丢弃它，留下悬空静态句柄"),
+    "GetGraphicsMode":         ("simple", "读取 DC 记录的 graphicsMode（纯状态存取，两种模式行为相同）；NULL HDC 返回 0"),
     "SetMenuItemBitmaps":      ("stub", "恒返回 FALSE，不支持菜单项位图"),
-    "SetStretchBltMode":       ("stub", "空操作（拉伸模式仅一种）"),
+    "SetStretchBltMode":       ("stub", "两个后端都只返回 COLORONCOLOR：拉伸采样由 cairo / CoreGraphics 决定，没有可切换的拉伸算法；调用方设置的黑白/颜色模式不会被记住"),
     "SetWindowExtEx":          ("stub", "恒返回 FALSE，不支持窗口坐标 extents 变换"),
     "TerminateThread":         ("stub", "恒返回 0，不强制终止线程（Win32 本身也强烈不建议使用）"),
     # ---- 备注补充（级别不变） ----
@@ -61,6 +78,40 @@ OVERRIDES = {
     "GetGdiObjPtr":    ("impl", "GDI 句柄表内部辅助"),
     "SetGdiObjPtr":    ("impl", "GDI 句柄表内部辅助"),
     "PlatformAPI_Deinit": ("impl", "平台注入接口内部辅助"),
+    # ---- 路径与 Shell 组（2025 补充） ----
+    # 扫描器按「函数体里没有外部调用」把它判成简单实现，实际是逐位分类的完整实现
+    "PathGetCharTypeW": ("impl", "按 GCT_* 位组合对单个字符分类：分隔符 / 通配符 / 非法字符 / 长文件名 / 短文件名"),
+    # swinx 没有注册表后端，这两个是「如实报告没有」的语义桩
+    "SHGetValueA": ("stub", "恒返回 ERROR_FILE_NOT_FOUND，pdwType/pcbData 置 0：swinx 无注册表后端（见 ADVAPI32 说明），调用方会走各自的回退分支"),
+    "SHGetValueW": ("stub", "同上"),
+    # 属性 / 显示名 / 类型名如实提供，图标受限于「无系统图像列表、不解析 PE 资源段」
+    "SHGetFileInfoA": ("partial", "填 dwAttributes / szDisplayName / szTypeName；SHGFI_ICON 仅当路径本身是 .ico / .cur 时成功，目录与 PE 无图标可给（返回 0）"),
+    "SHGetFileInfoW": ("partial", "同上"),
+    "ExtractIconExA": ("partial", "只能取出下标 0、且文件本身是 .ico / .cur 的图标；无资源序号枚举能力。返回值仍按 Win32 语义给出文件内的图标个数（非图像文件为 0）"),
+    "ExtractIconExW": ("partial", "同上"),
+    # ---- WKE / WebKit 适配补充（2026-10 扫描核定） ----
+    # 内存字体只在 CoreText 后端有定义：两个后端的同名符号是「分目录实现、链接期解析」，
+    # 缺一个后端定义就是链接错误而不是运行期降级，必须显式登记。
+    "AddFontMemResourceEx":    ("impl", "仅 CoreText 后端（src/gdi/apple/gdi.cpp）有定义：CGFont 从内存缓冲建出后经 CTFontManagerRegisterGraphicsFont 注册，*pNumFonts 返回 1，句柄是 FontMemResource*。**cairo 后端没有同名实现，Linux 上引用即链接失败**"),
+    "RemoveFontMemResourceEx": ("impl", "仅 CoreText 后端有定义：CTFontManagerUnregisterGraphicsFont + CGFontRelease + delete，句柄为 AddFontMemResourceEx 的返回值"),
+    "ExtEscape":               ("stub", "恒返回 0（含 QUERYESCSUPPORT 探测）：本层没有打印机转义通道，如实报「不支持」比伪造成功安全"),
+    "FormatMessageA":          ("partial", "无 Windows 系统消息表：FORMAT_MESSAGE_FROM_SYSTEM 把 dwMessageId 当 errno 交给 strerror，其余来源统一返回 \"unknown error <id>\"；忽略 FROM_STRING / FROM_HMODULE / ARGUMENT_LIST，FORMAT_MESSAGE_ALLOCATE_BUFFER 用 LocalAlloc 兑现「调用方 LocalFree」的所有权约定"),
+    "FormatMessageW":          ("partial", "同上，输出侧按 WCHAR 宽度转换（macOS 的 wchar_t 是 4 字节）"),
+    "GdiFlush":                ("simple", "恒返回 TRUE：cairo/xcb 与 CoreGraphics 的绘制都是同步下发，没有待冲刷的 GDI 队列。WebKit 只把它当成功标志用"),
+    "GetCharWidth32A":         ("simple", "转发 GetCharWidthA：Win32 里 32 位版本与旧版语义相同，只是宽度按 32 位整数给出"),
+    "GetCharWidth32W":         ("simple", "转发 GetCharWidthW"),
+    "GetCharacterPlacementA":  ("partial", "ANSI 入参按 UTF-8 转宽字符后复用 W 版实现"),
+    "GetCharacterPlacementW":  ("partial", "逐字符 charmap + horiAdvance 累加：不做连字 / 字距 / bidi / kinsoku，dwFlags 全部忽略；按 nMaxExtent 截断并回填 nMaxFit，lpDx/lpGlyphs 缓冲不足时按 Win32 约定把 lpGlyphs 置 NULL 并回传所需数量；返回值按 Win32 打包——低 16 位是总宽度、高 16 位是拟合字数"),
+    "GetFontData":             ("impl", "只读 sfnt 表（非 sfnt 字体与 dwTable=0 的「整文件」请求返回 GDI_ERROR，因此 Type1 判定恒为 false）。GDI 的 dwTable 是 MAKEFOURCC 口径（首字符在最低字节），FreeType 的 FT_MAKE_TAG 相反，实现先按 Win32 口径翻转查一次、失败再用原值查一次，两种写法都接受"),
+    "GetGuiResources":         ("impl", "GR_GDIOBJECTS 返回 swinx 自己登记的 GDI 句柄计数（供 WebCore 的 GDIObjectCounter 做 Debug 泄漏观察）；GR_USEROBJECTS 未统计，恒返回 0。hProcess 只可能来自 GetCurrentProcess()，不校验"),
+    "GetMapMode":              ("simple", "恒返回 MM_TEXT（唯一支持的映射模式），NULL HDC 返回 0"),
+    "SetMapMode":              ("simple", "只接受 MM_TEXT 并返回它，其它模式返回 0 且不改变状态——逻辑单位 = 设备像素是本层所有绘制的前提"),
+    "GetThreadContext":        ("partial", "仅 x86_64 给出寄存器：Linux 读 SuspendThread 用 SIGPARK 挂起时快照的 ucontext（只在挂起期间有意义，未挂起返回 FALSE），macOS x86_64 走 thread_get_state；其它架构如实返回 FALSE，绝不给伪造的 Rsp（WebCore 的 MachineStackMarker 会从这个指针开始扫栈）"),
+    "QueryInterface":          ("impl", "COM 方法而非 Win32 导出 API：这里统计的是 IMalloc（src/malloc_impl.cpp，CoGetMalloc 的可替换分配器）与 macOS 可访问性对象的实现"),
+    "WidenPath":               ("stub", "恒返回 FALSE：路径转轮廓只在 Win32 打印路径上被用到，本层没有打印机 DC"),
+    "_chsize_s":               ("impl", "ftruncate；失败时把 errno 作为 errno_t 返回，0 表示成功"),
+    "_ftime":                  ("simple", "gettimeofday 填 time/millitm，timezone 与 dstflag 恒 0（不做本地时区换算）"),
+    "_vsnprintf":              ("impl", "转发 vsnprintf，并按 MSVC 约定「截断时返回 -1」；判据是应写长度 > size，因此「应写长度恰好等于 size」（少一个结尾 NUL）这一边界仍返回该长度而非 -1"),
 }
 
 # ---------------- 模块归类（按主导头文件） ----------------
@@ -137,7 +188,7 @@ A = lines.append
 
 A("# swinx API 实现清单")
 A("")
-A("> **代码基线**：swinx @ 2026-09-09（fun_test 269 用例全部通过）  ")
+A("> **代码基线**：swinx @ 2026-10-26（soui4 无头门禁 504 用例全部通过；主进程 valgrind `definitely lost: 0`）  ")
 A("> **统计口径**：以 `swinx/include/*.h` 对外声明的 Win32 兼容函数为准，在 `swinx/src/**` 中定位定义并按函数体核定实现程度。宏与头内 inline（`LOWORD`、`HIWORD`、`SNDMSG`、`IsEqualGUID`、`DEFINE_GUID` 等）不计入。  ")
 A("> **本文由扫描工具生成后人工核定**：工具见 `doc/tools/api_scan.py`（扫描）、`doc/tools/api_verify.py`（明细核对）。")
 A("")
@@ -272,15 +323,18 @@ A("")
 # ---- 平台注入接口 ----
 A("## 7. 平台注入接口（platform_api.h）")
 A("")
-A("swinx 将与宿主平台强相关的能力抽象为 C 结构体函数指针表（`PLATFORM_API_VERSION 2`），由各平台后端（`src/platform/{cocoa,linux,ios,mobile}`）在启动时填充：")
+A("swinx 将与宿主平台强相关的能力抽象为 C 结构体函数指针表（`PLATFORM_API_VERSION 4`），由各平台后端（`src/platform/{cocoa,linux,ios,mobile}`）在启动时填充，Android / OHOS 由宿主应用经 `PlatformAPI_Init` 注入：")
 A("")
 A("| 接口组 | 职责 |")
 A("|---|---|")
 A("| `PlatformClipboardAPI` | 剪切板开关/读写/格式注册 |")
 A("| `PlatformWindowAPI` | 原生窗口创建销毁、位置尺寸、可见性、焦点、捕获、屏幕/DPI/光标、RawInput、软键盘 |")
 A("| `PlatformIMEAPI` | 输入法上下文与组合字符串 |")
+A("| `PlatformAudioAPI` | `PlaySound` / `MessageBeep` 的宿主发声通道（Android / OHOS 无本地音频栈） |")
+A("| `PlatformPathAPI` | `GetTempPathA` / `SHGetSpecialFolderPathA` 的路径来源（沙箱内没有 Win32 目录概念，路径按 UTF-8 返回） |")
+A("| `PlatformShellAPI` | `ShellExecute` 的平台回调：swinx 侧没有 JNI / N-API 通道，打开 URL 或文件必须交宿主应用（Android Intent、OHOS Want） |")
 A("")
-A("这些函数指针不是对外 Win32 API，而是 swinx 内核的平台后端契约；宿主不填充时对应能力降级为空实现。")
+A("这些函数指针不是对外 Win32 API，而是 swinx 内核的平台后端契约；宿主不填充时对应能力降级为失败返回（不是崩溃，也不假装成功）。`version` 字段用于结构体演进时的兼容校验。")
 A("")
 A("## 8. 维护说明")
 A("")
@@ -288,6 +342,7 @@ A("- 重新生成统计数据：`python doc/tools/api_scan.py`（产出 `api_sca
 A("- CI 门禁（只读源码比对、不写盘，清单与源码不同步即失败）：`python doc/tools/api_scan.py --check`")
 A("- 核对个别函数实现：`python doc/tools/api_verify.py`（打印 stub/partial 函数体）")
 A("- 人工覆盖分级或备注：编辑本脚本内的 `OVERRIDES` 表后重新运行 `python doc/tools/gen_doc.py`")
+A("- **后端对称性需人工核对**：`src/gdi/{cairo,apple}`、`src/platform/*` 是同名符号分目录实现、链接期解析，扫描器只报告定义出现在哪些文件。新增 GDI/平台 API 时要在**两个后端都给出定义**（没有能力就给显式拒绝的桩），否则该平台是链接错误而不是运行期降级；当前已知不对称项：`AddFontMemResourceEx` / `RemoveFontMemResourceEx` 只有 CoreText 后端")
 A("- 本文统计不含 `thirdparty/`（expat、zlib 等第三方库自身的 API）")
 
 out_path = os.path.join(os.path.dirname(HERE), "swinx-API实现清单.md")

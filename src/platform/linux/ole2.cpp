@@ -152,7 +152,7 @@ void WINAPI ReleaseStgMedium(STGMEDIUM *pmedium)
 
 HANDLE WINAPI OleDuplicateData(HANDLE hSrc, CLIPFORMAT cfFormat, UINT uiFlags){
     if(cfFormat == CF_BITMAP){
-        return RefGdiObj(hSrc);
+        return (HANDLE)RefGdiObj(hSrc);
     }else if(cfFormat == CF_HDROP || cfFormat == CF_LOCALE){
         HGLOBAL hSrc2=(HGLOBAL)hSrc;
         int szSrc = GlobalSize(hSrc2);

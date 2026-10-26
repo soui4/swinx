@@ -50,7 +50,7 @@ BOOL BuiltinImage::Init()
         MemBlock memBlock = { cfg100[i].buf, cfg100[i].bufLen, 0 };
         cairo_surface_t *surf = cairo_image_surface_create_from_png_stream(read_png_from_memory, &memBlock);
         assert(surf);
-        m_biInfo100[i].hBmp = InitGdiObj(OBJ_BITMAP, surf);
+        m_biInfo100[i].hBmp = (HBITMAP)InitGdiObj(OBJ_BITMAP, surf);
         m_biInfo100[i].states = cfg100[i].states;
         m_biInfo100[i].expendMode = cfg100[i].expandMode;
         m_biInfo100[i].margin = cfg100[i].margin;
@@ -65,7 +65,7 @@ BOOL BuiltinImage::Init()
         MemBlock memBlock = { cfg200[i].buf, cfg200[i].bufLen, 0 };
         cairo_surface_t *surf = cairo_image_surface_create_from_png_stream(read_png_from_memory, &memBlock);
         assert(surf);
-        m_biInfo200[i].hBmp = InitGdiObj(OBJ_BITMAP, surf);
+        m_biInfo200[i].hBmp = (HBITMAP)InitGdiObj(OBJ_BITMAP, surf);
         m_biInfo200[i].states = cfg200[i].states;
         m_biInfo200[i].expendMode = cfg200[i].expandMode;
         m_biInfo200[i].margin = cfg200[i].margin;

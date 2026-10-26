@@ -455,9 +455,9 @@ static void REGION_Free(void *ptr)
     free_region(rgn);
 }
 
-static HGDIOBJ alloc_gdi_handle(void *ptr, int type)
+static HRGN alloc_gdi_handle(void *ptr, int type)
 {
-    return InitHandle(type, ptr, REGION_Free);
+    return (HRGN)InitHandle(type, ptr, REGION_Free);
 }
 
 /***********************************************************************

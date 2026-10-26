@@ -1,4 +1,4 @@
-#include <sfr_config.h>
+﻿#include <sfr_config.h>
 #include <windows.h>
 #include <wnd.h>
 #include <map>
@@ -109,7 +109,7 @@ static BOOL InitWndDC(HWND hwnd, int cx, int cy)
     WndObj wndObj = WndMgr::fromHwnd(hwnd);
     assert(wndObj);
     cairo_surface_t *surface = wndObj->mConnection->CreateWindowSurface(hwnd, wndObj->visualId, cx, cy);
-    wndObj->bmp = InitGdiObj(OBJ_BITMAP, surface);
+    wndObj->bmp = (HBITMAP)InitGdiObj(OBJ_BITMAP, surface);
     wndObj->hdc = new _SDC(hwnd);
     SelectObject(wndObj->hdc, wndObj->bmp);
     return TRUE;
@@ -439,7 +439,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     {
         pWnd->hSysMenu = CreatePopupMenu();
     }
-    SetWindowLongPtrA(hWnd, GWLP_ID, cs->hMenu);
+    SetWindowLongPtrA(hWnd, GWLP_ID, (LONG_PTR)cs->hMenu);
     if (!(cs->style & WS_CHILD))
         SetParent(hWnd, cs->hwndParent);
     InitWndDC(hWnd, cs->cx, cs->cy);
@@ -664,8 +664,8 @@ HWND SetCapture(HWND hWnd)
     if (oldCapture != hWnd)
     {
         if (oldCapture)
-            SendMessage(oldCapture, WM_CAPTURECHANGED, 0, hWnd);
-        SendMessage(hWnd, WM_CAPTURECHANGED, 0, hWnd);
+            SendMessage(oldCapture, WM_CAPTURECHANGED, 0, (LPARAM)hWnd);
+        SendMessage(hWnd, WM_CAPTURECHANGED, 0, (LPARAM)hWnd);
         // SLOG_FMTI("SetCapture hWnd=%d",(int)hWnd);
     }
     return oldCapture;
@@ -906,10 +906,10 @@ static BOOL ActiveWindow(HWND hWnd, BOOL bMouseActive, UINT msg, UINT htCode)
         {
             if (!wndObj->mConnection->SetActiveWindow(hWnd))
                 return FALSE;
-            SendMessageA(hWnd, WM_ACTIVATE, bMouseActive ? WA_CLICKACTIVE : WA_ACTIVE, oldActive);
+            SendMessageA(hWnd, WM_ACTIVATE, bMouseActive ? WA_CLICKACTIVE : WA_ACTIVE, (LPARAM)oldActive);
             if (IsWindow(oldActive))
             {
-                SendMessageA(oldActive, WM_ACTIVATE, WA_INACTIVE, hWnd);
+                SendMessageA(oldActive, WM_ACTIVATE, WA_INACTIVE, (LPARAM)hWnd);
             }
         }
         bRet = maRet == MA_ACTIVATEANDEAT || maRet == MA_NOACTIVATEANDEAT;
@@ -1116,7 +1116,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
                 }
             }
 #endif
-            if (CallWindowObjProc(wndObj, proc, hWnd, WM_SETCURSOR, hWnd, htCode) == 0)
+            if (CallWindowObjProc(wndObj, proc, hWnd, WM_SETCURSOR, (WPARAM)hWnd, htCode) == 0)
             {
                 UpdateWindowCursor(wndObj, hWnd, htCode);
             }
@@ -1230,7 +1230,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
         HDC hdc = GetDC(hWnd);
         if (lp)
         {
-            HGDIOBJ hrgn = (HGDIOBJ)lp;
+            HRGN hrgn = (HRGN)lp;
             int cxEdge = GetSystemMetrics(SM_CXEDGE);
             int cyEdge = GetSystemMetrics(SM_CYEDGE);
             if (wndObj->dwStyle & WS_BORDER)
@@ -1417,7 +1417,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     else if (msg == WM_DESTROY)
     {
         // auto destroy all popup that owned by this
-        EnumWindows(Enum4DestroyOwned, hWnd);
+        EnumWindows(Enum4DestroyOwned, (LPARAM)hWnd);
         // auto destory all children
         HWND hChild = GetWindow(hWnd, GW_CHILDLAST);
         while (hChild)
@@ -1960,7 +1960,7 @@ static LONG_PTR GetWindowLongSize(HWND hWnd, int nIndex, uint32_t size)
     case GWL_HINSTANCE:
         return (LONG_PTR)wndObj->hInstance;
     case GWL_HWNDPARENT:
-        return wndObj->parent;
+        return (LONG_PTR)wndObj->parent;
     case GWL_ID:
         return wndObj->wIDmenu;
     case GWL_USERDATA:
@@ -2000,7 +2000,7 @@ static LONG_PTR SetWindowLongSize(HWND hWnd, int nIndex, LONG_PTR data, uint32_t
         wndObj->hInstance = (HINSTANCE)data;
         break;
     case GWL_HWNDPARENT:
-        wndObj->parent = data;
+        wndObj->parent = (HWND)data;
         break;
     case GWL_ID:
         wndObj->wIDmenu = data;
@@ -2318,7 +2318,7 @@ HWND SetParent(HWND hWnd, HWND hParent)
     if (!wndObj)
         return 0;
     wndObj->mConnection->SetParent(hWnd, wndObj.data(), hParent);
-    HWND hOld = (HWND)SetWindowLongPtrA(hWnd, GWLP_HWNDPARENT, hParent);
+    HWND hOld = (HWND)SetWindowLongPtrA(hWnd, GWLP_HWNDPARENT, (LONG_PTR)hParent);
     /* 换了父窗口：客户区裁剪的基准跟着换 */
     SbRefreshWindowClip(hWnd, FALSE);
     SbRefreshChildClips(hWnd);
@@ -2759,7 +2759,7 @@ static LRESULT handlePrint(HWND hWnd, WPARAM wp, LPARAM lp)
                 HBITMAP bmp = CreateCompatibleBitmap(memdc, rcSb.right - rcSb.left, rcSb.bottom - rcSb.top);
                 HGDIOBJ oldBmp = SelectObject(memdc, bmp);
                 SetViewportOrgEx(memdc, -rcSb.left, -rcSb.top, NULL);
-                FillRect(memdc, &rcSb, GetStockObject(WHITE_BRUSH)); // init alpha channel to 255
+                FillRect(memdc, &rcSb, (HBRUSH)GetStockObject(WHITE_BRUSH)); // init alpha channel to 255
                 {
                     RECT rc = GetScrollBarPartRect(TRUE, &sb, SB_LINELEFT, &rcSb);
                     int st = GetScrollBarPartState(&sb, SB_LINELEFT);
@@ -2794,7 +2794,7 @@ static LRESULT handlePrint(HWND hWnd, WPARAM wp, LPARAM lp)
                 HBITMAP bmp = CreateCompatibleBitmap(memdc, rcSb.right - rcSb.left, rcSb.bottom - rcSb.top);
                 HGDIOBJ oldBmp = SelectObject(memdc, bmp);
                 SetViewportOrgEx(memdc, -rcSb.left, -rcSb.top, NULL);
-                FillRect(memdc, &rcSb, GetStockObject(BLACK_BRUSH)); // init alpha channel to 255
+                FillRect(memdc, &rcSb, (HBRUSH)GetStockObject(BLACK_BRUSH)); // init alpha channel to 255
                 {
                     RECT rc = GetScrollBarPartRect(FALSE, &sb, SB_LINELEFT, &rcSb);
                     int st = GetScrollBarPartState(&sb, SB_LINELEFT);
@@ -3958,6 +3958,131 @@ int WINAPI GetDlgCtrlID(HWND hWnd)
     if (!(wndObj->dwStyle & WS_CHILD))
         return 0;
     return wndObj->wIDmenu;
+}
+
+/* ---- 窗口属性：GetProp / SetProp / RemoveProp ------------------------------
+ * Win32 用「一个键对一个值」的窗口级映射承载插件/控件的私有指针。键可以是
+ * 字符串（按内容比较），也可以是 GlobalAddAtom 返回的原子值（取值 <= 0xFFFF，
+ * 按数值比较）。值由调用方拥有：swinx 只保存映射，窗口销毁时一并丢弃，
+ * 不负责释放——与 Win32 语义一致。
+ * swinx 的 A 版本按 UTF-8 解释字符串，与其它 A 系 API 保持一致。 */
+
+static bool _isAtomPropKey(const void *key)
+{
+    return (UINT_PTR)key <= 0xFFFF;
+}
+
+static std::wstring _propKeyFromUtf8(LPCSTR name)
+{
+    std::wstring ret;
+    if (!name)
+        return ret;
+    int n = MultiByteToWideChar(CP_UTF8, 0, name, -1, nullptr, 0);
+    if (n <= 1)
+        return ret;
+    std::vector<wchar_t> buf((size_t)n);
+    MultiByteToWideChar(CP_UTF8, 0, name, -1, &buf[0], n);
+    ret.assign(&buf[0]);
+    return ret;
+}
+
+static void *_getPropImpl(_Window *wnd, const std::wstring &name, const void *key)
+{
+    if (_isAtomPropKey(key))
+    {
+        std::map<UINT, void *>::iterator it = wnd->atomProps.find((UINT)(UINT_PTR)key);
+        return it == wnd->atomProps.end() ? nullptr : it->second;
+    }
+    std::map<std::wstring, void *>::iterator it = wnd->props.find(name);
+    return it == wnd->props.end() ? nullptr : it->second;
+}
+
+static BOOL _setPropImpl(_Window *wnd, const std::wstring &name, const void *key, void *hData)
+{
+    if (_isAtomPropKey(key))
+    {
+        UINT atom = (UINT)(UINT_PTR)key;
+        if (hData)
+            wnd->atomProps[atom] = hData;
+        else
+            wnd->atomProps.erase(atom);
+        return TRUE;
+    }
+    if (hData)
+        wnd->props[name] = hData;
+    else
+        wnd->props.erase(name);
+    return TRUE;
+}
+
+static void *_removePropImpl(_Window *wnd, const std::wstring &name, const void *key)
+{
+    void *ret = _getPropImpl(wnd, name, key);
+    if (_isAtomPropKey(key))
+        wnd->atomProps.erase((UINT)(UINT_PTR)key);
+    else
+        wnd->props.erase(name);
+    return ret;
+}
+
+void *GetPropW(HWND hWnd, LPCWSTR lpString)
+{
+    if (!lpString)
+        return nullptr;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return nullptr;
+    return _getPropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : std::wstring(lpString), lpString);
+}
+
+void *GetPropA(HWND hWnd, LPCSTR lpString)
+{
+    if (!lpString)
+        return nullptr;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return nullptr;
+    return _getPropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : _propKeyFromUtf8(lpString), lpString);
+}
+
+BOOL SetPropW(HWND hWnd, LPCWSTR lpString, void *hData)
+{
+    if (!lpString)
+        return FALSE;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return FALSE;
+    return _setPropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : std::wstring(lpString), lpString, hData);
+}
+
+BOOL SetPropA(HWND hWnd, LPCSTR lpString, void *hData)
+{
+    if (!lpString)
+        return FALSE;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return FALSE;
+    return _setPropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : _propKeyFromUtf8(lpString), lpString, hData);
+}
+
+void *RemovePropW(HWND hWnd, LPCWSTR lpString)
+{
+    if (!lpString)
+        return nullptr;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return nullptr;
+    return _removePropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : std::wstring(lpString), lpString);
+}
+
+void *RemovePropA(HWND hWnd, LPCSTR lpString)
+{
+    if (!lpString)
+        return nullptr;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return nullptr;
+    return _removePropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : _propKeyFromUtf8(lpString), lpString);
 }
 
 LONG WINAPI GetMessageTime(VOID)

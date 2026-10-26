@@ -5,15 +5,16 @@
 #include <CoreGraphics/CoreGraphics.h>
 #endif
 #include "log.h"
+#include "handle.h"
 #define kLogTag "sdc"
 
 struct DCState
 {
     DCState(HPEN _hpen, HBRUSH _hbr, HFONT _hfont)
     {
-        pen = RefGdiObj(_hpen);
-        brush = RefGdiObj(_hbr);
-        hfont = RefGdiObj(_hfont);
+        pen = (HPEN)RefGdiObj(_hpen);
+        brush = (HBRUSH)RefGdiObj(_hbr);
+        hfont = (HFONT)RefGdiObj(_hfont);
     }
     ~DCState()
     {
@@ -41,31 +42,35 @@ struct DCState
     UINT textAlign;
     int rop2;
     int polyFillMode;
+    int graphicsMode;
     POINT brushOrg;
 };
 
-_SDC::_SDC(HWND _hwnd)
+HDC__::HDC__(HWND _hwnd)
     : hwnd(_hwnd)
-    , bmp(GetStockObject(NULL_BITMAP))
+    , bmp((HBITMAP)GetStockObject(NULL_BITMAP))
     , crText(RGBA(0, 0, 0, 0xff))
     , crBk(RGBA(255, 255, 255, 255))
-    , pen(GetStockObject(BLACK_PEN))
-    , brush(GetStockObject(WHITE_BRUSH))
-    , hfont(GetStockObject(SYSTEM_FONT))
+    , pen((HPEN)GetStockObject(BLACK_PEN))
+    , brush((HBRUSH)GetStockObject(WHITE_BRUSH))
+    , hfont((HFONT)GetStockObject(SYSTEM_FONT))
     , uGetFlags(0)
     , bkMode(OPAQUE)
     , nSave(0)
     , textAlign(TA_TOP | TA_LEFT)
     , rop2(R2_EXT_OVER)
     , polyFillMode(ALTERNATE)
+    , graphicsMode(GM_COMPATIBLE)
     , brushOrg({ 0, 0 })
-    , pathRecording(FALSE)
 #ifdef __OHOS__
     , hasDirty(FALSE)
     , dirtyRect({ 0, 0, 0, 0 })
 #endif
+    , pathRecording(FALSE)
+    , recording(nullptr)
 {
     ptOrigin.x = ptOrigin.y = 0;
+    AddSwinxGdiObject();
 #if defined(__APPLE__)
     cgCtx = nullptr;
     cgCtxOwned = FALSE;
@@ -80,9 +85,16 @@ _SDC::_SDC(HWND _hwnd)
     SLOG_STMD() << "new sdc:" << this;
 }
 
-_SDC::~_SDC()
+HDC__::~HDC__()
 {
     SLOG_STMD() << "delete sdc:" << this;
+    ReleaseSwinxGdiObject();
+    // 录制 DC 未走 CloseEnhMetaFile 就被销毁：释放录制缓冲，避免泄漏
+    if (recording)
+    {
+        DeleteObject(recording);
+        recording = nullptr;
+    }
 #if defined(__APPLE__)
     if (recordedPath)
         CFRelease(recordedPath);
@@ -97,12 +109,12 @@ _SDC::~_SDC()
 #endif
 }
 
-int _SDC::SaveState()
+int HDC__::SaveState()
 {
 #if defined(__APPLE__)
     if (!cgCtx)
         return 0;
-    auto state = std::make_shared<DCState>(pen, brush, hfont);
+    auto state = std::make_shared<DCState>((HPEN)pen, (HBRUSH)brush, (HFONT)hfont);
     state->ptOrigin = ptOrigin;
     state->worldMtx = *worldMtx;
     state->miterLimit = miterLimit;
@@ -112,15 +124,18 @@ int _SDC::SaveState()
     state->textAlign = textAlign;
     state->rop2 = rop2;
     state->polyFillMode = polyFillMode;
+    state->graphicsMode = graphicsMode;
     state->brushOrg = brushOrg;
     stateStack.push_back(state);
     CGContextSaveGState(cgCtx);
-    return nSave++;
+    // Win32 SaveDC returns a nonzero identifier (the first save returns 1);
+    // callers such as cairo treat 0 as failure, so the counter is 1-based.
+    return ++nSave;
 #else
     if (!cairo)
         return 0;
 
-    auto state = std::make_shared<DCState>(pen, brush, hfont);
+    auto state = std::make_shared<DCState>((HPEN)pen, (HBRUSH)brush, (HFONT)hfont);
     state->ptOrigin = ptOrigin;
     state->mtx = mtx;
     state->crText = crText;
@@ -129,11 +144,13 @@ int _SDC::SaveState()
     state->textAlign = textAlign;
     state->rop2 = rop2;
     state->polyFillMode = polyFillMode;
+    state->graphicsMode = graphicsMode;
     state->brushOrg = brushOrg;
 
     stateStack.push_back(state);
     cairo_save(cairo);
-    return nSave++;
+    // See the APPLE branch: the identifier returned by SaveDC is 1-based.
+    return ++nSave;
 #endif
 }
 
@@ -148,6 +165,7 @@ static void _RestoreState(_SDC *dc, const std::shared_ptr<DCState> &state)
     dc->textAlign = state->textAlign;
     dc->rop2 = state->rop2;
     dc->polyFillMode = state->polyFillMode;
+    dc->graphicsMode = state->graphicsMode;
     dc->brushOrg = state->brushOrg;
     dc->ptOrigin = state->ptOrigin;
 #if defined(__APPLE__)
@@ -161,7 +179,7 @@ static void _RestoreState(_SDC *dc, const std::shared_ptr<DCState> &state)
 #endif
 }
 
-BOOL _SDC::RestoreState(int nState)
+BOOL HDC__::RestoreState(int nState)
 {
 #if defined(__APPLE__)
     if (!cgCtx)
@@ -170,7 +188,7 @@ BOOL _SDC::RestoreState(int nState)
     if (!cairo)
         return FALSE;
 #endif
-    if (nState >= nSave)
+    if (nState > nSave)
         return FALSE;
 
     if (nState < 0)
@@ -184,7 +202,9 @@ BOOL _SDC::RestoreState(int nState)
     }
     else
     {
-        while (nSave > nState)
+        // Saved state N is the one recorded by SaveState() while nSave was N-1,
+        // so restoring it unwinds to level N-1.
+        while (nSave >= nState)
         {
             if (stateStack.empty())
                 return FALSE;

@@ -169,7 +169,7 @@ SConnection::RegisterVirtualHWND(UINT_PTR externalId, HWND hParent, DWORD dwStyl
     int cy = prc->bottom-prc->top;
     SetWindowLongPtrA(hWnd, GWLP_ID, ctrlId);
     cairo_surface_t *surface = pConn->CreateWindowSurface(hWnd, 0, cx, cy);
-    pWnd->bmp = InitGdiObj(OBJ_BITMAP, surface);
+    pWnd->bmp = (HBITMAP)InitGdiObj(OBJ_BITMAP, surface);
     pWnd->hdc = new _SDC(hWnd);
     SelectObject(pWnd->hdc, pWnd->bmp);
     SLOG_STMI()<<"Registered virtual HWND:"<<externalId;
@@ -1022,7 +1022,7 @@ BOOL SConnection::CreateCaret(HWND hWnd, HBITMAP hBitmap, int nWidth, int nHeigh
 {
     DestroyCaret();
     m_caretInfo.hOwner = hWnd;
-    m_caretInfo.hBmp = RefGdiObj(hBitmap == (HBITMAP)1 ? nullptr : hBitmap);
+    m_caretInfo.hBmp = (HBITMAP)RefGdiObj(hBitmap == (HBITMAP)1 ? nullptr : hBitmap);
     m_caretInfo.nWidth = nWidth;
     m_caretInfo.nHeight = nHeight;
     return TRUE;
@@ -1149,7 +1149,7 @@ HWND SConnection::OnWindowCreate(_Window *wnd, CREATESTRUCT *cs, int)
         // 12 参与 Win32 CreateWindowEx / platform_api.h PlatformWindowAPI::createWindow 完全对齐。
         // 关键：HMENU hMenu 在 WS_CHILD 子窗口语义 == 子窗口控件 ID（GetDlgCtrlID/事件映射
         // 按 ID 匹配依赖此字段），必须原封下传到各平台实现。
-        hWnd = (HWND)g_platformAPI.window.createWindow(reinterpret_cast<UINT_PTR>(cs->hwndParent),
+        hWnd = reinterpret_cast<HWND>(g_platformAPI.window.createWindow(reinterpret_cast<UINT_PTR>(cs->hwndParent),
                                                         cs->lpszClass,
                                                         cs->lpszName,
                                                         cs->style,
@@ -1157,7 +1157,7 @@ HWND SConnection::OnWindowCreate(_Window *wnd, CREATESTRUCT *cs, int)
                                                         cs->x, cs->y, cs->cx, cs->cy,
                                                         reinterpret_cast<UINT_PTR>(cs->hMenu),
                                                         reinterpret_cast<UINT_PTR>(cs->hInstance),
-                                                        cs->lpCreateParams);
+                                                        cs->lpCreateParams));
         if (!hWnd)
         {
             SLOG_FMTD("native window created via platform API failed: parent=%p style=0x%x cls=%s id(menu)=%p",

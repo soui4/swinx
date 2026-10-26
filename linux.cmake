@@ -73,6 +73,8 @@ endif()
 
 target_link_libraries(swinx
     cairo              # Our internal cairo target
+    fontconfig         # Needed by src/gdi/cairo/fontapi.cpp / src/gdi/cairo
+    freetype           # Needed by src/gdi/cairo/fontapi.cpp (glyph / metrics queries)
     xkbcommon          # Our internal xkbcommon target
     xcb-imdkit         # Our internal xcb-imdkit target
     dbus-1             # Our internal D-Bus library

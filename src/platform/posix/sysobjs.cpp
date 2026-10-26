@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <sys/stat.h>
 #include <mutex>
+#include <memory>
 #include <map>
 #include <vector>
 #include <string>
@@ -1166,8 +1167,8 @@ class TimerQueue {
         // Clean up all timers
         for (auto &timer : m_timers)
         {
-            CancelWaitableTimer(timer.second.hTimer);
-            CloseHandle(timer.second.hTimer);
+            timer.second->cancel();
+            CloseHandle(timer.second->hTimer);
         }
         m_timers.clear();
     }
@@ -1178,13 +1179,13 @@ class TimerQueue {
         if (!hTimer)
             return FALSE;
 
-        TimerInfo info;
-        info.hTimer = hTimer;
-        info.Callback = Callback;
-        info.Parameter = Parameter;
-        info.DueTime = DueTime;
-        info.Period = Period;
-        info.Flags = Flags;
+        std::shared_ptr<TimerInfo> info = std::make_shared<TimerInfo>();
+        info->hTimer = hTimer;
+        info->Callback = Callback;
+        info->Parameter = Parameter;
+        info->DueTime = DueTime;
+        info->Period = Period;
+        info->Flags = Flags;
 
         UINT timerId = m_nextTimerId++;
         m_timers[timerId] = info;
@@ -1193,7 +1194,15 @@ class TimerQueue {
 
         LARGE_INTEGER liDueTime;
         liDueTime.QuadPart = -((LONGLONG)DueTime * 10000); // Convert to 100ns intervals
-        return SetWaitableTimer(hTimer, &liDueTime, Period, NULL, NULL, FALSE);
+        if (!SetWaitableTimer(hTimer, &liDueTime, Period, NULL, NULL, FALSE))
+            return FALSE;
+
+        // SetWaitableTimer only signals the handle; nothing waits on it here, so the
+        // callback would never run. Real Win32 invokes it on a thread-pool thread once
+        // the due time elapses, so dispatch it from a worker thread of our own.
+        std::thread([info]() { info->run(); }).detach();
+
+        return TRUE;
     }
 
     BOOL ChangeTimer(HANDLE hTimer, DWORD DueTime, DWORD Period)
@@ -1203,12 +1212,12 @@ class TimerQueue {
         if (it == m_timers.end())
             return FALSE;
 
-        it->second.DueTime = DueTime;
-        it->second.Period = Period;
+        it->second->DueTime = DueTime;
+        it->second->Period = Period;
 
         LARGE_INTEGER liDueTime;
         liDueTime.QuadPart = -((LONGLONG)DueTime * 10000); // Convert to 100ns intervals
-        return SetWaitableTimer(it->second.hTimer, &liDueTime, Period, NULL, NULL, FALSE);
+        return SetWaitableTimer(it->second->hTimer, &liDueTime, Period, NULL, NULL, FALSE);
     }
 
     BOOL DeleteTimer(HANDLE hTimer, HANDLE hCompletionEvent __attribute__((unused)))
@@ -1218,8 +1227,8 @@ class TimerQueue {
         if (it == m_timers.end())
             return FALSE;
 
-        CancelWaitableTimer(it->second.hTimer);
-        CloseHandle(it->second.hTimer);
+        it->second->cancel();
+        CloseHandle(it->second->hTimer);
         m_timers.erase(it);
 
         return TRUE;
@@ -1234,9 +1243,40 @@ class TimerQueue {
         DWORD DueTime;
         DWORD Period;
         ULONG Flags;
+        std::mutex mutex;
+        std::condition_variable cv;
+        bool cancelled = false;
+
+        void cancel()
+        {
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                cancelled = true;
+            }
+            cv.notify_all();
+            CancelWaitableTimer(hTimer);
+        }
+
+        void run()
+        {
+            std::unique_lock<std::mutex> lock(mutex);
+            auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(DueTime);
+            for (;;)
+            {
+                if (cv.wait_until(lock, deadline, [this]() { return cancelled; }))
+                    return;
+                DWORD period = Period;
+                lock.unlock();
+                Callback(Parameter, TRUE);
+                lock.lock();
+                if (cancelled || period == 0)
+                    return;
+                deadline += std::chrono::milliseconds(period);
+            }
+        }
     };
 
-    std::map<UINT, TimerInfo> m_timers;
+    std::map<UINT, std::shared_ptr<TimerInfo>> m_timers;
     UINT m_nextTimerId;
 };
 
@@ -2019,6 +2059,140 @@ start_wait:
             goto start_wait;
         }
     }
+}
+
+DWORD WINAPI WaitForSingleObjectEx(HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable)
+{
+    // bAlertable 只影响"等待期间能否被 APC / I/O 完成回调打断"。POSIX 上
+    // swinx 没有 APC 队列，等待本来就不会被这类回调插入，所以忽略它得到的
+    // 行为与 bAlertable=FALSE 完全一致 —— 而这个参数在 WebKit 里恒传 FALSE。
+    (void)bAlertable;
+    return WaitForSingleObject(hHandle, dwMilliseconds);
+}
+
+/* ------------------------------------------------------------ 旧式线程池等待
+ *
+ * Windows 把 RegisterWaitForSingleObject 归在"旧式线程池"里：用一个池线程
+ * 等句柄，等到就调回调。swinx 没有线程池，这里给每个注册项开一根等待线程 ——
+ * 注册次数在这个项目里是个位数（WebKit 只用它等一次网络地址变化），
+ * 按项开线程比自建一个线程池更少代码、也更容易解释清楚生命周期。
+ *
+ * 回调参数语义照 Win32：第二个参数 TimerOrWaitFired 为 TRUE 表示等超时，
+ * 为 FALSE 表示句柄被信号。带 WT_EXECUTEONLYONCE 时回调一次就结束等待。
+ */
+
+namespace
+{
+
+struct WaitItem
+{
+    HANDLE object;
+    WAITORTIMERCALLBACK callback;
+    PVOID context;
+    DWORD milliseconds;
+    ULONG flags;
+    std::atomic<bool> stop;
+    std::thread worker;
+
+    WaitItem()
+        : object(0)
+        , callback(0)
+        , context(0)
+        , milliseconds(INFINITE)
+        , flags(0)
+        , stop(false)
+    {
+    }
+};
+
+void DestroyWaitItem(void *ptr)
+{
+    WaitItem *item = (WaitItem *)ptr;
+    item->stop = true;
+    if (item->worker.joinable())
+    {
+        // 从回调内部 UnregisterWait 时不能 join 自己，只能放手让它退出。
+        if (item->worker.get_id() == std::this_thread::get_id())
+            item->worker.detach();
+        else
+            item->worker.join();
+    }
+    delete item;
+}
+
+void RunWaitItem(WaitItem *item)
+{
+    for (;;)
+    {
+        if (item->stop)
+            return;
+
+        DWORD rc = WaitForSingleObject(item->object, item->milliseconds);
+        if (rc == WAIT_TIMEOUT)
+            item->callback(item->context, TRUE);
+        else if (rc == WAIT_OBJECT_0)
+            item->callback(item->context, FALSE);
+        else
+            return; // WAIT_ABANDONED / 句柄失效：Win32 同样不再回调
+
+        if (item->flags & WT_EXECUTEONLYONCE)
+            return;
+    }
+}
+
+} // namespace
+
+BOOL WINAPI RegisterWaitForSingleObject(PHANDLE phNewWaitObject, HANDLE hObject,
+                                        WAITORTIMERCALLBACK Callback, PVOID Context,
+                                        ULONG dwMilliseconds, ULONG dwFlags)
+{
+    if (!phNewWaitObject || !hObject || !Callback)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    WaitItem *item = new WaitItem;
+    item->object = hObject;
+    item->callback = Callback;
+    item->context = Context;
+    item->milliseconds = dwMilliseconds;
+    item->flags = dwFlags;
+
+    HANDLE handle = InitHandle(WAIT_OBJ, item, DestroyWaitItem);
+    if (!handle)
+    {
+        delete item;
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        return FALSE;
+    }
+
+    *phNewWaitObject = handle;
+    item->worker = std::thread(RunWaitItem, item);
+    return TRUE;
+}
+
+BOOL WINAPI UnregisterWaitEx(HANDLE WaitHandle, HANDLE CompletionEvent)
+{
+    if (!WaitHandle || WaitHandle->type != WAIT_OBJ)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return FALSE;
+    }
+
+    // CloseHandle 会走到 DestroyWaitItem：停掉等待线程、等在途回调结束后释放。
+    CloseHandle(WaitHandle);
+
+    // Win32 的语义是"回调都跑完了才 signal"，所以顺序不能反过来。
+    if (CompletionEvent && CompletionEvent != INVALID_HANDLE_VALUE)
+        SetEvent(CompletionEvent);
+
+    return TRUE;
+}
+
+BOOL WINAPI UnregisterWait(HANDLE WaitHandle)
+{
+    return UnregisterWaitEx(WaitHandle, NULL);
 }
 
 DWORD WINAPI WaitForMultipleObjects(DWORD nCount, const HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds)

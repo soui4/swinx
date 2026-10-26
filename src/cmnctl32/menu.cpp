@@ -663,9 +663,9 @@ BOOL CMenu::InsertMenu(UINT uPos, UINT uFlag, UINT_PTR uIDNewItem, LPCSTR lpNewI
     iteItem->SetMenuFlag(uFlag);
     if (uFlag & MF_POPUP)
     {
-        if (!IsWindow(uIDNewItem))
+        if (!IsWindow((HWND)uIDNewItem))
             return FALSE;
-        CMenu *pMenu = (CMenu *)GetWindowLongPtr(uIDNewItem, GWL_OPAQUE);
+        CMenu *pMenu = (CMenu *)GetWindowLongPtr((HWND)uIDNewItem, GWL_OPAQUE);
         if (pMenu)
         {
             iteItem->m_pSubMenu.reset(pMenu);

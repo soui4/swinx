@@ -69,7 +69,7 @@ HRESULT SDragSourceHelper::InitializeFromBitmap(LPSHDRAGIMAGE pshdi, IDataObject
     FORMATETC fmt2 = { CF_DRAGSOURCE_IMAGE, NULL, DVASPECT_CONTENT, -1, TYMED_GDI };
     STGMEDIUM medium2 = {};
     medium2.tymed = TYMED_GDI;
-    medium2.hBitmap = RefGdiObj(pshdi->hbmpDragImage);
+    medium2.hBitmap = (HBITMAP)RefGdiObj(pshdi->hbmpDragImage);
 
     hr = pDataObject->SetData(&fmt2, &medium2, TRUE);
     if (hr != S_OK)

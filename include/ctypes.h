@@ -78,6 +78,9 @@ typedef int64_t __int64;
 #endif // DEFINED_INT64
 
 typedef unsigned int ULONG;
+typedef unsigned int UINT32;
+typedef unsigned short UINT16;
+typedef unsigned char UINT8;
 typedef uint8_t BYTE;
 typedef uint8_t byte;
 typedef BYTE *LPBYTE;
@@ -107,10 +110,14 @@ typedef uint16_t USHORT;
 typedef uint64_t ULONG64;
 typedef uint64_t UINT64;
 typedef int64_t INT64;
+typedef uint64_t DWORD64;
+typedef uint32_t DWORD32;
 typedef void VOID;
 typedef void *LPVOID;
 typedef void *PVOID;
 typedef char CHAR;
+typedef CHAR *PCHAR;
+typedef ULONG *PULONG;
 typedef uint8_t UCHAR;
 typedef DWORD_PTR *PDWORD_PTR;
 typedef BYTE BOOLEAN;
@@ -225,22 +232,50 @@ typedef struct _SYSTEMTIME
 #define IDTRYAGAIN 10
 #define IDCONTINUE 11
 
-typedef void *HINSTANCE;
-typedef void *HMODULE;
+/*
+ * 句柄类型必须与 Windows SDK 的形状一致。
+ *
+ * SDK 里这些句柄各自是“独立的不完整结构体指针”（DECLARE_HANDLE 展开成
+ * `struct XXX__ *`），只有 HGDIOBJ 是 HANDLE/void*。WebKit 的 WTF/WebCore
+ * win 头文件会重复声明同样的 typedef（`typedef struct HWND__* HWND;` 等），
+ * C++ 允许 typedef 重定义但要求类型完全相同，所以 swinx 这边不能把它们
+ * 合并成一个 HGDIOBJ，否则会直接编译失败。
+ *
+ * 同时这也保住了 SDK 的转换语义：任何具体 GDI 句柄都能隐式转成 HGDIOBJ
+ * （void*），反向则需要显式转换。
+ */
+struct HINSTANCE__;
+typedef struct HINSTANCE__ *HINSTANCE;
+typedef HINSTANCE HMODULE;
 
-typedef UINT_PTR HWND;
-typedef struct _Handle *HGDIOBJ;
+struct HWND__;
+typedef struct HWND__ *HWND;
+
+typedef void *HGDIOBJ;              /* 等价于 Windows 上的 HANDLE */
 typedef struct _IMContext *HIMC;
 
-typedef HGDIOBJ HPEN;
-typedef HGDIOBJ HFONT;
-typedef HGDIOBJ HBRUSH;
-typedef HGDIOBJ HBITMAP;
-typedef HGDIOBJ HRGN;
-typedef HGDIOBJ HPALETTE;
-typedef HGDIOBJ HMETAFILE;
+struct HPEN__;
+typedef struct HPEN__ *HPEN;
+struct HFONT__;
+typedef struct HFONT__ *HFONT;
+struct HBRUSH__;
+typedef struct HBRUSH__ *HBRUSH;
+struct HBITMAP__;
+typedef struct HBITMAP__ *HBITMAP;
+struct HRGN__;
+typedef struct HRGN__ *HRGN;
+struct HPALETTE__;
+typedef struct HPALETTE__ *HPALETTE;
+struct HMETAFILE__;
+typedef struct HMETAFILE__ *HMETAFILE;
+struct HENHMETAFILE__;
+typedef struct HENHMETAFILE__ *HENHMETAFILE;
+struct HMETAFILEPICT__;
+typedef struct HMETAFILEPICT__ *HMETAFILEPICT;
 
-typedef struct _IconObj *HICON;
+/* 内部实现类型沿用既有名字，只是让 SDK 名字指向同一类型。 */
+struct HICON__;
+typedef struct HICON__ *HICON;
 
 // sdef.h (SOUI) defines tid_t as `unsigned int` under _WIN32; keep both
 // definitions identical (UINT_PTR is unsigned long on LLP64 hosts).
@@ -249,14 +284,18 @@ typedef unsigned int tid_t;
 #else
 typedef UINT_PTR tid_t;
 #endif
-typedef struct _SDC *HDC;
+/* WebKit 的 GraphicsContext.h/PopupMenuWin.h 会声明 `struct HDC__*`，
+ * 所以 HDC__ 必须是真实的 struct tag（_SDC 是它的内部别名，见 sdc.h）。 */
+struct HDC__;
+typedef struct HDC__ _SDC;
+typedef struct HDC__ *HDC;
 #ifndef HRSRC_DEFINED
 #define HRSRC_DEFINED
 typedef void *HRSRC;
 #endif
 typedef DWORD HKL;
 
-typedef struct _IconObj *HCURSOR;
+typedef struct HICON__ *HCURSOR;
 
 typedef struct _Handle *HANDLE;
 typedef HANDLE *PHANDLE;
@@ -292,8 +331,13 @@ typedef USHORT LANGID;
 #define PASCAL         __stdcall
 #define WINAPI         __stdcall
 #define CALLBACK       __stdcall
+#define NTAPI          __stdcall
 #define STDAPI         HRESULT __stdcall
+#define STDAPI_(type)  EXTERN_C type STDAPICALLTYPE
 #define STDAPICALLTYPE __stdcall
+/* clang (unlike MSVC) does not accept the __declspec keyword off Windows;
+ * WKE headers spell out QTMOVIEWIN_API etc. through it. */
+#define __declspec(x)
 
 #define ARRAYSIZE(x) (sizeof((x)) / sizeof((x)[0]))
 

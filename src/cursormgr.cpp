@@ -114,11 +114,21 @@ CursorMgr::CursorMgr()
 
 CursorMgr::~CursorMgr()
 {
-    for (auto it : m_stdCursor)
+    /* DestroyIcon() refuses to free a cursor that is still listed here (the
+     * isStdCursor guard implements the Windows "shared system cursor" rule),
+     * so calling it entry by entry while the map is populated destroys
+     * nothing and the following clear() orphans every object.  Take the whole
+     * cache out under the lock first: the guard then sees an empty map and the
+     * bitmaps and icon objects really are released. */
+    std::map<WORD, HCURSOR> cursors;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        cursors.swap(m_stdCursor);
+    }
+    for (auto it : cursors)
     {
         DestroyIcon((HICON)it.second);
     }
-    m_stdCursor.clear();
 }
 
 HCURSOR CursorMgr::loadCursor(LPCSTR lpCursorName)
@@ -163,14 +173,34 @@ BOOL CursorMgr::destroyCursor(HCURSOR cursor)
     return s_cursorMgr()._DestroyCursor(cursor);
 }
 
-BOOL CursorMgr::_DestroyCursor(HCURSOR cursor)
+BOOL CursorMgr::isStdCursor(HCURSOR cursor)
+{
+    if (!cursor)
+        return FALSE;
+    return s_cursorMgr()._IsStdCursor(cursor);
+}
+
+BOOL CursorMgr::_IsStdCursor(HCURSOR cursor)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
-    // look for sys cursor
     for (auto it : m_stdCursor)
     {
         if (cursor == it.second)
-            return FALSE;
+            return TRUE;
+    }
+    return FALSE;
+}
+
+BOOL CursorMgr::_DestroyCursor(HCURSOR cursor)
+{
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        // look for sys cursor
+        for (auto it : m_stdCursor)
+        {
+            if (cursor == it.second)
+                return FALSE;
+        }
     }
     DestroyIcon((HICON)cursor);
     return TRUE;

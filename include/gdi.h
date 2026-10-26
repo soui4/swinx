@@ -15,6 +15,7 @@ extern "C"
 #define OBJ_REGION   8
 #define OBJ_PAL      9
 #define OBJ_METAFILE 10
+#define OBJ_ENHMETAFILE 13
 
     HGDIOBJ InitGdiObj(int type, void *ptr);
     void *GetGdiObjPtr(HGDIOBJ hgdiobj);
@@ -97,6 +98,28 @@ extern "C"
 #define TT_PRIM_LINE    1
 #define TT_PRIM_QSPLINE 2
 #define TT_PRIM_CSPLINE 3
+
+    /* GetGlyphOutline(GGO_NATIVE) 返回的 TrueType 轮廓记录。
+     * POINTFX 的坐标是 16.16 定点（FIXED），与 Win32 一致。 */
+    typedef struct tagPOINTFX
+    {
+        FIXED x;
+        FIXED y;
+    } POINTFX, *LPPOINTFX;
+
+    typedef struct tagTTPOLYGONHEADER
+    {
+        DWORD cb;      /* 本记录（含其后的 TTPOLYCURVE）的总字节数 */
+        DWORD dwType;  /* TT_POLYGON_TYPE */
+        POINTFX pfxStart;
+    } TTPOLYGONHEADER, *LPTTPOLYGONHEADER;
+
+    typedef struct tagTTPOLYCURVE
+    {
+        WORD wType; /* TT_PRIM_LINE / TT_PRIM_QSPLINE / TT_PRIM_CSPLINE */
+        WORD cpfx;  /* apfx 中的点数 */
+        POINTFX apfx[1];
+    } TTPOLYCURVE, *LPTTPOLYCURVE;
 
 /* tmPitchAndFamily flags */
 #define TMPF_FIXED_PITCH 0x01
@@ -215,6 +238,57 @@ extern "C"
 typedef LOGFONTA LOGFONT;
 typedef ENUMLOGFONTA ENUMLOGFONT;
 typedef LPENUMLOGFONTA LPENUMLOGFONT;
+#endif // UNICODE
+
+    /* Non-client area metrics (SystemParametersInfo SPI_GETNONCLIENTMETRICS).
+     * These live in gdi.h rather than winuser.h because they embed LOGFONTA /
+     * LOGFONTW, and windows.h includes winuser.h *before* gdi.h. */
+    typedef struct tagNONCLIENTMETRICSA
+    {
+        UINT cbSize;
+        int iBorderWidth;
+        int iScrollWidth;
+        int iScrollHeight;
+        int iCaptionWidth;
+        int iCaptionHeight;
+        LOGFONTA lfCaptionFont;
+        int iSmCaptionWidth;
+        int iSmCaptionHeight;
+        LOGFONTA lfSmCaptionFont;
+        int iMenuWidth;
+        int iMenuHeight;
+        LOGFONTA lfMenuFont;
+        LOGFONTA lfStatusFont;
+        LOGFONTA lfMessageFont;
+    } NONCLIENTMETRICSA, *PNONCLIENTMETRICSA, FAR *LPNONCLIENTMETRICSA;
+
+    typedef struct tagNONCLIENTMETRICSW
+    {
+        UINT cbSize;
+        int iBorderWidth;
+        int iScrollWidth;
+        int iScrollHeight;
+        int iCaptionWidth;
+        int iCaptionHeight;
+        LOGFONTW lfCaptionFont;
+        int iSmCaptionWidth;
+        int iSmCaptionHeight;
+        LOGFONTW lfSmCaptionFont;
+        int iMenuWidth;
+        int iMenuHeight;
+        LOGFONTW lfMenuFont;
+        LOGFONTW lfStatusFont;
+        LOGFONTW lfMessageFont;
+    } NONCLIENTMETRICSW, *PNONCLIENTMETRICSW, FAR *LPNONCLIENTMETRICSW;
+
+#ifdef UNICODE
+    typedef NONCLIENTMETRICSW NONCLIENTMETRICS;
+    typedef PNONCLIENTMETRICSW PNONCLIENTMETRICS;
+    typedef LPNONCLIENTMETRICSW LPNONCLIENTMETRICS;
+#else
+    typedef NONCLIENTMETRICSA NONCLIENTMETRICS;
+    typedef PNONCLIENTMETRICSA PNONCLIENTMETRICS;
+    typedef LPNONCLIENTMETRICSA LPNONCLIENTMETRICS;
 #endif // UNICODE
 
     /* Logical Brush (or Pattern) */
@@ -529,6 +603,7 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     int WINAPI SetBkMode(HDC hdc, int mode);
     int WINAPI GetBkMode(HDC hdc);
     int WINAPI SetGraphicsMode(HDC hdc, int iMode);
+    int WINAPI GetGraphicsMode(HDC hdc);
 
     COLORREF WINAPI GetBkColor(HDC hdc);
     COLORREF WINAPI SetBkColor(HDC hdc, COLORREF cr);
@@ -716,6 +791,11 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #define GetTabbedTextExtent GetTabbedTextExtentA
 #endif // UNICODE
 
+    /* 映射模式：swinx 只支持 MM_TEXT（逻辑单位 = 设备像素）。 */
+#define MM_TEXT 1
+    int WINAPI SetMapMode(HDC hdc, int iMode);
+    int WINAPI GetMapMode(HDC hdc);
+
     BOOL WINAPI SetViewportOrgEx(HDC hdc, int x, int y, LPPOINT lppt);
     BOOL WINAPI GetViewportOrgEx(HDC hdc, LPPOINT lpPoint);
     BOOL WINAPI OffsetViewportOrgEx(HDC hdc, int x, int y, LPPOINT lppt);
@@ -895,6 +975,20 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #define NUMRESERVED   106
 #define COLORRES      108
 
+/* RASTERCAPS bits returned by GetDeviceCaps(hdc, RASTERCAPS). */
+#define RC_BITBLT      0x0001
+#define RC_BANDING     0x0002
+#define RC_SCALING     0x0004
+#define RC_BITMAP64    0x0008
+#define RC_GLYPHINDEX  0x0010
+#define RC_DIBTODEV    0x0080
+#define RC_BIGFONT     0x0400
+#define RC_STRETCHBLT  0x0800
+#define RC_FLOODFILL   0x1000
+#define RC_STRETCHDIB  0x2000
+#define RC_OP_DX_OUTPUT 0x4000
+#define RC_DEVBITS     0x8000
+
 /* Device Technologies */
 #define DT_PLOTTER    0 /* Vector plotter                   */
 #define DT_RASDISPLAY 1 /* Raster display                   */
@@ -919,6 +1013,14 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     int WINAPI GetDeviceCaps(HDC hdc, int cap);
 
+    /* 冲刷 GDI 的延迟绘制队列。swinx 的绘制是立即的，直接返回成功。 */
+    BOOL WINAPI GdiFlush(void);
+
+    /* 打印机的转义接口。swinx 没有打印后端：QUERYESCSUPPORT 之外的请求
+     * 一律按「不支持」处理（返回 <= 0），与没有该能力的显示 DC 一致。 */
+#define QUERYESCSUPPORT 8
+    int WINAPI ExtEscape(HDC hdc, int nEscape, int cbInput, LPCSTR lpszInData, int cbOutput, LPSTR lpszOutData);
+
     HANDLE WINAPI LoadImageW(HINSTANCE hinst, LPCWSTR name, UINT type, INT desiredx, INT desiredy, UINT loadflags);
     HANDLE WINAPI LoadImageA(HINSTANCE hinst, LPCSTR name, UINT type, INT desiredx, INT desiredy, UINT loadflags);
 
@@ -932,7 +1034,7 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     HBITMAP WINAPI CreateBitmap(INT width, INT height, UINT planes, UINT bpp, const void *bits);
 
-    void WINAPI SetStretchBltMode(HDC hdc, int mode);
+    int WINAPI SetStretchBltMode(HDC hdc, int mode);
 
     HICON WINAPI CreateIconIndirect(PICONINFO piconinfo);
 
@@ -1227,6 +1329,16 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #define GetCharWidth GetCharWidthA
 #endif // !UNICODE
 
+    /* 语义与 GetCharWidth 相同：按字符（而非 glyph index）取步进宽度。
+     * Win32 里带 32 后缀的版本取的是「32 位字符集」的宽度，swinx 直接复用。 */
+    BOOL WINAPI GetCharWidth32A(_In_ HDC hdc, _In_ UINT iFirst, _In_ UINT iLast, _Out_writes_(iLast + 1 - iFirst) LPINT lpBuffer);
+    BOOL WINAPI GetCharWidth32W(_In_ HDC hdc, _In_ UINT iFirst, _In_ UINT iLast, _Out_writes_(iLast + 1 - iFirst) LPINT lpBuffer);
+#ifdef UNICODE
+#define GetCharWidth32 GetCharWidth32W
+#else
+#define GetCharWidth32 GetCharWidth32A
+#endif // !UNICODE
+
     HDC WINAPI CreateICW(LPCWSTR lpszDriver,   // driver name
                          LPCWSTR lpszDevice,   // device name
                          LPCWSTR lpszOutput,   // port or file name
@@ -1252,6 +1364,12 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
                                   DWORD fl,             // font characteristics
                                   PVOID pdv             // reserved
     );
+
+    /* Installs font data that is already resident in memory (the session font
+     * table): *pNumFonts receives the number of fonts added, and the returned
+     * handle goes back to RemoveFontMemResourceEx(). */
+    HANDLE WINAPI AddFontMemResourceEx(PVOID pFileView, DWORD cjSize, PVOID pvReserved, DWORD *pNumFonts);
+    BOOL WINAPI RemoveFontMemResourceEx(HANDLE hFontResource);
 
 #ifdef UNICODE
 #define AddFontResource   AddFontResourceW
@@ -1284,6 +1402,8 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     BOOL WINAPI StrokeAndFillPath(HDC hdc);
     HRGN WINAPI PathToRegion(HDC hdc);
     BOOL WINAPI SelectClipPath(HDC hdc, int mode);
+    /* 把当前路径按画笔宽度加粗。需要打印机 DC 的路径语义，swinx 不支持。 */
+    BOOL WINAPI WidenPath(HDC hdc);
     int WINAPI GetPath(HDC hdc, LPPOINT lpPoints, LPBYTE lpTypes, int nSize);
     BOOL WINAPI SetMiterLimit(HDC hdc, FLOAT eNewLimit, PFLOAT peOldLimit);
     BOOL WINAPI GetMiterLimit(HDC hdc, PFLOAT peLimit);
@@ -1382,6 +1502,324 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #else
 #define LoadBitmap LoadBitmapA
 #endif // !UNICODE
+
+    /*
+     * Glyph / font enumeration.
+     *
+     * WebKit 的 win 字体代码（FontCacheWin / GlyphPageTreeNodeCairoWin /
+     * SimpleFontData*Win）需要按 glyph index 取宽度、取字形度量、按字符集
+     * 枚举字体族，以及取字体的 Unicode 覆盖区间。这里补齐这些入口与配套结构。
+     */
+
+#define GGI_MARK_NONEXISTING_GLYPHS 0x0001
+
+    typedef struct tagWCRANGE
+    {
+        WCHAR wcLow;
+        USHORT cGlyphs;
+    } WCRANGE, *PWCRANGE, FAR *LPWCRANGE;
+
+    typedef struct tagGLYPHSET
+    {
+        DWORD cbThis;          // 整个结构的字节数（含尾部的 ranges 数组）
+        DWORD flAccel;         // 加速标志（GS_8BIT_INDICES）
+        DWORD cGlyphsSupported;
+        DWORD cRanges;
+        WCRANGE ranges[1];
+    } GLYPHSET, *PGLYPHSET, FAR *LPGLYPHSET;
+
+#define GS_8BIT_INDICES 0x00000001
+
+    typedef struct tagENUMLOGFONTEXA
+    {
+        LOGFONTA elfLogFont;
+        BYTE elfFullName[LF_FULLFACESIZE];
+        BYTE elfStyle[LF_FACESIZE];
+        BYTE elfScript[LF_FACESIZE];
+    } ENUMLOGFONTEXA, FAR *LPENUMLOGFONTEXA;
+
+    typedef struct tagENUMLOGFONTEXW
+    {
+        LOGFONTW elfLogFont;
+        WCHAR elfFullName[LF_FULLFACESIZE];
+        WCHAR elfStyle[LF_FACESIZE];
+        WCHAR elfScript[LF_FACESIZE];
+    } ENUMLOGFONTEXW, FAR *LPENUMLOGFONTEXW;
+
+#ifdef UNICODE
+    typedef ENUMLOGFONTEXW ENUMLOGFONTEX;
+    typedef LPENUMLOGFONTEXW LPENUMLOGFONTEX;
+#else
+    typedef ENUMLOGFONTEXA ENUMLOGFONTEX;
+    typedef LPENUMLOGFONTEXA LPENUMLOGFONTEX;
+#endif // UNICODE
+
+    typedef int(CALLBACK *FONTENUMPROCA)(CONST LOGFONTA *, CONST TEXTMETRICA *, DWORD, LPARAM);
+    typedef int(CALLBACK *FONTENUMPROCW)(CONST LOGFONTW *, CONST TEXTMETRICW *, DWORD, LPARAM);
+
+    typedef struct tagOUTLINETEXTMETRICA
+    {
+        UINT otmSize;
+        TEXTMETRICA otmTextMetrics;
+        BYTE otmFiller;
+        PANOSE otmPanoseNumber;
+        UINT otmfsSelection;
+        UINT otmfsType;
+        int otmsCharSlopeRise;
+        int otmsCharSlopeRun;
+        int otmItalicAngle;
+        UINT otmEMSquare;
+        int otmAscent;
+        int otmDescent;
+        UINT otmLineGap;
+        UINT otmsCapEmHeight;
+        UINT otmsXHeight;
+        RECT otmrcFontBox;
+        int otmMacAscent;
+        int otmMacDescent;
+        UINT otmMacLineGap;
+        UINT otmusMinimumPPEM;
+        POINT otmptSubscriptSize;
+        POINT otmptSubscriptOffset;
+        POINT otmptSuperscriptSize;
+        POINT otmptSuperscriptOffset;
+        UINT otmsStrikeoutSize;
+        int otmsStrikeoutPosition;
+        int otmsUnderscoreSize;
+        int otmsUnderscorePosition;
+        /* 以下四个字段是「相对本结构体基址」的字节偏移，不是指针。
+         * 取值方式：(char*)potm + potm->otmpFaceName，与 Win32 一致。 */
+        PSTR otmpFamilyName;
+        PSTR otmpFaceName;
+        PSTR otmpStyleName;
+        PSTR otmpFullName;
+    } OUTLINETEXTMETRICA, *POUTLINETEXTMETRICA, FAR *LPOUTLINETEXTMETRICA;
+
+    typedef struct tagOUTLINETEXTMETRICW
+    {
+        UINT otmSize;
+        TEXTMETRICW otmTextMetrics;
+        BYTE otmFiller;
+        PANOSE otmPanoseNumber;
+        UINT otmfsSelection;
+        UINT otmfsType;
+        int otmsCharSlopeRise;
+        int otmsCharSlopeRun;
+        int otmItalicAngle;
+        UINT otmEMSquare;
+        int otmAscent;
+        int otmDescent;
+        UINT otmLineGap;
+        UINT otmsCapEmHeight;
+        UINT otmsXHeight;
+        RECT otmrcFontBox;
+        int otmMacAscent;
+        int otmMacDescent;
+        UINT otmMacLineGap;
+        UINT otmusMinimumPPEM;
+        POINT otmptSubscriptSize;
+        POINT otmptSubscriptOffset;
+        POINT otmptSuperscriptSize;
+        POINT otmptSuperscriptOffset;
+        UINT otmsStrikeoutSize;
+        int otmsStrikeoutPosition;
+        int otmsUnderscoreSize;
+        int otmsUnderscorePosition;
+        /* 同 OUTLINETEXTMETRICA：相对结构体基址的字节偏移 */
+        PWSTR otmpFamilyName;
+        PWSTR otmpFaceName;
+        PWSTR otmpStyleName;
+        PWSTR otmpFullName;
+    } OUTLINETEXTMETRICW, *POUTLINETEXTMETRICW, FAR *LPOUTLINETEXTMETRICW;
+
+    int WINAPI EnumFontFamiliesExA(HDC hdc, LPLOGFONTA lpLogfont, FONTENUMPROCA lpProc, LPARAM lParam, DWORD dwFlags);
+    int WINAPI EnumFontFamiliesExW(HDC hdc, LPLOGFONTW lpLogfont, FONTENUMPROCW lpProc, LPARAM lParam, DWORD dwFlags);
+
+    DWORD WINAPI GetGlyphIndicesA(HDC hdc, LPCSTR lpstr, int c, LPWORD pgi, DWORD fl);
+    DWORD WINAPI GetGlyphIndicesW(HDC hdc, LPCWSTR lpstr, int c, LPWORD pgi, DWORD fl);
+
+    DWORD WINAPI GetGlyphOutlineA(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, CONST MAT2 *lpmat2);
+    DWORD WINAPI GetGlyphOutlineW(HDC hdc, UINT uChar, UINT fuFormat, LPGLYPHMETRICS lpgm, DWORD cjBuffer, LPVOID pvBuffer, CONST MAT2 *lpmat2);
+
+    /* cjCopy == 0 时只返回所需字节数（不写入 potm），与 Win32 一致。 */
+    UINT WINAPI GetOutlineTextMetricsA(HDC hdc, UINT cjCopy, LPOUTLINETEXTMETRICA potm);
+    UINT WINAPI GetOutlineTextMetricsW(HDC hdc, UINT cjCopy, LPOUTLINETEXTMETRICW potm);
+
+    /* 无后缀别名，与 Win32 一致（cairo 的 win32 字体后端用的就是这个名字）。 */
+#ifdef UNICODE
+    typedef OUTLINETEXTMETRICW OUTLINETEXTMETRIC, *POUTLINETEXTMETRIC, FAR *LPOUTLINETEXTMETRIC;
+#else
+    typedef OUTLINETEXTMETRICA OUTLINETEXTMETRIC, *POUTLINETEXTMETRIC, FAR *LPOUTLINETEXTMETRIC;
+#endif // UNICODE
+
+    /* 从字体文件里取 sfnt 表（dwTable 是大端序的 4 字节 tag，如 'eman'）。
+     * pvBuffer 为 NULL 时返回该表的字节数；失败返回 GDI_ERROR。
+     * swinx 不支持 dwTable == 0（整个字体文件）。 */
+    DWORD WINAPI GetFontData(HDC hdc, DWORD dwTable, DWORD dwOffset, LPVOID pvBuffer, DWORD cbData);
+
+    /*
+     * GetCharacterPlacement：把字符串转成 glyph index 与步进数组。
+     * swinx 只实现「逐字符直排」这一种最常用语义：
+     *   - 忽略 lpOutString / lpOrder / lpCaretPos / lpClass；
+     *   - nMaxExtent 只用于计算 nMaxFit（> 0 时按宽度截断）；
+     *   - GCP_* 的重排/连字标志不产生实际效果（CoreText 不做这些处理）。
+     */
+#define GCP_DBCS            0x0001
+#define GCP_REORDER         0x0002
+#define GCP_USEKERNING      0x0008
+#define GCP_GLYPHSHAPE      0x0010
+#define GCP_LIGATE          0x0020
+#define GCP_DIACRITIC       0x0100
+#define GCP_KASHIDA         0x0400
+#define GCP_ERROR           0x8000
+#define FLI_MASK            (0x103B)
+#define GCP_JUSTIFY         0x00010000L
+#define FLI_GLYPHS          0x00040000L
+#define GCP_CLASSIN         0x00080000L
+#define GCP_MAXEXTENT       0x00100000L
+#define GCP_JUSTIFYIN       0x00200000L
+#define GCP_DISPLAYZWG      0x00400000L
+#define GCP_SYMSWAPOFF      0x00800000L
+#define GCP_NUMERICOVERRIDE 0x01000000L
+#define GCP_NEUTRALOVERRIDE 0x02000000L
+#define GCP_NUMERICSLATIN   0x04000000L
+#define GCP_NUMERICSLOCAL   0x08000000L
+
+    typedef struct tagGCP_RESULTSA
+    {
+        DWORD lStructSize;
+        LPSTR lpOutString;
+        UINT *lpOrder;
+        int *lpDx;
+        int *lpCaretPos;
+        LPSTR lpClass;
+        LPSTR lpGlyphs;
+        UINT nGlyphs;
+        int nMaxFit;
+    } GCP_RESULTSA, *LPGCP_RESULTSA;
+
+    typedef struct tagGCP_RESULTSW
+    {
+        DWORD lStructSize;
+        LPWSTR lpOutString;
+        UINT *lpOrder;
+        int *lpDx;
+        int *lpCaretPos;
+        LPSTR lpClass;
+        LPWSTR lpGlyphs;
+        UINT nGlyphs;
+        int nMaxFit;
+    } GCP_RESULTSW, *LPGCP_RESULTSW;
+
+#ifdef UNICODE
+    typedef GCP_RESULTSW GCP_RESULTS, *LPGCP_RESULTS;
+#else
+    typedef GCP_RESULTSA GCP_RESULTS, *LPGCP_RESULTS;
+#endif // UNICODE
+
+    DWORD WINAPI GetCharacterPlacementA(HDC hdc, LPCSTR lpString, int nCount, int nMaxExtent, LPGCP_RESULTSA lpResults, DWORD dwFlags);
+    DWORD WINAPI GetCharacterPlacementW(HDC hdc, LPCWSTR lpString, int nCount, int nMaxExtent, LPGCP_RESULTSW lpResults, DWORD dwFlags);
+#ifdef UNICODE
+#define GetCharacterPlacement GetCharacterPlacementW
+#else
+#define GetCharacterPlacement GetCharacterPlacementA
+#endif // UNICODE
+
+    /* lpgs == NULL 时返回所需的 GLYPHSET 字节数。 */
+    DWORD WINAPI GetFontUnicodeRanges(HDC hdc, LPGLYPHSET lpgs);
+
+    /* 与 GetCharWidthW 不同：pg 是 glyph index 数组，pgi 为 NULL 时表示
+     * 区间 [giFirst, giFirst+cgi] 内的连续 glyph index。 */
+    BOOL WINAPI GetCharWidthI(HDC hdc, UINT giFirst, UINT cgi, LPWORD pgi, LPINT lpBuffer);
+
+#ifdef UNICODE
+#define EnumFontFamiliesEx    EnumFontFamiliesExW
+#define GetGlyphIndices       GetGlyphIndicesW
+#define GetGlyphOutline       GetGlyphOutlineW
+#define GetOutlineTextMetrics GetOutlineTextMetricsW
+#else
+#define EnumFontFamiliesEx    EnumFontFamiliesExA
+#define GetGlyphIndices       GetGlyphIndicesA
+#define GetGlyphOutline       GetGlyphOutlineA
+#define GetOutlineTextMetrics GetOutlineTextMetricsA
+#endif // UNICODE
+
+    /*
+     * Enhanced metafile（EMF）
+     *
+     * swinx 只实现 WebKit 需要的「录制-回放」子集：CreateEnhMetaFile 返回的 DC 上
+     * SelectObject(OBJ_FONT) 会记录一条 EMR_EXTCREATEFONTINDIRECTW，CloseEnhMetaFile
+     * 之后可由 EnumEnhMetaFile 逐条回放。WebKit 用它反查 Uniscribe 实际选中的字体。
+     */
+
+#define ELF_VENDOR_SIZE 4
+
+    typedef struct tagEXTLOGFONTA
+    {
+        LOGFONTA elfLogFont;
+        BYTE elfFullName[LF_FULLFACESIZE];
+        BYTE elfStyle[LF_FACESIZE];
+        DWORD elfVersion;
+        DWORD elfStyleSize;
+        DWORD elfMatch;
+        DWORD elfReserved;
+        BYTE elfVendorId[ELF_VENDOR_SIZE];
+        DWORD elfCulture;
+        PANOSE elfPanose;
+    } EXTLOGFONTA, *PEXTLOGFONTA, FAR *LPEXTLOGFONTA;
+
+    typedef struct tagEXTLOGFONTW
+    {
+        LOGFONTW elfLogFont;
+        WCHAR elfFullName[LF_FULLFACESIZE];
+        WCHAR elfStyle[LF_FACESIZE];
+        DWORD elfVersion;
+        DWORD elfStyleSize;
+        DWORD elfMatch;
+        DWORD elfReserved;
+        BYTE elfVendorId[ELF_VENDOR_SIZE];
+        DWORD elfCulture;
+        PANOSE elfPanose;
+    } EXTLOGFONTW, *PEXTLOGFONTW, FAR *LPEXTLOGFONTW;
+
+    typedef struct tagENHMETARECORD
+    {
+        DWORD iType;
+        DWORD nSize;
+        DWORD dParm[1];
+    } ENHMETARECORD, *PENHMETARECORD, FAR *LPENHMETARECORD;
+
+    typedef ENHMETARECORD EMR, *PEMR;
+
+#define EMR_HEADER                 1
+#define EMR_EXTCREATEFONTINDIRECTW 82
+
+    typedef struct tagEMREXTCREATEFONTINDIRECTW
+    {
+        EMR emr;
+        EXTLOGFONTW elfw;
+    } EMREXTCREATEFONTINDIRECTW, *PEMREXTCREATEFONTINDIRECTW, FAR *LPEMREXTCREATEFONTINDIRECTW;
+
+    typedef struct tagHANDLETABLE
+    {
+        HGDIOBJ objectHandle[1];
+    } HANDLETABLE, *PHANDLETABLE, FAR *LPHANDLETABLE;
+
+    typedef int(CALLBACK *ENHMFENUMPROC)(HDC, HANDLETABLE FAR *, CONST ENHMETARECORD FAR *, int, LPARAM);
+
+    /* lpFilename / lpDescription 暂不支持（swinx 不落盘 EMF），需传 NULL。 */
+    HDC WINAPI CreateEnhMetaFileA(HDC hdcRef, LPCSTR lpFilename, CONST RECT *lpRect, LPCSTR lpDescription);
+    HDC WINAPI CreateEnhMetaFileW(HDC hdcRef, LPCWSTR lpFilename, CONST RECT *lpRect, LPCWSTR lpDescription);
+
+    HENHMETAFILE WINAPI CloseEnhMetaFile(HDC hdc);
+    BOOL WINAPI DeleteEnhMetaFile(HENHMETAFILE hmf);
+    BOOL WINAPI EnumEnhMetaFile(HDC hdc, HENHMETAFILE hmf, ENHMFENUMPROC lpProc, LPVOID lpParam, CONST RECT *lpRect);
+
+#ifdef UNICODE
+#define CreateEnhMetaFile CreateEnhMetaFileW
+#else
+#define CreateEnhMetaFile CreateEnhMetaFileA
+#endif // UNICODE
 
 #ifdef __cplusplus
 }

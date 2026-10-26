@@ -40,12 +40,18 @@ static DWORD WINAPI StdCallProc(LPVOID lpThreadParameter)
     delete param;
     return func(arglist);
 }
-uintptr_t _beginthreadex(void *security __attribute__((unused)), unsigned int stack_size, unsigned int(__stdcall *start_address)(void *), void *arglist, unsigned int initflag, tid_t *thrdaddr)
+uintptr_t _beginthreadex(void *security __attribute__((unused)), unsigned int stack_size, unsigned int(__stdcall *start_address)(void *), void *arglist, unsigned int initflag, unsigned int *thrdaddr)
 {
     ThreadParam2 *param = new ThreadParam2();
     param->start_address = start_address;
     param->arglist = arglist;
-    return (uintptr_t)CreateThread(NULL, stack_size, StdCallProc, param, initflag, thrdaddr);
+    // MSVC/MinGW declare the id out-parameter as `unsigned int*` (same width as
+    // Win32's DWORD); swinx's tid_t is pointer-sized on POSIX, so convert here.
+    tid_t tid = 0;
+    HANDLE h = CreateThread(NULL, stack_size, StdCallProc, param, initflag, &tid);
+    if (thrdaddr)
+        *thrdaddr = (unsigned int)tid;
+    return (uintptr_t)h;
 }
 
 void _endthread(void)

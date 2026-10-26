@@ -745,10 +745,10 @@ static void LISTBOX_RepaintItem(LB_DESCR *descr, INT index, UINT action)
     if (!(hdc = GetDCEx(descr->self, 0, DCX_CACHE)))
         return;
     if (descr->font)
-        oldFont = SelectObject(hdc, descr->font);
+        oldFont = (HFONT)SelectObject(hdc, descr->font);
     hbrush = (HBRUSH)SendMessageW(descr->owner, WM_CTLCOLORLISTBOX, (WPARAM)hdc, (LPARAM)descr->self);
     if (hbrush)
-        oldBrush = SelectObject(hdc, hbrush);
+        oldBrush = (HBRUSH)SelectObject(hdc, hbrush);
     if (!IsWindowEnabled(descr->self))
         SetTextColor(hdc, GetSysColor(COLOR_GRAYTEXT));
     // todo:hjx
@@ -784,7 +784,7 @@ static void LISTBOX_DrawFocusRect(LB_DESCR *descr, BOOL on)
     if (!(hdc = GetDCEx(descr->self, 0, DCX_CACHE)))
         return;
     if (descr->font)
-        oldFont = SelectObject(hdc, descr->font);
+        oldFont = (HFONT)SelectObject(hdc, descr->font);
     if (!IsWindowEnabled(descr->self))
         SetTextColor(hdc, GetSysColor(COLOR_GRAYTEXT));
     // todo:hjx
@@ -1118,10 +1118,10 @@ static LRESULT LISTBOX_Paint(LB_DESCR *descr, HDC hdc)
     }
 
     if (descr->font)
-        oldFont = SelectObject(hdc, descr->font);
+        oldFont = (HFONT)SelectObject(hdc, descr->font);
     hbrush = (HBRUSH)SendMessageA(descr->owner, WM_CTLCOLORLISTBOX, (WPARAM)hdc, (LPARAM)descr->self);
     if (hbrush)
-        oldBrush = SelectObject(hdc, hbrush);
+        oldBrush = (HBRUSH)SelectObject(hdc, hbrush);
     if (!IsWindowEnabled(descr->self))
         SetTextColor(hdc, GetSysColor(COLOR_GRAYTEXT));
 
@@ -1394,7 +1394,7 @@ static INT LISTBOX_SetFont(LB_DESCR *descr, HFONT font)
         return 16;
     }
     if (font)
-        oldFont = SelectObject(hdc, font);
+        oldFont = (HFONT)SelectObject(hdc, font);
     GetTextExtentPointA(hdc, alphabet, 52, &sz);
     if (oldFont)
         SelectObject(hdc, oldFont);

@@ -150,7 +150,7 @@ class CMessageBox : public CNativeWnd {
 
         for (const auto &item : _ButtonInfo)
         {
-            CreateWindowExA(0, WC_BUTTONA, item.text.c_str(), WS_CHILD | WS_VISIBLE, startPos.x, startPos.y, 120, 36, m_hWnd, item.id, 0, 0);
+            CreateWindowExA(0, WC_BUTTONA, item.text.c_str(), WS_CHILD | WS_VISIBLE, startPos.x, startPos.y, 120, 36, m_hWnd, (HMENU)(UINT_PTR)item.id, 0, 0);
             startPos.x += 6 + 120;
         }
     }

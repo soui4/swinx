@@ -2,6 +2,7 @@
 #include <objbase.h>
 #include <oaidl.h>
 #include <shlobj.h>
+#include <mlang.h>
 #include <uuid/uuid.h>
 #include <sdragsourcehelper.h>
 #include "bstr_internal.h"
@@ -271,6 +272,11 @@ HRESULT WINAPI CLSIDFromProgID(LPCOLESTR progid, CLSID *clsid)
     return guid_from_string(progid, clsid);
 }
 
+/* MLang（CLSID_CMultiLanguage）的实现在 src/platform/posix/mlang.cpp：它需要
+ * fontconfig，所以不能进共享层。这里用弱引用，没有该实现的平台（FreeRTOS）
+ * 退化成 E_NOTIMPL —— 与真实系统上"没有注册这个组件"的表现一致。 */
+extern "C" HRESULT CreateMLangInstance(const GUID &riid, void **ppv) __attribute__((weak));
+
 HRESULT WINAPI CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter __attribute__((unused)), DWORD dwClsContext __attribute__((unused)), REFIID riid, LPVOID FAR *ppv)
 {
     if (IsEqualGUID(rclsid, CLSID_DragDropHelper))
@@ -280,6 +286,8 @@ HRESULT WINAPI CoCreateInstance(REFCLSID rclsid, LPUNKNOWN pUnkOuter __attribute
         pDragSourceHelper->Release();
         return hr;
     }
+    if (IsEqualGUID(rclsid, CLSID_CMultiLanguage) && &CreateMLangInstance)
+        return CreateMLangInstance(riid, ppv);
     return E_NOTIMPL;
 }
 

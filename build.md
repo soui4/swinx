@@ -41,5 +41,19 @@ CMake, Vcxsvr(https://github.com/marchaesen/vcxsrv/releases)
 ##  **linux 内存泄漏检测** 
 valgrind --leak-check=full ./your_program
 
+跑 `demos/fun_test` 时用这条，结果才只有一份可归因的 heap summary（`test_flock.cpp` 的 fork 子进程会继承整片父进程堆后 `_exit()`，逐字节重复报出 fontconfig/线程对象的假 `definitely lost`）：
+
+```
+valgrind --leak-check=full --child-silent-after-fork=yes \
+  --suppressions=../swinx/valgrind-linux.supp \
+  ./fun_test --gtest_filter=-window.*
+
+leaks --atExit -- ./fun_test --gtest_filter='-window.*'
+
+```
+
+
+判读基线与残留项说明见 `doc/swinx-总体评估报告-2026-10-18.md` §6.3 与 `demos/fun_test/readme.md`。
+
 setoutsoft@qq.com  2025/7/25
 

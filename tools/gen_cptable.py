@@ -20,8 +20,12 @@ Usage
 -----
     python swinx/tools/gen_cptable.py
 
-Writes swinx/src/cptable.h as UTF-8 **with BOM** and **CRLF** line endings, to
-match the rest of swinx/src (git core.autocrlf=true, see AGENTS.md).
+Writes swinx/src/cptable.h as UTF-8 **with BOM**; the writer joins lines with
+CRLF, while the committed header currently has LF endings -- so re-running this
+script churns every line ending even when the tables are unchanged.  Run it
+only when the tables themselves change.  This file's BOM is *not* the
+module-wide rule: most of swinx/src and swinx/include is BOM-free LF (see
+AGENTS.md §10), so do not use it as a style reference for hand-written sources.
 """
 import os
 

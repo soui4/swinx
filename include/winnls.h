@@ -112,6 +112,7 @@ extern "C"
 // Use of legacy code pages (encodings) is a leading cause of data loss and corruption.
 #define LOCALE_IDEFAULTCODEPAGE     0x0000000B // default oem code page for locale (user may configure as UTF-8, use of Unicode is recommended instead)
 #define LOCALE_IDEFAULTANSICODEPAGE 0x00001004 // default ansi code page for locale (user may configure as UTF-8, use of Unicode is recommended instead)
+#define LOCALE_RETURN_NUMBER        0x20000000 // GetLocaleInfo() reads/writes a DWORD instead of a string
 #define LOCALE_IDEFAULTMACCODEPAGE  0x00001011 // default mac code page for locale (user may configure as UTF-8, use of Unicode is recommended instead)
 #if (WINVER >= 0x0500)
 #define LOCALE_IDEFAULTEBCDICCODEPAGE 0x00001012 // default ebcdic code page for a locale (use of Unicode is recommended instead)
@@ -121,6 +122,8 @@ extern "C"
 #define LOCALE_ILANGUAGE        0x00000001 // DEPRECATED language id (LCID), LOCALE_SNAME preferred
 #define LOCALE_SABBREVLANGNAME  0x00000003 // DEPRECATED arbitrary abbreviated language name, LOCALE_SISO639LANGNAME instead.
 #define LOCALE_SABBREVCTRYNAME  0x00000007 // DEPRECATED arbitrary abbreviated country/region name, LOCALE_SISO3166CTRYNAME instead.
+#define LOCALE_SISO639LANGNAME  0x00000059 // ISO 639 language name, e.g. "en"
+#define LOCALE_SISO3166CTRYNAME 0x0000005A // ISO 3166 country/region name, e.g. "US"
 #define LOCALE_IGEOID           0x0000005B // DEPRECATED geographical location id, use LOCALE_SISO3166CTRYNAME instead.
 #define LOCALE_IDEFAULTLANGUAGE 0x00000009 // DEPRECATED default language id, deprecated
 #define LOCALE_IDEFAULTCOUNTRY  0x0000000A // DEPRECATED default country/region code, deprecated

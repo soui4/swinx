@@ -1498,8 +1498,8 @@ typedef struct tagSTGMEDIUM
     DWORD tymed;
     union {
         HBITMAP hBitmap;
-        // HMETAFILEPICT hMetaFilePict;
-        // HENHMETAFILE hEnhMetaFile;
+        HMETAFILEPICT hMetaFilePict;
+        HENHMETAFILE hEnhMetaFile;
         HGLOBAL hGlobal;
         LPOLESTR lpszFileName;
         IStream *pstm;
@@ -1513,8 +1513,8 @@ typedef struct tagSTGMEDIUM
     DWORD tymed;
     /* [switch_is][switch_type] */ union {
         /* [case()] */ HBITMAP hBitmap;
-        /* [case()] */ // HMETAFILEPICT hMetaFilePict;
-        /* [case()] */ // HENHMETAFILE hEnhMetaFile;
+        /* [case()] */ HMETAFILEPICT hMetaFilePict;
+        /* [case()] */ HENHMETAFILE hEnhMetaFile;
         /* [case()] */ HGLOBAL hGlobal;
         /* [case()] */ LPOLESTR lpszFileName;
         /* [case()] */ IStream *pstm;

@@ -1,7 +1,7 @@
 {
  "_meta": {
-  "decl_total": 1070,
-  "defined_total": 941,
+  "decl_total": 1272,
+  "defined_total": 1142,
   "no_def": [
    "ChangeClipboardChain",
    "CountClipboardFormats",
@@ -114,7 +114,6 @@
    "InitCommonControlsEx",
    "InitMUILanguage",
    "InitializeFlatSB",
-   "IsEqualGUID",
    "LBItemFromPt",
    "LOWORD",
    "LoadIconMetric",
@@ -131,7 +130,9 @@
    "TaskDialogIndirect",
    "UninitializeFlatSB",
    "_TrackMouseEvent",
-   "wcstok"
+   "_aligned_free",
+   "free",
+   "memcpy"
   ]
  },
  "funcs": {
@@ -196,11 +197,6 @@
      "class.cpp",
      "impl",
      ""
-    ],
-    [
-     "class.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -225,18 +221,12 @@
     "class.h"
    ],
    "files": [
-    "class.cpp",
-    "clsmgr.cpp"
+    "class.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "class.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "clsmgr.cpp",
      "impl",
      ""
     ]
@@ -267,11 +257,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "class.cpp",
-     "impl",
-     ""
-    ],
     [
      "class.cpp",
      "impl",
@@ -484,6 +469,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/dlghelper.cpp",
+     "partial",
+     "not-implemented"
+    ],
+    [
+     "platform/linux/dlghelper.cpp",
+     "impl",
+     ""
+    ],
+    [
      "platform/cocoa/dlghelper.mm",
      "impl",
      ""
@@ -492,16 +487,6 @@
      "platform/ios/dlghelper.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/dlghelper.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/mobile/dlghelper.cpp",
-     "partial",
-     "not-implemented"
     ]
    ]
   },
@@ -518,6 +503,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/dlghelper.cpp",
+     "partial",
+     "not-implemented"
+    ],
+    [
+     "platform/linux/dlghelper.cpp",
+     "impl",
+     ""
+    ],
+    [
      "platform/cocoa/dlghelper.mm",
      "impl",
      ""
@@ -526,16 +521,6 @@
      "platform/ios/dlghelper.mm",
      "impl",
      ""
-    ],
-    [
-     "platform/linux/dlghelper.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/mobile/dlghelper.cpp",
-     "partial",
-     "not-implemented"
     ]
    ]
   },
@@ -612,11 +597,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/fileapi.cpp",
      "impl",
@@ -701,16 +681,6 @@
      "platform/posix/fileapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -735,8 +705,7 @@
     "fileapi.h"
    ],
    "files": [
-    "platform/posix/fileapi.cpp",
-    "platform/posix/sysobjs.cpp"
+    "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -744,16 +713,6 @@
      "platform/posix/fileapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysobjs.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ]
    ]
   },
@@ -770,11 +729,6 @@
      "platform/posix/fileapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -787,11 +741,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/fileapi.cpp",
      "impl",
@@ -818,26 +767,6 @@
      "platform/posix/fileapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ]
    ]
   },
@@ -902,11 +831,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -919,11 +843,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -944,11 +863,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -961,11 +875,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -986,11 +895,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1003,11 +907,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -1028,11 +927,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1045,11 +939,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -1070,16 +959,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1092,16 +971,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -1122,11 +991,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1139,11 +1003,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -1164,11 +1023,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1181,11 +1035,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -1206,16 +1055,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1228,16 +1067,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -1258,11 +1087,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1275,11 +1099,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -1300,16 +1119,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1322,16 +1131,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -1352,11 +1151,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1369,11 +1163,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -1394,11 +1183,6 @@
      "platform/posix/profile.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1411,11 +1195,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/profile.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -1576,11 +1355,6 @@
      "platform/posix/fileapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1613,21 +1387,6 @@
      "platform/posix/fileapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1640,11 +1399,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/fileapi.cpp",
      "impl",
@@ -1703,11 +1457,6 @@
      "platform/posix/fileapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -1720,16 +1469,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/fileapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/fileapi.cpp",
      "impl",
@@ -1849,6 +1588,70 @@
     ]
    ]
   },
+  "MoveFileExA": {
+   "headers": [
+    "fileapi.h"
+   ],
+   "files": [
+    "platform/posix/fileapi.cpp"
+   ],
+   "agg": "partial",
+   "site_classes": [
+    [
+     "platform/posix/fileapi.cpp",
+     "partial",
+     "not-implemented"
+    ]
+   ]
+  },
+  "MoveFileExW": {
+   "headers": [
+    "fileapi.h"
+   ],
+   "files": [
+    "platform/posix/fileapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/fileapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetFileAttributesExA": {
+   "headers": [
+    "fileapi.h"
+   ],
+   "files": [
+    "platform/posix/fileapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/fileapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetFileAttributesExW": {
+   "headers": [
+    "fileapi.h"
+   ],
+   "files": [
+    "platform/posix/fileapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/fileapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
   "RemoveDirectoryA": {
    "headers": [
     "fileapi.h"
@@ -1932,12 +1735,12 @@
     [
      "gdi/apple/gdi.cpp",
      "impl",
-     "简单getter/setter/拷贝"
+     ""
     ],
     [
      "gdi/cairo/gdi.cpp",
      "impl",
-     "简单getter/setter/拷贝"
+     ""
     ]
    ]
   },
@@ -1954,12 +1757,12 @@
     [
      "gdi/apple/gdi.cpp",
      "impl",
-     "简单getter/setter/拷贝"
+     ""
     ],
     [
      "gdi/cairo/gdi.cpp",
      "impl",
-     "简单getter/setter/拷贝"
+     ""
     ]
    ]
   },
@@ -2001,11 +1804,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -2024,26 +1822,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -2089,12 +1867,12 @@
     [
      "gdi/apple/gdi.cpp",
      "impl",
-     "简单getter/setter/拷贝"
+     ""
     ],
     [
      "gdi/cairo/gdi.cpp",
      "impl",
-     "简单getter/setter/拷贝"
+     ""
     ]
    ]
   },
@@ -2110,56 +1888,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -2182,16 +1910,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -2346,18 +2064,8 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "gdi/apple/gdi.cpp",
      "impl",
      ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ],
     [
      "gdi/cairo/gdi.cpp",
@@ -2404,26 +2112,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -2446,46 +2134,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -2504,16 +2152,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -2551,39 +2189,13 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/apple/builtin_image.cpp",
     "gdi/apple/gdi.cpp",
     "gdi/cairo/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "gdi/apple/builtin_image.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -2632,21 +2244,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -2665,16 +2262,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -2781,17 +2368,39 @@
     "gdi/apple/gdi.cpp",
     "gdi/cairo/gdi.cpp"
    ],
-   "agg": "stub",
+   "agg": "impl",
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ],
     [
      "gdi/cairo/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetGraphicsMode": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "gdi/apple/gdi.cpp",
+    "gdi/cairo/gdi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "gdi/apple/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -2833,16 +2442,6 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
@@ -2877,48 +2476,12 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp",
-    "wnd.cpp"
+    "gdi/cairo/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -2945,36 +2508,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -2991,11 +2524,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
     [
      "gdi/apple/gdi.cpp",
      "impl",
@@ -3024,21 +2552,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -3057,11 +2570,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -3132,11 +2640,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -3184,11 +2687,6 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -3204,21 +2702,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -3300,27 +2783,11 @@
     "gdi.h"
    ],
    "files": [
-    "cmnctl32/listbox.cpp",
     "gdi/apple/gdi.cpp",
     "gdi/cairo/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "cmnctl32/listbox.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/listbox.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/listbox.cpp",
-     "impl",
-     ""
-    ],
     [
      "gdi/apple/gdi.cpp",
      "impl",
@@ -3383,8 +2850,7 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp",
-    "platform/posix/cursoricon.cpp"
+    "gdi/cairo/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3395,16 +2861,6 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/cursoricon.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -3422,26 +2878,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -3464,26 +2900,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -3554,26 +2970,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -3592,16 +2988,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -3650,16 +3036,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -3698,11 +3074,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
     [
      "gdi/apple/gdi.cpp",
      "impl",
@@ -3797,16 +3168,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -3819,100 +3180,14 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp",
-    "uitools.cpp"
+    "gdi/cairo/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/apple/gdi.cpp",
      "impl",
      ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ],
     [
      "gdi/cairo/gdi.cpp",
@@ -3933,26 +3208,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -3997,16 +3252,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -4099,16 +3344,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -4175,16 +3410,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -4212,17 +3437,11 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/apple/builtin_image.cpp",
     "gdi/apple/gdi.cpp",
     "gdi/cairo/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/apple/builtin_image.cpp",
-     "impl",
-     ""
-    ],
     [
      "gdi/apple/gdi.cpp",
      "impl",
@@ -4240,17 +3459,11 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/apple/builtin_image.cpp",
     "gdi/apple/gdi.cpp",
     "gdi/cairo/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/apple/builtin_image.cpp",
-     "impl",
-     ""
-    ],
     [
      "gdi/apple/gdi.cpp",
      "impl",
@@ -4275,36 +3488,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -4425,7 +3608,7 @@
     ]
    ]
   },
-  "SetViewportOrgEx": {
+  "SetMapMode": {
    "headers": [
     "gdi.h"
    ],
@@ -4438,10 +3621,49 @@
     [
      "gdi/apple/gdi.cpp",
      "impl",
-     ""
+     "简单getter/setter/拷贝"
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetMapMode": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "gdi/apple/gdi.cpp",
+    "gdi/cairo/gdi.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "gdi/apple/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "gdi/cairo/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "SetViewportOrgEx": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "gdi/apple/gdi.cpp",
+    "gdi/cairo/gdi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "gdi/apple/gdi.cpp",
      "impl",
      ""
     ],
@@ -4666,16 +3888,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -4874,26 +4086,6 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
@@ -4934,26 +4126,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ],
@@ -5052,6 +4224,50 @@
     ]
    ]
   },
+  "GdiFlush": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "gdi/apple/gdi.cpp",
+    "gdi/cairo/gdi.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "gdi/apple/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "gdi/cairo/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "ExtEscape": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "gdi/apple/gdi.cpp",
+    "gdi/cairo/gdi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "gdi/apple/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
   "LoadImageW": {
    "headers": [
     "gdi.h"
@@ -5061,11 +4277,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/cursoricon.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -5087,21 +4298,6 @@
      "platform/freertos/sysbridge.cpp",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/cursoricon.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/cursoricon.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/cursoricon.cpp",
-     "impl",
-     ""
     ],
     [
      "platform/posix/cursoricon.cpp",
@@ -5140,12 +4336,12 @@
     "gdi/apple/gdi.cpp",
     "gdi/cairo/gdi.cpp"
    ],
-   "agg": "stub",
+   "agg": "impl",
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ],
     [
      "gdi/cairo/gdi.cpp",
@@ -5160,8 +4356,7 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp",
-    "platform/linux/SConnection.cpp"
+    "gdi/cairo/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5172,11 +4367,6 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ]
@@ -5217,11 +4407,6 @@
      "platform/posix/cursoricon.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/cursoricon.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -5234,11 +4419,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/cursoricon.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -5280,16 +4460,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -5448,21 +4618,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -5507,16 +4662,6 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -5535,26 +4680,6 @@
    "site_classes": [
     [
      "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
      "impl",
      ""
     ],
@@ -5710,41 +4835,6 @@
      "uitools.cpp",
      "impl",
      ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -5787,6 +4877,38 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetCharWidth32A": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetCharWidth32W": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
      "impl",
      ""
     ]
@@ -5845,21 +4967,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
     [
      "uitools.cpp",
      "impl",
@@ -5955,6 +5062,38 @@
     ]
    ]
   },
+  "AddFontMemResourceEx": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "gdi/apple/gdi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "gdi/apple/gdi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RemoveFontMemResourceEx": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "gdi/apple/gdi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "gdi/apple/gdi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
   "BeginPath": {
    "headers": [
     "gdi.h"
@@ -5965,11 +5104,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
     [
      "gdi/apple/gdi.cpp",
      "impl",
@@ -5992,16 +5126,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
     [
      "gdi/apple/gdi.cpp",
      "impl",
@@ -6096,11 +5220,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -6145,16 +5264,6 @@
      ""
     ],
     [
-     "gdi/apple/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "gdi/cairo/gdi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
@@ -6180,6 +5289,28 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ]
+   ]
+  },
+  "WidenPath": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "gdi/apple/gdi.cpp",
+    "gdi/cairo/gdi.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "gdi/apple/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "gdi/cairo/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -6268,21 +5399,6 @@
      "platform/posix/cursoricon.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/cursoricon.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/cursoricon.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/cursoricon.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6298,11 +5414,6 @@
    "site_classes": [
     [
      "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ],
@@ -6326,14 +5437,292 @@
      "platform/posix/cursoricon.cpp",
      "impl",
      ""
-    ],
+    ]
+   ]
+  },
+  "EnumFontFamiliesExA": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
-     "platform/posix/cursoricon.cpp",
+     "fontapi.cpp",
      "impl",
      ""
-    ],
+    ]
+   ]
+  },
+  "EnumFontFamiliesExW": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
-     "platform/posix/cursoricon.cpp",
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetGlyphIndicesA": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetGlyphIndicesW": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetGlyphOutlineA": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetGlyphOutlineW": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetOutlineTextMetricsA": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetOutlineTextMetricsW": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetFontData": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetCharacterPlacementA": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetCharacterPlacementW": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetFontUnicodeRanges": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetCharWidthI": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "fontapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "fontapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "CreateEnhMetaFileA": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "metafile.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "metafile.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "CreateEnhMetaFileW": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "metafile.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "metafile.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "CloseEnhMetaFile": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "metafile.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "metafile.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "DeleteEnhMetaFile": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "metafile.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "metafile.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "EnumEnhMetaFile": {
+   "headers": [
+    "gdi.h"
+   ],
+   "files": [
+    "metafile.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "metafile.cpp",
      "impl",
      ""
     ]
@@ -6348,11 +5737,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "hook.cpp",
-     "impl",
-     ""
-    ],
     [
      "hook.cpp",
      "impl",
@@ -6373,11 +5757,6 @@
      "hook.cpp",
      "impl",
      ""
-    ],
-    [
-     "hook.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6390,26 +5769,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "hook.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "hook.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "hook.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "hook.cpp",
-     "impl",
-     ""
-    ],
     [
      "hook.cpp",
      "impl",
@@ -6430,16 +5789,6 @@
      "hook.cpp",
      "impl",
      ""
-    ],
-    [
-     "hook.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "hook.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6452,11 +5801,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "hook.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
     [
      "hook.cpp",
      "impl",
@@ -6493,11 +5837,6 @@
      "hook.cpp",
      "impl",
      ""
-    ],
-    [
-     "hook.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6515,17 +5854,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/imm.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/ios/imm.mm",
+     "platform/mobile/imm.cpp",
      "impl",
      ""
     ],
@@ -6535,7 +5864,17 @@
      ""
     ],
     [
-     "platform/mobile/imm.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/cocoa/imm.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/imm.mm",
      "impl",
      ""
     ]
@@ -6555,17 +5894,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/imm.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/ios/imm.mm",
+     "platform/mobile/imm.cpp",
      "impl",
      ""
     ],
@@ -6575,7 +5904,17 @@
      ""
     ],
     [
-     "platform/mobile/imm.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/cocoa/imm.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/imm.mm",
      "impl",
      ""
     ]
@@ -6595,17 +5934,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/imm.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/ios/imm.mm",
+     "platform/mobile/imm.cpp",
      "impl",
      ""
     ],
@@ -6615,7 +5944,17 @@
      ""
     ],
     [
-     "platform/mobile/imm.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/cocoa/imm.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/imm.mm",
      "impl",
      ""
     ]
@@ -6634,6 +5973,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6642,16 +5991,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6668,6 +6007,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6676,16 +6025,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6702,6 +6041,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6710,16 +6059,6 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6736,6 +6075,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6744,16 +6093,6 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6770,6 +6109,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6778,16 +6127,6 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6804,6 +6143,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6812,16 +6161,6 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6838,6 +6177,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6846,16 +6195,6 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6872,6 +6211,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6880,16 +6229,6 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6906,6 +6245,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6914,16 +6263,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6940,6 +6279,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6948,16 +6297,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -6974,6 +6313,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6982,16 +6331,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7008,6 +6347,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -7016,16 +6365,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7042,6 +6381,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -7050,16 +6399,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7076,6 +6415,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -7084,16 +6433,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7110,6 +6449,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -7118,16 +6467,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7144,6 +6483,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -7152,16 +6501,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7178,6 +6517,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -7186,16 +6535,6 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7212,6 +6551,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -7220,16 +6569,6 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7246,6 +6585,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -7254,16 +6603,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7281,17 +6620,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/imm.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/ios/imm.mm",
+     "platform/mobile/imm.cpp",
      "impl",
      ""
     ],
@@ -7301,7 +6630,17 @@
      ""
     ],
     [
-     "platform/mobile/imm.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/cocoa/imm.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/imm.mm",
      "impl",
      ""
     ]
@@ -7321,17 +6660,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/imm.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/ios/imm.mm",
+     "platform/mobile/imm.cpp",
      "impl",
      ""
     ],
@@ -7341,7 +6670,17 @@
      ""
     ],
     [
-     "platform/mobile/imm.cpp",
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/cocoa/imm.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/imm.mm",
      "impl",
      ""
     ]
@@ -7360,6 +6699,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -7368,16 +6717,6 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7394,6 +6733,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -7402,16 +6751,6 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7428,6 +6767,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -7436,16 +6785,6 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7462,6 +6801,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -7470,14 +6819,20 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
-    ],
+    ]
+   ]
+  },
+  "_chsize_s": {
+   "headers": [
+    "io.h"
+   ],
+   "files": [
+    "strapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/imm.cpp",
+     "strapi.cpp",
      "impl",
      ""
     ]
@@ -7496,9 +6851,52 @@
      "platform/ios/ios_main.mm",
      "impl",
      ""
-    ],
+    ]
+   ]
+  },
+  "GetAdaptersAddresses": {
+   "headers": [
+    "iphlpapi.h"
+   ],
+   "files": [
+    "platform/posix/iphlpapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
-     "platform/ios/ios_main.mm",
+     "platform/posix/iphlpapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "NotifyAddrChange": {
+   "headers": [
+    "iphlpapi.h"
+   ],
+   "files": [
+    "platform/posix/iphlpapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/iphlpapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "CancelIPChangeNotify": {
+   "headers": [
+    "iphlpapi.h"
+   ],
+   "files": [
+    "platform/posix/iphlpapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/iphlpapi.cpp",
      "impl",
      ""
     ]
@@ -7549,16 +6947,6 @@
      "cmnctl32/menu.cpp",
      "impl",
      ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7575,11 +6963,6 @@
      "cmnctl32/menu.cpp",
      "impl",
      ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7592,11 +6975,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
     [
      "cmnctl32/menu.cpp",
      "impl",
@@ -7637,56 +7015,6 @@
      "cmnctl32/menu.cpp",
      "impl",
      ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7699,11 +7027,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
     [
      "cmnctl32/menu.cpp",
      "impl",
@@ -7816,16 +7139,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
     [
      "cmnctl32/menu.cpp",
      "impl",
@@ -7974,11 +7287,6 @@
      "cmnctl32/menu.cpp",
      "impl",
      ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -7991,11 +7299,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
     [
      "cmnctl32/menu.cpp",
      "impl",
@@ -8032,21 +7335,6 @@
      "cmnctl32/menu.cpp",
      "impl",
      ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -8059,11 +7347,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
     [
      "cmnctl32/menu.cpp",
      "impl",
@@ -8084,11 +7367,6 @@
      "cmnctl32/menu.cpp",
      "impl",
      ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -8101,11 +7379,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
     [
      "cmnctl32/menu.cpp",
      "impl",
@@ -8157,26 +7430,6 @@
     [
      "cmnctl32/menu.cpp",
      "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
      ""
     ]
    ]
@@ -8190,11 +7443,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "cmnctl32/menu.cpp",
-     "impl",
-     ""
-    ],
     [
      "cmnctl32/menu.cpp",
      "impl",
@@ -8215,9 +7463,31 @@
      "cmnctl32/menu.cpp",
      "impl",
      ""
+    ]
+   ]
+  },
+  "QueryInterface": {
+   "headers": [
+    "mlang.h"
+   ],
+   "files": [
+    "malloc_impl.cpp",
+    "platform/cocoa/SNsAccessibility.mm"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "malloc_impl.cpp",
+     "impl",
+     ""
     ],
     [
-     "cmnctl32/menu.cpp",
+     "platform/cocoa/SNsAccessibility.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/cocoa/SNsAccessibility.mm",
      "impl",
      ""
     ]
@@ -8340,18 +7610,12 @@
     "multimon.h"
    ],
    "files": [
-    "multimon.cpp",
-    "platform/cocoa/SConnection.mm"
+    "multimon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "multimon.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
      "impl",
      ""
     ]
@@ -8366,11 +7630,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "multimon.cpp",
-     "impl",
-     ""
-    ],
     [
      "multimon.cpp",
      "impl",
@@ -8442,6 +7701,38 @@
     ]
    ]
   },
+  "EnumDisplaySettingsA": {
+   "headers": [
+    "multimon.h"
+   ],
+   "files": [
+    "multimon.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "multimon.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "EnumDisplaySettingsW": {
+   "headers": [
+    "multimon.h"
+   ],
+   "files": [
+    "multimon.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "multimon.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
   "VariantInit": {
    "headers": [
     "oaidl.h"
@@ -8471,11 +7762,6 @@
      "variant.cpp",
      "impl",
      ""
-    ],
-    [
-     "variant.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -8492,11 +7778,6 @@
      "variant.cpp",
      "impl",
      ""
-    ],
-    [
-     "variant.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -8509,11 +7790,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
     [
      "objbase.cpp",
      "impl",
@@ -8550,11 +7826,6 @@
      "malloc_impl.cpp",
      "impl",
      ""
-    ],
-    [
-     "malloc_impl.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -8567,11 +7838,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "malloc_impl.cpp",
-     "impl",
-     ""
-    ],
     [
      "malloc_impl.cpp",
      "impl",
@@ -8592,11 +7858,6 @@
      "malloc_impl.cpp",
      "impl",
      ""
-    ],
-    [
-     "malloc_impl.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -8609,11 +7870,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "malloc_impl.cpp",
-     "impl",
-     ""
-    ],
     [
      "malloc_impl.cpp",
      "impl",
@@ -8682,34 +7938,9 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/cocoa/ole2.mm",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/cocoa/ole2.mm",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/ios/ole2.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/ole2.mm",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/ios/ole2.mm",
-     "stub",
-     "仅返回常量/无操作"
     ],
     [
      "platform/linux/ole2.cpp",
@@ -8717,29 +7948,14 @@
      ""
     ],
     [
-     "platform/linux/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
      "impl",
      ""
     ],
     [
-     "platform/mobile/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "platform/ios/ole2.mm",
+     "impl",
+     ""
     ]
    ]
   },
@@ -8756,7 +7972,12 @@
    "agg": "stub",
    "site_classes": [
     [
-     "platform/cocoa/ole2.mm",
+     "platform/mobile/ole2.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/ole2.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -8767,31 +7988,6 @@
     ],
     [
      "platform/ios/ole2.mm",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/ios/ole2.mm",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/ole2.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -8810,12 +8006,7 @@
    "agg": "stub",
    "site_classes": [
     [
-     "platform/cocoa/ole2.mm",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/ios/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -8825,7 +8016,12 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/ios/ole2.mm",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -8844,6 +8040,16 @@
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/ole2.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
      "platform/cocoa/ole2.mm",
      "impl",
      ""
@@ -8852,16 +8058,6 @@
      "platform/ios/ole2.mm",
      "impl",
      ""
-    ],
-    [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/mobile/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ]
    ]
   },
@@ -8879,17 +8075,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/ole2.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/dlghelper.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
@@ -8899,7 +8085,17 @@
      ""
     ],
     [
-     "platform/mobile/ole2.cpp",
+     "platform/freertos/dlghelper.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/cocoa/ole2.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ]
@@ -8918,12 +8114,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/ole2.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
@@ -8933,7 +8124,12 @@
      ""
     ],
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ]
@@ -8952,12 +8148,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/ole2.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
@@ -8967,7 +8158,12 @@
      ""
     ],
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ]
@@ -8986,12 +8182,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/ole2.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
@@ -9001,7 +8192,12 @@
      ""
     ],
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ]
@@ -9020,12 +8216,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/ole2.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
@@ -9035,7 +8226,12 @@
      ""
     ],
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ]
@@ -9054,12 +8250,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/ole2.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
@@ -9069,7 +8260,12 @@
      ""
     ],
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ]
@@ -9083,18 +8279,12 @@
     "platform/cocoa/ole2.mm",
     "platform/ios/ole2.mm",
     "platform/linux/ole2.cpp",
-    "platform/mobile/ole2.cpp",
-    "platform/posix/shellapi.cpp"
+    "platform/mobile/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/ole2.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
@@ -9104,22 +8294,12 @@
      ""
     ],
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
      "impl",
      ""
     ],
     [
-     "platform/posix/shellapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/shellapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/shellapi.cpp",
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ]
@@ -9130,18 +8310,24 @@
     "ole2.h"
    ],
    "files": [
+    "platform/cocoa/ole2.mm",
     "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
+     "platform/mobile/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
      "platform/linux/ole2.cpp",
      "impl",
      ""
     ],
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
      "impl",
      ""
     ]
@@ -9156,21 +8342,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "oleacc.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "oleacc.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "oleacc.cpp",
-     "impl",
-     ""
-    ],
     [
      "oleacc.cpp",
      "impl",
@@ -9191,21 +8362,6 @@
      "oleacc.cpp",
      "impl",
      ""
-    ],
-    [
-     "oleacc.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "oleacc.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "oleacc.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -9218,21 +8374,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "oleacc.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "oleacc.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "oleacc.cpp",
-     "impl",
-     ""
-    ],
     [
      "oleacc.cpp",
      "impl",
@@ -9265,11 +8406,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "oleacc.cpp",
-     "impl",
-     ""
-    ],
     [
      "oleacc.cpp",
      "impl",
@@ -9386,56 +8522,6 @@
      "objbase.cpp",
      "impl",
      ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -9448,11 +8534,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
     [
      "objbase.cpp",
      "impl",
@@ -9489,21 +8570,6 @@
      "objbase.cpp",
      "impl",
      ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -9516,11 +8582,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "objbase.cpp",
-     "impl",
-     ""
-    ],
     [
      "objbase.cpp",
      "impl",
@@ -9557,11 +8618,6 @@
      "objbase.cpp",
      "impl",
      ""
-    ],
-    [
-     "objbase.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -9594,41 +8650,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -9641,11 +8662,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -9666,21 +8682,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -9693,11 +8694,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -9718,26 +8714,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -9750,11 +8726,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -9775,11 +8746,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -9792,16 +8758,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -9822,11 +8778,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -9839,11 +8790,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -9864,11 +8810,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -9881,11 +8822,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -9906,11 +8842,6 @@
      "safearray.cpp",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -9923,11 +8854,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -9948,11 +8874,6 @@
      "safearray.cpp",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -9965,11 +8886,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -9990,16 +8906,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10012,11 +8918,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -10037,11 +8938,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10054,21 +8950,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -10089,11 +8970,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10106,11 +8982,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -10131,36 +9002,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10173,26 +9014,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -10213,11 +9034,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10230,31 +9046,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -10275,26 +9066,6 @@
      "safearray.cpp",
      "impl",
      ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10311,36 +9082,6 @@
      "safearray.cpp",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -10353,16 +9094,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "safearray.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
     [
      "safearray.cpp",
      "impl",
@@ -10415,11 +9146,6 @@
      "process.cpp",
      "impl",
      ""
-    ],
-    [
-     "process.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10452,16 +9178,6 @@
      "process.cpp",
      "impl",
      ""
-    ],
-    [
-     "process.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "process.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10474,11 +9190,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "process.cpp",
-     "impl",
-     ""
-    ],
     [
      "process.cpp",
      "impl",
@@ -10515,21 +9226,6 @@
      "region.cpp",
      "impl",
      ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10542,16 +9238,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
     [
      "region.cpp",
      "impl",
@@ -10604,26 +9290,6 @@
      "region.cpp",
      "impl",
      ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10656,16 +9322,6 @@
      "region.cpp",
      "impl",
      ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10678,11 +9334,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
     [
      "region.cpp",
      "impl",
@@ -10703,11 +9354,6 @@
      "region.cpp",
      "impl",
      ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10720,16 +9366,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
     [
      "region.cpp",
      "impl",
@@ -10750,11 +9386,6 @@
      "region.cpp",
      "impl",
      ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10767,11 +9398,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
     [
      "region.cpp",
      "impl",
@@ -10792,11 +9418,6 @@
      "region.cpp",
      "impl",
      ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10805,28 +9426,12 @@
     "region.h"
    ],
    "files": [
-    "region.cpp",
-    "wnd.cpp"
+    "region.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
      "impl",
      ""
     ]
@@ -10845,21 +9450,6 @@
      "region.cpp",
      "impl",
      ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "region.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10868,18 +9458,12 @@
     "resapi.h"
    ],
    "files": [
-    "platform/posix/cursoricon.cpp",
     "resapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "resapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/cursoricon.cpp",
      "impl",
      ""
     ]
@@ -10930,11 +9514,6 @@
      "resapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "resapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -10943,21 +9522,10 @@
     "resapi.h"
    ],
    "files": [
-    "coffparser.cpp",
     "resapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "coffparser.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "resapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "resapi.cpp",
      "impl",
@@ -10970,21 +9538,10 @@
     "resapi.h"
    ],
    "files": [
-    "coffparser.cpp",
     "resapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "coffparser.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "resapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "resapi.cpp",
      "impl",
@@ -10997,21 +9554,10 @@
     "resapi.h"
    ],
    "files": [
-    "coffparser.cpp",
     "resapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "coffparser.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "resapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "resapi.cpp",
      "impl",
@@ -11028,11 +9574,6 @@
    ],
    "agg": "stub",
    "site_classes": [
-    [
-     "resapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "resapi.cpp",
      "stub",
@@ -11339,21 +9880,6 @@
    "site_classes": [
     [
      "platform/posix/shellapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/shellapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/shellapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -11432,11 +9958,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/shellapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/shellapi.cpp",
      "impl",
@@ -11885,12 +10406,18 @@
      "platform/posix/shellapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/shellapi.cpp",
-     "impl",
-     ""
-    ],
+    ]
+   ]
+  },
+  "SHCreateStreamOnFileExW": {
+   "headers": [
+    "shellapi.h"
+   ],
+   "files": [
+    "platform/posix/shellapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
      "platform/posix/shellapi.cpp",
      "impl",
@@ -11898,7 +10425,55 @@
     ]
    ]
   },
-  "SHCreateStreamOnFileExW": {
+  "SHGetFileInfoA": {
+   "headers": [
+    "shellapi.h"
+   ],
+   "files": [
+    "platform/posix/shellapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/shellapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "SHGetFileInfoW": {
+   "headers": [
+    "shellapi.h"
+   ],
+   "files": [
+    "platform/posix/shellapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/shellapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ExtractIconExA": {
+   "headers": [
+    "shellapi.h"
+   ],
+   "files": [
+    "platform/posix/shellapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/shellapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ExtractIconExW": {
    "headers": [
     "shellapi.h"
    ],
@@ -11923,11 +10498,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/shellapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/shellapi.cpp",
      "impl",
@@ -11984,6 +10554,70 @@
    ]
   },
   "SHGetSpecialFolderPathW": {
+   "headers": [
+    "shlobj.h"
+   ],
+   "files": [
+    "platform/posix/shellobj.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/shellobj.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "SHGetFolderPathA": {
+   "headers": [
+    "shlobj.h"
+   ],
+   "files": [
+    "platform/posix/shellobj.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/shellobj.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "SHGetFolderPathW": {
+   "headers": [
+    "shlobj.h"
+   ],
+   "files": [
+    "platform/posix/shellobj.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/shellobj.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "SHCreateDirectoryExA": {
+   "headers": [
+    "shlobj.h"
+   ],
+   "files": [
+    "platform/posix/shellobj.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/shellobj.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "SHCreateDirectoryExW": {
    "headers": [
     "shlobj.h"
    ],
@@ -12063,6 +10697,262 @@
     ]
    ]
   },
+  "PathGetCharTypeA": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "PathGetCharTypeW": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ]
+   ]
+  },
+  "PathAppendA": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "PathAppendW": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "PathCombineA": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "PathCombineW": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "PathIsUNCA": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ]
+   ]
+  },
+  "PathIsUNCW": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ]
+   ]
+  },
+  "PathRemoveExtensionA": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "PathRemoveExtensionW": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "PathRemoveFileSpecA": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "PathRemoveFileSpecW": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "PathRenameExtensionA": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "PathRenameExtensionW": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "SHGetValueA": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "SHGetValueW": {
+   "headers": [
+    "shlwapi.h"
+   ],
+   "files": [
+    "shlwapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "shlwapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
   "strcpy_s": {
    "headers": [
     "strapi.h"
@@ -12075,12 +10965,7 @@
     [
      "strapi.cpp",
      "impl",
-     ""
-    ],
-    [
-     "strapi.cpp",
-     "impl",
-     ""
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -12097,11 +10982,6 @@
      "strapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "strapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -12114,11 +10994,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "strapi.cpp",
      "impl",
@@ -12191,6 +11066,38 @@
    ]
   },
   "_snprintf": {
+   "headers": [
+    "strapi.h"
+   ],
+   "files": [
+    "strapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "strapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "_vsnprintf": {
+   "headers": [
+    "strapi.h"
+   ],
+   "files": [
+    "strapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "strapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "_ftime": {
    "headers": [
     "strapi.h"
    ],
@@ -12315,11 +11222,6 @@
      "strapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "strapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -12348,11 +11250,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "strapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "strapi.cpp",
      "impl",
@@ -12939,11 +11836,6 @@
      "platform/posix/syncapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/syncapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -12960,11 +11852,6 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -12977,11 +11864,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -13027,28 +11909,12 @@
    ],
    "files": [
     "platform/freertos/winobjs.cpp",
-    "platform/posix/sysapi.cpp",
-    "safearray.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "safearray.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
@@ -13071,16 +11937,6 @@
    "site_classes": [
     [
      "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
@@ -13110,7 +11966,18 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
+    ]
+   ]
+  },
+  "InterlockedExchange": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -13130,11 +11997,6 @@
    "site_classes": [
     [
      "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
@@ -13303,6 +12165,38 @@
     ]
    ]
   },
+  "FormatMessageA": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "FormatMessageW": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
   "MulDiv": {
    "headers": [
     "sysapi.h"
@@ -13330,47 +12224,36 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/cocoa/SConnection.mm",
     "platform/freertos/winobjs.cpp",
-    "platform/ios/SConnection.mm",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
      "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ],
     [
-     "platform/freertos/winobjs.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
+    ]
+   ]
+  },
+  "GetThreadTimes": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ]
    ]
   },
@@ -13390,31 +12273,6 @@
      ""
     ],
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/posix/sysapi.cpp",
      "impl",
      ""
@@ -13426,70 +12284,13 @@
     "sysapi.h"
    ],
    "files": [
-    "log.cpp",
     "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp",
-    "resapi.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "log.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "log.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "resapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "resapi.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
@@ -13621,21 +12422,6 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -13722,11 +12508,6 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -13751,17 +12532,11 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
     "platform/freertos/winobjs.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/freertos/winobjs.cpp",
      "impl",
@@ -13809,11 +12584,6 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -13826,11 +12596,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -13895,11 +12660,6 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -13924,17 +12684,11 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/input.cpp",
     "platform/freertos/sysbridge.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/input.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/freertos/sysbridge.cpp",
      "impl",
@@ -13953,18 +12707,12 @@
    ],
    "files": [
     "platform/freertos/sysbridge.cpp",
-    "platform/linux/SDragdrop.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SDragdrop.cpp",
      "impl",
      ""
     ],
@@ -14010,31 +12758,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -14051,29 +12774,36 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
+    ]
+   ]
+  },
+  "GetQueueStatus": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
-     "wnd.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
+    ]
+   ]
+  },
+  "GetLastInputInfo": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
+     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14107,151 +12837,10 @@
    ],
    "files": [
     "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp",
-    "wnd.cpp"
+    "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/freertos/sysbridge.cpp",
      "impl",
@@ -14291,100 +12880,10 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/cocoa/SConnection.mm",
-    "platform/freertos/SConnection.cpp",
-    "platform/ios/SConnection.mm",
-    "platform/linux/SConnection.cpp",
-    "platform/mobile/SConnection.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/mobile/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/mobile/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/mobile/SConnection.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -14397,60 +12896,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/cocoa/SConnection.mm",
     "platform/freertos/sysbridge.cpp",
-    "platform/ios/SConnection.mm",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
      "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
      "impl",
      ""
     ],
@@ -14499,11 +12951,6 @@
      ""
     ],
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/posix/sysapi.cpp",
      "impl",
      ""
@@ -14546,11 +12993,6 @@
      "platform/freertos/sysbridge.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ],
     [
      "platform/posix/sysapi.cpp",
@@ -14733,11 +13175,6 @@
      ""
     ],
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/posix/memory.cpp",
      "impl",
      ""
@@ -14814,29 +13251,9 @@
      ""
     ],
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/posix/memory.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -14852,11 +13269,6 @@
    "site_classes": [
     [
      "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
@@ -14886,11 +13298,6 @@
      "platform/posix/memory.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -14904,11 +13311,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/freertos/sysbridge.cpp",
      "impl",
@@ -14933,16 +13335,6 @@
    "site_classes": [
     [
      "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
@@ -14982,11 +13374,6 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -15003,7 +13390,34 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
+    ]
+   ]
+  },
+  "VirtualProtect": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "VirtualQuery": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -15052,11 +13466,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/sysobjs.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/sysobjs.cpp",
      "impl",
@@ -15125,11 +13534,6 @@
      "platform/posix/sysobjs.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysobjs.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -15194,16 +13598,6 @@
      "platform/posix/sysobjs.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysobjs.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -15242,21 +13636,6 @@
      "platform/posix/memory.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -15288,11 +13667,6 @@
    "site_classes": [
     [
      "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
@@ -15341,8 +13715,7 @@
    ],
    "files": [
     "platform/freertos/sysbridge.cpp",
-    "platform/posix/memory.cpp",
-    "platform/posix/shellapi.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -15353,21 +13726,6 @@
     ],
     [
      "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/shellapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/shellapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -15379,21 +13737,10 @@
    ],
    "files": [
     "platform/freertos/sysbridge.cpp",
-    "platform/posix/memory.cpp",
-    "platform/posix/shellapi.cpp"
+    "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/freertos/sysbridge.cpp",
      "stub",
@@ -15401,21 +13748,6 @@
     ],
     [
      "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/shellapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/shellapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/shellapi.cpp",
      "impl",
      ""
     ]
@@ -15469,31 +13801,6 @@
      ""
     ],
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/posix/memory.cpp",
      "impl",
      ""
@@ -15512,11 +13819,6 @@
    "site_classes": [
     [
      "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
      "impl",
      ""
     ],
@@ -15546,16 +13848,6 @@
      "platform/posix/memory.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -15578,11 +13870,6 @@
      "platform/posix/memory.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -15600,21 +13887,6 @@
      "platform/freertos/sysbridge.cpp",
      "stub",
      "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/memory.cpp",
-     "impl",
-     ""
     ],
     [
      "platform/posix/memory.cpp",
@@ -15660,29 +13932,13 @@
     "sysapi.h"
    ],
    "files": [
-    "hook.cpp",
     "platform/freertos/dlfreertos.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "hook.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/freertos/dlfreertos.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/freertos/dlfreertos.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
@@ -15694,6 +13950,70 @@
    ]
   },
   "GetModuleFileNameW": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetSystemDirectoryA": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetSystemDirectoryW": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ExpandEnvironmentStringsA": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ExpandEnvironmentStringsW": {
    "headers": [
     "sysapi.h"
    ],
@@ -15721,11 +14041,6 @@
    "site_classes": [
     [
      "platform/freertos/dlfreertos.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/freertos/dlfreertos.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -15737,6 +14052,38 @@
    ]
   },
   "LoadLibraryW": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "LoadLibraryExA": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "partial",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "partial",
+     "not-implemented"
+    ]
+   ]
+  },
+  "LoadLibraryExW": {
    "headers": [
     "sysapi.h"
    ],
@@ -15843,11 +14190,6 @@
    "site_classes": [
     [
      "platform/freertos/dlfreertos.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/freertos/dlfreertos.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -15868,11 +14210,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/dlfreertos.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
     [
      "platform/freertos/dlfreertos.cpp",
      "impl",
@@ -16162,23 +14499,12 @@
     "sysapi.h"
    ],
    "files": [
-    "handle.cpp",
-    "platform/freertos/winobjs.cpp"
+    "handle.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "handle.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/winobjs.cpp",
      "impl",
      ""
     ]
@@ -16219,26 +14545,6 @@
     [
      "platform/freertos/winobjs.cpp",
      "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysobjs.cpp",
-     "impl",
      ""
     ],
     [
@@ -16253,22 +14559,11 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/SConnection.cpp",
     "platform/freertos/winobjs.cpp",
     "platform/posix/sysobjs.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/SConnection.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/freertos/SConnection.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/freertos/winobjs.cpp",
      "impl",
@@ -16278,7 +14573,66 @@
      "platform/posix/sysobjs.cpp",
      "impl",
      ""
-    ],
+    ]
+   ]
+  },
+  "WaitForSingleObjectEx": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysobjs.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysobjs.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegisterWaitForSingleObject": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysobjs.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysobjs.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "UnregisterWait": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysobjs.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysobjs.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "UnregisterWaitEx": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysobjs.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
      "platform/posix/sysobjs.cpp",
      "impl",
@@ -16296,11 +14650,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/freertos/winobjs.cpp",
      "impl",
@@ -16363,16 +14712,6 @@
    "site_classes": [
     [
      "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
@@ -16642,11 +14981,6 @@
      "platform/posix/sysobjs.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysobjs.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -16706,26 +15040,6 @@
    "site_classes": [
     [
      "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
@@ -16792,7 +15106,7 @@
     [
      "platform/posix/sysapi.cpp",
      "impl",
-     ""
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -16834,6 +15148,38 @@
     ]
    ]
   },
+  "IsDebuggerPresent": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RaiseException": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
   "DbgBreakPoint": {
    "headers": [
     "sysapi.h"
@@ -16843,11 +15189,6 @@
    ],
    "agg": "stub",
    "site_classes": [
-    [
-     "platform/posix/sysapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/posix/sysapi.cpp",
      "stub",
@@ -17108,11 +15449,6 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -17212,11 +15548,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/dlfreertos.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
     [
      "platform/freertos/dlfreertos.cpp",
      "impl",
@@ -17407,11 +15738,6 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -17509,11 +15835,6 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -17529,21 +15850,6 @@
    "site_classes": [
     [
      "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
      "impl",
      ""
     ],
@@ -17586,6 +15892,22 @@
     ]
    ]
   },
+  "GetThreadContext": {
+   "headers": [
+    "sysapi.h"
+   ],
+   "files": [
+    "platform/posix/sysapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/sysapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
   "GetAppleBundlePath": {
    "headers": [
     "sysapi.h"
@@ -17603,6 +15925,150 @@
     ],
     [
      "platform/ios/SConnection.mm",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ScriptItemize": {
+   "headers": [
+    "usp10.h"
+   ],
+   "files": [
+    "platform/posix/usp10.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/usp10.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ]
+   ]
+  },
+  "ScriptShape": {
+   "headers": [
+    "usp10.h"
+   ],
+   "files": [
+    "platform/posix/usp10.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/usp10.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ScriptPlace": {
+   "headers": [
+    "usp10.h"
+   ],
+   "files": [
+    "platform/posix/usp10.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/usp10.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ScriptGetFontProperties": {
+   "headers": [
+    "usp10.h"
+   ],
+   "files": [
+    "platform/posix/usp10.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/usp10.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ScriptFreeCache": {
+   "headers": [
+    "usp10.h"
+   ],
+   "files": [
+    "platform/posix/usp10.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/usp10.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ScriptXtoCP": {
+   "headers": [
+    "usp10.h"
+   ],
+   "files": [
+    "platform/posix/usp10.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/usp10.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ScriptStringAnalyse": {
+   "headers": [
+    "usp10.h"
+   ],
+   "files": [
+    "platform/posix/usp10.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/usp10.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ScriptStringOut": {
+   "headers": [
+    "usp10.h"
+   ],
+   "files": [
+    "platform/posix/usp10.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/usp10.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ScriptStringFree": {
+   "headers": [
+    "usp10.h"
+   ],
+   "files": [
+    "platform/posix/usp10.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/usp10.cpp",
      "impl",
      ""
     ]
@@ -17669,16 +16135,6 @@
      "platform/posix/wgl.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -17707,21 +16163,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/wgl.cpp",
      "impl",
@@ -17774,16 +16215,6 @@
      "platform/posix/wgl.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -17812,21 +16243,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/wgl.cpp",
      "impl",
@@ -17875,21 +16291,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/posix/wgl.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
     [
      "platform/posix/wgl.cpp",
      "impl",
@@ -18057,6 +16458,102 @@
     ]
    ]
   },
+  "CryptAcquireContextA": {
+   "headers": [
+    "wincrypt.h"
+   ],
+   "files": [
+    "platform/posix/cryptapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/cryptapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "CryptAcquireContextW": {
+   "headers": [
+    "wincrypt.h"
+   ],
+   "files": [
+    "platform/posix/cryptapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/cryptapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "CryptGenRandom": {
+   "headers": [
+    "wincrypt.h"
+   ],
+   "files": [
+    "platform/posix/cryptapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/cryptapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "CryptReleaseContext": {
+   "headers": [
+    "wincrypt.h"
+   ],
+   "files": [
+    "platform/posix/cryptapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/cryptapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "CertDuplicateCertificateContext": {
+   "headers": [
+    "wincrypt.h"
+   ],
+   "files": [
+    "platform/posix/cryptapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/cryptapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "CertFreeCertificateContext": {
+   "headers": [
+    "wincrypt.h"
+   ],
+   "files": [
+    "platform/posix/cryptapi.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/cryptapi.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
   "GetKeyboardLayout": {
    "headers": [
     "winnls.h"
@@ -18150,11 +16647,6 @@
      "winnsl.cpp",
      "impl",
      ""
-    ],
-    [
-     "winnsl.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -18199,11 +16691,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "winnsl.cpp",
-     "impl",
-     ""
-    ],
     [
      "winnsl.cpp",
      "impl",
@@ -18259,6 +16746,1446 @@
     ]
    ]
   },
+  "RegOpenKeyExA": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegOpenKeyExW": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegCloseKey": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegQueryValueExA": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegQueryValueExW": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegEnumKeyExA": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegEnumKeyExW": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegQueryInfoKeyA": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegQueryInfoKeyW": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegCreateKeyExW": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegCreateKeyExA": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegSetValueExW": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegSetValueExA": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegDeleteKeyW": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegDeleteKeyA": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegDeleteValueW": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegDeleteValueA": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegFlushKey": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegMountDatabase": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "RegUnmountDatabase": {
+   "headers": [
+    "winreg.h"
+   ],
+   "files": [
+    "platform/posix/registry.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/registry.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAStartup": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSACleanup": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAGetLastError": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "platform/posix/winsock.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "WSASetLastError": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock.cpp"
+   ],
+   "agg": "stub",
+   "site_classes": [
+    [
+     "platform/posix/winsock.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "swinx_socket": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSASocketA": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSASocketW": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "closesocket": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_bind": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_connect": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_listen": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_accept": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAAccept": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_shutdown": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_send": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_recv": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_sendto": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_recvfrom": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSASend": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSARecv": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSASendTo": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSARecvFrom": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_getsockname": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_getpeername": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_getsockopt": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_setsockopt": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "ioctlsocket": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_select": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "__WSAFDIsSet": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ]
+   ]
+  },
+  "WSACreateEvent": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSACloseEvent": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSASetEvent": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAResetEvent": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAWaitForMultipleEvents": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAEventSelect": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAEnumNetworkEvents": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAAsyncSelect": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAPoll": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAAddressToStringA": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAAddressToStringW": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAStringToAddressA": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "WSAStringToAddressW": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_getaddrinfo": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_freeaddrinfo": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_getnameinfo": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetAddrInfoA": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetAddrInfoW": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "FreeAddrInfoA": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "FreeAddrInfoW": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetNameInfoA": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetNameInfoW": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_gethostbyname": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_gethostbyaddr": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_gethostname": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_getservbyname": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_getservbyport": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_getprotobyname": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_getprotobynumber": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_inet_addr": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_inet_ntoa": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_inet_ntop": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_inet_pton": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "InetPtonA": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "InetPtonW": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "InetNtopA": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "InetNtopW": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_htons": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_ntohs": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_htonl": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "swinx_ntohl": {
+   "headers": [
+    "winsock2.h"
+   ],
+   "files": [
+    "platform/posix/winsock2.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/winsock2.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
   "ShowCursor": {
    "headers": [
     "winuser.h"
@@ -18302,11 +18229,6 @@
    "site_classes": [
     [
      "oleacc.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "oleacc.cpp",
      "impl",
      ""
     ]
@@ -18337,11 +18259,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "winuser.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
     [
      "winuser.cpp",
      "impl",
@@ -18386,8 +18303,7 @@
     "winuser.h"
    ],
    "files": [
-    "winuser.cpp",
-    "wnd.cpp"
+    "winuser.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -18395,36 +18311,6 @@
      "winuser.cpp",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -18529,8 +18415,7 @@
     "winuser.h"
    ],
    "files": [
-    "winuser.cpp",
-    "wnd.cpp"
+    "winuser.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -18538,11 +18423,6 @@
      "winuser.cpp",
      "impl",
      "简单getter/setter/拷贝"
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -18555,11 +18435,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -18631,11 +18506,12 @@
     ]
    ]
   },
-  "CreateWindowExA": {
+  "GetPropA": {
    "headers": [
-    "wnd.h"
+    "winuser.h"
    ],
    "files": [
+    "platform/freertos/sysbridge.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
@@ -18646,15 +18522,243 @@
      ""
     ],
     [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "GetPropW": {
+   "headers": [
+    "winuser.h"
+   ],
+   "files": [
+    "platform/freertos/sysbridge.cpp",
+    "wnd.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
      "wnd.cpp",
      "impl",
      ""
     ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "SetPropA": {
+   "headers": [
+    "winuser.h"
+   ],
+   "files": [
+    "platform/freertos/sysbridge.cpp",
+    "wnd.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "SetPropW": {
+   "headers": [
+    "winuser.h"
+   ],
+   "files": [
+    "platform/freertos/sysbridge.cpp",
+    "wnd.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "RemovePropA": {
+   "headers": [
+    "winuser.h"
+   ],
+   "files": [
+    "platform/freertos/sysbridge.cpp",
+    "wnd.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "RemovePropW": {
+   "headers": [
+    "winuser.h"
+   ],
+   "files": [
+    "platform/freertos/sysbridge.cpp",
+    "wnd.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "wnd.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/sysbridge.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ]
+   ]
+  },
+  "GetGuiResources": {
+   "headers": [
+    "winuser.h"
+   ],
+   "files": [
+    "handle.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "handle.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetFileVersionInfoSizeA": {
+   "headers": [
+    "winver.h"
+   ],
+   "files": [
+    "platform/posix/version.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/version.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetFileVersionInfoSizeW": {
+   "headers": [
+    "winver.h"
+   ],
+   "files": [
+    "platform/posix/version.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/version.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetFileVersionInfoA": {
+   "headers": [
+    "winver.h"
+   ],
+   "files": [
+    "platform/posix/version.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/version.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetFileVersionInfoW": {
+   "headers": [
+    "winver.h"
+   ],
+   "files": [
+    "platform/posix/version.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/version.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "VerQueryValueA": {
+   "headers": [
+    "winver.h"
+   ],
+   "files": [
+    "platform/posix/version.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/version.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "VerQueryValueW": {
+   "headers": [
+    "winver.h"
+   ],
+   "files": [
+    "platform/posix/version.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/version.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "CreateWindowExA": {
+   "headers": [
+    "wnd.h"
+   ],
+   "files": [
+    "wnd.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
     [
      "wnd.cpp",
      "impl",
@@ -18671,16 +18775,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
     [
      "wnd.cpp",
      "impl",
@@ -18757,23 +18851,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/freertos/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/SConnection.cpp",
      "impl",
      ""
     ]
@@ -18784,85 +18867,12 @@
     "wnd.h"
    ],
    "files": [
-    "cmnctl32/listbox.cpp",
-    "platform/linux/SAtSpi.cpp",
-    "platform/mobile/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "wnd.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/listbox.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/SAtSpi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/SAtSpi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/mobile/SConnection.cpp",
      "impl",
      ""
     ]
@@ -18897,11 +18907,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -18914,11 +18919,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
     [
      "wnd.cpp",
      "impl",
@@ -18951,51 +18951,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
     [
      "wnd.cpp",
      "impl",
@@ -19152,7 +19107,6 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SAtSpi.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
@@ -19161,11 +19115,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/linux/SAtSpi.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ]
    ]
   },
@@ -19206,18 +19155,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ]
@@ -19228,78 +19171,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ]
@@ -19410,11 +19287,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
     [
      "wnd.cpp",
      "impl",
@@ -19587,41 +19459,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/cocoa/SConnection.mm",
-    "platform/ios/SConnection.mm",
-    "platform/linux/SConnection.cpp",
-    "platform/mobile/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/mobile/SConnection.cpp",
      "impl",
      ""
     ]
@@ -19792,23 +19635,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ]
@@ -19819,7 +19651,6 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SAtSpi.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
@@ -19828,11 +19659,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/linux/SAtSpi.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ]
    ]
   },
@@ -19846,16 +19672,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
     [
      "wnd.cpp",
      "impl",
@@ -19881,11 +19697,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -19894,132 +19705,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/cocoa/SConnection.mm",
-    "platform/freertos/SConnection.cpp",
-    "platform/ios/SConnection.mm",
-    "platform/linux/SConnection.cpp",
-    "platform/mobile/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/SConnection.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/mobile/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/mobile/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/mobile/SConnection.cpp",
      "impl",
      ""
     ]
@@ -20060,11 +19751,6 @@
      "platform/posix/sysapi.cpp",
      "impl",
      ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -20084,11 +19770,6 @@
      ""
     ],
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/posix/sysapi.cpp",
      "impl",
      ""
@@ -20100,44 +19781,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/cocoa/SConnection.mm",
-    "platform/linux/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ]
@@ -20148,38 +19797,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ]
@@ -20212,38 +19835,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/ios/SUIWindow.mm",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SUIWindow.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SUIWindow.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SUIWindow.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SUIWindow.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SUIWindow.mm",
      "impl",
      ""
     ]
@@ -20310,16 +19907,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -20336,46 +19923,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -20384,54 +19931,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SAtSpi.cpp",
-    "platform/linux/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SAtSpi.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ]
@@ -20474,18 +19979,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SAtSpi.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SAtSpi.cpp",
      "impl",
      ""
     ]
@@ -20520,11 +20019,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -20533,28 +20027,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/cocoa/SNsWindow.mm",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SNsWindow.mm",
      "impl",
      ""
     ]
@@ -20573,59 +20051,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ]
-   ]
-  },
-  "SetProp": {
-   "headers": [
-    "wnd.h"
-   ],
-   "files": [
-    "platform/freertos/sysbridge.cpp"
-   ],
-   "agg": "stub",
-   "site_classes": [
-    [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ]
-   ]
-  },
-  "GetProp": {
-   "headers": [
-    "wnd.h"
-   ],
-   "files": [
-    "platform/freertos/sysbridge.cpp"
-   ],
-   "agg": "stub",
-   "site_classes": [
-    [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ]
-   ]
-  },
-  "RemoveProp": {
-   "headers": [
-    "wnd.h"
-   ],
-   "files": [
-    "platform/freertos/sysbridge.cpp"
-   ],
-   "agg": "stub",
-   "site_classes": [
-    [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ]
    ]
   },
@@ -20634,8 +20059,6 @@
     "wnd.h"
    ],
    "files": [
-    "cmnctl32/listbox.cpp",
-    "platform/linux/SAtSpi.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
@@ -20644,36 +20067,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/listbox.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/SAtSpi.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ]
    ]
   },
@@ -20698,18 +20091,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ]
@@ -20792,11 +20179,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -20829,41 +20211,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -20872,43 +20219,12 @@
     "wnd.h"
    ],
    "files": [
-    "cmnctl32/listbox.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/listbox.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/listbox.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/listbox.cpp",
      "impl",
      ""
     ]
@@ -20943,21 +20259,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -20970,21 +20271,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
     [
      "wnd.cpp",
      "impl",
@@ -21013,18 +20299,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ]
@@ -21035,7 +20315,6 @@
     "wnd.h"
    ],
    "files": [
-    "cmnctl32/listbox.cpp",
     "platform/cocoa/SConnection.mm",
     "wnd.cpp"
    ],
@@ -21043,26 +20322,6 @@
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "cmnctl32/listbox.cpp",
      "impl",
      ""
     ],
@@ -21118,21 +20377,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -21141,209 +20385,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/freertos/SConnection.cpp",
-    "platform/linux/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/freertos/SConnection.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ]
@@ -21393,11 +20440,6 @@
     [
      "wnd.cpp",
      "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "wnd.cpp",
-     "impl",
      ""
     ]
    ]
@@ -21411,11 +20453,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "wnd.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
     [
      "wnd.cpp",
      "impl",
@@ -21556,24 +20593,12 @@
     "wnd.h"
    ],
    "files": [
-    "platform/cocoa/SConnection.mm",
-    "platform/ios/SConnection.mm",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SConnection.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SConnection.mm",
      "impl",
      ""
     ]
@@ -21664,7 +20689,6 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SAtSpi.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
@@ -21673,21 +20697,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/SAtSpi.cpp",
-     "stub",
-     "仅返回常量/无操作"
     ]
    ]
   },
@@ -21720,11 +20729,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -21741,21 +20745,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -21768,11 +20757,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
     [
      "wnd.cpp",
      "impl",
@@ -21825,11 +20809,6 @@
      "wnd.cpp",
      "impl",
      ""
-    ],
-    [
-     "wnd.cpp",
-     "impl",
-     ""
     ]
    ]
   },
@@ -21842,11 +20821,6 @@
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
     [
      "wnd.cpp",
      "impl",
@@ -21914,16 +20888,6 @@
    "site_classes": [
     [
      "platform/cocoa/SNsWindow.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SNsWindow.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/SUIWindow.mm",
      "impl",
      ""
     ],

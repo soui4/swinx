@@ -259,6 +259,85 @@ extern "C"
 #define SHCreateStreamOnFileEx SHCreateStreamOnFileExA
 #endif // UNICODE
 
+    // Shell File Info（SHGetFileInfo）
+
+    typedef struct _SHFILEINFOA
+    {
+        HICON hIcon; // 图标句柄；调用方负责 DestroyIcon
+        int iIcon;   // 系统图像列表里的下标（swinx 无系统图像列表，恒为 0）
+        DWORD dwAttributes;
+        char szDisplayName[MAX_PATH];
+        char szTypeName[80];
+    } SHFILEINFOA, *PSHFILEINFOA, *LPSHFILEINFOA;
+
+    typedef struct _SHFILEINFOW
+    {
+        HICON hIcon;
+        int iIcon;
+        DWORD dwAttributes;
+        WCHAR szDisplayName[MAX_PATH];
+        WCHAR szTypeName[80];
+    } SHFILEINFOW, *PSHFILEINFOW, *LPSHFILEINFOW;
+
+#ifdef UNICODE
+    typedef SHFILEINFOW SHFILEINFO;
+    typedef LPSHFILEINFOW LPSHFILEINFO;
+#else
+    typedef SHFILEINFOA SHFILEINFO;
+    typedef LPSHFILEINFOA LPSHFILEINFO;
+#endif // UNICODE
+
+    // SHGetFileInfo 的 uFlags。位值布局与 Win32 一致：低 8 位是图标尺寸/叠加等
+    // 修饰位，0x100 以上是「要填哪些字段」。swinx 只填它自己能得到的字段。
+
+#define SHGFI_LARGEICON         0x00000000 // 大图标（默认）
+#define SHGFI_SMALLICON         0x00000001 // 小图标
+#define SHGFI_OPENICON          0x00000002 // 打开状态的图标
+#define SHGFI_SHELLICONSIZE     0x00000004 // Shell 尺寸图标
+#define SHGFI_PIDL              0x00000008 // pszPath 是 PIDL 而非路径
+#define SHGFI_USEFILEATTRIBUTES 0x00000010 // 不访问文件，按 dwFileAttributes 判定
+#define SHGFI_ADDOVERLAYS       0x00000020
+#define SHGFI_OVERLAYINDEX      0x00000040
+
+#define SHGFI_ICON         0x00000100 // 填 hIcon
+#define SHGFI_DISPLAYNAME  0x00000200 // 填 szDisplayName
+#define SHGFI_TYPENAME     0x00000400 // 填 szTypeName
+#define SHGFI_ATTRIBUTES   0x00000800 // 填 dwAttributes
+#define SHGFI_ICONLOCATION 0x00001000
+#define SHGFI_EXETYPE      0x00002000
+#define SHGFI_SYSICONINDEX 0x00004000 // 填 iIcon
+#define SHGFI_LINKOVERLAY  0x00008000
+#define SHGFI_SELECTED     0x00010000
+#define SHGFI_ATTR_SPECIFIED 0x00020000
+
+    DWORD_PTR WINAPI SHGetFileInfoA(LPCSTR pszPath, DWORD dwFileAttributes,
+                                    SHFILEINFOA *psfi, UINT cbFileInfo, UINT uFlags);
+    DWORD_PTR WINAPI SHGetFileInfoW(LPCWSTR pszPath, DWORD dwFileAttributes,
+                                    SHFILEINFOW *psfi, UINT cbFileInfo, UINT uFlags);
+
+#ifdef UNICODE
+#define SHGetFileInfo SHGetFileInfoW
+#else
+#define SHGetFileInfo SHGetFileInfoA
+#endif // UNICODE
+
+    // 从 lpszFile 提取图标。swinx 没有 PE 资源目录、也没有图标序号表，
+    // 因此只有 nIconIndex == 0 且文件本身就是可加载的图标资源（PE/ICO/CUR，
+    // 走 LoadImage 的 LR_LOADFROMFILE 路径）时才成功。
+    // 返回成功提取的图标个数；phiconLarge / phiconSmall 若非 NULL 则接收句柄，
+    // 句柄归调用方所有，需用 DestroyIcon 释放。
+
+    UINT WINAPI ExtractIconExA(LPCSTR lpszFile, int nIconIndex,
+                               HICON *phiconLarge, HICON *phiconSmall, UINT nIcons);
+    UINT WINAPI ExtractIconExW(LPCWSTR lpszFile, int nIconIndex,
+                               HICON *phiconLarge, HICON *phiconSmall, UINT nIcons);
+
+#ifdef UNICODE
+#define ExtractIconEx ExtractIconExW
+#else
+#define ExtractIconEx ExtractIconExA
+#endif // UNICODE
+
     // Shell File Operations
 
 #define FO_MOVE   0x0001

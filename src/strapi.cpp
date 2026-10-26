@@ -1,6 +1,10 @@
 #include <sfr_config.h>
 #include <windows.h>
+#include <io.h>
 #include <stdarg.h>
+#include <sys/time.h>
+#include <unistd.h>
+#include <errno.h>
 #include "uniconv.h"
 #include "tostring.h"
 
@@ -73,16 +77,42 @@ wchar_t *_wcsupr(wchar_t *s)
 #if !SFR_HOSTED
 // host: the MinGW CRT provides strcpy_s / wcscpy_s / _wtof with their MSVC
 // signatures; the shim variants below would be ambiguating redeclarations.
-void strcpy_s(char *destination, size_t num, const char *source)
+int strcpy_s(char *destination, size_t num, const char *source)
 {
-    strncpy(destination, source, num - 1);
-    destination[num - 1] = '\0';
+    if (!destination || num == 0)
+        return EINVAL;
+    if (!source)
+    {
+        destination[0] = '\0';
+        return EINVAL;
+    }
+    size_t len = strlen(source);
+    if (len >= num)
+    {
+        destination[0] = '\0';
+        return ERANGE;
+    }
+    memcpy(destination, source, len + 1);
+    return 0;
 }
 
-void wcscpy_s(wchar_t *destination, size_t num, const wchar_t *source)
+int wcscpy_s(wchar_t *destination, size_t num, const wchar_t *source)
 {
-    wcsncpy(destination, source, num - 1);
-    destination[num - 1] = L'\0';
+    if (!destination || num == 0)
+        return EINVAL;
+    if (!source)
+    {
+        destination[0] = L'\0';
+        return EINVAL;
+    }
+    size_t len = wcslen(source);
+    if (len >= num)
+    {
+        destination[0] = L'\0';
+        return ERANGE;
+    }
+    memcpy(destination, source, (len + 1) * sizeof(wchar_t));
+    return 0;
 }
 
 float _wtof(const wchar_t *src)
@@ -734,6 +764,24 @@ int _snprintf(char *buffer, size_t size, const char *format, ...)
     va_end(args);
     return len > (int)size ? -1 : len;
 }
+
+int _vsnprintf(char *buffer, size_t size, const char *format, va_list args)
+{
+    int len = vsnprintf(buffer, size, format, args);
+    return len > (int)size ? -1 : len;
+}
+
+void _ftime(struct _timeb *tp)
+{
+    if (!tp)
+        return;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    tp->time = tv.tv_sec;
+    tp->millitm = (unsigned short)(tv.tv_usec / 1000);
+    tp->timezone = 0;
+    tp->dstflag = 0;
+}
 int _snwprintf(wchar_t *buffer, size_t size, const wchar_t *format, ...)
 {
     va_list args;
@@ -741,4 +789,15 @@ int _snwprintf(wchar_t *buffer, size_t size, const wchar_t *format, ...)
     int len = vswprintf(buffer, size, format, args);
     va_end(args);
     return len > (int)size ? -1 : len;
+}
+
+errno_t _chsize_s(int fd, long long size)
+{
+    if (fd < 0)
+        return EBADF;
+    if (size < 0)
+        return EINVAL;
+    if (ftruncate(fd, (off_t)size) != 0)
+        return errno ? errno : EIO;
+    return 0;
 }

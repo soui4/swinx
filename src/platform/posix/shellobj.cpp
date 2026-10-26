@@ -1,5 +1,7 @@
 #include <shlobj.h>
 #include <sys/stat.h>
+#include <errno.h>
+#include <string.h>
 #include "enumformatetc.h"
 #include "tostring.h"
 #include "platform_api.h"
@@ -314,4 +316,143 @@ BOOL WINAPI SHGetSpecialFolderPathW(HWND hwndOwner, LPWSTR lpszPath, int nFolder
     towstring(szPath, -1, strPath);
     wcscpy(lpszPath, strPath.c_str());
     return TRUE;
+}
+
+/* ===========================================================================
+ * SHGetFolderPath（SHELL32）
+ *
+ * 只是个壳：CSIDL_* 的取值与 SHGetSpecialFolderPath 完全一致，区别仅在于
+ *   - nFolder 的高字节是标志位，必须先掩掉；
+ *   - 返回值是 HRESULT（失败时 HRESULT_FROM_WIN32(错误码)），不是 BOOL。
+ * swinx 没有「默认用户 / 漫游」的概念，所以 SHGFP_TYPE_CURRENT 与
+ * SHGFP_TYPE_DEFAULT 等价，hToken 忽略。
+ * ======================================================================== */
+
+HRESULT WINAPI SHGetFolderPathA(HWND hwndOwner, int nFolder, HANDLE hToken __attribute__((unused)),
+                                DWORD dwFlags __attribute__((unused)), LPSTR pszPath)
+{
+    if (!pszPath)
+        return HRESULT_FROM_WIN32(ERROR_INVALID_PARAMETER);
+
+    BOOL fCreate = (nFolder & CSIDL_FLAG_CREATE) ? TRUE : FALSE;
+
+    pszPath[0] = '\0';
+    if (!SHGetSpecialFolderPathA(hwndOwner, pszPath, nFolder & ~CSIDL_FLAG_MASK, fCreate))
+        return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
+
+    return S_OK;
+}
+
+HRESULT WINAPI SHGetFolderPathW(HWND hwndOwner, int nFolder, HANDLE hToken __attribute__((unused)),
+                                DWORD dwFlags __attribute__((unused)), LPWSTR pszPath)
+{
+    if (!pszPath)
+        return HRESULT_FROM_WIN32(ERROR_INVALID_PARAMETER);
+
+    BOOL fCreate = (nFolder & CSIDL_FLAG_CREATE) ? TRUE : FALSE;
+
+    pszPath[0] = L'\0';
+    if (!SHGetSpecialFolderPathW(hwndOwner, pszPath, nFolder & ~CSIDL_FLAG_MASK, fCreate))
+        return HRESULT_FROM_WIN32(ERROR_PATH_NOT_FOUND);
+
+    return S_OK;
+}
+
+/* ===========================================================================
+ * SHCreateDirectoryEx（SHELL32）
+ *
+ * 递归创建整条路径。返回的是 Win32 错误码而不是 BOOL，这与
+ * SHGetSpecialFolderPath 的区别要留意（调用方写的是 != ERROR_SUCCESS）。
+ * 与 Win32 的差异：
+ *   - hwnd 只在失败时用来弹错误框，swinx 不弹窗；
+ *   - psa（安全描述符）忽略——POSIX 上没有 ACL 概念，一律 0755；
+ *   - 会把 '\' 归一成 '/'（见下），因为 WebKit 的 Windows 端口代码传进来的
+ *     多是反斜杠路径。
+ * ======================================================================== */
+
+/* POSIX 上 '\' 是合法文件名字符，直接 mkdir("a\\b") 会建出名字里带反斜杠的
+ * 目录。WebKit 走的是 Windows 端口代码，路径多为 "a\b\c" 形式，因此这里统一
+ * 归一成 '/'。（Win32 本身也接受两种分隔符，这么做不违背接口语义。） */
+static std::string shcreatedir_posix_path_a(const char *pszPath)
+{
+    std::string strPath(pszPath);
+    for (size_t i = 0; i < strPath.size(); ++i)
+    {
+        if (strPath[i] == '\\')
+            strPath[i] = '/';
+    }
+    return strPath;
+}
+
+static int shcreatedir_tree_a(const std::string &strPath)
+{
+    if (strPath.empty())
+        return ERROR_BAD_PATHNAME;
+
+    struct stat st;
+    if (stat(strPath.c_str(), &st) == 0)
+        return S_ISDIR(st.st_mode) ? ERROR_ALREADY_EXISTS : ERROR_FILE_EXISTS;
+
+    /* 先建父目录。根（"/"、"C:"）之前没有可建的东西。 */
+    size_t nRootEnd = 0;
+    if (strPath.size() >= 2 && strPath[1] == ':')
+        nRootEnd = 2; // 盘符
+    else if (strPath[0] == '/')
+        nRootEnd = 1;
+
+    size_t nSlash = strPath.find_last_of('/');
+    if (nSlash != std::string::npos && nSlash > nRootEnd)
+    {
+        int nErr = shcreatedir_tree_a(strPath.substr(0, nSlash));
+        if (nErr != ERROR_SUCCESS && nErr != ERROR_ALREADY_EXISTS)
+            return nErr;
+    }
+
+    if (mkdir(strPath.c_str(), 0755) == 0)
+        return ERROR_SUCCESS;
+
+    if (errno == EEXIST)
+    {
+        if (stat(strPath.c_str(), &st) == 0 && S_ISDIR(st.st_mode))
+            return ERROR_ALREADY_EXISTS;
+        return ERROR_FILE_EXISTS;
+    }
+    if (errno == ENOENT)
+        return ERROR_PATH_NOT_FOUND;
+    if (errno == EACCES || errno == EPERM)
+        return ERROR_ACCESS_DENIED;
+    if (errno == ENAMETOOLONG)
+        return ERROR_FILENAME_EXCED_RANGE;
+    return ERROR_INVALID_NAME;
+}
+
+int WINAPI SHCreateDirectoryExA(HWND hwnd __attribute__((unused)), LPCSTR pszPath,
+                                const SECURITY_ATTRIBUTES *psa __attribute__((unused)))
+{
+    if (!pszPath || !*pszPath)
+        return ERROR_BAD_PATHNAME;
+
+    std::string strPath = shcreatedir_posix_path_a(pszPath);
+
+    /* 去掉末尾的分隔符，但保留 "/" 与 "C:/" 这类根本身。 */
+    while (strPath.size() > 1 && strPath[strPath.size() - 1] == '/')
+    {
+        if (strPath.size() == 3 && strPath[1] == ':')
+            break;
+        strPath.erase(strPath.size() - 1);
+    }
+
+    int nErr = shcreatedir_tree_a(strPath);
+    SetLastError((DWORD)nErr);
+    return nErr;
+}
+
+int WINAPI SHCreateDirectoryExW(HWND hwnd, LPCWSTR pszPath, const SECURITY_ATTRIBUTES *psa)
+{
+    if (!pszPath || !*pszPath)
+        return ERROR_BAD_PATHNAME;
+
+    std::string strPath;
+    tostring(pszPath, -1, strPath);
+    return SHCreateDirectoryExA(hwnd, strPath.c_str(), psa);
 }

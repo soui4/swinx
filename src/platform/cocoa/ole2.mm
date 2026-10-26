@@ -134,6 +134,19 @@ void WINAPI ReleaseStgMedium(STGMEDIUM *pmedium)
             DeleteObject(pmedium->hBitmap);
         break;
     }
+    case TYMED_MFPICT:
+    {
+        // A metafile picture is an HGLOBAL wrapping a METAFILEPICT.
+        if ((pmedium->pUnkForRelease == 0) && (pmedium->hMetaFilePict != 0))
+            GlobalFree((HGLOBAL)pmedium->hMetaFilePict);
+        break;
+    }
+    case TYMED_ENHMF:
+    {
+        if ((pmedium->pUnkForRelease == 0) && (pmedium->hEnhMetaFile != 0))
+            DeleteEnhMetaFile(pmedium->hEnhMetaFile);
+        break;
+    }
     case TYMED_NULL:
     default:
         break;
@@ -148,4 +161,36 @@ void WINAPI ReleaseStgMedium(STGMEDIUM *pmedium)
         pmedium->pUnkForRelease->Release();
         pmedium->pUnkForRelease = 0;
     }
+}
+
+HANDLE WINAPI OleDuplicateData(HANDLE hSrc, CLIPFORMAT cfFormat, UINT uiFlags)
+{
+    if (!hSrc)
+        return NULL;
+
+    if (cfFormat == CF_BITMAP)
+        return (HANDLE)RefGdiObj(hSrc);
+
+    // Enhanced metafiles are their own handle type rather than an HGLOBAL, and
+    // WKE never duplicates them; everything else memory backed (text, HTML,
+    // HDROP, locale, registered formats, metafile pictures) is an HGLOBAL.
+    if (cfFormat == CF_ENHMETAFILE)
+        return NULL;
+
+    HGLOBAL hMem = (HGLOBAL)hSrc;
+    SIZE_T size = GlobalSize(hMem);
+    if (size == 0)
+        return NULL;
+
+    HGLOBAL copy = GlobalAlloc(uiFlags, size);
+    if (!copy)
+        return NULL;
+
+    const void *src = GlobalLock(hMem);
+    void *dst = GlobalLock(copy);
+    if (src && dst)
+        memcpy(dst, src, size);
+    GlobalUnlock(copy);
+    GlobalUnlock(hMem);
+    return copy;
 }

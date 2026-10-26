@@ -15,7 +15,9 @@
 #include <assert.h>
 #include <vector>
 #include "handle.h"
+#include "cursormgr.h"
 #include "sdc.h"
+#include "metafile.h"
 #include "SConnection.h"
 #include "cairo_show_text2.h"
 #include "drawtext.h"
@@ -345,22 +347,22 @@ HGDIOBJ InitGdiObj(int type, void *ptr)
 
 int GetObjectType(HGDIOBJ hgdiobj)
 {
-    return hgdiobj->type;
+    return ToGdiHandle(hgdiobj)->type;
 }
 
 void *GetGdiObjPtr(HGDIOBJ hgdiobj)
 {
-    return hgdiobj->ptr;
+    return ToGdiHandle(hgdiobj)->ptr;
 }
 
 void SetGdiObjPtr(HGDIOBJ hgdiObj, void *ptr)
 {
-    hgdiObj->ptr = ptr;
+    ToGdiHandle(hgdiObj)->ptr = ptr;
 }
 
 HGDIOBJ RefGdiObj(HGDIOBJ hgdiObj)
 {
-    return AddHandleRef(hgdiObj);
+    return AddHandleRef(ToGdiHandle(hgdiObj));
 }
 
 static bool ApplyBrush(HDC hdc, HBRUSH hbr, double wid, double hei, double x, double y);
@@ -560,7 +562,7 @@ static bool ApplyBrush(HDC hdc, HBRUSH hbr, double wid, double hei, double x, do
         if (!hbr)
             return false;
     }
-    if (hbr->type != OBJ_BRUSH)
+    if (ToGdiHandle(hbr)->type != OBJ_BRUSH)
         return false;
     LOGBRUSH *br = (LOGBRUSH *)GetGdiObjPtr(hbr);
     if (br->lbStyle == BS_NULL)
@@ -743,12 +745,12 @@ HPEN ExtCreatePen(DWORD iPenStyle, DWORD cWidth, const LOGBRUSH *plbrush, DWORD 
         }
     }
 
-    return InitGdiObj(OBJ_PEN, lpex);
+    return (HPEN)InitGdiObj(OBJ_PEN, lpex);
 }
 
 int GetObjectW(HGDIOBJ h, int c, LPVOID pv)
 {
-    if (h->type == OBJ_FONT)
+    if (ToGdiHandle(h)->type == OBJ_FONT)
     {
         if (c < (int)sizeof(LOGFONTW))
             return 0;
@@ -767,16 +769,16 @@ int GetObjectW(HGDIOBJ h, int c, LPVOID pv)
 
 int GetObjectA(HGDIOBJ h, int c, LPVOID pv)
 {
-    if (!h->ptr)
+    if (!ToGdiHandle(h)->ptr)
         return 0;
     int ret = 0;
-    switch (h->type)
+    switch (ToGdiHandle(h)->type)
     {
     case OBJ_BITMAP:
         if (c >= (int)sizeof(BITMAP))
         {
             BITMAP *bm = (BITMAP *)pv;
-            cairo_surface_t *pixmap = (cairo_surface_t *)h->ptr;
+            cairo_surface_t *pixmap = (cairo_surface_t *)ToGdiHandle(h)->ptr;
             cairo_format_t fmt = cairo_image_surface_get_format(pixmap);
             if (fmt == CAIRO_FORMAT_INVALID)
                 return 0;
@@ -809,21 +811,21 @@ int GetObjectA(HGDIOBJ h, int c, LPVOID pv)
         if (c >= (int)sizeof(LOGFONTA))
         {
             ret = sizeof(LOGFONTA);
-            memcpy(pv, h->ptr, ret);
+            memcpy(pv, ToGdiHandle(h)->ptr, ret);
         }
         break;
     case OBJ_PEN:
         if (c >= (int)sizeof(LOGPEN))
         {
             ret = sizeof(LOGPEN);
-            memcpy(pv, h->ptr, ret);
+            memcpy(pv, ToGdiHandle(h)->ptr, ret);
         }
         break;
     case OBJ_BRUSH:
         if (c >= (int)sizeof(LOGBRUSH))
         {
             ret = sizeof(LOGBRUSH);
-            memcpy(pv, h->ptr, ret);
+            memcpy(pv, ToGdiHandle(h)->ptr, ret);
         }
         break;
     }
@@ -841,14 +843,14 @@ HPEN CreatePenIndirect(const LOGPEN *plpen)
     LOGPEN *pData = new LOGPEN;
     memcpy(pData, plpen, sizeof(LOGPEN));
     assert((int)(plpen->lopnStyle & PS_STYLE_MASK) != PS_USERSTYLE); // PS_USERSTYLE should be created by ExtCreatePen
-    return InitGdiObj(OBJ_PEN, pData);
+    return (HPEN)InitGdiObj(OBJ_PEN, pData);
 }
 
 HFONT CreateFontIndirectA(const LOGFONTA *lplf)
 {
     LOGFONTA *plog = new LOGFONTA;
     memcpy(plog, lplf, sizeof(LOGFONTA));
-    return InitGdiObj(OBJ_FONT, plog);
+    return (HFONT)InitGdiObj(OBJ_FONT, plog);
 }
 
 HFONT CreateFontIndirectW(CONST LOGFONTW *lplf)
@@ -887,29 +889,112 @@ HFONT CreateFontW(int cHeight, int cWidth __attribute__((unused)), int cEscapeme
     return CreateFontA(cHeight, cWeight, cEscapement, cOrientation, cWeight, bItalic, bUnderline, bStrikeOut, iCharSet, iOutPrecision, iClipPrecision, iQuality, iPitchAndFamily, facename);
 }
 
+/* ---- packed DIB 的定位辅助 ----
+ *
+ * packed DIB 是"BITMAPINFOHEADER + 调色板 + 像素"三段拼在一条内存里，中间两段
+ * 都不定长，所以像素起点只能算、不能按声明形状数。 */
+
+static int DibStride(int width, int bitCount)
+{
+    /* 每行向上取到 DWORD 对齐。不能写成 width * bitCount / 8：整数除法会先把
+     * 不满一字节的位丢掉，1bpp 宽 5 会算出 stride 0，4bpp 宽 1 也一样。 */
+    return (int)(((long long)width * bitCount + 31) / 32 * 4);
+}
+
+static const VOID *PackedDIBBits(const VOID *lpPackedDIB)
+{
+    const BITMAPINFO *pInfo = (const BITMAPINFO *)lpPackedDIB;
+    DWORD headerSize = pInfo->bmiHeader.biSize;
+    /* biSize 可以大于 BITMAPINFOHEADER（BITMAPV4/V5HEADER 也带 bmiHeader 这几项），
+     * 像素起点跟着头自己声明的长度走，不跟 sizeof。 */
+    if (headerSize < sizeof(BITMAPINFOHEADER))
+        return nullptr;
+
+    /* 调色板项数：biClrUsed 非 0 时就是它（>8bpp 也可能带优化调色板），
+     * 否则 1/4/8bpp 是 2^biBitCount，更高位深没有调色板。 */
+    DWORD colors = pInfo->bmiHeader.biClrUsed;
+    if (colors == 0 && pInfo->bmiHeader.biBitCount <= 8)
+        colors = 1u << pInfo->bmiHeader.biBitCount;
+
+    return (const BYTE *)lpPackedDIB + headerSize + colors * sizeof(RGBQUAD);
+}
+
+/* swinx 的位图存储一律顶行在前；DIB 的 biHeight > 0 表示底行在前，需要倒序。
+ * 返回的指针在需要倒序时指向 scratch（调用方负责让它活到用完之后）。 */
+static const VOID *DibSourceRows(const VOID *pjBits, int absHeight, int stride, int height, std::vector<BYTE> &scratch)
+{
+    if (!pjBits || height < 0 || absHeight <= 1)
+        return pjBits;
+
+    scratch.resize((size_t)stride * absHeight);
+    for (int y = 0; y < absHeight; y++)
+        memcpy(&scratch[(size_t)y * stride],
+               (const BYTE *)pjBits + (size_t)(absHeight - 1 - y) * stride,
+               stride);
+    return scratch.data();
+}
+
 HBITMAP CreateDIBitmap(HDC hdc, const BITMAPINFOHEADER *pbmih __attribute__((unused)), DWORD flInit __attribute__((unused)), const VOID *pjBits, const BITMAPINFO *pbmi, UINT iUsage)
 {
-    if (iUsage != DIB_RGB_COLORS)
+    if (iUsage != DIB_RGB_COLORS || !pbmi)
         return nullptr;
+
+    int width = (int)pbmi->bmiHeader.biWidth;
+    int height = (int)pbmi->bmiHeader.biHeight;
+    int absHeight = height < 0 ? -height : height;
+    if (width <= 0 || absHeight <= 0)
+        return nullptr;
+
     HBITMAP bmp = CreateDIBSection(hdc, pbmi, 0, nullptr, 0, 0);
-    if (bmp)
+    if (!bmp)
+        return nullptr;
+
+    int stride = DibStride(width, pbmi->bmiHeader.biBitCount);
+    std::vector<BYTE> scratch;
+    const VOID *src = DibSourceRows(pjBits, absHeight, stride, height, scratch);
+    if (!UpdateDIBPixmap(bmp, width, absHeight, pbmi->bmiHeader.biBitCount, stride, src))
     {
-        int stride = ((pbmi->bmiHeader.biWidth * pbmi->bmiHeader.biBitCount / 8) + 3) / 4 * 4;
-        UpdateDIBPixmap(bmp, pbmi->bmiHeader.biWidth, pbmi->bmiHeader.biHeight, pbmi->bmiHeader.biBitCount, stride, pjBits);
+        DeleteObject(bmp);
+        return nullptr;
     }
     return bmp;
 }
 
-HBRUSH CreateDIBPatternBrush(HGLOBAL h __attribute__((unused)), UINT iUsage __attribute__((unused)))
+HBRUSH CreateDIBPatternBrush(HGLOBAL h, UINT iUsage)
 {
-    // todo:hjx
-    return nullptr;
+    /* 16 位遗留 API：参数不是指针，而是"装着 packed DIB 的全局内存块"。
+     * h 为空时不能直接交给 GlobalLock —— swinx 的 LocalLock 把低位为 0 的句柄
+     * 当成固定内存指针，走指针分支会解引用它（`*p |= 0`），NULL 上就是崩溃。 */
+    if (!h)
+        return nullptr;
+
+    const VOID *lpPackedDIB = GlobalLock(h);
+    if (!lpPackedDIB)
+        return nullptr;
+
+    /* CreateDIBPatternBrushPt 会把像素复制进自己的 DIBSection
+     * （见 CreateDIBitmap → UpdateDIBPixmap），画刷并不引用这块内存，
+     * 所以 lock 之后必须解锁：Win32 上还带着 lock 的块 GlobalFree 会失败。 */
+    HBRUSH ret = CreateDIBPatternBrushPt(lpPackedDIB, iUsage);
+    GlobalUnlock(h);
+    return ret;
 }
 
 HBRUSH CreateDIBPatternBrushPt(const VOID *lpPackedDIB, UINT iUsage)
 {
-    BITMAPINFO *pInfo = (BITMAPINFO *)lpPackedDIB;
-    HBITMAP bmp = CreateDIBitmap(nullptr, &pInfo->bmiHeader, 1, pInfo + 1, pInfo, iUsage);
+    if (!lpPackedDIB)
+        return nullptr;
+
+    /* 像素不从 lpPackedDIB + 1 开始：BITMAPINFO 是"头 + 一个调色板项"的声明形状，
+     * sizeof 出来 44 字节。但 24/32bpp 的 packed DIB 根本没有调色板，像素正好从
+     * biSize(40) 就开始 —— 按 pInfo + 1 取会整体后移 4 字节并在末尾越界读一笔。
+     * 8bpp 差得更远：正确的调色板是 256 项，起点在 1064 而不是 44。 */
+    const VOID *pBits = PackedDIBBits(lpPackedDIB);
+    if (!pBits)
+        return nullptr;
+
+    const BITMAPINFO *pInfo = (const BITMAPINFO *)lpPackedDIB;
+    HBITMAP bmp = CreateDIBitmap(nullptr, &pInfo->bmiHeader, 1, pBits, pInfo, iUsage);
     if (!bmp)
     {
         return nullptr;
@@ -933,10 +1018,10 @@ HBRUSH CreatePatternBrush2(HBITMAP bmp, TILEMODE tileMode)
     PatternInfo *info = new PatternInfo;
     info->alpha = 1.0;
     info->useBmp = TRUE;
-    info->data.bmp = RefGdiObj(bmp);
+    info->data.bmp = (HBITMAP)RefGdiObj(bmp);
     info->tileMode = tileMode;
     plog->lbHatch = (UINT_PTR)info;
-    return InitGdiObj(OBJ_BRUSH, plog);
+    return (HBRUSH)InitGdiObj(OBJ_BRUSH, plog);
 }
 
 HBRUSH CreateGradientBrush(const GRADIENTITEM *pGradients, int nCount, const GRADIENTINFO *grad_info, BYTE byAlpha, TILEMODE tileMode)
@@ -952,7 +1037,7 @@ HBRUSH CreateGradientBrush(const GRADIENTITEM *pGradients, int nCount, const GRA
     info->data.gradientDetail->items.resize(nCount);
     memcpy(info->data.gradientDetail->items.data(), pGradients, nCount * sizeof(GRADIENTITEM));
     plog->lbHatch = (UINT_PTR)info;
-    return InitGdiObj(OBJ_BRUSH, plog);
+    return (HBRUSH)InitGdiObj(OBJ_BRUSH, plog);
 }
 
 HBRUSH CreateSolidBrush(COLORREF color)
@@ -960,7 +1045,7 @@ HBRUSH CreateSolidBrush(COLORREF color)
     LOGBRUSH *plog = new LOGBRUSH;
     plog->lbStyle = BS_SOLID;
     plog->lbColor = color;
-    return InitGdiObj(OBJ_BRUSH, plog);
+    return (HBRUSH)InitGdiObj(OBJ_BRUSH, plog);
 }
 
 HBITMAP CreateDIBSection(HDC hdc __attribute__((unused)), const BITMAPINFO *lpbmi, UINT usage __attribute__((unused)), VOID **ppvBits, HANDLE hSection __attribute__((unused)), DWORD offset __attribute__((unused)))
@@ -993,7 +1078,7 @@ HBITMAP CreateDIBSection(HDC hdc __attribute__((unused)), const BITMAPINFO *lpbm
     {
         *ppvBits = cairo_image_surface_get_data(ret);
     }
-    return InitGdiObj(OBJ_BITMAP, ret);
+    return (HBITMAP)InitGdiObj(OBJ_BITMAP, ret);
 }
 
 HBITMAP CreateDIBSectionEx(int bitsPixel, int wid,int hei,int stride, VOID *pvBits){
@@ -1022,7 +1107,7 @@ HBITMAP CreateDIBSectionEx(int bitsPixel, int wid,int hei,int stride, VOID *pvBi
         return 0;
     }
     cairo_surface_mark_dirty(ret);
-    return InitGdiObj(OBJ_BITMAP, ret);
+    return (HBITMAP)InitGdiObj(OBJ_BITMAP, ret);
 }
 
 
@@ -1032,13 +1117,15 @@ BOOL UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, C
     GetObject(bmp, sizeof(bm), &bm);
     if (!bm.bmBits)
         return FALSE;
-    if (bm.bmWidth != wid || bm.bmHeight != hei || bm.bmBitsPixel != bitsPixel)
+    /* 位图存储高度恒为正，只有调用方传进来的 DIB 头可能是负的（top-down）。 */
+    int absHei = hei < 0 ? -hei : hei;
+    if (bm.bmWidth != wid || bm.bmHeight != absHei || bm.bmBitsPixel != bitsPixel)
         return FALSE;
     int surfaceStride = cairo_image_surface_get_stride((cairo_surface_t *)GetGdiObjPtr(bmp));
     if (pjBits)
     {
         if (stride == surfaceStride)
-            memcpy(bm.bmBits, pjBits, hei * stride);
+            memcpy(bm.bmBits, pjBits, absHei * stride);
         else
         {
             char *src = (char *)pjBits;
@@ -1046,7 +1133,7 @@ BOOL UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, C
             int fmt = cairo_image_surface_get_format((cairo_surface_t *)GetGdiObjPtr(bmp));
             if (bitsPixel == 24 && fmt == CAIRO_FORMAT_RGB24)
             {
-                for (int i = 0; i < hei; i++)
+                for (int i = 0; i < absHei; i++)
                 {
                     char *lsrc = src;
                     char *ldst = dst;
@@ -1062,11 +1149,13 @@ BOOL UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, C
             }
             else if (bitsPixel == 1 && fmt == CAIRO_FORMAT_A1)
             {
-                for (int y = 0; y < hei; y++)
+                for (int y = 0; y < absHei; y++)
                 {
                     for (int x = 0; x < wid; x++)
                     {
-                        int bitmap_index = (y * ((wid + 7) / 8) + (x / 8));
+                        /* 源行宽是 DIB 的 stride（DWORD 对齐），不是 (wid+7)/8：
+                         * 两者只在宽度是 32 的倍数时才相等。 */
+                        int bitmap_index = (y * stride + (x / 8));
                         int cairo_index = (y * surfaceStride + (x / 8));
                         uint8_t bitmap_bit = (src[bitmap_index] >> (7 - (x % 8))) & 1;
 
@@ -1088,16 +1177,16 @@ BOOL UpdateDIBPixmap(HBITMAP bmp, int wid, int hei, int bitsPixel, int stride, C
         }
     }
     else
-        memset(bm.bmBits, 0, hei * surfaceStride);
+        memset(bm.bmBits, 0, absHei * surfaceStride);
     MarkPixmapDirty(bmp);
     return TRUE;
 }
 
 void MarkPixmapDirty(HBITMAP bmp)
 {
-    if (bmp && bmp->type == OBJ_BITMAP)
+    if (bmp && ToGdiHandle(bmp)->type == OBJ_BITMAP)
     {
-        cairo_surface_mark_dirty((cairo_surface_t *)bmp->ptr);
+        cairo_surface_mark_dirty((cairo_surface_t *)ToGdiHandle(bmp)->ptr);
     }
 }
 
@@ -1144,9 +1233,82 @@ int SetBkMode(HDC hdc, int mode)
     return ret;
 }
 
-int SetGraphicsMode(HDC hdc __attribute__((unused)), int iMode __attribute__((unused)))
+// cairo's win32 font backend treats a failing SetGraphicsMode as "this DC is
+// unusable" (_get_global_font_dc deletes the cached DC), and reads the mode back
+// with GetGraphicsMode before it saves a surface, so both must really store and
+// return the DC's mode. GM_ADVANCED only gates SetWorldTransform in Windows;
+// here the world transform is always folded into the cairo CTM, so recording the
+// value is enough to satisfy every caller.
+int SetGraphicsMode(HDC hdc, int iMode)
 {
+    // Windows returns 0 and sets ERROR_INVALID_HANDLE for a NULL HDC; WebKit's
+    // syncContext() calls SetGraphicsMode(NULL, GM_ADVANCED) for an ImageBuffer.
+    if (!hdc)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return 0;
+    }
+    if (iMode != GM_COMPATIBLE && iMode != GM_ADVANCED)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return 0;
+    }
+    int old = hdc->graphicsMode;
+    hdc->graphicsMode = iMode;
+    return old;
+}
+
+int GetGraphicsMode(HDC hdc)
+{
+    return hdc ? hdc->graphicsMode : 0;
+}
+
+// Only MM_TEXT (logical units == device pixels) is meaningful; every GDI text
+// call in cairo asks for exactly that, and the pixel geometry the rest of this
+// backend produces assumes it.
+int SetMapMode(HDC hdc, int iMode)
+{
+    if (!hdc)
+    {
+        SetLastError(ERROR_INVALID_HANDLE);
+        return 0;
+    }
+    if (iMode != MM_TEXT)
+        return 0;
+    return MM_TEXT;
+}
+
+int GetMapMode(HDC hdc)
+{
+    return hdc ? MM_TEXT : 0;
+}
+
+BOOL GdiFlush(void)
+{
+    // Drawing is issued synchronously through cairo/xcb; there is no GDI queue
+    // to drain. cairo uses the return value only as a success flag.
+    return TRUE;
+}
+
+int ExtEscape(HDC hdc, int nEscape, int cbInput, LPCSTR lpszInData, int cbOutput, LPSTR lpszOutData)
+{
+    // No printer escape channel exists on this backend, so every escape --
+    // including QUERYESCSUPPORT -- reports "not supported" (0).
+    (void)hdc;
+    (void)nEscape;
+    (void)cbInput;
+    (void)lpszInData;
+    (void)cbOutput;
+    (void)lpszOutData;
     return 0;
+}
+
+BOOL WidenPath(HDC hdc)
+{
+    // Path-to-outline widening is only reached from the win32 *printing*
+    // surface; there is no printer DC here.
+    (void)hdc;
+    return FALSE;
 }
 
 HBITMAP CreateCompatibleBitmap(HDC hdc, int cx, int cy)
@@ -1163,24 +1325,25 @@ HGDIOBJ SelectObject(HDC hdc, HGDIOBJ h)
 {
     HGDIOBJ ret = 0;
     assert(h);
-    switch (h->type)
+    switch (ToGdiHandle(h)->type)
     {
     case OBJ_PEN:
     {
         ret = hdc->pen;
-        hdc->pen = h;
+        hdc->pen = (HPEN)h;
         break;
     }
     case OBJ_BRUSH:
     {
         ret = hdc->brush;
-        hdc->brush = h;
+        hdc->brush = (HBRUSH)h;
         break;
     }
     case OBJ_FONT:
     {
         ret = hdc->hfont;
-        hdc->hfont = h;
+        hdc->hfont = (HFONT)h;
+        SwinxMetaFileRecordFont(hdc, h); // EMF 录制 DC 上记录本次选入的字体
         break;
     }
     case OBJ_BITMAP:
@@ -1196,7 +1359,7 @@ HGDIOBJ SelectObject(HDC hdc, HGDIOBJ h)
             cairo_destroy(hdc->cairo);
             hdc->cairo = nullptr;
         }
-        hdc->bmp = h;
+        hdc->bmp = (HBITMAP)h;
         if (GetGdiObjPtr(h))
         {
             hdc->cairo = cairo_create((cairo_surface_t *)GetGdiObjPtr(h));
@@ -1210,7 +1373,7 @@ HGDIOBJ SelectObject(HDC hdc, HGDIOBJ h)
 
 BOOL DeleteObject(HGDIOBJ hObj)
 {
-    return CloseHandle(hObj);
+    return CloseHandle((HANDLE)hObj);
 }
 
 int SaveDC(HDC hdc)
@@ -1500,9 +1663,9 @@ BOOL WINAPI DrawFocusRect(HDC hdc,       // handle to device context
     INT oldDrawMode;
     cairo_antialias_t oldAntialias = cairo_get_antialias(hdc->cairo);
     cairo_set_antialias(hdc->cairo, CAIRO_ANTIALIAS_NONE);
-    hOldBrush = SelectObject(hdc, GetStockObject(NULL_BRUSH));
+    hOldBrush = (HBRUSH)SelectObject(hdc, GetStockObject(NULL_BRUSH));
     hNewPen = CreatePen(PS_DOT, 1, 0);
-    hOldPen = SelectObject(hdc, hNewPen);
+    hOldPen = (HPEN)SelectObject(hdc, hNewPen);
     oldDrawMode = SetROP2(hdc, R2_NOT);
     Rectangle(hdc, rc->left, rc->top, rc->right, rc->bottom);
     SetROP2(hdc, oldDrawMode);
@@ -2210,7 +2373,34 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
 
 INT StretchDIBits(HDC hdc, INT x_dst, INT y_dst, INT width_dst, INT height_dst, INT x_src, INT y_src, INT width_src, INT height_src, const void *bits, const BITMAPINFO *bmi, UINT coloruse, DWORD rop)
 {
-    HBITMAP bmp = CreateDIBitmap(hdc, &bmi->bmiHeader, 1, bits, bmi, coloruse);
+    /* Win32 有两层独立的"负号"语义，必须分开处理：
+     *   - height_src < 0：源 DIB 是 **top-down**（首行在上），CreateDIBitmap
+     *     就不能再按 biHeight>0 做 bottom-up 翻转。头和调色板要一起拷贝修改
+     *     —— CreateDIBitmap 从 pbmi 里读调色板，只改头会读到悬空调色板。
+     *   - StretchBlt 的负源高度：矩形镜像，属于几何变换，与 DIB 行序无关。
+     * 光标/图标加载（cursoricon.cpp）同时用到两者：文件里的行数据是
+     * bottom-up 的，以负高度传入；正确结果 = "top-down 免翻转 + 镜像"一次
+     * 翻转。两层语义混在一起（此前本函数忽略了 top-down 约定）就会双重翻转，
+     * 表现为加载的光标 Y 镜像。 */
+    BYTE buf[sizeof(BITMAPINFOHEADER) + 256 * sizeof(RGBQUAD)];
+    const BITMAPINFO *bmi_use = bmi;
+    if (height_src < 0 && bmi && bmi->bmiHeader.biSize == sizeof(BITMAPINFOHEADER) &&
+        bmi->bmiHeader.biHeight > 0)
+    {
+        DWORD colors = bmi->bmiHeader.biClrUsed;
+        if (colors == 0 && bmi->bmiHeader.biBitCount <= 8)
+            colors = 1u << bmi->bmiHeader.biBitCount;
+        if (bmi->bmiHeader.biCompression == BI_BITFIELDS && colors < 3)
+            colors = 3;
+        UINT size = bmi->bmiHeader.biSize + colors * sizeof(RGBQUAD);
+        if (size <= sizeof(buf))
+        {
+            memcpy(buf, bmi, size);
+            ((BITMAPINFO *)buf)->bmiHeader.biHeight = -bmi->bmiHeader.biHeight;
+            bmi_use = (const BITMAPINFO *)buf;
+        }
+    }
+    HBITMAP bmp = CreateDIBitmap(hdc, &bmi_use->bmiHeader, 1, bits, bmi_use, coloruse);
     if (!bmp)
     {
         return 0;
@@ -2305,9 +2495,9 @@ BOOL TransparentBlt(HDC hdcDest, int xoriginDest, int yoriginDest, int wDest, in
     return TRUE;
 }
 
-void SetStretchBltMode(HDC hdc __attribute__((unused)), int mode __attribute__((unused)))
+int SetStretchBltMode(HDC hdc __attribute__((unused)), int mode __attribute__((unused)))
 {
-    // todo:hjx
+    return COLORONCOLOR;
 }
 
 BOOL PatBlt(_In_ HDC hdc, _In_ int x, _In_ int y, _In_ int w, _In_ int h, _In_ DWORD rop)
@@ -4019,12 +4209,19 @@ BOOL ModifyWorldTransform(HDC hdc,              // handle to device context
 )
 {
     cairo_matrix_t mtx;
+    // Win32 语义：MWT_IDENTITY 时忽略 lpXform，允许传 NULL。
+    if (iMode == MWT_IDENTITY)
+    {
+        cairo_matrix_init_identity(&hdc->mtx);
+        update_transform(hdc);
+        return TRUE;
+    }
+    // 其余模式必须给出变换矩阵。
+    if (!lpXform)
+        return FALSE;
     convert_xform_to_cairo_matrix(lpXform, mtx); // 传递指针
     switch (iMode)
     {
-    case MWT_IDENTITY:
-        cairo_matrix_init_identity(&hdc->mtx);
-        break;
     case MWT_LEFTMULTIPLY:
         cairo_matrix_multiply(&hdc->mtx, &mtx, &hdc->mtx);
         break;
@@ -4113,7 +4310,7 @@ HBITMAP CreateBitmap(int nWidth,         // bitmap width, in pixels
     }
     if (ret)
     {
-        return InitGdiObj(OBJ_BITMAP, ret);
+        return (HBITMAP)InitGdiObj(OBJ_BITMAP, ret);
     }
     else
     {
@@ -4184,7 +4381,7 @@ int GetDeviceCaps(HDC hdc __attribute__((unused)), int cap)
     return 0;
 }
 
-struct _IconObj
+struct HICON__
 {
     BOOL fIcon;
     DWORD xHotspot;
@@ -4193,6 +4390,9 @@ struct _IconObj
     HBITMAP hbmColor;
     WORD cursorId;
 };
+
+/* 既有实现代码里的名称，保持不变。 */
+typedef HICON__ _IconObj;
 
 void SetCursorID(HICON hIcon, WORD cursorId)
 {
@@ -4242,10 +4442,10 @@ BOOL GetIconInfo(HICON hIcon, PICONINFO piconinfo)
 
 HICON CreateIconIndirect(PICONINFO piconinfo)
 {
-    _IconObj *icon = new _IconObj;
+    _IconObj *icon = new _IconObj();
     icon->fIcon = piconinfo->fIcon;
-    icon->hbmColor = RefGdiObj(piconinfo->hbmColor);
-    icon->hbmMask = RefGdiObj(piconinfo->hbmMask);
+    icon->hbmColor = (HBITMAP)RefGdiObj(piconinfo->hbmColor);
+    icon->hbmMask = (HBITMAP)RefGdiObj(piconinfo->hbmMask);
     /* real Windows ignores the requested hotspot for icons (fIcon=TRUE)
        and forces it to the bitmap centre; only cursors keep the caller's
        hotspot (verified on real Windows: an 8x8 icon always reports 4,4) */
@@ -4312,6 +4512,10 @@ BOOL DestroyIcon(HICON hIcon)
 {
     if (!hIcon)
         return FALSE;
+    // 同 apple 后端：LoadCursor() 返回的系统共享光标不能被销毁，否则 CursorMgr
+    // 缓存里留下悬空句柄，下一次 LoadCursor() 返回已释放对象导致崩溃。
+    if (CursorMgr::isStdCursor((HCURSOR)hIcon))
+        return FALSE;
     if (hIcon->hbmColor)
         DeleteObject(hIcon->hbmColor);
     if (hIcon->hbmMask)
@@ -4349,7 +4553,40 @@ BOOL WINAPI GetTextMetricsA(HDC hdc, TEXTMETRICA *txtMetric)
     txtMetric->tmUnderlined = logFont->lfUnderline;
     txtMetric->tmStruckOut = logFont->lfStrikeOut;
     txtMetric->tmCharSet = logFont->lfCharSet;
-    txtMetric->tmPitchAndFamily = logFont->lfPitchAndFamily;
+
+    // TMPF_FIXED_PITCH (bit 0) 在真实 GDI 里是反着用的：比例字体返回 1，等宽字体
+    // 返回 0。WebKit 的 SimpleFontData::determinePitch() 就照这个语义写成
+    // m_treatAsFixedPitch = !(tmPitchAndFamily & TMPF_FIXED_PITCH)，这里如果留 0，
+    // 所有字体都会被判成等宽，RenderText::widthFromCache 于是拿空格宽度度量整段
+    // ASCII，行宽塌缩成 len * spaceWidth（每个字形占同一个宽度）。
+    BYTE fixedPitchBit = TMPF_FIXED_PITCH;
+    LONG maxAdvance = 0;
+    {
+        // 等宽字体里这些字符的 advance 全相同；比例字体里至少 M/W/@ 会打破相等。
+        static const WCHAR probe[] = L"iIl1MW0m@";
+        WORD glyphs[9];
+        INT advances[9];
+        if (GetGlyphIndicesW(hdc, probe, 9, glyphs, 0) != GDI_ERROR
+            && GetCharWidthI(hdc, 0, 9, glyphs, advances))
+        {
+            bool allEqual = true;
+            for (int i = 0; i < 9; i++)
+            {
+                if (advances[i] != advances[0])
+                    allEqual = false;
+                if (advances[i] > maxAdvance)
+                    maxAdvance = advances[i];
+            }
+            fixedPitchBit = allEqual ? 0 : TMPF_FIXED_PITCH;
+        }
+    }
+    txtMetric->tmMaxCharWidth = maxAdvance;
+
+    // GDI 语义：高 4 位是 family，低 4 位是 TMPF_* 标志。swinx 解析出来的都是
+    // TrueType/OpenType 轮廓字体，必须报告 TMPF_VECTOR|TMPF_TRUETYPE；否则 cairo
+    // 的 win32 字体后端会把字体判定为位图字体（is_bitmap），改用
+    // GetCharWidth32(字形索引) 估算字形包围盒，字形会被裁成 1 像素宽。
+    txtMetric->tmPitchAndFamily = (BYTE)((logFont->lfPitchAndFamily & 0xF0) | TMPF_VECTOR | TMPF_TRUETYPE | fixedPitchBit);
 
     cairo_restore(hdc->cairo);
     return TRUE;
@@ -4569,6 +4806,114 @@ BOOL WINAPI ExtTextOutA(HDC hdc,          // handle to DC
     return TRUE;
 }
 
+// ETO_GLYPH_INDEX: lpString holds WORD glyph indices, not character codes.
+// wke's own cairo (3rd_src/cairo, win32 font backend) rasterises every glyph
+// through ExtTextOutW(..., ETO_GLYPH_INDEX, ...) -- cairo-win32-font.c
+// _flush_glyphs() -- and the indices it passes are the native TrueType glyph IDs
+// it obtained from GetGlyphIndicesW for this DC's HFONT. ApplyFont() resolves
+// that same LOGFONT to a FreeType face via fontconfig, whose cairo glyph IDs are
+// the native ones too, so the indices go straight to cairo_show_glyphs().
+static BOOL ExtTextOutGlyphIndices(HDC hdc, int X, int Y, UINT fuOptions, CONST RECT *lprc,
+                                   const WORD *glyphs, UINT count, CONST INT *lpDx)
+{
+    cairo_save(hdc->cairo);
+    if (lprc)
+    {
+        if (fuOptions & ETO_CLIPPED)
+        {
+            cairo_rectangle(hdc->cairo, lprc->left, lprc->top, lprc->right - lprc->left, lprc->bottom - lprc->top);
+            cairo_clip(hdc->cairo);
+        }
+        if (fuOptions & ETO_OPAQUE)
+        {
+            CairoColor crBk(hdc->crBk);
+            cairo_set_source_rgba(hdc->cairo, crBk.r, crBk.g, crBk.b, crBk.a);
+            cairo_rectangle(hdc->cairo, lprc->left, lprc->top, lprc->right - lprc->left, lprc->bottom - lprc->top);
+            cairo_fill(hdc->cairo);
+        }
+    }
+    if (!count)
+    {
+        cairo_restore(hdc->cairo);
+        return TRUE;
+    }
+
+    ApplyFont(hdc);
+    CairoColor crText(hdc->crText);
+    cairo_set_source_rgba(hdc->cairo, crText.r, crText.g, crText.b, crText.a);
+
+    // Win32 packs (dx, dy) per glyph when ETO_PDY is set, and only dx otherwise.
+    const int stride = (fuOptions & ETO_PDY) ? 2 : 1;
+    double wid = 0;
+    for (UINT i = 0; i < count; ++i)
+        wid += lpDx ? lpDx[i * stride] : 0.0;
+
+    double old_x, old_y;
+    cairo_get_current_point(hdc->cairo, &old_x, &old_y);
+
+    cairo_font_extents_t font_ext;
+    cairo_font_extents(hdc->cairo, &font_ext);
+
+    double x = X, y = Y;
+    if (hdc->textAlign & TA_UPDATECP)
+        cairo_get_current_point(hdc->cairo, &x, &y);
+    switch (hdc->textAlign & (TA_RIGHT | TA_CENTER))
+    {
+    case TA_RIGHT:
+        x -= wid;
+        break;
+    case TA_CENTER:
+        x -= wid / 2;
+        break;
+    }
+    switch (hdc->textAlign & (TA_BASELINE | TA_BOTTOM | TA_TOP))
+    {
+    case TA_TOP:
+        y += font_ext.ascent;
+        break;
+    case TA_BASELINE:
+        break;
+    case TA_BOTTOM:
+        y -= font_ext.descent;
+        break;
+    }
+
+    double penX = x, penY = y;
+    for (UINT i = 0; i < count; ++i)
+    {
+        cairo_glyph_t glyph;
+        glyph.index = glyphs[i];
+        glyph.x = penX;
+        glyph.y = penY;
+        if (hdc->pathRecording)
+            cairo_glyph_path(hdc->cairo, &glyph, 1);
+        else
+            cairo_show_glyphs(hdc->cairo, &glyph, 1);
+
+        if (lpDx)
+        {
+            penX += lpDx[i * stride];
+            if (stride == 2)
+                penY += lpDx[i * stride + 1];
+        }
+        else
+        {
+            cairo_text_extents_t ext;
+            cairo_glyph_extents(hdc->cairo, &glyph, 1, &ext);
+            penX += ext.x_advance;
+            penY += ext.y_advance;
+        }
+    }
+
+    if (hdc->textAlign & TA_UPDATECP)
+        cairo_move_to(hdc->cairo, penX, penY);
+    else
+        cairo_move_to(hdc->cairo, old_x, old_y);
+
+    cairo_restore(hdc->cairo);
+    return TRUE;
+}
+
 BOOL WINAPI ExtTextOutW(HDC hdc,          // handle to DC
                         int X,            // x-coordinate of reference point
                         int Y,            // y-coordinate of reference point
@@ -4579,6 +4924,9 @@ BOOL WINAPI ExtTextOutW(HDC hdc,          // handle to DC
                         CONST INT *lpDx   // array of spacing values
 )
 {
+    if (fuOptions & ETO_GLYPH_INDEX)
+        return ExtTextOutGlyphIndices(hdc, X, Y, fuOptions, lprc,
+                                      (const WORD *)lpString, cbCount, lpDx);
     std::string str;
     tostring(lpString, cbCount, str);
     return ExtTextOutA(hdc, X, Y, fuOptions, lprc, str.c_str(), str.length(), lpDx);

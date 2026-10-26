@@ -1217,7 +1217,7 @@ bool SConnection::CreateCaret(HWND hWnd, HBITMAP hBitmap, int nWidth, int nHeigh
     m_caretInfo.hOwner = hWnd;
     if (hBitmap == (HBITMAP)1)
         hBitmap = nullptr;
-    m_caretInfo.hBmp = RefGdiObj(hBitmap);
+    m_caretInfo.hBmp = (HBITMAP)RefGdiObj(hBitmap);
     m_caretInfo.nWidth = nWidth;
     m_caretInfo.nHeight = nHeight;
     m_caretInfo.nVisible = 0;

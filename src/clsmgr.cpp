@@ -173,7 +173,7 @@ ATOM ClassMgr::register_class(const WNDCLASSEXA *wc)
     _class->winproc = wc->lpfnWndProc;
     if (wc->hbrBackground && IS_INTRESOURCE(wc->hbrBackground))
     {
-        _class->hbrBackground = RefGdiObj(GetSysColorBrush((int)(UINT_PTR)wc->hbrBackground));
+        _class->hbrBackground = (HBRUSH)RefGdiObj(GetSysColorBrush((int)(UINT_PTR)wc->hbrBackground));
     }
     else
     {

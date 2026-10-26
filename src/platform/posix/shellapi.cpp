@@ -2120,3 +2120,221 @@ int WINAPI SHFileOperationW(LPSHFILEOPSTRUCTW lpFileOp)
     ;
     return SHFileOperationA(&op);
 }
+
+/* ===========================================================================
+ * Shell 文件信息与图标（SHELL32）
+ *
+ * swinx 既没有系统图像列表，也不解析 PE 的资源段，所以「按扩展名找系统图标」
+ * 这类能力给不出来。能给出的只有两类：
+ *   - 属性 / 显示名 / 类型名这类由路径本身推导的信息；
+ *   - 文件本身就是图像资源（.ico / .cur）时，把它的图标取出来。
+ * 拿不到就如实返回失败，让调用方走自己的回退分支，而不是塞一个空句柄。
+ *
+ * ExtractIconEx 同理：下标 0 之外取不出来（没有资源序号枚举），
+ * 返回值仍然按 Win32 语义给出「文件里有多少个图标」。
+ * ======================================================================== */
+
+/* 取路径最后一段（文件名）。'\' 与 '/' 都算分隔符，与 Path* 组保持一致。 */
+static const char *shfi_basename_a(const char *pszPath)
+{
+    const char *pBase = pszPath;
+    for (const char *p = pszPath; *p; ++p)
+    {
+        if (*p == '\\' || *p == '/')
+            pBase = p + 1;
+    }
+    return pBase;
+}
+
+static const WCHAR *shfi_basename_w(const WCHAR *pszPath)
+{
+    const WCHAR *pBase = pszPath;
+    for (const WCHAR *p = pszPath; *p; ++p)
+    {
+        if (*p == L'\\' || *p == L'/')
+            pBase = p + 1;
+    }
+    return pBase;
+}
+
+/* 读 ICO/CUR 的目录头得到图像个数；不是图像文件（含 PE）一律返回 0。
+ * 头布局：WORD idReserved; WORD idType(1=icon,2=cursor); WORD idCount; */
+static UINT shfi_count_images_a(const char *pszPath)
+{
+    FILE *fp = fopen(pszPath, "rb");
+    if (!fp)
+        return 0;
+
+    unsigned char hdr[6];
+    size_t nRead = fread(hdr, 1, sizeof(hdr), fp);
+    fclose(fp);
+    if (nRead != sizeof(hdr))
+        return 0;
+
+    UINT nReserved = (UINT)hdr[0] | ((UINT)hdr[1] << 8);
+    UINT nType = (UINT)hdr[2] | ((UINT)hdr[3] << 8);
+    UINT nCount = (UINT)hdr[4] | ((UINT)hdr[5] << 8);
+    if (nReserved != 0 || (nType != 1 && nType != 2) || nCount == 0)
+        return 0;
+    return nCount;
+}
+
+/* 按扩展名给一个通用类型名（资源管理器风格的 "TXT File"）。
+ * 纯 ASCII 处理，避免引入 toupper 的 locale 依赖。 */
+static void shfi_type_name_a(const char *pszName, BOOL bDir, char *pszOut, size_t nOut)
+{
+    if (bDir)
+    {
+        snprintf(pszOut, nOut, "Folder");
+        return;
+    }
+
+    const char *pDot = NULL;
+    for (const char *p = pszName; *p; ++p)
+    {
+        if (*p == '.')
+            pDot = p;
+    }
+    if (!pDot || !pDot[1])
+    {
+        snprintf(pszOut, nOut, "File");
+        return;
+    }
+
+    char szExt[16];
+    size_t i = 0;
+    for (const char *p = pDot + 1; *p && i + 1 < sizeof(szExt); ++p)
+    {
+        char c = *p;
+        if (c >= 'a' && c <= 'z')
+            c = (char)(c - 'a' + 'A');
+        szExt[i++] = c;
+    }
+    szExt[i] = '\0';
+    snprintf(pszOut, nOut, "%s File", szExt);
+}
+
+DWORD_PTR WINAPI SHGetFileInfoA(LPCSTR pszPath, DWORD dwFileAttributes,
+                                SHFILEINFOA *psfi, UINT cbFileInfo, UINT uFlags)
+{
+    if (!pszPath || !psfi || cbFileInfo < sizeof(SHFILEINFOA))
+        return 0;
+
+    memset(psfi, 0, sizeof(SHFILEINFOA));
+
+    DWORD dwAttr = dwFileAttributes;
+    if (!(uFlags & SHGFI_USEFILEATTRIBUTES))
+    {
+        dwAttr = GetFileAttributesA(pszPath);
+        if (dwAttr == INVALID_FILE_ATTRIBUTES)
+            return 0; // 路径不存在
+    }
+
+    BOOL bDir = (dwAttr & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    const char *pszName = shfi_basename_a(pszPath);
+
+    if (uFlags & SHGFI_ATTRIBUTES)
+        psfi->dwAttributes = dwAttr;
+
+    if (uFlags & SHGFI_DISPLAYNAME)
+        snprintf(psfi->szDisplayName, sizeof(psfi->szDisplayName), "%s", pszName);
+
+    if (uFlags & SHGFI_TYPENAME)
+        shfi_type_name_a(pszName, bDir, psfi->szTypeName, sizeof(psfi->szTypeName));
+
+    if (uFlags & SHGFI_ICON)
+    {
+        /* 目录图标来自系统图像列表（swinx 没有），PE 的资源段也解析不了，
+         * 只有 .ico / .cur 这类本身就是图像的文件能给出句柄。 */
+        if (bDir)
+            return 0;
+
+        HICON hIcon = (HICON)LoadImageA(NULL, pszPath, IMAGE_ICON, 0, 0,
+                                        LR_LOADFROMFILE | LR_DEFAULTSIZE);
+        if (!hIcon)
+            return 0;
+        psfi->hIcon = hIcon;
+    }
+
+    return 1;
+}
+
+DWORD_PTR WINAPI SHGetFileInfoW(LPCWSTR pszPath, DWORD dwFileAttributes,
+                                SHFILEINFOW *psfi, UINT cbFileInfo, UINT uFlags)
+{
+    if (!pszPath || !psfi || cbFileInfo < sizeof(SHFILEINFOW))
+        return 0;
+
+    memset(psfi, 0, sizeof(SHFILEINFOW));
+
+    std::string strPath;
+    tostring(pszPath, -1, strPath);
+
+    SHFILEINFOA sfiA;
+    if (!SHGetFileInfoA(strPath.c_str(), dwFileAttributes, &sfiA, sizeof(SHFILEINFOA), uFlags))
+        return 0;
+
+    psfi->hIcon = sfiA.hIcon;
+    psfi->iIcon = sfiA.iIcon;
+    psfi->dwAttributes = sfiA.dwAttributes;
+
+    if (uFlags & SHGFI_DISPLAYNAME)
+    {
+        std::wstring strName;
+        towstring(sfiA.szDisplayName, -1, strName);
+        swprintf(psfi->szDisplayName, MAX_PATH, L"%s", strName.c_str());
+    }
+
+    if (uFlags & SHGFI_TYPENAME)
+    {
+        std::wstring strType;
+        towstring(sfiA.szTypeName, -1, strType);
+        swprintf(psfi->szTypeName, sizeof(psfi->szTypeName) / sizeof(WCHAR), L"%s", strType.c_str());
+    }
+
+    return 1;
+}
+
+UINT WINAPI ExtractIconExA(LPCSTR lpszFile, int nIconIndex,
+                           HICON *phiconLarge, HICON *phiconSmall, UINT nIcons)
+{
+    if (!lpszFile || !*lpszFile)
+        return 0;
+
+    UINT nCount = shfi_count_images_a(lpszFile);
+
+    /* nIconIndex == -1 或 nIcons == 0 只查询个数，不取句柄。 */
+    if (nIconIndex == -1 || nIcons == 0)
+        return nCount;
+
+    /* swinx 只能取出「文件本身」那个图标（下标 0），没有资源序号枚举能力。 */
+    if (nIconIndex != 0)
+        return nCount;
+
+    if (!nCount)
+        return 0;
+
+    if (phiconLarge)
+    {
+        phiconLarge[0] = (HICON)LoadImageA(NULL, lpszFile, IMAGE_ICON, 0, 0,
+                                           LR_LOADFROMFILE | LR_DEFAULTSIZE);
+    }
+    if (phiconSmall)
+    {
+        phiconSmall[0] = (HICON)LoadImageA(NULL, lpszFile, IMAGE_ICON, 0, 0,
+                                           LR_LOADFROMFILE | LR_DEFAULTSIZE);
+    }
+
+    return nCount;
+}
+
+UINT WINAPI ExtractIconExW(LPCWSTR lpszFile, int nIconIndex,
+                           HICON *phiconLarge, HICON *phiconSmall, UINT nIcons)
+{
+    if (!lpszFile)
+        return 0;
+
+    std::string strFile;
+    tostring(lpszFile, -1, strFile);
+    return ExtractIconExA(strFile.c_str(), nIconIndex, phiconLarge, phiconSmall, nIcons);
+}

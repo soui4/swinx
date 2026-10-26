@@ -1301,8 +1301,37 @@ int SConnection::OnGetWindowTextW(HWND hWnd, wchar_t *buf, int bufLen) {
 }
 
 HWND SConnection::OnFindWindowEx(HWND hParent, HWND hChildAfter, LPCSTR lpClassName, LPCSTR lpWindowName) {
-    // Empty implementation
-    return NULL;
+    // Searched over the window registry rather than [NSApp windows]: a window
+    // only gets an NSWindow host once it is shown, while the Win32 API (and its
+    // callers, e.g. WebKit's message-only "TimerWindowClass" window) expects
+    // FindWindow to see every window that exists.  The AppKit view tree would
+    // therefore miss exactly the hidden windows this API is used for.
+    (void)hChildAfter; // FindWindow() always passes 0; no resume-after support.
+    char szTstCls[1000] = { 0 };
+    if (lpClassName && IS_INTRESOURCE(lpClassName)) {
+        GetAtomNameA((int)(intptr_t)lpClassName, szTstCls, 1000);
+        lpClassName = szTstCls;
+    }
+    HWND hRet = 0;
+    WndMgr::enumerate([&](HWND hWnd, _Window *pWnd) {
+        if (hRet || !pWnd)
+            return;
+        if (hParent) {
+            if (pWnd->parent != hParent)
+                return;
+        } else if (pWnd->dwStyle & WS_CHILD) {
+            return; // hParent == 0 searches top-level windows only
+        }
+        if (lpClassName) {
+            char szCls[1000] = { 0 };
+            if (!GetAtomNameA(pWnd->clsAtom, szCls, 1000) || strcmp(szCls, lpClassName) != 0)
+                return;
+        }
+        if (lpWindowName && strcmp(pWnd->title.c_str(), lpWindowName) != 0)
+            return;
+        hRet = hWnd;
+    });
+    return hRet;
 }
 
 extern HWND getHwndFromView(NSView *view);
@@ -1677,7 +1706,7 @@ void SConnection::postCallbackTask(CbTask *pTask) {
 }
 
 DWORD SConnection::GetWndProcessId(HWND hWnd) {
-    CFArrayRef windowInfos = CGWindowListCopyWindowInfo(kCGWindowListOptionIncludingWindow, hWnd);
+    CFArrayRef windowInfos = CGWindowListCopyWindowInfo(kCGWindowListOptionIncludingWindow, (CGWindowID)(uintptr_t)hWnd);
     if (windowInfos && CFArrayGetCount(windowInfos) > 0) {
         CFDictionaryRef windowInfo = (CFDictionaryRef)CFArrayGetValueAtIndex(windowInfos, 0);
         CFNumberRef pidRef = (CFNumberRef)CFDictionaryGetValue(windowInfo, kCGWindowOwnerPID);
@@ -1747,7 +1776,7 @@ bool SConnection::CreateCaret(HWND hWnd, HBITMAP hBitmap, int nWidth, int nHeigh
     m_caretInfo.hOwner = hWnd;
     if (hBitmap == (HBITMAP)1) // windows api support hBitmap set to 1 to indicator a gray caret, ignore it.
         hBitmap = nullptr;
-    m_caretInfo.hBmp = RefGdiObj(hBitmap);
+    m_caretInfo.hBmp = (HBITMAP)RefGdiObj(hBitmap);
     m_caretInfo.nWidth = nWidth;
     m_caretInfo.nHeight = nHeight;
     m_caretInfo.nVisible = 0;

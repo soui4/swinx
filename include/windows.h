@@ -16,6 +16,8 @@
 #include <region.h>
 #include <gdi.h>
 #include <winerror.h>
+#include <wincrypt.h>
+#include <winver.h>
 #include <unknwn.h>
 #include <objbase.h>
 #include <objidl.h>
@@ -30,6 +32,7 @@
 #include <commctrl.h>
 #include <sysapi.h>
 #include <fileapi.h>
+#include <winreg.h>
 #include <menu.h>
 #include <hook.h>
 #include <winnls.h>

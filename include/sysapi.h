@@ -112,6 +112,8 @@ extern "C"
 
     LONG WINAPI InterlockedCompareExchange(LONG volatile *v, LONG Exchange, LONG Comparand);
 
+    LONG WINAPI InterlockedExchange(LONG volatile *Target, LONG Value);
+
     LONG WINAPI InterlockedExchangeAdd(LONG volatile *v, LONG Increment);
 
     int64_t WINAPI InterlockedDecrement64(int64_t volatile *v);
@@ -130,9 +132,37 @@ extern "C"
 
     int GetLastError();
 
+    /* 格式化错误信息。swinx 只支持 FORMAT_MESSAGE_FROM_SYSTEM（消息号按
+     * errno 解释），其余标志被忽略；ALLOCATE_BUFFER 时用 LocalAlloc 返回
+     * 缓冲区，调用方须用 LocalFree 释放（与 Win32 一致）。 */
+#define FORMAT_MESSAGE_ALLOCATE_BUFFER 0x00000100
+#define FORMAT_MESSAGE_IGNORE_INSERTS  0x00000200
+#define FORMAT_MESSAGE_FROM_STRING     0x00000400
+#define FORMAT_MESSAGE_FROM_HMODULE    0x00000800
+#define FORMAT_MESSAGE_FROM_SYSTEM     0x00001000
+#define FORMAT_MESSAGE_ARGUMENT_ARRAY  0x00002000
+#define FORMAT_MESSAGE_MAX_WIDTH_MASK  0x000000FF
+    DWORD WINAPI FormatMessageA(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId,
+                                LPSTR lpBuffer, DWORD nSize, va_list *Arguments);
+    DWORD WINAPI FormatMessageW(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId,
+                                LPWSTR lpBuffer, DWORD nSize, va_list *Arguments);
+#ifdef UNICODE
+#define FormatMessage FormatMessageW
+#else
+#define FormatMessage FormatMessageA
+#endif // UNICODE
+
     int MulDiv(int a, int b, int c);
 
     tid_t WINAPI GetCurrentThreadId();
+
+    /* Win32 里 GetCurrentThread 不是函数而是伪句柄宏（-2 = 当前线程），
+     * 取它永远成功且不需要关闭。swinx 沿用这个约定，需要真实线程信息的
+     * API（GetThreadTimes 等）认这个伪句柄。 */
+#define GetCurrentThread() ((HANDLE)(LONG_PTR)-2)
+
+    BOOL WINAPI GetThreadTimes(HANDLE hThread, LPFILETIME lpCreationTime, LPFILETIME lpExitTime,
+                               LPFILETIME lpKernelTime, LPFILETIME lpUserTime);
 
     int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *dst, int dstLen);
 
@@ -262,9 +292,7 @@ extern "C"
     DWORD WINAPI GetProcessId(HANDLE Process);
 
     HANDLE WINAPI GetCurrentProcess_Priv(void);
-#ifndef __APPLE__
 #define GetCurrentProcess GetCurrentProcess_Priv
-#endif
     void WINAPI GetLocalTime(SYSTEMTIME *pSysTime);
     void WINAPI GetSystemTime(SYSTEMTIME *lpSystemTime);
     BOOL WINAPI LocalFileTimeToFileTime(const FILETIME *lpLocalFileTime, LPFILETIME lpFileTime);
@@ -287,6 +315,32 @@ extern "C"
 
     BOOL TranslateMessage(const LPMSG pMsg);
     BOOL DispatchMessage(const LPMSG pMsg);
+
+    /* Win32 里 GetMessage / PeekMessage / DispatchMessage 都有 A/W 两份名字，
+     * 但它们的参数（MSG*）本身不做 A/W 区分。swinx 因此只保留了一份「无后缀」
+     * 的统一实现——这里补出 A/W 后缀名，使得直接书写 GetMessageW、PeekMessageA、
+     * DispatchMessageW 等后缀名的代码（例如 UNICODE 构建下的 wkex）也能解析到
+     * 同一份实现，不必再写一遍。 */
+#define GetMessageA      GetMessage
+#define GetMessageW      GetMessage
+#define PeekMessageA     PeekMessage
+#define PeekMessageW     PeekMessage
+#define DispatchMessageA DispatchMessage
+#define DispatchMessageW DispatchMessage
+
+    /* 消息队列状态。返回值高字为 QS_* 状态位，低字为队列中未处理消息数
+     * （Win32 语义），由各平台 SConnection::GetQueueStatus 提供。 */
+    DWORD WINAPI GetQueueStatus(UINT flags);
+
+    typedef struct tagLASTINPUTINFO
+    {
+        UINT cbSize;
+        DWORD dwTime;
+    } LASTINPUTINFO, *PLASTINPUTINFO;
+
+    /* 最近一次键盘/鼠标输入的时间戳（GetTickCount 口径，ms）。
+     * swinx 在消息泵取出输入类消息时刷新该时间戳。 */
+    BOOL WINAPI GetLastInputInfo(PLASTINPUTINFO plii);
 
     int GetSystemScale();
     int GetSystemMetrics(int nIndex);
@@ -407,6 +461,20 @@ extern "C"
     LPVOID WINAPI VirtualAlloc(LPVOID lpAddress, SIZE_T dwSize, DWORD flAllocationType, DWORD flProtect);
     BOOL WINAPI VirtualFree(LPVOID lpAddress, SIZE_T dwSize, DWORD dwFreeType);
 
+    typedef struct _MEMORY_BASIC_INFORMATION
+    {
+        PVOID BaseAddress;
+        PVOID AllocationBase;
+        DWORD AllocationProtect;
+        SIZE_T RegionSize;
+        DWORD State;
+        DWORD Protect;
+        DWORD Type;
+    } MEMORY_BASIC_INFORMATION, *PMEMORY_BASIC_INFORMATION;
+
+    BOOL WINAPI VirtualProtect(LPVOID lpAddress, SIZE_T dwSize, DWORD flNewProtect, LPDWORD lpflOldProtect);
+    SIZE_T WINAPI VirtualQuery(LPCVOID lpAddress, PMEMORY_BASIC_INFORMATION lpBuffer, SIZE_T dwLength);
+
     // Timer related functions
     typedef VOID(CALLBACK *PTIMERAPCROUTINE)(LPVOID lpArgToCompletionRoutine, DWORD dwTimerLowValue, DWORD dwTimerHighValue);
     typedef VOID(CALLBACK *WAITORTIMERCALLBACK)(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
@@ -473,6 +541,24 @@ extern "C"
 #define GetModuleFileName GetModuleFileNameA
 #endif // UNICODE
 
+    UINT WINAPI GetSystemDirectoryA(LPSTR lpBuffer, UINT uSize);
+    UINT WINAPI GetSystemDirectoryW(LPWSTR lpBuffer, UINT uSize);
+
+#ifdef UNICODE
+#define GetSystemDirectory GetSystemDirectoryW
+#else
+#define GetSystemDirectory GetSystemDirectoryA
+#endif // UNICODE
+
+    DWORD WINAPI ExpandEnvironmentStringsA(LPCSTR lpSrc, LPSTR lpDst, DWORD nSize);
+    DWORD WINAPI ExpandEnvironmentStringsW(LPCWSTR lpSrc, LPWSTR lpDst, DWORD nSize);
+
+#ifdef UNICODE
+#define ExpandEnvironmentStrings ExpandEnvironmentStringsW
+#else
+#define ExpandEnvironmentStrings ExpandEnvironmentStringsA
+#endif // UNICODE
+
 #ifdef __x86_64__
     typedef INT_PTR(FAR WINAPI *FARPROC)();
     typedef INT_PTR(NEAR WINAPI *NEARPROC)();
@@ -487,16 +573,32 @@ typedef int(WINAPI *PROC)();
 
     HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName);
 
+#define DONT_RESOLVE_DLL_REFERENCES       0x00000001
+#define LOAD_LIBRARY_AS_DATAFILE          0x00000002
+#define LOAD_WITH_ALTERED_SEARCH_PATH     0x00000008
+#define LOAD_LIBRARY_AS_IMAGE_RESOURCE    0x00000020
+#define LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE 0x00000040
+#define LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR  0x00000100
+#define LOAD_LIBRARY_SEARCH_APPLICATION_DIR 0x00000200
+#define LOAD_LIBRARY_SEARCH_USER_DIRS     0x00000400
+#define LOAD_LIBRARY_SEARCH_SYSTEM32      0x00000800
+#define LOAD_LIBRARY_SEARCH_DEFAULT_DIRS  0x00001000
+
+    HMODULE WINAPI LoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
+    HMODULE WINAPI LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
+
     DWORD WINAPI GetDllDirectoryA(DWORD nBufferLength, LPSTR lpBuffer);
     DWORD WINAPI GetDllDirectoryW(DWORD nBufferLength, LPWSTR lpBuffer);
     BOOL WINAPI SetDllDirectoryA(LPCSTR lpPathName);
     BOOL WINAPI SetDllDirectoryW(LPCWSTR lpPathName);
 #ifdef _UNICODE
 #define LoadLibrary     LoadLibraryW
+#define LoadLibraryEx   LoadLibraryExW
 #define GetDllDirectory GetDllDirectoryW
 #define SetDllDirectory SetDllDirectoryW
 #else
 #define LoadLibrary     LoadLibraryA
+#define LoadLibraryEx   LoadLibraryExA
 #define GetDllDirectory GetDllDirectoryA
 #define SetDllDirectory SetDllDirectoryA
 #endif
@@ -556,6 +658,36 @@ typedef int(WINAPI *PROC)();
     BOOL WINAPI SetEvent(HANDLE hEvent);
 
     DWORD WINAPI WaitForSingleObject(HANDLE hHandle, DWORD dwMilliseconds);
+
+    DWORD WINAPI WaitForSingleObjectEx(HANDLE hHandle, DWORD dwMilliseconds, BOOL bAlertable);
+
+    /* -------------------------------------------------- 旧式线程池等待
+     *
+     * RegisterWaitForSingleObject 让句柄可等待，但回调不落在线程池线程上；
+     * swinx 的实现是每个注册项一根等待线程（见 sysobjs.cpp）。标志位取值
+     * 照 SDK 的 threadpoollegacyapiset.h，其中只有 WT_EXECUTEONLYONCE 会
+     * 真正改变行为，其余是"放到哪类线程上执行"的调度提示 —— 单线程模型
+     * 下没有区别，忽略它们不会改变可观察语义。 */
+#define WT_EXECUTEDEFAULT               0x00000000
+#define WT_EXECUTEINIOTHREAD            0x00000001
+#define WT_EXECUTEINUITHREAD            0x00000002
+#define WT_EXECUTEINWAITTHREAD          0x00000004
+#define WT_EXECUTEONLYONCE              0x00000008
+#define WT_EXECUTELONGFUNCTION          0x00000010
+#define WT_EXECUTEINTIMERTHREAD         0x00000020
+#define WT_EXECUTEINPERSISTENTIOTHREAD  0x00000040
+#define WT_EXECUTEINPERSISTENTTHREAD    0x00000080
+#define WT_TRANSFER_IMPERSONATION       0x00000100
+
+    typedef VOID(CALLBACK *WAITORTIMERCALLBACK)(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
+
+    BOOL WINAPI RegisterWaitForSingleObject(PHANDLE phNewWaitObject, HANDLE hObject,
+                                            WAITORTIMERCALLBACK Callback, PVOID Context,
+                                            ULONG dwMilliseconds, ULONG dwFlags);
+
+    BOOL WINAPI UnregisterWait(HANDLE WaitHandle);
+
+    BOOL WINAPI UnregisterWaitEx(HANDLE WaitHandle, HANDLE CompletionEvent);
 
     DWORD WINAPI WaitForMultipleObjects(DWORD nCount, const HANDLE *lpHandles, BOOL bWaitAll, DWORD dwMilliseconds);
 
@@ -705,6 +837,11 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
 #define VER_PLATFORM_WIN32_WINDOWS 1
 #define VER_PLATFORM_WIN32_NT      2
 
+// OSVERSIONINFOEX.wProductType values
+#define VER_NT_WORKSTATION       0x0000001
+#define VER_NT_DOMAIN_CONTROLLER 0x0000002
+#define VER_NT_SERVER            0x0000003
+
 // Virtual memory constants
 #define MEM_COMMIT                  0x1000
 #define MEM_RESERVE                 0x2000
@@ -713,6 +850,7 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
 #define MEM_FREE                    0x10000
 #define MEM_PRIVATE                 0x20000
 #define MEM_MAPPED                  0x40000
+#define MEM_IMAGE                   0x1000000
 #define MEM_RESET                   0x80000
 #define MEM_TOP_DOWN                0x100000
 #define MEM_WRITE_WATCH             0x200000
@@ -829,6 +967,14 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
 #endif // UNICODE
 
     void WINAPI DebugBreak(void);
+
+    BOOL WINAPI IsDebuggerPresent(void);
+
+#define EXCEPTION_NONCONTINUABLE 0x1
+#define EXCEPTION_MAXIMUM_PARAMETERS 15
+
+    VOID WINAPI RaiseException(DWORD dwExceptionCode, DWORD dwExceptionFlags,
+                               DWORD nNumberOfArguments, const ULONG_PTR *lpArguments);
     VOID WINAPI DbgBreakPoint(VOID);
 
     UINT WINAPI GetDoubleClickTime(VOID);
@@ -1022,6 +1168,63 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
     BOOL WINAPI TerminateThread(HANDLE hThread, DWORD dwExitCode);
 
     VOID WINAPI ExitThread(DWORD dwExitCode);
+
+    // ------------------------------------------------------------------
+    // CONTEXT / GetThreadContext
+    //
+    // Win32 exposes the register set of a suspended thread through CONTEXT.
+    // WebKit's conservative stack scan (heap/MachineStackMarker.cpp) uses it
+    // to find GC roots held in registers.  The layout below is the x86_64
+    // (AMD64) integer/control subset of the Windows CONTEXT structure; the
+    // field names and CONTEXT_* flag values match the SDK so callers compile
+    // unchanged.  Floating point / debug registers are not exposed: no caller
+    // in this tree scans them.
+    // ------------------------------------------------------------------
+#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
+
+#define CONTEXT_AMD64 0x00100000L
+#define CONTEXT_CONTROL (CONTEXT_AMD64 | 0x1L)
+#define CONTEXT_INTEGER (CONTEXT_AMD64 | 0x2L)
+#define CONTEXT_FLOATING_POINT (CONTEXT_AMD64 | 0x4L)
+#define CONTEXT_DEBUG_REGISTERS (CONTEXT_AMD64 | 0x8L)
+#define CONTEXT_FULL (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_FLOATING_POINT)
+#define CONTEXT_ALL (CONTEXT_FULL | CONTEXT_DEBUG_REGISTERS)
+
+    typedef struct _CONTEXT
+    {
+        DWORD ContextFlags;
+        DWORD MxCsr;
+        WORD SegCs;
+        WORD SegDs;
+        WORD SegEs;
+        WORD SegFs;
+        WORD SegGs;
+        WORD SegSs;
+        DWORD EFlags;
+        DWORD64 Rax;
+        DWORD64 Rcx;
+        DWORD64 Rdx;
+        DWORD64 Rbx;
+        DWORD64 Rsp;
+        DWORD64 Rbp;
+        DWORD64 Rsi;
+        DWORD64 Rdi;
+        DWORD64 R8;
+        DWORD64 R9;
+        DWORD64 R10;
+        DWORD64 R11;
+        DWORD64 R12;
+        DWORD64 R13;
+        DWORD64 R14;
+        DWORD64 R15;
+        DWORD64 Rip;
+    } CONTEXT, *PCONTEXT, *LPCONTEXT;
+
+    // Fills lpContext with the register state of hThread (which must be
+    // suspended by SuspendThread, exactly as the Win32 contract requires).
+    BOOL WINAPI GetThreadContext(HANDLE hThread, LPCONTEXT lpContext);
+
+#endif // x86_64
 #ifdef __APPLE__
     BOOL WINAPI GetAppleBundlePath(char *path, int maxLen);
 #endif //__APPLE__

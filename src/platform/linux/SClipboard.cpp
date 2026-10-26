@@ -924,7 +924,7 @@ IDataObject *SClipboard::getDataObject(BOOL bSel)
     }
     else
     {
-        SDataObjectProxy *ret = new SDataObjectProxy(m_conn, owner);
+        SDataObjectProxy *ret = new SDataObjectProxy(m_conn, hwndFromXcb(owner));
         ret->fetchDataTypeList();
         return ret;
     }

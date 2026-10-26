@@ -1174,19 +1174,37 @@ BOOL UpdateLayeredWindow(HWND hWnd, HDC hdcDst, POINT *pptDst, SIZE *psize, HDC 
 }
 
 // ---- window property table (no-op on virtual windows) ----------------------
-BOOL SetProp(HWND hWnd, LPCSTR lpString, HANDLE hData)
+BOOL SetPropA(HWND hWnd, LPCSTR lpString, HANDLE hData)
 {
     (void)hWnd; (void)lpString; (void)hData;
     return FALSE;
 }
 
-HANDLE GetProp(HWND hWnd, LPCSTR lpString)
+HANDLE GetPropA(HWND hWnd, LPCSTR lpString)
 {
     (void)hWnd; (void)lpString;
     return NULL;
 }
 
-BOOL RemoveProp(HWND hWnd, LPCSTR lpString)
+BOOL RemovePropA(HWND hWnd, LPCSTR lpString)
+{
+    (void)hWnd; (void)lpString;
+    return FALSE;
+}
+
+BOOL SetPropW(HWND hWnd, LPCWSTR lpString, HANDLE hData)
+{
+    (void)hWnd; (void)lpString; (void)hData;
+    return FALSE;
+}
+
+HANDLE GetPropW(HWND hWnd, LPCWSTR lpString)
+{
+    (void)hWnd; (void)lpString;
+    return NULL;
+}
+
+BOOL RemovePropW(HWND hWnd, LPCWSTR lpString)
 {
     (void)hWnd; (void)lpString;
     return FALSE;

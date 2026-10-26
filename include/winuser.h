@@ -696,6 +696,10 @@ extern "C"
 #define ODT_BUTTON   4
 #define ODT_STATIC   5
 
+/* GetGuiResources() 的 uiFlags 取值，与 Win32 SDK 一致。 */
+#define GR_GDIOBJECTS  0
+#define GR_USEROBJECTS 1
+
 #define SM_CXSCREEN          0
 #define SM_CYSCREEN          1
 #define SM_CXVSCROLL         2
@@ -1066,6 +1070,8 @@ extern "C"
     }
 
 #define POINTTOPOINTS(pt) (MAKELONG((short)((pt).x), (short)((pt).y)))
+/* Win32 语义：把 LPARAM 的低/高 16 位分别当作 x/y。 */
+#define MAKEPOINTS(l)     (*((POINTS FAR *)&(l)))
 #define MAKEWPARAM(l, h)  ((WPARAM)(DWORD)MAKELONG(l, h))
 #define MAKELPARAM(l, h)  ((LPARAM)(DWORD)MAKELONG(l, h))
 
@@ -1111,6 +1117,36 @@ extern "C"
  */
 #define EVENT_MIN 0x00000001
 #define EVENT_MAX 0x7FFFFFFF
+
+/*
+ * System-level events (winuser.h of the Windows SDK). Values must match the
+ * SDK because they travel through the same SetWinEventHook notification
+ * channel as the EVENT_OBJECT_* ones below.
+ */
+#define EVENT_SYSTEM_SOUND              0x0001
+#define EVENT_SYSTEM_ALERT              0x0002
+#define EVENT_SYSTEM_FOREGROUND         0x0003
+#define EVENT_SYSTEM_MENUSTART          0x0004
+#define EVENT_SYSTEM_MENUEND            0x0005
+#define EVENT_SYSTEM_MENUPOPUPSTART     0x0006
+#define EVENT_SYSTEM_MENUPOPUPEND       0x0007
+#define EVENT_SYSTEM_CAPTURESTART       0x0008
+#define EVENT_SYSTEM_CAPTUREEND         0x0009
+#define EVENT_SYSTEM_MOVESIZESTART      0x000A
+#define EVENT_SYSTEM_MOVESIZEEND        0x000B
+#define EVENT_SYSTEM_CONTEXTHELPSTART   0x000C
+#define EVENT_SYSTEM_CONTEXTHELPEND     0x000D
+#define EVENT_SYSTEM_DRAGDROPSTART      0x000E
+#define EVENT_SYSTEM_DRAGDROPEND        0x000F
+#define EVENT_SYSTEM_DIALOGSTART        0x0010
+#define EVENT_SYSTEM_DIALOGEND          0x0011
+#define EVENT_SYSTEM_SCROLLINGSTART     0x0012
+#define EVENT_SYSTEM_SCROLLINGEND       0x0013
+#define EVENT_SYSTEM_SWITCHSTART        0x0014
+#define EVENT_SYSTEM_SWITCHEND          0x0015
+#define EVENT_SYSTEM_MINIMIZESTART      0x0016
+#define EVENT_SYSTEM_MINIMIZEEND        0x0017
+#define EVENT_SYSTEM_DESKTOPSWITCH      0x0020
 
     /*
      * WinEvent hooks（与 user32 的 SetWinEventHook/UnhookWinEvent 语义一致；
@@ -1423,6 +1459,12 @@ extern "C"
 #define SC_FULLSCREEN 0xF170
 #define MAX_PATH      1000
 
+/* CRT limits (<stdlib.h> on Windows) used for path buffers. Keep MSVC's
+ * values; they only size buffers, MAX_PATH is what the API calls check. */
+#ifndef _MAX_PATH
+#define _MAX_PATH     260
+#endif
+
 #pragma pack(push, 1)
     typedef struct tagRGBQUAD
     {
@@ -1467,6 +1509,16 @@ extern "C"
 #endif /* WINVER >= 0x0400 */
 
 #define MF_MOUSESELECT 0x00008000L
+
+/* Menu item state bits (MIIM_STATE / MENUITEMINFO.fState), winuser.h of the SDK. */
+#define MFS_GRAYED    0x00000003L
+#define MFS_DISABLED  MFS_GRAYED
+#define MFS_CHECKED   MF_CHECKED
+#define MFS_HILITE    MF_HILITE
+#define MFS_ENABLED   MF_ENABLED
+#define MFS_UNCHECKED MF_UNCHECKED
+#define MFS_UNHILITE  MF_UNHILITE
+#define MFS_DEFAULT   MF_DEFAULT
 #if (WINVER >= 0x0400)
 #define MF_END 0x00000080L /* Obsolete -- only used by old RES files */
 #endif                     /* WINVER >= 0x0400 */
@@ -1898,6 +1950,9 @@ extern "C"
 #define SPI_GETFONTSMOOTHINGORIENTATION 0x2012
 #define SPI_SETFONTSMOOTHINGORIENTATION 0x2013
 
+#define FE_FONTSMOOTHINGSTANDARD        0x0001
+#define FE_FONTSMOOTHINGCLEARTYPE       0x0002
+
 /* WM_PRINT flags */
 #define PRF_CHECKVISIBLE 0x00000001L
 #define PRF_NONCLIENT    0x00000002L
@@ -2278,6 +2333,43 @@ extern "C"
 #define GA_PARENT    1 // GetParent
 #define GA_ROOT      2 // GetAncestor (top level window)
 #define GA_ROOTOWNER 3 // root owner window (top level window)
+
+    /*
+     * Window properties.
+     *
+     * lpString 既可以是字符串指针，也可以是 GlobalAddAtom 返回的原子值
+     * （此时取值 <= 0xFFFF）。hData 由调用方拥有，窗口销毁时 swinx 只丢弃映射，
+     * 不负责释放——与 Win32 语义一致。
+     *
+     * 注意 hData / 返回值的类型是 void* 而不是 HANDLE：在 Windows 上
+     * HANDLE 就是 void*，所以两者源码兼容；而 swinx 的 HANDLE 是 struct _Handle*
+     * （用来抓句柄类型错误），若照搬会让 `SetProp(hwnd, name, this)` 这类
+     * 直接传对象指针的 Win32 代码无法编译。
+     */
+    void * WINAPI GetPropA(HWND hWnd, LPCSTR lpString);
+    void * WINAPI GetPropW(HWND hWnd, LPCWSTR lpString);
+    BOOL WINAPI SetPropA(HWND hWnd, LPCSTR lpString, void *hData);
+    BOOL WINAPI SetPropW(HWND hWnd, LPCWSTR lpString, void *hData);
+    void * WINAPI RemovePropA(HWND hWnd, LPCSTR lpString);
+    void * WINAPI RemovePropW(HWND hWnd, LPCWSTR lpString);
+
+#ifdef UNICODE
+#define GetProp    GetPropW
+#define SetProp    SetPropW
+#define RemoveProp RemovePropW
+#else
+#define GetProp    GetPropA
+#define SetProp    SetPropA
+#define RemoveProp RemovePropA
+#endif // UNICODE
+
+    /* GetGuiResources：返回进程当前占用的 GDI / USER 对象数。Win32 里由
+     * user32 提供；swinx 统计自己创建的 GDI 句柄（见 src/handle.cpp），
+     * USER 对象暂不统计。 */
+    DWORD WINAPI GetGuiResources(HANDLE hProcess, DWORD uiFlags);
+
+/* NONCLIENTMETRICSA/W live in gdi.h: they embed LOGFONTA/LOGFONTW, and
+ * winuser.h is included *before* gdi.h by windows.h. */
 
 #ifdef __cplusplus
 }

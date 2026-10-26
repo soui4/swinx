@@ -38,17 +38,29 @@ for h in sorted(os.listdir(INC)):
     # 去掉 typedef 行与预处理行
     lines = [l for l in text.split("\n") if not l.strip().startswith("#")]
     text = "\n".join(lines)
-    # 函数声明：类型 名称(参数);  —— 非多行括号内的情况用贪心匹配
-    for m in re.finditer(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(((?:[^()]|\([^()]*\))*)\)\s*(?:CONST|const)?\s*;", text):
+    # 函数声明：类型 名称(参数); —— 非多行括号内的情况用贪心匹配。
+    # 尾部的 `__attribute__((weak))` 之类也算声明的一部分（htons 一族就这么写的）。
+    for m in re.finditer(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(((?:[^()]|\([^()]*\))*)\)\s*(?:CONST|const)?\s*(?:__attribute__\s*\(\([^)]*\)\)\s*)?;", text):
         name = m.group(1)
         before = text[max(0, m.start() - 60):m.start()]
         if re.search(r"typedef\s*$", before):
+            continue
+        # 头文件里的 inline 函数体也可能命中上面的模式（形如 `return Foo(a, b);`），
+        # 这种是调用而不是声明，别把 Foo 收进 API 清单。
+        if re.search(r"\b(?:return|else|case|new|delete|throw|sizeof)\s*$", before) \
+                or re.search(r"[=,(]\s*$", before):
             continue
         if name in ("WINAPI", "CALLBACK", "CDECL", "APIENTRY", "if", "for", "while", "switch", "return", "sizeof"):
             continue
         decls.setdefault(name, set()).add(h)
 
 # ---------- 2. 在源码中定位定义并抽取函数体 ----------
+# 调用点被误判为定义的前缀特征：赋值号、实参分隔符、逻辑/比较运算，
+# 以及 return / new 一类关键字。函数定义在形参表前不会紧跟这些符号。
+CALL_SITE_BEFORE = re.compile(
+    r"(?:[=,(]|&&|\|\||\?|:|!)\s*$|"
+    r"\b(?:return|else|case|new|delete|throw|co_return|sizeof|and|or|not)\s*$")
+
 def strip_comments(s):
     s = re.sub(r"/\*.*?\*/", " ", s, flags=re.S)
     s = re.sub(r"//[^\n]*", " ", s)
@@ -57,13 +69,56 @@ def strip_comments(s):
     s = re.sub(r"(?<![\w'])'(?:\\.|[^'\\\n])'(?![\w'])", "''", s)
     return s
 
+def comment_mask(s):
+    """标注哪些下标落在注释或字符串字面量里（1 = 落在里面）。
+
+    注释里出现 `select(...)`、`CreatePen(...)` 这种字样很常见，注释掉的位置
+    不可能是定义；但 find_body 是在原始文本上跑（避免 strip 误杀真实代码），
+    所以要另外给一份等长掩码来排除这些命中。
+    """
+    mask = bytearray(len(s))
+    i, n = 0, len(s)
+    while i < n:
+        if s.startswith("//", i):
+            j = s.find("\n", i)
+            j = n if j < 0 else j
+            mask[i:j] = b"\x01" * (j - i)
+            i = j
+        elif s.startswith("/*", i):
+            j = s.find("*/", i + 2)
+            j = n if j < 0 else j + 2
+            mask[i:j] = b"\x01" * (j - i)
+            i = j
+        elif s[i] in "\"'":
+            q = s[i]
+            j = i + 1
+            while j < n:
+                if s[j] == "\\":
+                    j += 2
+                    continue
+                if s[j] == q:
+                    j += 1
+                    break
+                j += 1
+            mask[i:j] = b"\x01" * (j - i)
+            i = j
+        else:
+            i += 1
+    return mask
+
 def find_body(src, name, start):
-    """从 start 位置向后找 name( ... ) { ... }，返回函数体或 None"""
+    """从 start 位置向后找 name( ... ) { ... }
+
+    返回 (函数体, 名字所在下标, 右花括号下标)；找不到返回 (None, -1, -1)。
+    名字下标必须一并返回：内部会跳过“参数表后面跟着分号”的调用点继续往后找，
+    若只返回函数体，调用方就配错了名字位置 —— 把某处调用当成定义，
+    又把另一处真定义的函数体安到它头上。
+    """
     i = src.find(name, start)
     while i != -1:
         j = src.find("(", i)
         if j == -1:
-            return None, -1
+            return None, -1, -1
         # 匹配参数括号
         depth = 0
         k = j
@@ -88,11 +143,11 @@ def find_body(src, name, start):
                 elif src[m] == "}":
                     depth -= 1
                     if depth == 0:
-                        return src[k2:m + 1], m
+                        return src[k2:m + 1], i, m
                 m += 1
-            return src[k2:], len(src)
+            return src[k2:], i, len(src)
         i = src.find(name, i + 1)
-    return None, -1
+    return None, -1, -1
 
 defs = {}  # name -> list of (file, classification, notes)
 srcfiles = []
@@ -155,21 +210,32 @@ for path in srcfiles:
     except Exception:
         continue
     stripped = strip_comments(src)
+    mask = comment_mask(src)
     for name in sorted(decls):
         # 快速过滤（在原始文本上执行，避免 strip 误杀）
         if not re.search(r"\b" + re.escape(name) + r"\s*\(", src):
             continue
         pos = 0
         while True:
-            body, end = find_body(src, name, pos)
+            body, i, end = find_body(src, name, pos)
             if body is None:
                 break
-            # 确认是定义而非函数内调用：检查名字前是否是其他标识符(成员/::)
-            pre = src[:src.rfind(name, pos, src.find(name, pos) + len(name))]
-            # find_body 用 find 重查了，重新定位
-            i = src.find(name, pos)
+            # 注释/字符串里的同名文字不是定义
+            if mask[i]:
+                pos = i + len(name)
+                continue
             before = src[max(0, i - 40):i]
-            if not re.search(r"[;{}\*>\s]\s*$", before) or re.search(r"::\s*$", before):
+            after = src[i + len(name):i + len(name) + 8]
+            # 定义处名字必须紧跟形参表；`SOCKET socket;` 这类成员声明后面是分号，
+            # 若放过去 find_body 会一路找到下一个 '{'，把构造函数体当成它的函数体。
+            if not re.match(r"\s*\(", after):
+                pos = i + len(name)
+                continue
+            # 确认是定义而非函数内调用：名字前不能是别的标识符里的成员/全局限定，
+            # 也不能是赋值号、实参位置、逻辑运算或 return 一类关键字。
+            if (re.search(r"::\s*$", before)
+                    or not re.search(r"[;{}\*>\s]\s*$", before)
+                    or CALL_SITE_BEFORE.search(before)):
                 pos = i + len(name)
                 continue
             cls, marks = classify(body)

@@ -36,7 +36,7 @@ BOOL CStatic::OnEraseBkgnd(HDC dc)
 {
     RECT rc;
     GetClientRect(m_hWnd, &rc);
-    FillRect(dc, &rc, GetStockObject(WHITE_BRUSH));
+    FillRect(dc, &rc, (HBRUSH)GetStockObject(WHITE_BRUSH));
     return TRUE;
 }
 

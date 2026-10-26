@@ -14,7 +14,7 @@ extern "C"
 #endif //__cplusplus
     uintptr_t _beginthread(void(__cdecl *start_address)(void *), unsigned int stack_size, void *arglist);
 
-    uintptr_t _beginthreadex(void *security, unsigned int stack_size, unsigned int(__stdcall *start_address)(void *), void *arglist, unsigned int initflag, tid_t *thrdaddr);
+    uintptr_t _beginthreadex(void *security, unsigned int stack_size, unsigned int(__stdcall *start_address)(void *), void *arglist, unsigned int initflag, unsigned int *thrdaddr);
 
     void _endthread(void);
 

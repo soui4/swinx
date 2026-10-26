@@ -39,6 +39,7 @@ extern "C"
 #define _ismbcspace                    isspace
 #if !SFR_HOSTED
 	#define vswprintf_s                    vswprintf
+	#define swprintf_s                     swprintf
 	#define memmove_s(dst, ndst, src, len) memmove(dst, src, len)
 	#define swscanf_s                      swscanf
 	#define vsprintf_s                vsnprintf
@@ -46,8 +47,10 @@ extern "C"
 	#define strcat_s(dst, n, src)     strncat(dst, src, n)
 	#define wcscat_s(dst, n, src)     wcsncat(dst, src, n)
 
-    void WINAPI strcpy_s(char *destination, size_t num, const char *source);
-    void WINAPI wcscpy_s(wchar_t *destination, size_t num, const wchar_t *source);
+    /* MSVC's *_s copy helpers return errno_t (int): 0 on success, EINVAL/ERANGE
+     * otherwise. Callers test the result, so it cannot be void. */
+    int WINAPI strcpy_s(char *destination, size_t num, const char *source);
+    int WINAPI wcscpy_s(wchar_t *destination, size_t num, const wchar_t *source);
     float WINAPI _wtof(const wchar_t *src);
 #endif
 #define _wtoi(x)                       wcstol(x, NULL, 10)
@@ -69,6 +72,19 @@ extern "C"
 
 
     int WINAPI _snprintf(char *buffer, size_t size, const char *format, ...);
+
+    int WINAPI _vsnprintf(char *buffer, size_t size, const char *format, va_list args);
+
+    /* MSVC CRT 的 _timeb/_ftime（<sys/timeb.h> 在 Windows 上提供）。
+     * 与 POSIX 的 struct timeb/ftime 同义，只是命名不同。 */
+    struct _timeb
+    {
+        time_t time;
+        unsigned short millitm;
+        short timezone;
+        short dstflag;
+    };
+    void WINAPI _ftime(struct _timeb *tp);
 
     int WINAPI _snwprintf(wchar_t *buffer, size_t size, const wchar_t *format, ...);
 
@@ -103,6 +119,20 @@ extern "C"
 #define stricmp(s1, s2)       strcasecmp(s1, s2)
 #define strnicmp(s1, s2, num) strncasecmp(s1, s2, num)
 #define wcsicmp               _wcsicmp
+
+/* MSVC CRT spellings of the above; code ported from Windows uses them. */
+#define _stricmp(s1, s2)       stricmp(s1, s2)
+#define _strnicmp(s1, s2, num) strnicmp(s1, s2, num)
+
+/* _putenv()/putenv() both take a mutable "NAME=value" string and do not copy
+ * it, so keeping the caller's buffer alive is the caller's business either way. */
+#ifndef _putenv
+#define _putenv putenv
+#endif
+
+#ifndef _countof
+#define _countof(array) (sizeof(array) / sizeof((array)[0]))
+#endif
 
 #define lstrcpynW wcsncpy
 #define lstrcpynA strncpy

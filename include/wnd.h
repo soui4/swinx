@@ -54,6 +54,11 @@ extern "C"
 
     LRESULT WINAPI CallWindowProc(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 
+    /* 与 DefWindowProc 同理：参数不做 A/W 区分，swinx 只有一份无后缀实现，
+     * 这里补出 A/W 后缀名供以后缀名直接调用的代码使用。 */
+#define CallWindowProcA CallWindowProc
+#define CallWindowProcW CallWindowProc
+
     BOOL WINAPI PostMessageA(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
     BOOL WINAPI PostMessageW(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
 
@@ -250,6 +255,12 @@ extern "C"
 
     LRESULT DefWindowProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 
+    /* DefWindowProc 的参数不做 A/W 区分，swinx 只有一份无后缀实现（wnd.cpp）。
+     * Win32 头文件把 DefWindowProc 定义为 DefWindowProcW/A，wkex 的 UNICODE 构建
+     * 会直接写 DefWindowProcW，因此这里把两个后缀名都指向同一份实现。 */
+#define DefWindowProcA DefWindowProc
+#define DefWindowProcW DefWindowProc
+
     BOOL ShowWindow(HWND hWnd, int nCmdShow);
 
     BOOL MoveWindow(HWND hWnd, int x, int y, int nWidth, int nHeight, BOOL bRepaint);
@@ -263,12 +274,6 @@ extern "C"
 #ifndef GCL_STYLE
 #define GCL_STYLE (-26)
 #endif
-    // window-property table (used by SOUI's menu subclassing hooks).  The
-    // freertos implementation is a no-op: hooks never fire on virtual windows.
-    BOOL WINAPI SetProp(HWND hWnd, LPCSTR lpString, HANDLE hData);
-    HANDLE WINAPI GetProp(HWND hWnd, LPCSTR lpString);
-    BOOL WINAPI RemoveProp(HWND hWnd, LPCSTR lpString);
-
     BOOL IsWindowVisible(HWND hWnd);
 
     BOOL IsZoomed(HWND hWnd);

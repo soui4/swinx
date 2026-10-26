@@ -24,6 +24,16 @@
 #include "STrayIconMgr.h"
 #include "cursormgr.h"
 
+inline HWND hwndFromXcb(xcb_window_t id)
+{
+    return reinterpret_cast<HWND>(static_cast<uintptr_t>(id));
+}
+
+inline xcb_window_t xcbFromHwnd(HWND hwnd)
+{
+    return static_cast<xcb_window_t>(reinterpret_cast<uintptr_t>(hwnd));
+}
+
 
 struct TimerInfo
 {

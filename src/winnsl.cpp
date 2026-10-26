@@ -131,8 +131,64 @@ INT WINAPI CompareStringA(LCID lcid __attribute__((unused)), DWORD flags __attri
     return p1.compare(p2);
 }
 
-int GetLocaleInfoA(LCID Locale __attribute__((unused)), LCTYPE LCType __attribute__((unused)), LPSTR lpLCData, int cchData)
+/* Split a POSIX locale name ("zh_CN.UTF-8", "en_US", "C") into the ISO 639
+ * language and ISO 3166 country parts, which is what GetLocaleInfo() returns
+ * for LOCALE_SISO639LANGNAME / LOCALE_SISO3166CTRYNAME. */
+static void splitLocaleName(const char *locale, std::string &language, std::string &country)
 {
+    language.clear();
+    country.clear();
+    if (!locale || !*locale)
+        return;
+
+    std::string name(locale);
+    // Drop any encoding or modifier suffix (".UTF-8", "@euro", ...).
+    size_t suffix = name.find_first_of("._@");
+    if (suffix != std::string::npos)
+        name.resize(suffix);
+
+    size_t underscore = name.find('_');
+    if (underscore == std::string::npos)
+    {
+        language = name;
+        return;
+    }
+    language = name.substr(0, underscore);
+    country = name.substr(underscore + 1);
+}
+
+/* LOCALE_RETURN_NUMBER makes GetLocaleInfo() exchange a DWORD instead of a
+ * string. Only the numeric locale types WKE asks for are answered here. */
+static BOOL numericLocaleInfo(LCID locale, LCTYPE lcType, DWORD *value)
+{
+    switch (lcType & ~LOCALE_RETURN_NUMBER)
+    {
+    case LOCALE_ILANGUAGE:
+        *value = (DWORD)(locale & 0xFFFF);
+        return TRUE;
+    case LOCALE_IDEFAULTANSICODEPAGE:
+    case LOCALE_IDEFAULTCODEPAGE:
+        // POSIX hosts have no legacy ANSI/OEM code page: text is UTF-8.
+        *value = CP_UTF8;
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
+
+int GetLocaleInfoA(LCID Locale, LCTYPE LCType, LPSTR lpLCData, int cchData)
+{
+    if (LCType & LOCALE_RETURN_NUMBER)
+    {
+        DWORD value;
+        if (!numericLocaleInfo(Locale, LCType, &value))
+            return 0;
+        if (cchData < (int)sizeof(DWORD))
+            return 0;
+        memcpy(lpLCData, &value, sizeof(DWORD));
+        return sizeof(DWORD) / sizeof(char);
+    }
+
 #ifdef __APPLE__
     char szLCData[LOCALE_NAME_MAX_LENGTH] = { 0 };
     GetLocal(szLCData, LOCALE_NAME_MAX_LENGTH);
@@ -150,17 +206,46 @@ int GetLocaleInfoA(LCID Locale __attribute__((unused)), LCTYPE LCType __attribut
     return 0;
 #endif
 
-    int len = strlen(locale);
+    std::string value;
+    if (LCType == LOCALE_SISO639LANGNAME || LCType == LOCALE_SISO3166CTRYNAME)
+    {
+        std::string language, country;
+        splitLocaleName(locale, language, country);
+        if (LCType == LOCALE_SISO639LANGNAME)
+            value = language;
+        else
+            value = country;
+    }
+    else
+        value = locale;
+
+    // Win32 fails for a locale part that does not exist (e.g. the country of a
+    // neutral locale), and callers rely on that to fall back.
+    if (value.empty())
+        return 0;
+
+    int len = (int)value.size();
     if (len >= cchData)
         return 0; // Buffer too small
 
-    strncpy(lpLCData, locale, cchData - 1);
-    lpLCData[cchData - 1] = '\0';
+    memcpy(lpLCData, value.c_str(), len);
+    lpLCData[len] = '\0';
     return len + 1;
 }
 
 int GetLocaleInfoW(LCID Locale, LCTYPE LCType, LPWSTR lpLCData, int cchData)
 {
+    if (LCType & LOCALE_RETURN_NUMBER)
+    {
+        DWORD value;
+        if (!numericLocaleInfo(Locale, LCType, &value))
+            return 0;
+        if (cchData < (int)(sizeof(DWORD) / sizeof(WCHAR)))
+            return 0;
+        memcpy(lpLCData, &value, sizeof(DWORD));
+        return sizeof(DWORD) / sizeof(WCHAR);
+    }
+
     char szLCData[LOCALE_NAME_MAX_LENGTH];
     int nRet = GetLocaleInfoA(Locale, LCType, szLCData, sizeof(szLCData));
     std::wstring wsLCData;
