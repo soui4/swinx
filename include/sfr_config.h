@@ -43,13 +43,13 @@
 
 #if defined(FREERTOS_HOST)
 #define SFR_PLATFORM 1
-#define SFR_HOSTED 1
+#define SFR_HOSTED   1
 #elif defined(SOUI_PLATFORM_FREERTOS)
 #define SFR_PLATFORM 1
-#define SFR_HOSTED 0
+#define SFR_HOSTED   0
 #else
 #define SFR_PLATFORM 0
-#define SFR_HOSTED 0
+#define SFR_HOSTED   0
 #endif
 
 #if defined(SOUI_FREERTOS_REAL)

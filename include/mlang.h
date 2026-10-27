@@ -114,7 +114,7 @@ typedef enum tagMLDETECTCP
 #define MP_SYMBOL    0x00008000u /* 42（Symbol） */
 
 /* 所有已定义族的并集：ASCII 字符属于其中每一个。 */
-#define MP_ALL       0x0000FFFFu
+#define MP_ALL 0x0000FFFFu
 
 typedef WORD SCRIPT_ID;
 
@@ -166,8 +166,7 @@ struct IMLangCodePages : public IUnknown
 
     virtual HRESULT STDMETHODCALLTYPE GetCharCodePages(WCHAR chSrc, DWORD *pdwCodePages) = 0;
 
-    virtual HRESULT STDMETHODCALLTYPE GetStrCodePages(const WCHAR *pszSrc, long cchSrc, DWORD dwPriorityCodePages,
-                                                      DWORD *pdwCodePages, long *pcchCodePages) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetStrCodePages(const WCHAR *pszSrc, long cchSrc, DWORD dwPriorityCodePages, DWORD *pdwCodePages, long *pcchCodePages) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE CodePageToCodePages(UINT uCodePage, DWORD *pdwCodePages) = 0;
 
@@ -189,8 +188,7 @@ struct IMLangFontLink2 : public IMLangCodePages
 
     virtual HRESULT STDMETHODCALLTYPE GetFontUnicodeRanges(HDC hDC, UINT *puiRanges, UNICODERANGE *pUranges) = 0;
 
-    virtual HRESULT STDMETHODCALLTYPE GetScriptFontInfo(SCRIPT_ID sid, DWORD dwFlags, UINT *puiFonts,
-                                                        LPSCRIPTFONTINFO pScriptFont) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetScriptFontInfo(SCRIPT_ID sid, DWORD dwFlags, UINT *puiFonts, LPSCRIPTFONTINFO pScriptFont) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE CodePageToScriptID(UINT uiCodePage, SCRIPT_ID *pSid) = 0;
 };
@@ -209,11 +207,9 @@ struct IMultiLanguage : public IUnknown
 
     virtual HRESULT STDMETHODCALLTYPE IsConvertible(DWORD dwSrcEncoding, DWORD dwDstEncoding) = 0;
 
-    virtual HRESULT STDMETHODCALLTYPE ConvertStringToUnicode(DWORD *pdwMode, DWORD dwEncoding, CHAR *pSrcStr,
-                                                             UINT *pcSrcSize, WCHAR *pDstStr, UINT *pcDstSize) = 0;
+    virtual HRESULT STDMETHODCALLTYPE ConvertStringToUnicode(DWORD *pdwMode, DWORD dwEncoding, CHAR *pSrcStr, UINT *pcSrcSize, WCHAR *pDstStr, UINT *pcDstSize) = 0;
 
-    virtual HRESULT STDMETHODCALLTYPE ConvertStringFromUnicode(DWORD *pdwMode, DWORD dwEncoding, WCHAR *pSrcStr,
-                                                               UINT *pcSrcSize, CHAR *pDstStr, UINT *pcDstSize) = 0;
+    virtual HRESULT STDMETHODCALLTYPE ConvertStringFromUnicode(DWORD *pdwMode, DWORD dwEncoding, WCHAR *pSrcStr, UINT *pcSrcSize, CHAR *pDstStr, UINT *pcDstSize) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE ConvertStringReset(void) = 0;
 
@@ -248,29 +244,19 @@ struct IMultiLanguage2 : public IMultiLanguage
 {
     DECLARE_CLASS_SIID(IID_IMultiLanguage2)
 
-    virtual HRESULT STDMETHODCALLTYPE ConvertStringInIStream(DWORD *pdwMode, DWORD dwFlag, WCHAR *lpFallBack,
-                                                             IStream *pstmIn, IStream *pstmOut) = 0;
+    virtual HRESULT STDMETHODCALLTYPE ConvertStringInIStream(DWORD *pdwMode, DWORD dwFlag, WCHAR *lpFallBack, IStream *pstmIn, IStream *pstmOut) = 0;
 
-    virtual HRESULT STDMETHODCALLTYPE ConvertStringToUnicodeEx(DWORD *pdwMode, DWORD dwEncoding, CHAR *pSrcStr,
-                                                               UINT *pcSrcSize, WCHAR *pDstStr, UINT *pcDstSize,
-                                                               DWORD dwFlag, WCHAR *lpFallBack) = 0;
+    virtual HRESULT STDMETHODCALLTYPE ConvertStringToUnicodeEx(DWORD *pdwMode, DWORD dwEncoding, CHAR *pSrcStr, UINT *pcSrcSize, WCHAR *pDstStr, UINT *pcDstSize, DWORD dwFlag, WCHAR *lpFallBack) = 0;
 
-    virtual HRESULT STDMETHODCALLTYPE ConvertStringFromUnicodeEx(DWORD *pdwMode, DWORD dwEncoding, WCHAR *pSrcStr,
-                                                                 UINT *pcSrcSize, CHAR *pDstStr, UINT *pcDstSize,
-                                                                 DWORD dwFlag, WCHAR *lpFallBack) = 0;
+    virtual HRESULT STDMETHODCALLTYPE ConvertStringFromUnicodeEx(DWORD *pdwMode, DWORD dwEncoding, WCHAR *pSrcStr, UINT *pcSrcSize, CHAR *pDstStr, UINT *pcDstSize, DWORD dwFlag, WCHAR *lpFallBack) = 0;
 
-    virtual HRESULT STDMETHODCALLTYPE DetectCodepageInIStream(DWORD dwFlag, DWORD dwPrefWinCodePage, IStream *pstmIn,
-                                                              DetectEncodingInfo *lpEncoding,
-                                                              ULONG *pnNumEncoding) = 0;
+    virtual HRESULT STDMETHODCALLTYPE DetectCodepageInIStream(DWORD dwFlag, DWORD dwPrefWinCodePage, IStream *pstmIn, DetectEncodingInfo *lpEncoding, ULONG *pnNumEncoding) = 0;
 
-    virtual HRESULT STDMETHODCALLTYPE DetectInputCodepage(DWORD dwFlag, DWORD dwPrefWinCodePage, CHAR *pSrcStr,
-                                                          INT *pcSrcSize, DetectEncodingInfo *lpEncoding,
-                                                          INT *pnNumEncoding) = 0;
+    virtual HRESULT STDMETHODCALLTYPE DetectInputCodepage(DWORD dwFlag, DWORD dwPrefWinCodePage, CHAR *pSrcStr, INT *pcSrcSize, DetectEncodingInfo *lpEncoding, INT *pnNumEncoding) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE ValidateCodePage(UINT uiCodePage, HWND hwnd) = 0;
 
-    virtual HRESULT STDMETHODCALLTYPE GetCodePageDescription(UINT uiCodePage, LPWSTR lpWideCharStr,
-                                                             int cchWideChar) = 0;
+    virtual HRESULT STDMETHODCALLTYPE GetCodePageDescription(UINT uiCodePage, LPWSTR lpWideCharStr, int cchWideChar) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE IsCodePageInstallable(UINT uiCodePage) = 0;
 

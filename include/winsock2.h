@@ -40,63 +40,62 @@ typedef UINT_PTR SOCKET;
 typedef USHORT ADDRESS_FAMILY;
 
 #define INVALID_SOCKET (SOCKET)(~0)
-#define SOCKET_ERROR (-1)
+#define SOCKET_ERROR   (-1)
 
 /* 地址族。数值取 SDK 的 winsock2.h / ws2def.h。 */
-#define AF_UNSPEC 0
-#define AF_UNIX 1
-#define AF_INET 2
-#define AF_IMPLINK 3
-#define AF_PUP 4
-#define AF_CHAOS 5
-#define AF_IPX 6
-#define AF_NS 6
-#define AF_ISO 7
-#define AF_ECMA 8
-#define AF_DATAKIT 9
-#define AF_CCITT 10
-#define AF_SNA 11
-#define AF_DECnet 12
-#define AF_DLI 13
-#define AF_LAT 14
-#define AF_HYLINK 15
+#define AF_UNSPEC    0
+#define AF_UNIX      1
+#define AF_INET      2
+#define AF_IMPLINK   3
+#define AF_PUP       4
+#define AF_CHAOS     5
+#define AF_IPX       6
+#define AF_NS        6
+#define AF_ISO       7
+#define AF_ECMA      8
+#define AF_DATAKIT   9
+#define AF_CCITT     10
+#define AF_SNA       11
+#define AF_DECnet    12
+#define AF_DLI       13
+#define AF_LAT       14
+#define AF_HYLINK    15
 #define AF_APPLETALK 16
-#define AF_NETBIOS 17
+#define AF_NETBIOS   17
 #define AF_VOICEVIEW 18
-#define AF_FIREFOX 19
-#define AF_UNKNOWN1 20
-#define AF_BAN 21
-#define AF_MAX 22
-#define AF_INET6 23
+#define AF_FIREFOX   19
+#define AF_UNKNOWN1  20
+#define AF_BAN       21
+#define AF_MAX       22
+#define AF_INET6     23
 
 #define PF_UNSPEC AF_UNSPEC
-#define PF_UNIX AF_UNIX
-#define PF_INET AF_INET
-#define PF_INET6 AF_INET6
+#define PF_UNIX   AF_UNIX
+#define PF_INET   AF_INET
+#define PF_INET6  AF_INET6
 
 /* 套接字类型与协议。 */
-#define SOCK_STREAM 1
-#define SOCK_DGRAM 2
-#define SOCK_RAW 3
-#define SOCK_RDM 4
+#define SOCK_STREAM    1
+#define SOCK_DGRAM     2
+#define SOCK_RAW       3
+#define SOCK_RDM       4
 #define SOCK_SEQPACKET 5
 
-#define IPPROTO_IP 0
-#define IPPROTO_ICMP 1
-#define IPPROTO_IGMP 2
-#define IPPROTO_TCP 6
-#define IPPROTO_UDP 17
-#define IPPROTO_IPV6 41
+#define IPPROTO_IP     0
+#define IPPROTO_ICMP   1
+#define IPPROTO_IGMP   2
+#define IPPROTO_TCP    6
+#define IPPROTO_UDP    17
+#define IPPROTO_IPV6   41
 #define IPPROTO_ICMPV6 58
-#define IPPROTO_RAW 255
+#define IPPROTO_RAW    255
 
 /* WSAStartup 的版本号编码：MAKEWORD(2,2)。 */
 #define WINSOCK_VERSION 0x0202
 
 typedef struct in_addr
 {
-    union
-    {
+    union {
         struct
         {
             UCHAR s_b1;
@@ -129,8 +128,7 @@ typedef struct sockaddr_in
 
 typedef struct in6_addr
 {
-    union
-    {
+    union {
         UCHAR Byte[16];
         USHORT Word[8];
     } u;
@@ -386,39 +384,39 @@ typedef struct swinx_fd_set
 #undef FD_ISSET
 #endif
 
-#define FD_CLR(fd, set)                                                                          \
-    do                                                                                           \
-    {                                                                                            \
-        UINT __i;                                                                                \
-        for (__i = 0; __i < ((fd_set *)(set))->fd_count; ++__i)                                   \
-        {                                                                                        \
-            if (((fd_set *)(set))->fd_array[__i] == (SOCKET)(fd))                                 \
-            {                                                                                    \
-                while (__i + 1 < ((fd_set *)(set))->fd_count)                                      \
-                {                                                                                \
-                    ((fd_set *)(set))->fd_array[__i] = ((fd_set *)(set))->fd_array[__i + 1];       \
-                    ++__i;                                                                         \
-                }                                                                                \
-                --((fd_set *)(set))->fd_count;                                                     \
-                break;                                                                             \
-            }                                                                                      \
-        }                                                                                          \
+#define FD_CLR(fd, set)                                                                      \
+    do                                                                                       \
+    {                                                                                        \
+        UINT __i;                                                                            \
+        for (__i = 0; __i < ((fd_set *)(set))->fd_count; ++__i)                              \
+        {                                                                                    \
+            if (((fd_set *)(set))->fd_array[__i] == (SOCKET)(fd))                            \
+            {                                                                                \
+                while (__i + 1 < ((fd_set *)(set))->fd_count)                                \
+                {                                                                            \
+                    ((fd_set *)(set))->fd_array[__i] = ((fd_set *)(set))->fd_array[__i + 1]; \
+                    ++__i;                                                                   \
+                }                                                                            \
+                --((fd_set *)(set))->fd_count;                                               \
+                break;                                                                       \
+            }                                                                                \
+        }                                                                                    \
     } while (0)
 
-#define FD_SET(fd, set)                                                                            \
-    do                                                                                             \
-    {                                                                                              \
-        UINT __i;                                                                                  \
-        for (__i = 0; __i < ((fd_set *)(set))->fd_count; ++__i)                                     \
-        {                                                                                          \
-            if (((fd_set *)(set))->fd_array[__i] == (SOCKET)(fd))                                   \
-                break;                                                                             \
-        }                                                                                          \
-        if (__i == ((fd_set *)(set))->fd_count && __i < FD_SETSIZE)                                 \
-            ((fd_set *)(set))->fd_array[((fd_set *)(set))->fd_count++] = (SOCKET)(fd);              \
+#define FD_SET(fd, set)                                                                \
+    do                                                                                 \
+    {                                                                                  \
+        UINT __i;                                                                      \
+        for (__i = 0; __i < ((fd_set *)(set))->fd_count; ++__i)                        \
+        {                                                                              \
+            if (((fd_set *)(set))->fd_array[__i] == (SOCKET)(fd))                      \
+                break;                                                                 \
+        }                                                                              \
+        if (__i == ((fd_set *)(set))->fd_count && __i < FD_SETSIZE)                    \
+            ((fd_set *)(set))->fd_array[((fd_set *)(set))->fd_count++] = (SOCKET)(fd); \
     } while (0)
 
-#define FD_ZERO(set) (((fd_set *)(set))->fd_count = 0)
+#define FD_ZERO(set)      (((fd_set *)(set))->fd_count = 0)
 #define FD_ISSET(fd, set) __WSAFDIsSet((SOCKET)(fd), (fd_set *)(set))
 
 /* Win32 的 timeval 用 LONG 计秒/微秒。POSIX 的 <sys/time.h> 已经有同名结构
@@ -437,105 +435,105 @@ struct timeval
 
 #define SOL_SOCKET 0xFFFF
 
-#define SO_DEBUG 0x0001
-#define SO_ACCEPTCONN 0x0002
-#define SO_REUSEADDR 0x0004
-#define SO_KEEPALIVE 0x0008
-#define SO_DONTROUTE 0x0010
-#define SO_BROADCAST 0x0020
-#define SO_USELOOPBACK 0x0040
-#define SO_LINGER 0x0080
-#define SO_OOBINLINE 0x0100
-#define SO_DONTLINGER (int)(~SO_LINGER)
+#define SO_DEBUG            0x0001
+#define SO_ACCEPTCONN       0x0002
+#define SO_REUSEADDR        0x0004
+#define SO_KEEPALIVE        0x0008
+#define SO_DONTROUTE        0x0010
+#define SO_BROADCAST        0x0020
+#define SO_USELOOPBACK      0x0040
+#define SO_LINGER           0x0080
+#define SO_OOBINLINE        0x0100
+#define SO_DONTLINGER       (int)(~SO_LINGER)
 #define SO_EXCLUSIVEADDRUSE ((int)(~SO_REUSEADDR))
-#define SO_SNDBUF 0x1001
-#define SO_RCVBUF 0x1002
-#define SO_SNDLOWAT 0x1003
-#define SO_RCVLOWAT 0x1004
-#define SO_SNDTIMEO 0x1005
-#define SO_RCVTIMEO 0x1006
-#define SO_ERROR 0x1007
-#define SO_TYPE 0x1008
-#define SO_PROTOCOL_INFO 0x2003
+#define SO_SNDBUF           0x1001
+#define SO_RCVBUF           0x1002
+#define SO_SNDLOWAT         0x1003
+#define SO_RCVLOWAT         0x1004
+#define SO_SNDTIMEO         0x1005
+#define SO_RCVTIMEO         0x1006
+#define SO_ERROR            0x1007
+#define SO_TYPE             0x1008
+#define SO_PROTOCOL_INFO    0x2003
 
 #define TCP_NODELAY 0x0001
-#define TCP_MAXSEG 0x0004
+#define TCP_MAXSEG  0x0004
 
-#define IP_TOS 1
-#define IP_TTL 2
-#define IP_MULTICAST_IF 9
-#define IP_MULTICAST_TTL 10
-#define IP_MULTICAST_LOOP 11
-#define IP_ADD_MEMBERSHIP 12
+#define IP_TOS             1
+#define IP_TTL             2
+#define IP_MULTICAST_IF    9
+#define IP_MULTICAST_TTL   10
+#define IP_MULTICAST_LOOP  11
+#define IP_ADD_MEMBERSHIP  12
 #define IP_DROP_MEMBERSHIP 13
 
-#define MSG_OOB 0x1
-#define MSG_PEEK 0x2
+#define MSG_OOB       0x1
+#define MSG_PEEK      0x2
 #define MSG_DONTROUTE 0x4
 #define MSG_INTERRUPT 0x10
-#define MSG_PARTIAL 0x8000
+#define MSG_PARTIAL   0x8000
 
 #define FIONREAD 0x4004667F
-#define FIONBIO 0x8004667E
+#define FIONBIO  0x8004667E
 
 #define SD_RECEIVE 0x00
-#define SD_SEND 0x01
-#define SD_BOTH 0x02
+#define SD_SEND    0x01
+#define SD_BOTH    0x02
 
-#define INADDR_ANY ((ULONG)0x00000000)
-#define INADDR_LOOPBACK ((ULONG)0x7f000001)
+#define INADDR_ANY       ((ULONG)0x00000000)
+#define INADDR_LOOPBACK  ((ULONG)0x7f000001)
 #define INADDR_BROADCAST ((ULONG)0xffffffff)
-#define INADDR_NONE ((ULONG)0xffffffff)
+#define INADDR_NONE      ((ULONG)0xffffffff)
 
-#define INET_ADDRSTRLEN 22
+#define INET_ADDRSTRLEN  22
 #define INET6_ADDRSTRLEN 65
 
 /* WSAEventSelect 的事件位。 */
-#define FD_READ_BIT 0
-#define FD_WRITE_BIT 1
-#define FD_OOB_BIT 2
-#define FD_ACCEPT_BIT 3
-#define FD_CONNECT_BIT 4
-#define FD_CLOSE_BIT 5
-#define FD_QOS_BIT 6
-#define FD_GROUP_QOS_BIT 7
+#define FD_READ_BIT                     0
+#define FD_WRITE_BIT                    1
+#define FD_OOB_BIT                      2
+#define FD_ACCEPT_BIT                   3
+#define FD_CONNECT_BIT                  4
+#define FD_CLOSE_BIT                    5
+#define FD_QOS_BIT                      6
+#define FD_GROUP_QOS_BIT                7
 #define FD_ROUTING_INTERFACE_CHANGE_BIT 8
-#define FD_ADDRESS_LIST_CHANGE_BIT 9
-#define FD_MAX_EVENTS 10
+#define FD_ADDRESS_LIST_CHANGE_BIT      9
+#define FD_MAX_EVENTS                   10
 
-#define FD_READ (1 << FD_READ_BIT)
-#define FD_WRITE (1 << FD_WRITE_BIT)
-#define FD_OOB (1 << FD_OOB_BIT)
-#define FD_ACCEPT (1 << FD_ACCEPT_BIT)
-#define FD_CONNECT (1 << FD_CONNECT_BIT)
-#define FD_CLOSE (1 << FD_CLOSE_BIT)
-#define FD_QOS (1 << FD_QOS_BIT)
-#define FD_GROUP_QOS (1 << FD_GROUP_QOS_BIT)
+#define FD_READ                     (1 << FD_READ_BIT)
+#define FD_WRITE                    (1 << FD_WRITE_BIT)
+#define FD_OOB                      (1 << FD_OOB_BIT)
+#define FD_ACCEPT                   (1 << FD_ACCEPT_BIT)
+#define FD_CONNECT                  (1 << FD_CONNECT_BIT)
+#define FD_CLOSE                    (1 << FD_CLOSE_BIT)
+#define FD_QOS                      (1 << FD_QOS_BIT)
+#define FD_GROUP_QOS                (1 << FD_GROUP_QOS_BIT)
 #define FD_ROUTING_INTERFACE_CHANGE (1 << FD_ROUTING_INTERFACE_CHANGE_BIT)
-#define FD_ADDRESS_LIST_CHANGE (1 << FD_ADDRESS_LIST_CHANGE_BIT)
-#define FD_ALL_EVENTS 0x3FF
+#define FD_ADDRESS_LIST_CHANGE      (1 << FD_ADDRESS_LIST_CHANGE_BIT)
+#define FD_ALL_EVENTS               0x3FF
 
 #define WSA_WAIT_EVENT_0 0
 #define WSA_WAIT_TIMEOUT 258
-#define WSA_WAIT_FAILED ((DWORD)0xFFFFFFFF)
-#define WSA_INFINITE ((DWORD)0xFFFFFFFF)
+#define WSA_WAIT_FAILED  ((DWORD)0xFFFFFFFF)
+#define WSA_INFINITE     ((DWORD)0xFFFFFFFF)
 
 /* getaddrinfo 的 flags 与 getnameinfo 的 flags。 */
-#define AI_PASSIVE 0x00000001
-#define AI_CANONNAME 0x00000002
+#define AI_PASSIVE     0x00000001
+#define AI_CANONNAME   0x00000002
 #define AI_NUMERICHOST 0x00000004
 #define AI_NUMERICSERV 0x00000008
-#define AI_ALL 0x00000100
-#define AI_ADDRCONFIG 0x00000400
-#define AI_V4MAPPED 0x00000800
+#define AI_ALL         0x00000100
+#define AI_ADDRCONFIG  0x00000400
+#define AI_V4MAPPED    0x00000800
 
-#define NI_NOFQDN 0x01
+#define NI_NOFQDN      0x01
 #define NI_NUMERICHOST 0x02
-#define NI_NAMEREQD 0x04
+#define NI_NAMEREQD    0x04
 #define NI_NUMERICSERV 0x08
-#define NI_DGRAM 0x10
+#define NI_DGRAM       0x10
 
-#define WSA_FLAG_OVERLAPPED 0x01
+#define WSA_FLAG_OVERLAPPED        0x01
 #define WSA_FLAG_NO_HANDLE_INHERIT 0x80
 
 /* ---------------------------------------------------------------- 结构 */
@@ -610,14 +608,14 @@ typedef struct pollfd
 /* WSAPoll 的事件位。与 SDK 的 winsock2.h 一致。 */
 #define POLLRDNORM 0x0100
 #define POLLRDBAND 0x0200
-#define POLLIN (POLLRDNORM | POLLRDBAND)
-#define POLLPRI 0x0400
+#define POLLIN     (POLLRDNORM | POLLRDBAND)
+#define POLLPRI    0x0400
 #define POLLWRNORM 0x0010
-#define POLLOUT (POLLWRNORM)
+#define POLLOUT    (POLLWRNORM)
 #define POLLWRBAND 0x0020
-#define POLLERR 0x0001
-#define POLLHUP 0x0002
-#define POLLNVAL 0x0004
+#define POLLERR    0x0001
+#define POLLHUP    0x0002
+#define POLLNVAL   0x0004
 
 typedef struct linger
 {
@@ -630,118 +628,98 @@ typedef HANDLE WSAEVENT, *LPWSAEVENT;
 /* WS2_32 里 WSAOVERLAPPED 就是 OVERLAPPED 的别名（定义在 fileapi.h）。 */
 typedef LPOVERLAPPED LPWSAOVERLAPPED;
 
-typedef int(WINAPI *LPCONDITIONPROC)(LPWSABUF lpCallerId, LPWSABUF lpCallerData, LPWSABUF lpSQOS,
-                                     LPWSABUF lpGQOS, LPWSABUF lpCalleeId, LPWSABUF lpCalleeData,
-                                     ULONG_PTR *g, DWORD_PTR dwCallbackData);
+typedef int(WINAPI *LPCONDITIONPROC)(LPWSABUF lpCallerId, LPWSABUF lpCallerData, LPWSABUF lpSQOS, LPWSABUF lpGQOS, LPWSABUF lpCalleeId, LPWSABUF lpCalleeData, ULONG_PTR *g, DWORD_PTR dwCallbackData);
 
 /* ---------------------------------------------------------------- 函数 */
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-int WINAPI WSAStartup(WORD wVersionRequested, LPWSADATA lpWSAData);
-int WINAPI WSACleanup(void);
-int WINAPI WSAGetLastError(void);
-void WINAPI WSASetLastError(int iError);
+    int WINAPI WSAStartup(WORD wVersionRequested, LPWSADATA lpWSAData);
+    int WINAPI WSACleanup(void);
+    int WINAPI WSAGetLastError(void);
+    void WINAPI WSASetLastError(int iError);
 
-SOCKET WINAPI swinx_socket(int af, int type, int protocol);
-SOCKET WINAPI WSASocketA(int af, int type, int protocol, void *lpProtocolInfo, UINT g, DWORD dwFlags);
-SOCKET WINAPI WSASocketW(int af, int type, int protocol, void *lpProtocolInfo, UINT g, DWORD dwFlags);
-int WINAPI closesocket(SOCKET s);
-int WINAPI swinx_bind(SOCKET s, const struct sockaddr *name, int namelen);
-int WINAPI swinx_connect(SOCKET s, const struct sockaddr *name, int namelen);
-int WINAPI swinx_listen(SOCKET s, int backlog);
-SOCKET WINAPI swinx_accept(SOCKET s, struct sockaddr *addr, int *addrlen);
-SOCKET WINAPI WSAAccept(SOCKET s, struct sockaddr *addr, int *addrlen, LPCONDITIONPROC lpfnCondition,
-                        DWORD_PTR dwCallbackData);
-int WINAPI swinx_shutdown(SOCKET s, int how);
+    SOCKET WINAPI swinx_socket(int af, int type, int protocol);
+    SOCKET WINAPI WSASocketA(int af, int type, int protocol, void *lpProtocolInfo, UINT g, DWORD dwFlags);
+    SOCKET WINAPI WSASocketW(int af, int type, int protocol, void *lpProtocolInfo, UINT g, DWORD dwFlags);
+    int WINAPI closesocket(SOCKET s);
+    int WINAPI swinx_bind(SOCKET s, const struct sockaddr *name, int namelen);
+    int WINAPI swinx_connect(SOCKET s, const struct sockaddr *name, int namelen);
+    int WINAPI swinx_listen(SOCKET s, int backlog);
+    SOCKET WINAPI swinx_accept(SOCKET s, struct sockaddr *addr, int *addrlen);
+    SOCKET WINAPI WSAAccept(SOCKET s, struct sockaddr *addr, int *addrlen, LPCONDITIONPROC lpfnCondition, DWORD_PTR dwCallbackData);
+    int WINAPI swinx_shutdown(SOCKET s, int how);
 
-int WINAPI swinx_send(SOCKET s, const char *buf, int len, int flags);
-int WINAPI swinx_recv(SOCKET s, char *buf, int len, int flags);
-int WINAPI swinx_sendto(SOCKET s, const char *buf, int len, int flags, const struct sockaddr *to, int tolen);
-int WINAPI swinx_recvfrom(SOCKET s, char *buf, int len, int flags, struct sockaddr *from, int *fromlen);
+    int WINAPI swinx_send(SOCKET s, const char *buf, int len, int flags);
+    int WINAPI swinx_recv(SOCKET s, char *buf, int len, int flags);
+    int WINAPI swinx_sendto(SOCKET s, const char *buf, int len, int flags, const struct sockaddr *to, int tolen);
+    int WINAPI swinx_recvfrom(SOCKET s, char *buf, int len, int flags, struct sockaddr *from, int *fromlen);
 
-int WINAPI WSASend(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, LPDWORD lpNumberOfBytesSent,
-                   DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, void *lpCompletionRoutine);
-int WINAPI WSARecv(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, LPDWORD lpNumberOfBytesRecvd,
-                   LPDWORD lpFlags, LPWSAOVERLAPPED lpOverlapped, void *lpCompletionRoutine);
-int WINAPI WSASendTo(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, LPDWORD lpNumberOfBytesSent,
-                     DWORD dwFlags, const struct sockaddr *lpTo, int iToLen, LPWSAOVERLAPPED lpOverlapped,
-                     void *lpCompletionRoutine);
-int WINAPI WSARecvFrom(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, LPDWORD lpNumberOfBytesRecvd,
-                       LPDWORD lpFlags, struct sockaddr *lpFrom, LPINT lpFromlen,
-                       LPWSAOVERLAPPED lpOverlapped, void *lpCompletionRoutine);
+    int WINAPI WSASend(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, LPDWORD lpNumberOfBytesSent, DWORD dwFlags, LPWSAOVERLAPPED lpOverlapped, void *lpCompletionRoutine);
+    int WINAPI WSARecv(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, LPDWORD lpNumberOfBytesRecvd, LPDWORD lpFlags, LPWSAOVERLAPPED lpOverlapped, void *lpCompletionRoutine);
+    int WINAPI WSASendTo(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, LPDWORD lpNumberOfBytesSent, DWORD dwFlags, const struct sockaddr *lpTo, int iToLen, LPWSAOVERLAPPED lpOverlapped, void *lpCompletionRoutine);
+    int WINAPI WSARecvFrom(SOCKET s, LPWSABUF lpBuffers, DWORD dwBufferCount, LPDWORD lpNumberOfBytesRecvd, LPDWORD lpFlags, struct sockaddr *lpFrom, LPINT lpFromlen, LPWSAOVERLAPPED lpOverlapped, void *lpCompletionRoutine);
 
-int WINAPI swinx_getsockname(SOCKET s, struct sockaddr *name, int *namelen);
-int WINAPI swinx_getpeername(SOCKET s, struct sockaddr *name, int *namelen);
-int WINAPI swinx_getsockopt(SOCKET s, int level, int optname, char *optval, int *optlen);
-int WINAPI swinx_setsockopt(SOCKET s, int level, int optname, const char *optval, int optlen);
-int WINAPI ioctlsocket(SOCKET s, long cmd, ULONG *argp);
+    int WINAPI swinx_getsockname(SOCKET s, struct sockaddr *name, int *namelen);
+    int WINAPI swinx_getpeername(SOCKET s, struct sockaddr *name, int *namelen);
+    int WINAPI swinx_getsockopt(SOCKET s, int level, int optname, char *optval, int *optlen);
+    int WINAPI swinx_setsockopt(SOCKET s, int level, int optname, const char *optval, int optlen);
+    int WINAPI ioctlsocket(SOCKET s, long cmd, ULONG *argp);
 
-int WINAPI swinx_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
-                        const struct timeval *timeout);
-int WINAPI __WSAFDIsSet(SOCKET s, fd_set *set);
+    int WINAPI swinx_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, const struct timeval *timeout);
+    int WINAPI __WSAFDIsSet(SOCKET s, fd_set *set);
 
-WSAEVENT WINAPI WSACreateEvent(void);
-BOOL WINAPI WSACloseEvent(WSAEVENT hEvent);
-BOOL WINAPI WSASetEvent(WSAEVENT hEvent);
-BOOL WINAPI WSAResetEvent(WSAEVENT hEvent);
-DWORD WINAPI WSAWaitForMultipleEvents(DWORD cEvents, const WSAEVENT *lphEvents, BOOL fWaitAll,
-                                      DWORD dwTimeout, BOOL fAlertable);
-int WINAPI WSAEventSelect(SOCKET s, WSAEVENT hEventObject, long lNetworkEvents);
-int WINAPI WSAEnumNetworkEvents(SOCKET s, WSAEVENT hEventObject, LPWSANETWORKEVENTS lpNetworkEvents);
-int WINAPI WSAAsyncSelect(SOCKET s, HWND hWnd, unsigned int wMsg, long lEvent);
-int WINAPI WSAPoll(LPWSAPOLLFD fdArray, ULONG fds, int timeout);
+    WSAEVENT WINAPI WSACreateEvent(void);
+    BOOL WINAPI WSACloseEvent(WSAEVENT hEvent);
+    BOOL WINAPI WSASetEvent(WSAEVENT hEvent);
+    BOOL WINAPI WSAResetEvent(WSAEVENT hEvent);
+    DWORD WINAPI WSAWaitForMultipleEvents(DWORD cEvents, const WSAEVENT *lphEvents, BOOL fWaitAll, DWORD dwTimeout, BOOL fAlertable);
+    int WINAPI WSAEventSelect(SOCKET s, WSAEVENT hEventObject, long lNetworkEvents);
+    int WINAPI WSAEnumNetworkEvents(SOCKET s, WSAEVENT hEventObject, LPWSANETWORKEVENTS lpNetworkEvents);
+    int WINAPI WSAAsyncSelect(SOCKET s, HWND hWnd, unsigned int wMsg, long lEvent);
+    int WINAPI WSAPoll(LPWSAPOLLFD fdArray, ULONG fds, int timeout);
 
-int WINAPI WSAAddressToStringA(LPSOCKADDR lpsaAddress, DWORD dwAddressLength, void *lpProtocolInfo,
-                               LPSTR lpszAddressString, LPDWORD lpdwAddressStringLength);
-int WINAPI WSAAddressToStringW(LPSOCKADDR lpsaAddress, DWORD dwAddressLength, void *lpProtocolInfo,
-                               LPWSTR lpszAddressString, LPDWORD lpdwAddressStringLength);
-int WINAPI WSAStringToAddressA(LPSTR AddressString, int AddressFamily, void *lpProtocolInfo,
-                               LPSOCKADDR lpAddress, LPINT lpAddressLength);
-int WINAPI WSAStringToAddressW(LPWSTR AddressString, int AddressFamily, void *lpProtocolInfo,
-                               LPSOCKADDR lpAddress, LPINT lpAddressLength);
+    int WINAPI WSAAddressToStringA(LPSOCKADDR lpsaAddress, DWORD dwAddressLength, void *lpProtocolInfo, LPSTR lpszAddressString, LPDWORD lpdwAddressStringLength);
+    int WINAPI WSAAddressToStringW(LPSOCKADDR lpsaAddress, DWORD dwAddressLength, void *lpProtocolInfo, LPWSTR lpszAddressString, LPDWORD lpdwAddressStringLength);
+    int WINAPI WSAStringToAddressA(LPSTR AddressString, int AddressFamily, void *lpProtocolInfo, LPSOCKADDR lpAddress, LPINT lpAddressLength);
+    int WINAPI WSAStringToAddressW(LPWSTR AddressString, int AddressFamily, void *lpProtocolInfo, LPSOCKADDR lpAddress, LPINT lpAddressLength);
 
-int WINAPI swinx_getaddrinfo(const char *pNodeName, const char *pServiceName, const struct addrinfo *pHints,
-                             struct addrinfo **ppResult);
-void WINAPI swinx_freeaddrinfo(struct addrinfo *pAddrInfo);
-int WINAPI swinx_getnameinfo(const struct sockaddr *pSockaddr, int SockaddrLength, char *pNodeBuffer,
-                             DWORD NodeBufferSize, char *pServiceBuffer, DWORD ServiceBufferSize, int Flags);
-int WINAPI GetAddrInfoA(const char *pNodeName, const char *pServiceName, const struct addrinfo *pHints,
-                        PADDRINFOA *ppResult);
-int WINAPI GetAddrInfoW(const wchar_t *pNodeName, const wchar_t *pServiceName, const ADDRINFOW *pHints,
-                        PADDRINFOW *ppResult);
-void WINAPI FreeAddrInfoA(PADDRINFOA pAddrInfo);
-void WINAPI FreeAddrInfoW(PADDRINFOW pAddrInfo);
-int WINAPI GetNameInfoA(const struct sockaddr *pSockaddr, int SockaddrLength, char *pNodeBuffer,
-                        DWORD NodeBufferSize, char *pServiceBuffer, DWORD ServiceBufferSize, int Flags);
-int WINAPI GetNameInfoW(const struct sockaddr *pSockaddr, int SockaddrLength, wchar_t *pNodeBuffer,
-                        DWORD NodeBufferSize, wchar_t *pServiceBuffer, DWORD ServiceBufferSize, int Flags);
+    int WINAPI swinx_getaddrinfo(const char *pNodeName, const char *pServiceName, const struct addrinfo *pHints, struct addrinfo **ppResult);
+    void WINAPI swinx_freeaddrinfo(struct addrinfo *pAddrInfo);
+    int WINAPI swinx_getnameinfo(const struct sockaddr *pSockaddr, int SockaddrLength, char *pNodeBuffer, DWORD NodeBufferSize, char *pServiceBuffer, DWORD ServiceBufferSize, int Flags);
+    int WINAPI GetAddrInfoA(const char *pNodeName, const char *pServiceName, const struct addrinfo *pHints, PADDRINFOA *ppResult);
+    int WINAPI GetAddrInfoW(const wchar_t *pNodeName, const wchar_t *pServiceName, const ADDRINFOW *pHints, PADDRINFOW *ppResult);
+    void WINAPI FreeAddrInfoA(PADDRINFOA pAddrInfo);
+    void WINAPI FreeAddrInfoW(PADDRINFOW pAddrInfo);
+    int WINAPI GetNameInfoA(const struct sockaddr *pSockaddr, int SockaddrLength, char *pNodeBuffer, DWORD NodeBufferSize, char *pServiceBuffer, DWORD ServiceBufferSize, int Flags);
+    int WINAPI GetNameInfoW(const struct sockaddr *pSockaddr, int SockaddrLength, wchar_t *pNodeBuffer, DWORD NodeBufferSize, wchar_t *pServiceBuffer, DWORD ServiceBufferSize, int Flags);
 
-struct hostent *WINAPI swinx_gethostbyname(const char *name);
-struct hostent *WINAPI swinx_gethostbyaddr(const char *addr, int len, int type);
-int WINAPI swinx_gethostname(char *name, int namelen);
-struct servent *WINAPI swinx_getservbyname(const char *name, const char *proto);
-struct servent *WINAPI swinx_getservbyport(int port, const char *proto);
-struct protoent *WINAPI swinx_getprotobyname(const char *name);
-struct protoent *WINAPI swinx_getprotobynumber(int proto);
+    struct hostent *WINAPI swinx_gethostbyname(const char *name);
+    struct hostent *WINAPI swinx_gethostbyaddr(const char *addr, int len, int type);
+    int WINAPI swinx_gethostname(char *name, int namelen);
+    struct servent *WINAPI swinx_getservbyname(const char *name, const char *proto);
+    struct servent *WINAPI swinx_getservbyport(int port, const char *proto);
+    struct protoent *WINAPI swinx_getprotobyname(const char *name);
+    struct protoent *WINAPI swinx_getprotobynumber(int proto);
 
-/* 与 libc 同名的转换函数同样改名导出；swinx_inet_addr/inet_ntop 等**不加**
- * weak —— 符号已经不与 libc 重名，weak 只会让真实的实现被 libc 意外抢占。 */
-ULONG swinx_inet_addr(const char *cp);
-char *swinx_inet_ntoa(struct in_addr in);
-const char *swinx_inet_ntop(int Family, const void *pAddr, char *pStringBuf, size_t StringBufSize);
-int swinx_inet_pton(int Family, const char *pszAddrString, void *pAddrBuf);
-int InetPtonA(int Family, const char *pszAddrString, void *pAddrBuf);
-int InetPtonW(int Family, const wchar_t *pszAddrString, void *pAddrBuf);
-const char *InetNtopA(int Family, const void *pAddr, char *pStringBuf, size_t StringBufSize);
-const wchar_t *InetNtopW(int Family, const void *pAddr, wchar_t *pStringBuf, size_t StringBufSize);
+    /* 与 libc 同名的转换函数同样改名导出；swinx_inet_addr/inet_ntop 等**不加**
+     * weak —— 符号已经不与 libc 重名，weak 只会让真实的实现被 libc 意外抢占。 */
+    ULONG swinx_inet_addr(const char *cp);
+    char *swinx_inet_ntoa(struct in_addr in);
+    const char *swinx_inet_ntop(int Family, const void *pAddr, char *pStringBuf, size_t StringBufSize);
+    int swinx_inet_pton(int Family, const char *pszAddrString, void *pAddrBuf);
+    int InetPtonA(int Family, const char *pszAddrString, void *pAddrBuf);
+    int InetPtonW(int Family, const wchar_t *pszAddrString, void *pAddrBuf);
+    const char *InetNtopA(int Family, const void *pAddr, char *pStringBuf, size_t StringBufSize);
+    const wchar_t *InetNtopW(int Family, const void *pAddr, wchar_t *pStringBuf, size_t StringBufSize);
 
-unsigned short swinx_htons(unsigned short hostshort);
-unsigned short swinx_ntohs(unsigned short netshort);
-ULONG swinx_htonl(ULONG hostlong);
-ULONG swinx_ntohl(ULONG netlong);
+    unsigned short swinx_htons(unsigned short hostshort);
+    unsigned short swinx_ntohs(unsigned short netshort);
+    ULONG swinx_htonl(ULONG hostlong);
+    ULONG swinx_ntohl(ULONG netlong);
 
 /* ---------------------------------------------------------------- 源码兼容宏
  *
@@ -758,39 +736,39 @@ ULONG swinx_ntohl(ULONG netlong);
  *
  * 注意：宏会展开后文里所有同名 token（包括成员名），include 本头之后不要
  * 再声明/定义以这些名字命名的结构成员或函数。 */
-#define socket          swinx_socket
-#define bind            swinx_bind
-#define listen          swinx_listen
-#define accept          swinx_accept
-#define connect         swinx_connect
-#define shutdown        swinx_shutdown
-#define send            swinx_send
-#define recv            swinx_recv
-#define sendto          swinx_sendto
-#define recvfrom        swinx_recvfrom
-#define getsockname     swinx_getsockname
-#define getpeername     swinx_getpeername
-#define getsockopt      swinx_getsockopt
-#define setsockopt      swinx_setsockopt
-#define select          swinx_select
-#define getaddrinfo     swinx_getaddrinfo
-#define freeaddrinfo    swinx_freeaddrinfo
-#define getnameinfo     swinx_getnameinfo
-#define gethostbyname   swinx_gethostbyname
-#define gethostbyaddr   swinx_gethostbyaddr
-#define gethostname     swinx_gethostname
-#define getservbyname   swinx_getservbyname
-#define getservbyport   swinx_getservbyport
-#define getprotobyname  swinx_getprotobyname
+#define socket           swinx_socket
+#define bind             swinx_bind
+#define listen           swinx_listen
+#define accept           swinx_accept
+#define connect          swinx_connect
+#define shutdown         swinx_shutdown
+#define send             swinx_send
+#define recv             swinx_recv
+#define sendto           swinx_sendto
+#define recvfrom         swinx_recvfrom
+#define getsockname      swinx_getsockname
+#define getpeername      swinx_getpeername
+#define getsockopt       swinx_getsockopt
+#define setsockopt       swinx_setsockopt
+#define select           swinx_select
+#define getaddrinfo      swinx_getaddrinfo
+#define freeaddrinfo     swinx_freeaddrinfo
+#define getnameinfo      swinx_getnameinfo
+#define gethostbyname    swinx_gethostbyname
+#define gethostbyaddr    swinx_gethostbyaddr
+#define gethostname      swinx_gethostname
+#define getservbyname    swinx_getservbyname
+#define getservbyport    swinx_getservbyport
+#define getprotobyname   swinx_getprotobyname
 #define getprotobynumber swinx_getprotobynumber
-#define inet_addr       swinx_inet_addr
-#define inet_ntoa       swinx_inet_ntoa
-#define inet_ntop       swinx_inet_ntop
-#define inet_pton       swinx_inet_pton
-#define htons           swinx_htons
-#define ntohs           swinx_ntohs
-#define htonl           swinx_htonl
-#define ntohl           swinx_ntohl
+#define inet_addr        swinx_inet_addr
+#define inet_ntoa        swinx_inet_ntoa
+#define inet_ntop        swinx_inet_ntop
+#define inet_pton        swinx_inet_pton
+#define htons            swinx_htons
+#define ntohs            swinx_ntohs
+#define htonl            swinx_htonl
+#define ntohl            swinx_ntohl
 
 #ifdef __cplusplus
 }

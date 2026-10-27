@@ -16,15 +16,7 @@
  * 这些文字会以"逐字排列"的形态出现，而不是"错误形状的乱码"。要真做整形，
  * 应当接 HarfBuzz（另一套 API 面），而不是在这里假装 Uniscribe。
  *
- * ⚠️ 宽度：本组 API 在 Win32 上传的字符串是 **UTF-16 码元**（Win32 的 WCHAR
- * 就是 2 字节）。而 swinx 的 WCHAR 在 POSIX 上是 4 字节，`const WCHAR*` 会
- * 让调用方以为该传 4 字节宽串 —— WebKit 传的是 UChar*（UTF-16），按 4 字节
- * 读会每隔一个字符多吞两个字节。所以这里的字符串参数显式声明成
- * `const SCRIPT_UCHAR*`（= unsigned short），与真实 Win32 的**字节布局**一致，
- * 也让 `UChar*` 能直接绑上；传 WCHAR* 会得到编译错误而不是悄悄读错。
  */
-
-typedef unsigned short SCRIPT_UCHAR;
 
 typedef struct tag_SCRIPT_STATE
 {
@@ -43,9 +35,8 @@ typedef struct tag_SCRIPT_STATE
 
 typedef struct tag_SCRIPT_ANALYSIS
 {
-    WORD sScript;
-    union
-    {
+    WORD eScript;
+    union {
         SCRIPT_STATE state;
         WORD wFlags;
     };
@@ -121,80 +112,71 @@ typedef void *SCRIPT_CACHE;
 typedef struct tag_SCRIPT_STRING_ANALYSIS *SCRIPT_STRING_ANALYSIS;
 
 /* ScriptShape/ScriptPlace 的 justification 取值（SCRIPT_VISATTR.uJustification） */
-#define SCRIPT_JUSTIFY_NONE 0
-#define SCRIPT_JUSTIFY_ARABIC_BLANK 1
-#define SCRIPT_JUSTIFY_CHARACTER 2
-#define SCRIPT_JUSTIFY_RESERVED1 3
-#define SCRIPT_JUSTIFY_BLANK 4
-#define SCRIPT_JUSTIFY_ARABIC_NORMAL 5
-#define SCRIPT_JUSTIFY_RESERVED2 6
-#define SCRIPT_JUSTIFY_RESERVED3 7
-#define SCRIPT_JUSTIFY_ARABIC_KASHIDA 8
-#define SCRIPT_JUSTIFY_ARABIC_ALEF 9
-#define SCRIPT_JUSTIFY_ARABIC_HAMZA 10
-#define SCRIPT_JUSTIFY_ARABIC_WAW 11
-#define SCRIPT_JUSTIFY_ARABIC_YEH 12
+#define SCRIPT_JUSTIFY_NONE             0
+#define SCRIPT_JUSTIFY_ARABIC_BLANK     1
+#define SCRIPT_JUSTIFY_CHARACTER        2
+#define SCRIPT_JUSTIFY_RESERVED1        3
+#define SCRIPT_JUSTIFY_BLANK            4
+#define SCRIPT_JUSTIFY_ARABIC_NORMAL    5
+#define SCRIPT_JUSTIFY_RESERVED2        6
+#define SCRIPT_JUSTIFY_RESERVED3        7
+#define SCRIPT_JUSTIFY_ARABIC_KASHIDA   8
+#define SCRIPT_JUSTIFY_ARABIC_ALEF      9
+#define SCRIPT_JUSTIFY_ARABIC_HAMZA     10
+#define SCRIPT_JUSTIFY_ARABIC_WAW       11
+#define SCRIPT_JUSTIFY_ARABIC_YEH       12
 #define SCRIPT_JUSTIFY_ARABIC_ALEFISOLA 13
-#define SCRIPT_JUSTIFY_ARABIC_DAL 14
-#define SCRIPT_JUSTIFY_ARABIC_KAF 15
+#define SCRIPT_JUSTIFY_ARABIC_DAL       14
+#define SCRIPT_JUSTIFY_ARABIC_KAF       15
 
-/* ScriptItemize 的 SCRIPT_ANALYSIS.sScript 取值 */
+/* ScriptItemize 的 SCRIPT_ANALYSIS.eScript 取值 */
 #define SCRIPT_UNDEFINED 0
 
 /* ScriptStringAnalyse 的 dwFlags（值取 SDK 的 usp10.h） */
-#define SSA_PASSWORD 0x00000001
-#define SSA_TAB 0x00000002
-#define SSA_CLIP 0x00000004
-#define SSA_FIT 0x00000008
-#define SSA_DWRITE 0x00000010
-#define SSA_GCP 0x00000020
-#define SSA_HIDEHOTKEY 0x00000040
-#define SSA_HOTKEY 0x00000080
-#define SSA_LINK 0x00000100
-#define SSA_METAFILE 0x00000200
-#define SSA_LPKANSIFALLBACK 0x00000400
-#define SSA_PIDX 0x00000800
-#define SSA_GLYPHS 0x00001000
-#define SSA_RTL 0x00002000
-#define SSA_DISABLEVERTLIG 0x00004000
+#define SSA_PASSWORD          0x00000001
+#define SSA_TAB               0x00000002
+#define SSA_CLIP              0x00000004
+#define SSA_FIT               0x00000008
+#define SSA_DWRITE            0x00000010
+#define SSA_GCP               0x00000020
+#define SSA_HIDEHOTKEY        0x00000040
+#define SSA_HOTKEY            0x00000080
+#define SSA_LINK              0x00000100
+#define SSA_METAFILE          0x00000200
+#define SSA_LPKANSIFALLBACK   0x00000400
+#define SSA_PIDX              0x00000800
+#define SSA_GLYPHS            0x00001000
+#define SSA_RTL               0x00002000
+#define SSA_DISABLEVERTLIG    0x00004000
 #define SSA_REORDERDIACRITICS 0x00008000
-#define SSA_FALLBACK 0x00010000
-#define SSA_GLYPHOVERRIDE 0x00020000
+#define SSA_FALLBACK          0x00010000
+#define SSA_GLYPHOVERRIDE     0x00020000
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-HRESULT WINAPI ScriptItemize(const SCRIPT_UCHAR *pwcInChars, int cInChars, int cMaxItems,
-                             const SCRIPT_CONTROL *psControl, const SCRIPT_STATE *psState,
-                             SCRIPT_ITEM *pItems, int *pcItems);
+    HRESULT WINAPI ScriptItemize(const WCHAR *pwcInChars, int cInChars, int cMaxItems, const SCRIPT_CONTROL *psControl, const SCRIPT_STATE *psState, SCRIPT_ITEM *pItems, int *pcItems);
 
-HRESULT WINAPI ScriptShape(HDC hdc, SCRIPT_CACHE *psc, const SCRIPT_UCHAR *pwcChars, int cChars,
-                           int cMaxGlyphs, SCRIPT_ANALYSIS *psa, WORD *pwOutGlyphs,
-                           WORD *pwLogClust, SCRIPT_VISATTR *psva, int *pcGlyphs);
+    HRESULT WINAPI ScriptShape(HDC hdc, SCRIPT_CACHE *psc, const WCHAR *pwcChars, int cChars, int cMaxGlyphs, SCRIPT_ANALYSIS *psa, WORD *pwOutGlyphs, WORD *pwLogClust, SCRIPT_VISATTR *psva, int *pcGlyphs);
 
-HRESULT WINAPI ScriptPlace(HDC hdc, SCRIPT_CACHE *psc, const WORD *pwGlyphs, int cGlyphs,
-                           const SCRIPT_VISATTR *psva, SCRIPT_ANALYSIS *psa, int *piAdvance,
-                           GOFFSET *pGoffset, ABC *pABC);
+    HRESULT WINAPI ScriptPlace(HDC hdc, SCRIPT_CACHE *psc, const WORD *pwGlyphs, int cGlyphs, const SCRIPT_VISATTR *psva, SCRIPT_ANALYSIS *psa, int *piAdvance, GOFFSET *pGoffset, ABC *pABC);
 
-HRESULT WINAPI ScriptGetFontProperties(HDC hdc, SCRIPT_CACHE *psc, SCRIPT_FONTPROPERTIES *psfp);
+    HRESULT WINAPI ScriptGetFontProperties(HDC hdc, SCRIPT_CACHE *psc, SCRIPT_FONTPROPERTIES *psfp);
 
-HRESULT WINAPI ScriptFreeCache(SCRIPT_CACHE *psc);
+    HRESULT WINAPI ScriptFreeCache(SCRIPT_CACHE *psc);
 
-HRESULT WINAPI ScriptXtoCP(int iX, int cChars, int cGlyphs, const WORD *pwLogClust,
-                           const SCRIPT_VISATTR *psva, const int *piAdvance,
-                           const SCRIPT_ANALYSIS *psa, int *piCP, int *piTrailing);
+    HRESULT WINAPI ScriptXtoCP(int iX, int cChars, int cGlyphs, const WORD *pwLogClust, const SCRIPT_VISATTR *psva, const int *piAdvance, const SCRIPT_ANALYSIS *psa, int *piCP, int *piTrailing);
 
-HRESULT WINAPI ScriptStringAnalyse(HDC hdc, const void *pString, int cString, int cGlyphs,
-                                   int iCharset, DWORD dwFlags, int iReserved,
-                                   SCRIPT_CONTROL *pControl, SCRIPT_STATE *pState,
-                                   const int *piDx, SCRIPT_TABDEF *pTabdef,
-                                   const BYTE *pbInClass, SCRIPT_STRING_ANALYSIS *pssa);
+    /* pString 在 SDK 里就是 const void*（同一套 API 也服务 ANSI 串），所以这里无法靠
+     * 类型拦住调用方：本实现按 WCHAR 逐元素读 cString 个，传 UTF-16 缓冲会静默读错。
+     * FontCacheWin::getFontDataForCharacters 用 NativeWideCodeUnits 转换后再传。 */
+    HRESULT WINAPI ScriptStringAnalyse(HDC hdc, const void *pString, int cString, int cGlyphs, int iCharset, DWORD dwFlags, int iReserved, SCRIPT_CONTROL *pControl, SCRIPT_STATE *pState, const int *piDx, SCRIPT_TABDEF *pTabdef, const BYTE *pbInClass, SCRIPT_STRING_ANALYSIS *pssa);
 
-HRESULT WINAPI ScriptStringOut(SCRIPT_STRING_ANALYSIS ssa, int iX, int iY, UINT uOptions,
-                               const RECT *prc, int iMinSel, int iMaxSel, BOOL fDisabled);
+    HRESULT WINAPI ScriptStringOut(SCRIPT_STRING_ANALYSIS ssa, int iX, int iY, UINT uOptions, const RECT *prc, int iMinSel, int iMaxSel, BOOL fDisabled);
 
-HRESULT WINAPI ScriptStringFree(SCRIPT_STRING_ANALYSIS *pssa);
+    HRESULT WINAPI ScriptStringFree(SCRIPT_STRING_ANALYSIS *pssa);
 
 #ifdef __cplusplus
 }

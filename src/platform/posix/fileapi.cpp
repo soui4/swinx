@@ -98,8 +98,9 @@ static _FileData *GetFD(HANDLE h)
 {
     if (h == INVALID_HANDLE_VALUE)
         return nullptr;
-    if (h->type == FILE_OBJ)
-        return (_FileData *)h->ptr;
+    _Handle *handle = AsHandle(h);
+    if (handle->type == FILE_OBJ)
+        return (_FileData *)handle->ptr;
     return nullptr;
 }
 

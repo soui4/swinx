@@ -150,7 +150,7 @@ typedef EventOp<NamedEvent> NamedEventObj;
 所有内核对象都封装在统一的 `_Handle` 结构中：
 
 ```cpp
-typedef struct _Handle
+struct _Handle
 {
     std::recursive_mutex mutex;    // 线程安全的互斥锁
     int type;                       // 对象类型标识
@@ -160,7 +160,11 @@ typedef struct _Handle
     
     _Handle(int _type, void *_ptr, FreeHandlePtr _cbFree);
     virtual ~_Handle();
-} * HANDLE;
+};
+
+// 公共面的 HANDLE 与 Windows SDK 一样是 void*（HGDIOBJ 也是），
+// 内部非空句柄实际指向 _Handle，读写包装成员前先转换：
+inline _Handle *AsHandle(HANDLE h) { return static_cast<_Handle *>(h); }
 ```
 
 **关键字段说明**：
@@ -179,9 +183,10 @@ HANDLE WINAPI AddHandleRef(HANDLE hHandle)
         return INVALID_HANDLE_VALUE;
     if (!hHandle)
         return 0;
-    hHandle->mutex.lock();
-    hHandle->nRef++;
-    hHandle->mutex.unlock();
+    _Handle *h = AsHandle(hHandle);
+    h->mutex.lock();
+    h->nRef++;
+    h->mutex.unlock();
     return hHandle;
 }
 
@@ -191,14 +196,15 @@ BOOL WINAPI CloseHandle(HANDLE h)
         return FALSE;
     if (!h)
         return TRUE;
-    if (!h->cbFree) // 静态对象不释放
+    _Handle *handle = AsHandle(h);
+    if (!handle->cbFree) // 静态对象不释放
         return TRUE;
-    h->mutex.lock();
-    BOOL bFree = --h->nRef == 0;
-    h->mutex.unlock();
+    handle->mutex.lock();
+    BOOL bFree = --handle->nRef == 0;
+    handle->mutex.unlock();
     if (bFree)
     {
-        delete h;
+        delete handle;
     }
     return TRUE;
 }

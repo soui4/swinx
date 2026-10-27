@@ -16,8 +16,12 @@ OVERRIDES = {
     "IsValidCodePage":   ("simple", "恒返回 TRUE（配合 UTF-8 口径）"),
     "GetNearestColor":   ("simple", "无调色板概念，原样返回请求颜色"),
     # ---- 纯分支逻辑，扫描器按"无外部调用"误判成 simple ----
-    "ScriptItemize":     ("impl", "把整串当成一个 run（sScript = SCRIPT_UNDEFINED），不做脚本分段；E_OUTOFMEMORY 表示 run 数组不足 2 项"),
+    "ScriptItemize":     ("impl", "把整串当成一个 run（eScript = SCRIPT_UNDEFINED），不做脚本分段；空串 S_OK + 0 项、cMaxItems<2 报 E_OUTOFMEMORY 并给出需要项数（WebKit 靠这个码扩容重试），这两点与系统 usp10 的 E_INVALIDARG 口径不同，fun_test 按平台分开断言；字符串参数是本地 WCHAR，调用方必须逐 UTF-16 码元转换以保持下标对齐"),
+    "ScriptShape":       ("impl", "一个 UTF-16 码元对一个字形、clusters 恒等，不做整形；psc 被忽略（真 Uniscribe 把它当必需的 in/out 参数，传 NULL 报 E_INVALIDARG）；没有 DC 时报 E_PENDING 让调用方选好字体再试"),
+    "PathRemoveFileSpecW": ("impl", "整串只有文件名、没有目录部分时返回 FALSE 且不修改缓冲；系统 shlwapi 在这里把文件名本身当 file spec 去掉（返回非 0、缓冲清空），fun_test 按平台分别断言两种口径"),
+    "PathRemoveFileSpecA": ("impl", "同 PathRemoveFileSpecW"),
     "ScriptXtoCP":       ("impl", "按 Advance 累加定位字形，再按「落在字形后半段」给出 trailing 标志"),
+    "ScriptStringAnalyse": ("impl", "pString 在 SDK 里是 const void*，类型拦不住调用方，靠 iCharset 区分：-1 = 本地 WCHAR（cString 数 WCHAR），其它 = ANSI（cString 数字节，swinx 按 UTF-8 解码）；空串返回 E_INVALIDARG，与 SDK 一致"),
     "CancelIPChangeNotify": ("impl", "从挂起表里摘掉指定的 OVERLAPPED，不存在时返回 FALSE"),
     "__WSAFDIsSet":      ("impl", "在 fd_array 里线性查表找句柄（Win32 里这个导出名就是给 FD_ISSET 宏调用的）"),
     # ---- 语义上的显式取舍，扫描器只看函数体分不出来 ----

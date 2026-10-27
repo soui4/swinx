@@ -32,20 +32,20 @@ extern "C"
 
 #define _mbsstr(s1, s2) strstr((const char *)(s1), (const char *)(s2))
 
-#define _mbschr(s1, c)                 strchr((const char *)(s1), (c))
-#define _mbsrchr(s1, c)                strrchr((const char *)(s1), (c))
-#define _mbsicmp(s1, s2)               strcasecmp((const char *)(s1), (const char *)(s2))
-#define _mbscmp(s1, s2)                strcmp((const char *)(s1), (const char *)(s2))
-#define _ismbcspace                    isspace
+#define _mbschr(s1, c)   strchr((const char *)(s1), (c))
+#define _mbsrchr(s1, c)  strrchr((const char *)(s1), (c))
+#define _mbsicmp(s1, s2) strcasecmp((const char *)(s1), (const char *)(s2))
+#define _mbscmp(s1, s2)  strcmp((const char *)(s1), (const char *)(s2))
+#define _ismbcspace      isspace
 #if !SFR_HOSTED
-	#define vswprintf_s                    vswprintf
-	#define swprintf_s                     swprintf
-	#define memmove_s(dst, ndst, src, len) memmove(dst, src, len)
-	#define swscanf_s                      swscanf
-	#define vsprintf_s                vsnprintf
-	#define sprintf_s                 _snprintf
-	#define strcat_s(dst, n, src)     strncat(dst, src, n)
-	#define wcscat_s(dst, n, src)     wcsncat(dst, src, n)
+#define vswprintf_s                    vswprintf
+#define swprintf_s                     swprintf
+#define memmove_s(dst, ndst, src, len) memmove(dst, src, len)
+#define swscanf_s                      swscanf
+#define vsprintf_s                     vsnprintf
+#define sprintf_s                      _snprintf
+#define strcat_s(dst, n, src)          strncat(dst, src, n)
+#define wcscat_s(dst, n, src)          wcsncat(dst, src, n)
 
     /* MSVC's *_s copy helpers return errno_t (int): 0 on success, EINVAL/ERANGE
      * otherwise. Callers test the result, so it cannot be void. */
@@ -53,14 +53,14 @@ extern "C"
     int WINAPI wcscpy_s(wchar_t *destination, size_t num, const wchar_t *source);
     float WINAPI _wtof(const wchar_t *src);
 #endif
-#define _wtoi(x)                       wcstol(x, NULL, 10)
-#define _wtol(x)                       wcstol(x, NULL, 10)
-#define lstrlenA                       strlen
-#define lstrlenW                       wcslen
-#define lstrcpyA                       strcpy
-#define lstrcpyW                       wcscpy
-#define lstrcatA                       strcat
-#define lstrcatW                       wcscat
+#define _wtoi(x) wcstol(x, NULL, 10)
+#define _wtol(x) wcstol(x, NULL, 10)
+#define lstrlenA strlen
+#define lstrlenW wcslen
+#define lstrcpyA strcpy
+#define lstrcpyW wcscpy
+#define lstrcatA strcat
+#define lstrcatW wcscat
 
     const uint8_t *_mbsinc(const uint8_t *srcU8);
 
@@ -69,7 +69,6 @@ extern "C"
     wchar_t *WINAPI _wcslwr(wchar_t *s);
 
     wchar_t *WINAPI _wcsupr(wchar_t *s);
-
 
     int WINAPI _snprintf(char *buffer, size_t size, const char *format, ...);
 
@@ -114,7 +113,7 @@ extern "C"
 #define _wcsicmp(s1, s2)       wcscasecmp(s1, s2)
 #define _wcsnicmp(s1, s2, num) wcsncasecmp(s1, s2, num)
 #endif
-#define wcsnicmp               _wcsnicmp
+#define wcsnicmp _wcsnicmp
 
 #define stricmp(s1, s2)       strcasecmp(s1, s2)
 #define strnicmp(s1, s2, num) strncasecmp(s1, s2, num)

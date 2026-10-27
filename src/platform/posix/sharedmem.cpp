@@ -4,6 +4,7 @@
 #include <map>
 #include <new>
 #include "log.h"
+#include "make_shm_tmp_path.h"
 
 // 移动端（Android/OHOS/iOS）的共享内存回退路径需要这些 POSIX 头；无条件包含
 // （幂等，不影响桌面端）。android/sharedmem.h 仅 Android 有，留在下方 __ANDROID__ 内。
@@ -79,7 +80,7 @@ static int android_shm_open(const char *name, int oflag, mode_t mode)
         {
             // Fallback to temporary file
             char tempPath[256];
-            snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d", name, getpid());
+            swinx_make_shm_tmp_path(tempPath, sizeof(tempPath), name, getpid());
 
             int flags = O_RDWR | O_CREAT;
             if (oflag & O_EXCL)
@@ -259,7 +260,7 @@ SharedMemory::InitStat SharedMemory::init(const char *name, uint32_t size)
     {
         // 临时文件（OHOS/iOS 无 ASharedMemory；Android 的 ASharedMemory 失败时也走这里）
         char tempPath[256];
-        snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d", name ? name : "anon", (int)getpid());
+        swinx_make_shm_tmp_path(tempPath, sizeof(tempPath), name, (int)getpid());
         fd = open(tempPath, O_RDWR | O_CREAT | O_EXCL, 0666);
         if (fd >= 0 && ftruncate(fd, memSize) == -1)
         {

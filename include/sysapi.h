@@ -142,10 +142,8 @@ extern "C"
 #define FORMAT_MESSAGE_FROM_SYSTEM     0x00001000
 #define FORMAT_MESSAGE_ARGUMENT_ARRAY  0x00002000
 #define FORMAT_MESSAGE_MAX_WIDTH_MASK  0x000000FF
-    DWORD WINAPI FormatMessageA(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId,
-                                LPSTR lpBuffer, DWORD nSize, va_list *Arguments);
-    DWORD WINAPI FormatMessageW(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId,
-                                LPWSTR lpBuffer, DWORD nSize, va_list *Arguments);
+    DWORD WINAPI FormatMessageA(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, LPSTR lpBuffer, DWORD nSize, va_list *Arguments);
+    DWORD WINAPI FormatMessageW(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, DWORD dwLanguageId, LPWSTR lpBuffer, DWORD nSize, va_list *Arguments);
 #ifdef UNICODE
 #define FormatMessage FormatMessageW
 #else
@@ -161,8 +159,7 @@ extern "C"
      * API（GetThreadTimes 等）认这个伪句柄。 */
 #define GetCurrentThread() ((HANDLE)(LONG_PTR)-2)
 
-    BOOL WINAPI GetThreadTimes(HANDLE hThread, LPFILETIME lpCreationTime, LPFILETIME lpExitTime,
-                               LPFILETIME lpKernelTime, LPFILETIME lpUserTime);
+    BOOL WINAPI GetThreadTimes(HANDLE hThread, LPFILETIME lpCreationTime, LPFILETIME lpExitTime, LPFILETIME lpKernelTime, LPFILETIME lpUserTime);
 
     int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *dst, int dstLen);
 
@@ -573,16 +570,16 @@ typedef int(WINAPI *PROC)();
 
     HMODULE WINAPI LoadLibraryW(LPCWSTR lpFileName);
 
-#define DONT_RESOLVE_DLL_REFERENCES       0x00000001
-#define LOAD_LIBRARY_AS_DATAFILE          0x00000002
-#define LOAD_WITH_ALTERED_SEARCH_PATH     0x00000008
-#define LOAD_LIBRARY_AS_IMAGE_RESOURCE    0x00000020
-#define LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE 0x00000040
-#define LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR  0x00000100
+#define DONT_RESOLVE_DLL_REFERENCES         0x00000001
+#define LOAD_LIBRARY_AS_DATAFILE            0x00000002
+#define LOAD_WITH_ALTERED_SEARCH_PATH       0x00000008
+#define LOAD_LIBRARY_AS_IMAGE_RESOURCE      0x00000020
+#define LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE  0x00000040
+#define LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR    0x00000100
 #define LOAD_LIBRARY_SEARCH_APPLICATION_DIR 0x00000200
-#define LOAD_LIBRARY_SEARCH_USER_DIRS     0x00000400
-#define LOAD_LIBRARY_SEARCH_SYSTEM32      0x00000800
-#define LOAD_LIBRARY_SEARCH_DEFAULT_DIRS  0x00001000
+#define LOAD_LIBRARY_SEARCH_USER_DIRS       0x00000400
+#define LOAD_LIBRARY_SEARCH_SYSTEM32        0x00000800
+#define LOAD_LIBRARY_SEARCH_DEFAULT_DIRS    0x00001000
 
     HMODULE WINAPI LoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
     HMODULE WINAPI LoadLibraryExW(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags);
@@ -668,22 +665,20 @@ typedef int(WINAPI *PROC)();
      * 照 SDK 的 threadpoollegacyapiset.h，其中只有 WT_EXECUTEONLYONCE 会
      * 真正改变行为，其余是"放到哪类线程上执行"的调度提示 —— 单线程模型
      * 下没有区别，忽略它们不会改变可观察语义。 */
-#define WT_EXECUTEDEFAULT               0x00000000
-#define WT_EXECUTEINIOTHREAD            0x00000001
-#define WT_EXECUTEINUITHREAD            0x00000002
-#define WT_EXECUTEINWAITTHREAD          0x00000004
-#define WT_EXECUTEONLYONCE              0x00000008
-#define WT_EXECUTELONGFUNCTION          0x00000010
-#define WT_EXECUTEINTIMERTHREAD         0x00000020
-#define WT_EXECUTEINPERSISTENTIOTHREAD  0x00000040
-#define WT_EXECUTEINPERSISTENTTHREAD    0x00000080
-#define WT_TRANSFER_IMPERSONATION       0x00000100
+#define WT_EXECUTEDEFAULT              0x00000000
+#define WT_EXECUTEINIOTHREAD           0x00000001
+#define WT_EXECUTEINUITHREAD           0x00000002
+#define WT_EXECUTEINWAITTHREAD         0x00000004
+#define WT_EXECUTEONLYONCE             0x00000008
+#define WT_EXECUTELONGFUNCTION         0x00000010
+#define WT_EXECUTEINTIMERTHREAD        0x00000020
+#define WT_EXECUTEINPERSISTENTIOTHREAD 0x00000040
+#define WT_EXECUTEINPERSISTENTTHREAD   0x00000080
+#define WT_TRANSFER_IMPERSONATION      0x00000100
 
     typedef VOID(CALLBACK *WAITORTIMERCALLBACK)(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
 
-    BOOL WINAPI RegisterWaitForSingleObject(PHANDLE phNewWaitObject, HANDLE hObject,
-                                            WAITORTIMERCALLBACK Callback, PVOID Context,
-                                            ULONG dwMilliseconds, ULONG dwFlags);
+    BOOL WINAPI RegisterWaitForSingleObject(PHANDLE phNewWaitObject, HANDLE hObject, WAITORTIMERCALLBACK Callback, PVOID Context, ULONG dwMilliseconds, ULONG dwFlags);
 
     BOOL WINAPI UnregisterWait(HANDLE WaitHandle);
 
@@ -970,11 +965,10 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
 
     BOOL WINAPI IsDebuggerPresent(void);
 
-#define EXCEPTION_NONCONTINUABLE 0x1
+#define EXCEPTION_NONCONTINUABLE     0x1
 #define EXCEPTION_MAXIMUM_PARAMETERS 15
 
-    VOID WINAPI RaiseException(DWORD dwExceptionCode, DWORD dwExceptionFlags,
-                               DWORD nNumberOfArguments, const ULONG_PTR *lpArguments);
+    VOID WINAPI RaiseException(DWORD dwExceptionCode, DWORD dwExceptionFlags, DWORD nNumberOfArguments, const ULONG_PTR *lpArguments);
     VOID WINAPI DbgBreakPoint(VOID);
 
     UINT WINAPI GetDoubleClickTime(VOID);
@@ -1131,7 +1125,7 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
     /* host: MinGW <io.h> declares intptr_t _get_osfhandle(int); a shim
        declaration would clash with the CRT prototype */
 #else
-    HANDLE WINAPI _get_osfhandle(int fd);
+HANDLE WINAPI _get_osfhandle(int fd);
 #endif
     LPSTR WINAPI GetCommandLineA(void);
     LPWSTR WINAPI GetCommandLineW(void);
@@ -1182,13 +1176,13 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
     // ------------------------------------------------------------------
 #if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
 
-#define CONTEXT_AMD64 0x00100000L
-#define CONTEXT_CONTROL (CONTEXT_AMD64 | 0x1L)
-#define CONTEXT_INTEGER (CONTEXT_AMD64 | 0x2L)
-#define CONTEXT_FLOATING_POINT (CONTEXT_AMD64 | 0x4L)
+#define CONTEXT_AMD64           0x00100000L
+#define CONTEXT_CONTROL         (CONTEXT_AMD64 | 0x1L)
+#define CONTEXT_INTEGER         (CONTEXT_AMD64 | 0x2L)
+#define CONTEXT_FLOATING_POINT  (CONTEXT_AMD64 | 0x4L)
 #define CONTEXT_DEBUG_REGISTERS (CONTEXT_AMD64 | 0x8L)
-#define CONTEXT_FULL (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_FLOATING_POINT)
-#define CONTEXT_ALL (CONTEXT_FULL | CONTEXT_DEBUG_REGISTERS)
+#define CONTEXT_FULL            (CONTEXT_CONTROL | CONTEXT_INTEGER | CONTEXT_FLOATING_POINT)
+#define CONTEXT_ALL             (CONTEXT_FULL | CONTEXT_DEBUG_REGISTERS)
 
     typedef struct _CONTEXT
     {

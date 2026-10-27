@@ -283,8 +283,8 @@ extern "C"
     typedef SHFILEINFOW SHFILEINFO;
     typedef LPSHFILEINFOW LPSHFILEINFO;
 #else
-    typedef SHFILEINFOA SHFILEINFO;
-    typedef LPSHFILEINFOA LPSHFILEINFO;
+typedef SHFILEINFOA SHFILEINFO;
+typedef LPSHFILEINFOA LPSHFILEINFO;
 #endif // UNICODE
 
     // SHGetFileInfo 的 uFlags。位值布局与 Win32 一致：低 8 位是图标尺寸/叠加等
@@ -299,21 +299,19 @@ extern "C"
 #define SHGFI_ADDOVERLAYS       0x00000020
 #define SHGFI_OVERLAYINDEX      0x00000040
 
-#define SHGFI_ICON         0x00000100 // 填 hIcon
-#define SHGFI_DISPLAYNAME  0x00000200 // 填 szDisplayName
-#define SHGFI_TYPENAME     0x00000400 // 填 szTypeName
-#define SHGFI_ATTRIBUTES   0x00000800 // 填 dwAttributes
-#define SHGFI_ICONLOCATION 0x00001000
-#define SHGFI_EXETYPE      0x00002000
-#define SHGFI_SYSICONINDEX 0x00004000 // 填 iIcon
-#define SHGFI_LINKOVERLAY  0x00008000
-#define SHGFI_SELECTED     0x00010000
+#define SHGFI_ICON           0x00000100 // 填 hIcon
+#define SHGFI_DISPLAYNAME    0x00000200 // 填 szDisplayName
+#define SHGFI_TYPENAME       0x00000400 // 填 szTypeName
+#define SHGFI_ATTRIBUTES     0x00000800 // 填 dwAttributes
+#define SHGFI_ICONLOCATION   0x00001000
+#define SHGFI_EXETYPE        0x00002000
+#define SHGFI_SYSICONINDEX   0x00004000 // 填 iIcon
+#define SHGFI_LINKOVERLAY    0x00008000
+#define SHGFI_SELECTED       0x00010000
 #define SHGFI_ATTR_SPECIFIED 0x00020000
 
-    DWORD_PTR WINAPI SHGetFileInfoA(LPCSTR pszPath, DWORD dwFileAttributes,
-                                    SHFILEINFOA *psfi, UINT cbFileInfo, UINT uFlags);
-    DWORD_PTR WINAPI SHGetFileInfoW(LPCWSTR pszPath, DWORD dwFileAttributes,
-                                    SHFILEINFOW *psfi, UINT cbFileInfo, UINT uFlags);
+    DWORD_PTR WINAPI SHGetFileInfoA(LPCSTR pszPath, DWORD dwFileAttributes, SHFILEINFOA *psfi, UINT cbFileInfo, UINT uFlags);
+    DWORD_PTR WINAPI SHGetFileInfoW(LPCWSTR pszPath, DWORD dwFileAttributes, SHFILEINFOW *psfi, UINT cbFileInfo, UINT uFlags);
 
 #ifdef UNICODE
 #define SHGetFileInfo SHGetFileInfoW
@@ -327,10 +325,8 @@ extern "C"
     // 返回成功提取的图标个数；phiconLarge / phiconSmall 若非 NULL 则接收句柄，
     // 句柄归调用方所有，需用 DestroyIcon 释放。
 
-    UINT WINAPI ExtractIconExA(LPCSTR lpszFile, int nIconIndex,
-                               HICON *phiconLarge, HICON *phiconSmall, UINT nIcons);
-    UINT WINAPI ExtractIconExW(LPCWSTR lpszFile, int nIconIndex,
-                               HICON *phiconLarge, HICON *phiconSmall, UINT nIcons);
+    UINT WINAPI ExtractIconExA(LPCSTR lpszFile, int nIconIndex, HICON *phiconLarge, HICON *phiconSmall, UINT nIcons);
+    UINT WINAPI ExtractIconExW(LPCWSTR lpszFile, int nIconIndex, HICON *phiconLarge, HICON *phiconSmall, UINT nIcons);
 
 #ifdef UNICODE
 #define ExtractIconEx ExtractIconExW

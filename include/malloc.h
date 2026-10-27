@@ -42,7 +42,7 @@ extern "C"
 #if defined(__APPLE__)
         return malloc_size(ptr);
 #else
-        return malloc_usable_size(ptr);
+    return malloc_usable_size(ptr);
 #endif
     }
 

@@ -235,14 +235,15 @@ typedef struct _SYSTEMTIME
 /*
  * 句柄类型必须与 Windows SDK 的形状一致。
  *
- * SDK 里这些句柄各自是“独立的不完整结构体指针”（DECLARE_HANDLE 展开成
- * `struct XXX__ *`），只有 HGDIOBJ 是 HANDLE/void*。WebKit 的 WTF/WebCore
- * win 头文件会重复声明同样的 typedef（`typedef struct HWND__* HWND;` 等），
- * C++ 允许 typedef 重定义但要求类型完全相同，所以 swinx 这边不能把它们
- * 合并成一个 HGDIOBJ，否则会直接编译失败。
+ * SDK 里通用句柄 HANDLE 和 GDI 句柄 HGDIOBJ 都是 void*，具体 GDI 句柄则是
+ * “独立的不完整结构体指针”（DECLARE_HANDLE 展开成 `struct XXX__ *`）。
+ * WebKit 的 WTF/WebCore win 头文件会重复声明同样的 typedef
+ * （`typedef struct HWND__* HWND;` 等），C++ 允许 typedef 重定义但要求类型
+ * 完全相同，所以 swinx 这边不能把它们合并成一个 HGDIOBJ，否则会直接编译失败。
  *
- * 同时这也保住了 SDK 的转换语义：任何具体 GDI 句柄都能隐式转成 HGDIOBJ
- * （void*），反向则需要显式转换。
+ * 同时这也保住了 SDK 的转换语义：任何具体 GDI 句柄都能隐式转成 HGDIOBJ 或
+ * HANDLE（void*），反向则需要显式转换。swinx 内部非空句柄实际指向 _Handle
+ * 包装（src/handle.h），读写包装成员时用 AsHandle() 取回真实类型。
  */
 struct HINSTANCE__;
 typedef struct HINSTANCE__ *HINSTANCE;
@@ -251,7 +252,7 @@ typedef HINSTANCE HMODULE;
 struct HWND__;
 typedef struct HWND__ *HWND;
 
-typedef void *HGDIOBJ;              /* 等价于 Windows 上的 HANDLE */
+typedef void *HGDIOBJ; /* 与 Windows SDK 相同，和 HANDLE 同型 */
 typedef struct _IMContext *HIMC;
 
 struct HPEN__;
@@ -297,12 +298,18 @@ typedef DWORD HKL;
 
 typedef struct HICON__ *HCURSOR;
 
-typedef struct _Handle *HANDLE;
+/* 与 SDK 一致：HANDLE 就是 void*（Win32 的 STRICT 也只改具体句柄，不改它）。
+ * swinx 内部非空句柄实际指向 _Handle 包装（src/handle.h），访问包装成员时
+ * 用 AsHandle() 取回真实类型。 */
+typedef void *HANDLE;
 typedef HANDLE *PHANDLE;
 
 typedef HWND HMENU;
 
 #define ATOM int
+/* Windows 里 HMONITOR 是独立的不完整结构体指针；swinx 各平台用它承载
+ * “显示器标识”（linux = crtc id、cocoa = NSScreen*），跨平台不可混用，
+ * 只按不透明值传递，所以直接复用 void* 的 HANDLE。 */
 typedef HANDLE HMONITOR;
 
 typedef char *PSTR;

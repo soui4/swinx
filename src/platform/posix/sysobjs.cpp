@@ -16,8 +16,10 @@
 #include <sys/mman.h>
 #include <locale.h>
 #include <errno.h>
+#include "ctypes.h"
 #include "tostring.h"
 #include "sharedmem.h"
+#include "swinx_version.h"
 #include "handle.h"
 #include "synhandle.h"
 #include "uimsg.h"
@@ -92,7 +94,7 @@ static int android_shm_open(const char *name, int oflag, mode_t mode)
         {
             // Fallback to temporary file
             char tempPath[256];
-            snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d", name, getpid());
+            swinx_make_shm_tmp_path(tempPath, sizeof(tempPath), name, getpid());
 
             int flags = O_RDWR | O_CREAT;
             if (oflag & O_EXCL)
@@ -1323,14 +1325,14 @@ BOOL WINAPI DeleteTimerQueueEx(HANDLE hTimerQueue, HANDLE hCompletionEvent)
 
 HANDLE WINAPI CreateTimerQueue(void)
 {
-    static HANDLE nextQueueId = (HANDLE)2; // Start from 2 to avoid conflict with simplified implementation
+    static UINT_PTR nextQueueId = 2; // Start from 2 to avoid conflict with simplified implementation
 
     TimerQueue *queue = new TimerQueue();
     if (!queue)
         return NULL;
 
     std::lock_guard<std::mutex> lock(s_timerQueueMutex);
-    HANDLE queueId = nextQueueId++;
+    HANDLE queueId = (HANDLE)nextQueueId++;
     s_timerQueues[queueId] = queue;
 
     return queueId;
@@ -1519,7 +1521,7 @@ struct FileMapObject
         {
             // Fallback to temporary file
             char tempPath[256];
-            snprintf(tempPath, sizeof(tempPath), "/data/local/tmp/soui_shm_%s_%d", pData->szName, getpid());
+            swinx_make_shm_tmp_path(tempPath, sizeof(tempPath), pData->szName, getpid());
 
             int flags = O_RDWR | O_CREAT | O_TRUNC;
             fd = open(tempPath, flags, 0666);
@@ -2174,7 +2176,7 @@ BOOL WINAPI RegisterWaitForSingleObject(PHANDLE phNewWaitObject, HANDLE hObject,
 
 BOOL WINAPI UnregisterWaitEx(HANDLE WaitHandle, HANDLE CompletionEvent)
 {
-    if (!WaitHandle || WaitHandle->type != WAIT_OBJ)
+    if (!WaitHandle || AsHandle(WaitHandle)->type != WAIT_OBJ)
     {
         SetLastError(ERROR_INVALID_HANDLE);
         return FALSE;
@@ -2453,10 +2455,11 @@ static MapViewMgr s_mapViewMgr;
 
 LPVOID WINAPI MapViewOfFile(HANDLE hFileMappingObject, DWORD dwDesiredAccess, DWORD dwFileOffsetHigh, DWORD dwFileOffsetLow, size_t dwNumberOfBytesToMap)
 {
-    if (hFileMappingObject->type != FILEMAP_OBJ)
+    _Handle *handle = AsHandle(hFileMappingObject);
+    if (handle->type != FILEMAP_OBJ)
         return nullptr;
     LPVOID ret = nullptr;
-    FileMapObject *fmObj = (FileMapObject *)hFileMappingObject->ptr;
+    FileMapObject *fmObj = (FileMapObject *)handle->ptr;
     fmObj->lock();
     FileMapData &fmData = fmObj->handleData()->data.fmData;
     LARGE_INTEGER offset;
@@ -2497,7 +2500,7 @@ BOOL WINAPI UnmapViewOfFile(LPCVOID lpBaseAddress)
     HANDLE hMemMap = s_mapViewMgr.getViewHandle(lpBaseAddress);
     if (hMemMap == INVALID_HANDLE_VALUE)
         return FALSE;
-    FileMapObject *fmObj = (FileMapObject *)hMemMap->ptr;
+    FileMapObject *fmObj = (FileMapObject *)AsHandle(hMemMap)->ptr;
     fmObj->lock();
     assert(fmObj->ptr == lpBaseAddress);
     FileMapData &fmData = fmObj->handleData()->data.fmData;

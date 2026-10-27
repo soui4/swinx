@@ -57,14 +57,14 @@ std::wstring WindResResourceParser::ParseUnicodeString(const uint8_t *data) cons
 {
     const IMAGE_RESOURCE_DIR_STRING_U *str = reinterpret_cast<const IMAGE_RESOURCE_DIR_STRING_U *>(data);
 
-    #if WCHAR_SIZE==2   //utf16
-        return std::wstring((const wchar_t*)str->NameString,str->Length);
-    #else
-        std::wstring result;
-        int unConvertedChars = 0;
-        to_unicode(reinterpret_cast<const char *>(str->NameString), str->Length * sizeof(uint16_t), CP_UTF16_LE, result, unConvertedChars);
-        return result;
-    #endif
+#if WCHAR_SIZE == 2 // utf16
+    return std::wstring((const wchar_t *)str->NameString, str->Length);
+#else
+    std::wstring result;
+    int unConvertedChars = 0;
+    to_unicode(reinterpret_cast<const char *>(str->NameString), str->Length * sizeof(uint16_t), CP_UTF16_LE, result, unConvertedChars);
+    return result;
+#endif
 }
 
 // 查找.data段

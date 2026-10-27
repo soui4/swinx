@@ -78,20 +78,20 @@ extern "C"
     BOOL WINAPI PathRenameExtensionW(LPWSTR pszPath, LPCWSTR pszExt);
 
 #ifdef UNICODE
-#define PathGetCharType    PathGetCharTypeW
-#define PathAppend         PathAppendW
-#define PathCombine        PathCombineW
-#define PathIsUNC          PathIsUNCW
+#define PathGetCharType     PathGetCharTypeW
+#define PathAppend          PathAppendW
+#define PathCombine         PathCombineW
+#define PathIsUNC           PathIsUNCW
 #define PathRemoveExtension PathRemoveExtensionW
-#define PathRemoveFileSpec PathRemoveFileSpecW
+#define PathRemoveFileSpec  PathRemoveFileSpecW
 #define PathRenameExtension PathRenameExtensionW
 #else
-#define PathGetCharType    PathGetCharTypeA
-#define PathAppend         PathAppendA
-#define PathCombine        PathCombineA
-#define PathIsUNC          PathIsUNCA
+#define PathGetCharType     PathGetCharTypeA
+#define PathAppend          PathAppendA
+#define PathCombine         PathCombineA
+#define PathIsUNC           PathIsUNCA
 #define PathRemoveExtension PathRemoveExtensionA
-#define PathRemoveFileSpec PathRemoveFileSpecA
+#define PathRemoveFileSpec  PathRemoveFileSpecA
 #define PathRenameExtension PathRenameExtensionA
 #endif // UNICODE
 
@@ -99,10 +99,8 @@ extern "C"
      * ADVAPI32 段），因此恒返回 ERROR_FILE_NOT_FOUND——对调用方而言就是
      * 「这一项没有配置」，与 Linux/macOS 上不存在 Windows 注册表的语义一致。
      * pszValue 为 NULL 表示取子键的默认值。 */
-    DWORD WINAPI SHGetValueA(HKEY hkey, LPCSTR pszSubKey, LPCSTR pszValue,
-                             LPDWORD pdwType, void *pvData, LPDWORD pcbData);
-    DWORD WINAPI SHGetValueW(HKEY hkey, LPCWSTR pszSubKey, LPCWSTR pszValue,
-                             LPDWORD pdwType, void *pvData, LPDWORD pcbData);
+    DWORD WINAPI SHGetValueA(HKEY hkey, LPCSTR pszSubKey, LPCSTR pszValue, LPDWORD pdwType, void *pvData, LPDWORD pcbData);
+    DWORD WINAPI SHGetValueW(HKEY hkey, LPCWSTR pszSubKey, LPCWSTR pszValue, LPDWORD pdwType, void *pvData, LPDWORD pcbData);
 
 #ifdef UNICODE
 #define SHGetValue SHGetValueW

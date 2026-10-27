@@ -7,14 +7,14 @@ extern "C"
 {
 #endif //__cplusplus
 
-#define OBJ_PEN      1
-#define OBJ_BRUSH    2
-#define OBJ_DC       3
-#define OBJ_FONT     6
-#define OBJ_BITMAP   7
-#define OBJ_REGION   8
-#define OBJ_PAL      9
-#define OBJ_METAFILE 10
+#define OBJ_PEN         1
+#define OBJ_BRUSH       2
+#define OBJ_DC          3
+#define OBJ_FONT        6
+#define OBJ_BITMAP      7
+#define OBJ_REGION      8
+#define OBJ_PAL         9
+#define OBJ_METAFILE    10
 #define OBJ_ENHMETAFILE 13
 
     HGDIOBJ InitGdiObj(int type, void *ptr);
@@ -109,8 +109,8 @@ extern "C"
 
     typedef struct tagTTPOLYGONHEADER
     {
-        DWORD cb;      /* 本记录（含其后的 TTPOLYCURVE）的总字节数 */
-        DWORD dwType;  /* TT_POLYGON_TYPE */
+        DWORD cb;     /* 本记录（含其后的 TTPOLYCURVE）的总字节数 */
+        DWORD dwType; /* TT_POLYGON_TYPE */
         POINTFX pfxStart;
     } TTPOLYGONHEADER, *LPTTPOLYGONHEADER;
 
@@ -286,9 +286,9 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     typedef PNONCLIENTMETRICSW PNONCLIENTMETRICS;
     typedef LPNONCLIENTMETRICSW LPNONCLIENTMETRICS;
 #else
-    typedef NONCLIENTMETRICSA NONCLIENTMETRICS;
-    typedef PNONCLIENTMETRICSA PNONCLIENTMETRICS;
-    typedef LPNONCLIENTMETRICSA LPNONCLIENTMETRICS;
+typedef NONCLIENTMETRICSA NONCLIENTMETRICS;
+typedef PNONCLIENTMETRICSA PNONCLIENTMETRICS;
+typedef LPNONCLIENTMETRICSA LPNONCLIENTMETRICS;
 #endif // UNICODE
 
     /* Logical Brush (or Pattern) */
@@ -976,18 +976,18 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #define COLORRES      108
 
 /* RASTERCAPS bits returned by GetDeviceCaps(hdc, RASTERCAPS). */
-#define RC_BITBLT      0x0001
-#define RC_BANDING     0x0002
-#define RC_SCALING     0x0004
-#define RC_BITMAP64    0x0008
-#define RC_GLYPHINDEX  0x0010
-#define RC_DIBTODEV    0x0080
-#define RC_BIGFONT     0x0400
-#define RC_STRETCHBLT  0x0800
-#define RC_FLOODFILL   0x1000
-#define RC_STRETCHDIB  0x2000
+#define RC_BITBLT       0x0001
+#define RC_BANDING      0x0002
+#define RC_SCALING      0x0004
+#define RC_BITMAP64     0x0008
+#define RC_GLYPHINDEX   0x0010
+#define RC_DIBTODEV     0x0080
+#define RC_BIGFONT      0x0400
+#define RC_STRETCHBLT   0x0800
+#define RC_FLOODFILL    0x1000
+#define RC_STRETCHDIB   0x2000
 #define RC_OP_DX_OUTPUT 0x4000
-#define RC_DEVBITS     0x8000
+#define RC_DEVBITS      0x8000
 
 /* Device Technologies */
 #define DT_PLOTTER    0 /* Vector plotter                   */
@@ -1521,8 +1521,8 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 
     typedef struct tagGLYPHSET
     {
-        DWORD cbThis;          // 整个结构的字节数（含尾部的 ranges 数组）
-        DWORD flAccel;         // 加速标志（GS_8BIT_INDICES）
+        DWORD cbThis;  // 整个结构的字节数（含尾部的 ranges 数组）
+        DWORD flAccel; // 加速标志（GS_8BIT_INDICES）
         DWORD cGlyphsSupported;
         DWORD cRanges;
         WCRANGE ranges[1];
@@ -1550,8 +1550,8 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
     typedef ENUMLOGFONTEXW ENUMLOGFONTEX;
     typedef LPENUMLOGFONTEXW LPENUMLOGFONTEX;
 #else
-    typedef ENUMLOGFONTEXA ENUMLOGFONTEX;
-    typedef LPENUMLOGFONTEXA LPENUMLOGFONTEX;
+typedef ENUMLOGFONTEXA ENUMLOGFONTEX;
+typedef LPENUMLOGFONTEXA LPENUMLOGFONTEX;
 #endif // UNICODE
 
     typedef int(CALLBACK *FONTENUMPROCA)(CONST LOGFONTA *, CONST TEXTMETRICA *, DWORD, LPARAM);
@@ -1649,7 +1649,7 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #ifdef UNICODE
     typedef OUTLINETEXTMETRICW OUTLINETEXTMETRIC, *POUTLINETEXTMETRIC, FAR *LPOUTLINETEXTMETRIC;
 #else
-    typedef OUTLINETEXTMETRICA OUTLINETEXTMETRIC, *POUTLINETEXTMETRIC, FAR *LPOUTLINETEXTMETRIC;
+typedef OUTLINETEXTMETRICA OUTLINETEXTMETRIC, *POUTLINETEXTMETRIC, FAR *LPOUTLINETEXTMETRIC;
 #endif // UNICODE
 
     /* 从字体文件里取 sfnt 表（dwTable 是大端序的 4 字节 tag，如 'eman'）。
@@ -1714,7 +1714,7 @@ typedef LPENUMLOGFONTA LPENUMLOGFONT;
 #ifdef UNICODE
     typedef GCP_RESULTSW GCP_RESULTS, *LPGCP_RESULTS;
 #else
-    typedef GCP_RESULTSA GCP_RESULTS, *LPGCP_RESULTS;
+typedef GCP_RESULTSA GCP_RESULTS, *LPGCP_RESULTS;
 #endif // UNICODE
 
     DWORD WINAPI GetCharacterPlacementA(HDC hdc, LPCSTR lpString, int nCount, int nMaxExtent, LPGCP_RESULTSA lpResults, DWORD dwFlags);

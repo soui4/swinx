@@ -3,6 +3,7 @@
 #define _SYN_HANDLE_H_
 #include <sfr_config.h>
 #include <mutex>
+#include "handle.h"
 #include "log.h"
 
 enum
@@ -107,9 +108,10 @@ static _SynHandle *GetSynHandle(HANDLE h)
 {
     if(!h || h == INVALID_HANDLE_VALUE)
         return nullptr;
-    if (h->type != SYN_OBJ)
+    _Handle *handle = AsHandle(h);
+    if (handle->type != SYN_OBJ)
         return nullptr;
-    return (_SynHandle *)h->ptr;
+    return (_SynHandle *)handle->ptr;
 }
 
 

@@ -17,21 +17,21 @@
  * 读出垃圾；实现里没有值的字段一律清零。
  */
 
-#define MAX_ADAPTER_ADDRESS_LENGTH 8
+#define MAX_ADAPTER_ADDRESS_LENGTH     8
 #define MAX_ADAPTER_DESCRIPTION_LENGTH 128
-#define MAX_ADAPTER_NAME_LENGTH 256
-#define MAX_ADAPTER_NAME 128
-#define MAX_DHCPV6_DUID_LENGTH 130
+#define MAX_ADAPTER_NAME_LENGTH        256
+#define MAX_ADAPTER_NAME               128
+#define MAX_DHCPV6_DUID_LENGTH         130
 
 /* ipifcons.h 的接口类型。swinx 只需要区分「以太/无线」与「回环」。 */
-#define MIB_IF_TYPE_OTHER 1
-#define MIB_IF_TYPE_ETHERNET 6
+#define MIB_IF_TYPE_OTHER     1
+#define MIB_IF_TYPE_ETHERNET  6
 #define MIB_IF_TYPE_TOKENRING 9
-#define MIB_IF_TYPE_FDDI 15
-#define MIB_IF_TYPE_PPP 23
-#define MIB_IF_TYPE_LOOPBACK 24
-#define MIB_IF_TYPE_SLIP 28
-#define MIB_IF_TYPE_TUNNEL 131
+#define MIB_IF_TYPE_FDDI      15
+#define MIB_IF_TYPE_PPP       23
+#define MIB_IF_TYPE_LOOPBACK  24
+#define MIB_IF_TYPE_SLIP      28
+#define MIB_IF_TYPE_TUNNEL    131
 #define MIB_IF_TYPE_IEEE80211 71
 
 typedef ULONG IFTYPE;
@@ -95,8 +95,7 @@ typedef enum
     TUNNEL_TYPE_TEREDO = 14,
 } TUNNEL_TYPE;
 
-typedef union _NET_LUID_LH
-{
+typedef union _NET_LUID_LH {
     ULONG64 Value;
     struct
     {
@@ -111,8 +110,7 @@ typedef GUID NET_IF_NETWORK_GUID;
 
 typedef struct _IP_ADAPTER_UNICAST_ADDRESS_LH
 {
-    union
-    {
+    union {
         ULONGLONG Alignment;
         struct
         {
@@ -136,8 +134,7 @@ typedef PIP_ADAPTER_UNICAST_ADDRESS_LH PIP_ADAPTER_UNICAST_ADDRESS;
 
 typedef struct _IP_ADAPTER_ANYCAST_ADDRESS_XP
 {
-    union
-    {
+    union {
         ULONGLONG Alignment;
         struct
         {
@@ -154,8 +151,7 @@ typedef PIP_ADAPTER_ANYCAST_ADDRESS_XP PIP_ADAPTER_ANYCAST_ADDRESS;
 
 typedef struct _IP_ADAPTER_MULTICAST_ADDRESS_XP
 {
-    union
-    {
+    union {
         ULONGLONG Alignment;
         struct
         {
@@ -172,8 +168,7 @@ typedef PIP_ADAPTER_MULTICAST_ADDRESS_XP PIP_ADAPTER_MULTICAST_ADDRESS;
 
 typedef struct _IP_ADAPTER_DNS_SERVER_ADDRESS_XP
 {
-    union
-    {
+    union {
         ULONGLONG Alignment;
         struct
         {
@@ -190,8 +185,7 @@ typedef PIP_ADAPTER_DNS_SERVER_ADDRESS_XP PIP_ADAPTER_DNS_SERVER_ADDRESS;
 
 typedef struct _IP_ADAPTER_PREFIX_XP
 {
-    union
-    {
+    union {
         ULONGLONG Alignment;
         struct
         {
@@ -209,8 +203,7 @@ typedef PIP_ADAPTER_PREFIX_XP PIP_ADAPTER_PREFIX;
 
 typedef struct _IP_ADAPTER_WINS_SERVER_ADDRESS_LH
 {
-    union
-    {
+    union {
         ULONGLONG Alignment;
         struct
         {
@@ -224,8 +217,7 @@ typedef struct _IP_ADAPTER_WINS_SERVER_ADDRESS_LH
 
 typedef struct _IP_ADAPTER_GATEWAY_ADDRESS_LH
 {
-    union
-    {
+    union {
         ULONGLONG Alignment;
         struct
         {
@@ -245,8 +237,7 @@ typedef struct _IP_ADAPTER_DNS_SUFFIX
 
 typedef struct _IP_ADAPTER_ADDRESSES_LH
 {
-    union
-    {
+    union {
         ULONGLONG Alignment;
         struct
         {
@@ -265,8 +256,7 @@ typedef struct _IP_ADAPTER_ADDRESSES_LH
     PWCHAR FriendlyName;
     BYTE PhysicalAddress[MAX_ADAPTER_ADDRESS_LENGTH];
     ULONG PhysicalAddressLength;
-    union
-    {
+    union {
         ULONG Flags;
         struct
         {
@@ -311,29 +301,29 @@ typedef IP_ADAPTER_ADDRESSES_LH IP_ADAPTER_ADDRESSES;
 typedef PIP_ADAPTER_ADDRESSES_LH PIP_ADAPTER_ADDRESSES;
 
 /* GetAdaptersAddresses 的 Flags（值取 SDK 的 iptypes.h）。 */
-#define GAA_FLAG_SKIP_UNICAST 0x0001
-#define GAA_FLAG_SKIP_ANYCAST 0x0002
-#define GAA_FLAG_SKIP_MULTICAST 0x0004
-#define GAA_FLAG_SKIP_DNS_SERVER 0x0008
-#define GAA_FLAG_INCLUDE_PREFIX 0x0010
-#define GAA_FLAG_SKIP_FRIENDLY_NAME 0x0020
-#define GAA_FLAG_INCLUDE_WINS_INFO 0x0040
-#define GAA_FLAG_INCLUDE_GATEWAYS 0x0080
-#define GAA_FLAG_INCLUDE_ALL_INTERFACES 0x0100
-#define GAA_FLAG_INCLUDE_ALL_COMPARTMENTS 0x0200
+#define GAA_FLAG_SKIP_UNICAST                0x0001
+#define GAA_FLAG_SKIP_ANYCAST                0x0002
+#define GAA_FLAG_SKIP_MULTICAST              0x0004
+#define GAA_FLAG_SKIP_DNS_SERVER             0x0008
+#define GAA_FLAG_INCLUDE_PREFIX              0x0010
+#define GAA_FLAG_SKIP_FRIENDLY_NAME          0x0020
+#define GAA_FLAG_INCLUDE_WINS_INFO           0x0040
+#define GAA_FLAG_INCLUDE_GATEWAYS            0x0080
+#define GAA_FLAG_INCLUDE_ALL_INTERFACES      0x0100
+#define GAA_FLAG_INCLUDE_ALL_COMPARTMENTS    0x0200
 #define GAA_FLAG_INCLUDE_TUNNEL_BINDINGORDER 0x0400
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-ULONG WINAPI GetAdaptersAddresses(ULONG Family, ULONG Flags, PVOID Reserved,
-                                  PIP_ADAPTER_ADDRESSES AdapterAddresses, PULONG SizePointer);
+    ULONG WINAPI GetAdaptersAddresses(ULONG Family, ULONG Flags, PVOID Reserved, PIP_ADAPTER_ADDRESSES AdapterAddresses, PULONG SizePointer);
 
-/* 一次性的地址变化通知。带 lpOverlapped 时立即返回 ERROR_IO_PENDING，
- * 变化发生时 SetEvent(lpOverlapped->hEvent)。 */
-DWORD WINAPI NotifyAddrChange(PHANDLE Handle, LPOVERLAPPED overlapped);
-BOOL WINAPI CancelIPChangeNotify(LPOVERLAPPED lpOverlapped);
+    /* 一次性的地址变化通知。带 lpOverlapped 时立即返回 ERROR_IO_PENDING，
+     * 变化发生时 SetEvent(lpOverlapped->hEvent)。 */
+    DWORD WINAPI NotifyAddrChange(PHANDLE Handle, LPOVERLAPPED overlapped);
+    BOOL WINAPI CancelIPChangeNotify(LPOVERLAPPED lpOverlapped);
 
 #ifdef __cplusplus
 }

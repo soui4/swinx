@@ -133,7 +133,7 @@ extern "C"
     /* host: MinGW <io.h> declares int _open_osfhandle(intptr_t, int); a shim
        declaration would clash with the CRT prototype */
 #else
-    int WINAPI _open_osfhandle(HANDLE hFile, int flags);
+int WINAPI _open_osfhandle(HANDLE hFile, int flags);
 #endif
 #ifdef UNICODE
 #define CreateFile CreateFileW
@@ -417,23 +417,23 @@ typedef LPWIN32_FIND_DATAA LPWIN32_FIND_DATA;
     BOOL WINAPI RemoveDirectoryA(LPCSTR lpPathName);
     BOOL WINAPI RemoveDirectoryW(LPCWSTR lpPathName);
 #ifdef UNICODE
-#define CopyFile        CopyFileW
-#define CopyDir         CopyDirW
-#define DeleteFile      DeleteFileW
-#define DelDir          DelDirW
-#define MoveFile        MoveFileW
-#define MoveFileEx      MoveFileExW
+#define CopyFile            CopyFileW
+#define CopyDir             CopyDirW
+#define DeleteFile          DeleteFileW
+#define DelDir              DelDirW
+#define MoveFile            MoveFileW
+#define MoveFileEx          MoveFileExW
 #define GetFileAttributesEx GetFileAttributesExW
-#define RemoveDirectory RemoveDirectoryW
+#define RemoveDirectory     RemoveDirectoryW
 #else
-#define CopyFile        CopyFileA
-#define CopyDir         CopyDirA
-#define DeleteFile      DeleteFileA
-#define DelDir          DelDirA
-#define MoveFile        MoveFileA
-#define MoveFileEx      MoveFileExA
+#define CopyFile            CopyFileA
+#define CopyDir             CopyDirA
+#define DeleteFile          DeleteFileA
+#define DelDir              DelDirA
+#define MoveFile            MoveFileA
+#define MoveFileEx          MoveFileExA
 #define GetFileAttributesEx GetFileAttributesExA
-#define RemoveDirectory RemoveDirectoryA
+#define RemoveDirectory     RemoveDirectoryA
 #endif // !UNICODE
 
 #define STD_INPUT_HANDLE  ((DWORD)-10)

@@ -68,36 +68,36 @@ typedef void *HGLRC;
 
 /* 系统头不提供的 PIXELFORMATDESCRIPTOR：字段取调用方真正读写的子集 */
 #ifndef PFD_TYPE_RGBA
-#define PFD_TYPE_RGBA 0
+#define PFD_TYPE_RGBA       0
 #define PFD_TYPE_COLORINDEX 1
 #endif
 
 #ifndef PFD_MAIN_PLANE
-#define PFD_MAIN_PLANE 0
-#define PFD_OVERLAY_PLANE 1
+#define PFD_MAIN_PLANE     0
+#define PFD_OVERLAY_PLANE  1
 #define PFD_UNDERLAY_PLANE 2
 #endif
 
 #ifndef PFD_DOUBLEBUFFER
-#define PFD_DOUBLEBUFFER 0x00000001
-#define PFD_STEREO 0x00000002
-#define PFD_DRAW_TO_WINDOW 0x00000004
-#define PFD_DRAW_TO_BITMAP 0x00000008
-#define PFD_SUPPORT_GDI 0x00000010
-#define PFD_SUPPORT_OPENGL 0x00000020
-#define PFD_GENERIC_FORMAT 0x00000040
-#define PFD_NEED_PALETTE 0x00000080
-#define PFD_NEED_SYSTEM_PALETTE 0x00000100
-#define PFD_SWAP_EXCHANGE 0x00000200
-#define PFD_SWAP_COPY 0x00000400
-#define PFD_SWAP_LAYER_BUFFERS 0x00000800
-#define PFD_GENERIC_ACCELERATED 0x00001000
-#define PFD_SUPPORT_DIRECTDRAW 0x00002000
-#define PFD_DIRECT3D_AVAILABLE 0x00004000
-#define PFD_SUPPORT_COMPOSITION 0x00008000
-#define PFD_DEPTH_DONTCARE 0x20000000
+#define PFD_DOUBLEBUFFER          0x00000001
+#define PFD_STEREO                0x00000002
+#define PFD_DRAW_TO_WINDOW        0x00000004
+#define PFD_DRAW_TO_BITMAP        0x00000008
+#define PFD_SUPPORT_GDI           0x00000010
+#define PFD_SUPPORT_OPENGL        0x00000020
+#define PFD_GENERIC_FORMAT        0x00000040
+#define PFD_NEED_PALETTE          0x00000080
+#define PFD_NEED_SYSTEM_PALETTE   0x00000100
+#define PFD_SWAP_EXCHANGE         0x00000200
+#define PFD_SWAP_COPY             0x00000400
+#define PFD_SWAP_LAYER_BUFFERS    0x00000800
+#define PFD_GENERIC_ACCELERATED   0x00001000
+#define PFD_SUPPORT_DIRECTDRAW    0x00002000
+#define PFD_DIRECT3D_AVAILABLE    0x00004000
+#define PFD_SUPPORT_COMPOSITION   0x00008000
+#define PFD_DEPTH_DONTCARE        0x20000000
 #define PFD_DOUBLEBUFFER_DONTCARE 0x40000000
-#define PFD_STEREO_DONTCARE 0x80000000
+#define PFD_STEREO_DONTCARE       0x80000000
 #endif
 
 /* 图层平面与 GDI 字形相关的常量：同样由 Windows 的 wingdi.h 提供，这里补齐是为了让
@@ -105,12 +105,12 @@ typedef void *HGLRC;
  * 本层对这两组能力一律返回失败（见文件头能力矩阵）。 */
 #ifndef WGL_SWAP_MAIN_PLANE
 #define WGL_SWAP_MAIN_PLANE 0x00000001
-#define WGL_SWAP_OVERLAY1 0x00000002
-#define WGL_SWAP_UNDERLAY1 0x00010000
+#define WGL_SWAP_OVERLAY1   0x00000002
+#define WGL_SWAP_UNDERLAY1  0x00010000
 #endif
 
 #ifndef WGL_FONT_LINES
-#define WGL_FONT_LINES 0
+#define WGL_FONT_LINES    0
 #define WGL_FONT_POLYGONS 1
 #endif
 
@@ -201,54 +201,50 @@ typedef struct _WGLSWAP
 #include <GL/wglext.h>
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-int WINAPI ChoosePixelFormat(HDC hdc, const PIXELFORMATDESCRIPTOR *ppfd);
-int WINAPI DescribePixelFormat(HDC hdc, int iPixelFormat, UINT nBytes, PIXELFORMATDESCRIPTOR *ppfd);
-BOOL WINAPI SetPixelFormat(HDC hdc, int iPixelFormat, const PIXELFORMATDESCRIPTOR *ppfd);
+    int WINAPI ChoosePixelFormat(HDC hdc, const PIXELFORMATDESCRIPTOR *ppfd);
+    int WINAPI DescribePixelFormat(HDC hdc, int iPixelFormat, UINT nBytes, PIXELFORMATDESCRIPTOR *ppfd);
+    BOOL WINAPI SetPixelFormat(HDC hdc, int iPixelFormat, const PIXELFORMATDESCRIPTOR *ppfd);
 
-HGLRC WINAPI wglCreateContext(HDC hdc);
-BOOL WINAPI wglDeleteContext(HGLRC hglrc);
-BOOL WINAPI wglMakeCurrent(HDC hdc, HGLRC hglrc);
-HDC WINAPI wglGetCurrentDC(void);
-HGLRC WINAPI wglGetCurrentContext(void);
-PROC WINAPI wglGetProcAddress(LPCSTR lpszProc);
-PROC WINAPI wglGetDefaultProcAddress(LPCSTR lpszProc);
+    HGLRC WINAPI wglCreateContext(HDC hdc);
+    BOOL WINAPI wglDeleteContext(HGLRC hglrc);
+    BOOL WINAPI wglMakeCurrent(HDC hdc, HGLRC hglrc);
+    HDC WINAPI wglGetCurrentDC(void);
+    HGLRC WINAPI wglGetCurrentContext(void);
+    PROC WINAPI wglGetProcAddress(LPCSTR lpszProc);
+    PROC WINAPI wglGetDefaultProcAddress(LPCSTR lpszProc);
 
-/** 使 hglrc2 共享 hglrc1 的资源；hglrc2 必须在首次 wglMakeCurrent 之前调用。 */
-BOOL WINAPI wglShareLists(HGLRC hglrc1, HGLRC hglrc2);
-/** 本层无上下文拷贝能力，恒失败。 */
-BOOL WINAPI wglCopyContext(HGLRC hglrcSrc, HGLRC hglrcDst, UINT mask);
-/** 图层平面上下文是 Windows 专有，本层恒返回 NULL。 */
-HGLRC WINAPI wglCreateLayerContext(HDC hdc, int iLayerPlane);
+    /** 使 hglrc2 共享 hglrc1 的资源；hglrc2 必须在首次 wglMakeCurrent 之前调用。 */
+    BOOL WINAPI wglShareLists(HGLRC hglrc1, HGLRC hglrc2);
+    /** 本层无上下文拷贝能力，恒失败。 */
+    BOOL WINAPI wglCopyContext(HGLRC hglrcSrc, HGLRC hglrcDst, UINT mask);
+    /** 图层平面上下文是 Windows 专有，本层恒返回 NULL。 */
+    HGLRC WINAPI wglCreateLayerContext(HDC hdc, int iLayerPlane);
 
-BOOL WINAPI SwapBuffers(HDC hdc);
-/** 批量交换：返回成功交换的缓冲区个数（逐项等价 SwapBuffers）。 */
-DWORD WINAPI wglSwapMultipleBuffers(UINT nBuffers, const WGLSWAP *pswaps);
+    BOOL WINAPI SwapBuffers(HDC hdc);
+    /** 批量交换：返回成功交换的缓冲区个数（逐项等价 SwapBuffers）。 */
+    DWORD WINAPI wglSwapMultipleBuffers(UINT nBuffers, const WGLSWAP *pswaps);
 
-/* 图层平面与 GDI 字形：macOS/Linux 没有对应能力，恒返回失败（见文件头能力矩阵）。 */
-BOOL WINAPI wglDescribeLayerPlane(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nBytes,
-                                 LPLAYERPLANEDESCRIPTOR plpd);
-int WINAPI wglSetLayerPaletteEntries(HDC hdc, int iLayerPlane, int iStart, int cEntries,
-                                     const COLORREF *pcr);
-int WINAPI wglGetLayerPaletteEntries(HDC hdc, int iLayerPlane, int iStart, int cEntries,
-                                     COLORREF *pcr);
-BOOL WINAPI wglRealizeLayerPalette(HDC hdc, int iLayerPlane, BOOL bRealize);
-BOOL WINAPI wglSwapLayerBuffers(HDC hdc, UINT fuPlanes);
+    /* 图层平面与 GDI 字形：macOS/Linux 没有对应能力，恒返回失败（见文件头能力矩阵）。 */
+    BOOL WINAPI wglDescribeLayerPlane(HDC hdc, int iPixelFormat, int iLayerPlane, UINT nBytes, LPLAYERPLANEDESCRIPTOR plpd);
+    int WINAPI wglSetLayerPaletteEntries(HDC hdc, int iLayerPlane, int iStart, int cEntries, const COLORREF *pcr);
+    int WINAPI wglGetLayerPaletteEntries(HDC hdc, int iLayerPlane, int iStart, int cEntries, COLORREF *pcr);
+    BOOL WINAPI wglRealizeLayerPalette(HDC hdc, int iLayerPlane, BOOL bRealize);
+    BOOL WINAPI wglSwapLayerBuffers(HDC hdc, UINT fuPlanes);
 
-BOOL WINAPI wglUseFontBitmapsA(HDC hdc, DWORD first, DWORD count, DWORD listBase);
-BOOL WINAPI wglUseFontBitmapsW(HDC hdc, DWORD first, DWORD count, DWORD listBase);
-BOOL WINAPI wglUseFontOutlinesA(HDC hdc, DWORD first, DWORD count, DWORD listBase, FLOAT deviation,
-                                FLOAT extrusion, int format, LPGLYPHMETRICSFLOAT lpgmf);
-BOOL WINAPI wglUseFontOutlinesW(HDC hdc, DWORD first, DWORD count, DWORD listBase, FLOAT deviation,
-                                FLOAT extrusion, int format, LPGLYPHMETRICSFLOAT lpgmf);
+    BOOL WINAPI wglUseFontBitmapsA(HDC hdc, DWORD first, DWORD count, DWORD listBase);
+    BOOL WINAPI wglUseFontBitmapsW(HDC hdc, DWORD first, DWORD count, DWORD listBase);
+    BOOL WINAPI wglUseFontOutlinesA(HDC hdc, DWORD first, DWORD count, DWORD listBase, FLOAT deviation, FLOAT extrusion, int format, LPGLYPHMETRICSFLOAT lpgmf);
+    BOOL WINAPI wglUseFontOutlinesW(HDC hdc, DWORD first, DWORD count, DWORD listBase, FLOAT deviation, FLOAT extrusion, int format, LPGLYPHMETRICSFLOAT lpgmf);
 
 #ifdef UNICODE
-#define wglUseFontBitmaps wglUseFontBitmapsW
+#define wglUseFontBitmaps  wglUseFontBitmapsW
 #define wglUseFontOutlines wglUseFontOutlinesW
 #else
-#define wglUseFontBitmaps wglUseFontBitmapsA
+#define wglUseFontBitmaps  wglUseFontBitmapsA
 #define wglUseFontOutlines wglUseFontOutlinesA
 #endif
 

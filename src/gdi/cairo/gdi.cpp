@@ -4112,6 +4112,18 @@ static void convert_cairo_matrix_to_xform(const cairo_matrix_t *cairo_matrix, XF
     xform.eDy = cairo_matrix->y0;
 }
 
+// Win32 的 SetWorldTransform 会拒绝不可逆矩阵；cairo 更严格，cairo_set_matrix
+// 收到不可逆矩阵会把整个上下文置为粘性错误 CAIRO_STATUS_INVALID_MATRIX，
+// 之后同一 DC 上所有绘制/文字测量都静默返回 0，cairo_save/restore 也救不回来。
+// wke 的 cairo win32 字体后端对零缩放字体算出 1/0，得到 NaN 世界变换，而它
+// 用的正是共享桌面 DC（GetDC(NULL)）；这里与 Win32 一致地先校验再写入。
+static BOOL is_invertible_matrix(const cairo_matrix_t &m)
+{
+    if (!isfinite(m.xx) || !isfinite(m.xy) || !isfinite(m.yx) || !isfinite(m.yy) || !isfinite(m.x0) || !isfinite(m.y0))
+        return FALSE;
+    return (m.xx * m.yy - m.xy * m.yx) != 0.0;
+}
+
 static void update_transform(HDC hdc)
 {
     if (hdc->ptOrigin.x == 0 && hdc->ptOrigin.y == 0)
@@ -4198,7 +4210,13 @@ BOOL GetWorldTransform(HDC hdc, LPXFORM lpxf)
 
 BOOL SetWorldTransform(HDC hdc, const XFORM *lpxf)
 {
-    convert_xform_to_cairo_matrix(lpxf, hdc->mtx); // 传递指针
+    if (!lpxf)
+        return FALSE;
+    cairo_matrix_t mtx;
+    convert_xform_to_cairo_matrix(lpxf, mtx);
+    if (!is_invertible_matrix(mtx))
+        return FALSE;
+    hdc->mtx = mtx;
     update_transform(hdc);
     return TRUE;
 }
@@ -4220,17 +4238,23 @@ BOOL ModifyWorldTransform(HDC hdc,              // handle to device context
     if (!lpXform)
         return FALSE;
     convert_xform_to_cairo_matrix(lpXform, mtx); // 传递指针
+    if (!is_invertible_matrix(mtx))
+        return FALSE;
+    cairo_matrix_t result;
     switch (iMode)
     {
     case MWT_LEFTMULTIPLY:
-        cairo_matrix_multiply(&hdc->mtx, &mtx, &hdc->mtx);
+        cairo_matrix_multiply(&result, &mtx, &hdc->mtx);
         break;
     case MWT_RIGHTMULTIPLY:
-        cairo_matrix_multiply(&hdc->mtx, &hdc->mtx, &mtx);
+        cairo_matrix_multiply(&result, &hdc->mtx, &mtx);
         break;
     default:
         return FALSE;
     }
+    if (!is_invertible_matrix(result))
+        return FALSE;
+    hdc->mtx = result;
     update_transform(hdc);
     return TRUE;
 }

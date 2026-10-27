@@ -61,34 +61,35 @@ HeapCreate(DWORD flOptions, size_t dwInitialSize, size_t dwMaximumSize)
 
 BOOL WINAPI HeapDestroy(HANDLE hHeap)
 {
-    if (!hHeap || hHeap->type != HEAP_OBJ)
+    if (!hHeap || AsHandle(hHeap)->type != HEAP_OBJ)
         return FALSE;
     return CloseHandle(hHeap);
 }
 
 BOOL WINAPI HeapLock(HANDLE hHeap)
 {
-    if (!hHeap || hHeap->type != HEAP_OBJ)
+    if (!hHeap || AsHandle(hHeap)->type != HEAP_OBJ)
         return FALSE;
-    hHeap->mutex.lock();
+    AsHandle(hHeap)->mutex.lock();
     return TRUE;
 }
 
 BOOL WINAPI HeapUnlock(HANDLE hHeap)
 {
-    if (!hHeap || hHeap->type != HEAP_OBJ)
+    if (!hHeap || AsHandle(hHeap)->type != HEAP_OBJ)
         return FALSE;
-    hHeap->mutex.unlock();
+    AsHandle(hHeap)->mutex.unlock();
     return TRUE;
 }
 
 LPVOID
 HeapAlloc(HANDLE hHeap, DWORD dwFlags, size_t dwBytes)
 {
-    if (!hHeap || hHeap->type != HEAP_OBJ)
+    if (!hHeap || AsHandle(hHeap)->type != HEAP_OBJ)
         return nullptr;
-    std::lock_guard<std::recursive_mutex> lock(hHeap->mutex);
-    HeapInfo *info = (HeapInfo *)hHeap->ptr;
+    _Handle *heap = AsHandle(hHeap);
+    std::lock_guard<std::recursive_mutex> lock(heap->mutex);
+    HeapInfo *info = (HeapInfo *)heap->ptr;
     assert(info);
     MemBlock block;
     block.len = dwBytes;
@@ -120,11 +121,12 @@ HeapAlloc(HANDLE hHeap, DWORD dwFlags, size_t dwBytes)
 
 BOOL HeapFree(HANDLE hHeap, DWORD dwFlags __attribute__((unused)), LPVOID lpMem)
 {
-    if (!hHeap || hHeap->type != HEAP_OBJ)
+    if (!hHeap || AsHandle(hHeap)->type != HEAP_OBJ)
         return FALSE;
 
-    std::lock_guard<std::recursive_mutex> lock(hHeap->mutex);
-    HeapInfo *info = (HeapInfo *)hHeap->ptr;
+    _Handle *heap = AsHandle(hHeap);
+    std::lock_guard<std::recursive_mutex> lock(heap->mutex);
+    HeapInfo *info = (HeapInfo *)heap->ptr;
     if (!info)
         return FALSE;
     for (auto it = info->lstMem.begin(); it != info->lstMem.end(); it++)
@@ -150,10 +152,11 @@ BOOL HeapFree(HANDLE hHeap, DWORD dwFlags __attribute__((unused)), LPVOID lpMem)
 
 LPVOID WINAPI HeapReAlloc(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBytes)
 {
-    if (!hHeap || hHeap->type != HEAP_OBJ)
+    if (!hHeap || AsHandle(hHeap)->type != HEAP_OBJ)
         return nullptr;
-    std::lock_guard<std::recursive_mutex> lock(hHeap->mutex);
-    HeapInfo *info = (HeapInfo *)hHeap->ptr;
+    _Handle *heap = AsHandle(hHeap);
+    std::lock_guard<std::recursive_mutex> lock(heap->mutex);
+    HeapInfo *info = (HeapInfo *)heap->ptr;
     if (!info)
         return FALSE;
     for (auto it = info->lstMem.begin(); it != info->lstMem.end(); it++)
@@ -205,10 +208,11 @@ LPVOID WINAPI HeapReAlloc(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBy
 
 SIZE_T WINAPI HeapSize(HANDLE hHeap, DWORD dwFlags __attribute__((unused)), LPCVOID lpMem)
 {
-    if (!hHeap || hHeap->type != HEAP_OBJ)
+    if (!hHeap || AsHandle(hHeap)->type != HEAP_OBJ)
         return 0;
-    std::lock_guard<std::recursive_mutex> lock(hHeap->mutex);
-    HeapInfo *info = (HeapInfo *)hHeap->ptr;
+    _Handle *heap = AsHandle(hHeap);
+    std::lock_guard<std::recursive_mutex> lock(heap->mutex);
+    HeapInfo *info = (HeapInfo *)heap->ptr;
     if (!info)
         return FALSE;
     for (auto it = info->lstMem.begin(); it != info->lstMem.end(); it++)
@@ -240,9 +244,10 @@ BOOL FlushInstructionCache(HANDLE hProcess __attribute__((unused)), LPCVOID lpMe
         return FALSE;
     HANDLE hHeap;
     memcpy(&hHeap, pBuf, sizeof(HANDLE));
+    _Handle *heap = AsHandle(hHeap);
 
-    std::lock_guard<std::recursive_mutex> lock(hHeap->mutex);
-    HeapInfo *info = (HeapInfo *)hHeap->ptr;
+    std::lock_guard<std::recursive_mutex> lock(heap->mutex);
+    HeapInfo *info = (HeapInfo *)heap->ptr;
     if (!info)
         return FALSE;
     for (auto it = info->lstMem.begin(); it != info->lstMem.end(); it++)

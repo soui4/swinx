@@ -49,8 +49,8 @@ swinx 是非 Windows 平台上的 **Win32 兼容层**：向 SOUI 4 与 WKE 浏�
 
 ## 4. 句柄与对象模型
 
-- Win32 内核对象句柄统一包成 `_Handle`（`src/handle.h:7`）：`std::recursive_mutex + type + nRef + ptr + cbFree`。`AddHandleRef` / `CloseHandle` 按引用计数回收；创建入口是 GDI 侧的 `InitGdiObj`（`src/gdi/cairo/gdi.cpp:327` 与 `src/gdi/apple/gdi.cpp:557` 各一份）和 `src/region.cpp:458` 的 `alloc_gdi_handle`。
-- 同步对象族走 `_SynHandle` + `NewSynHandle` / `GetSynHandle`（`src/synhandle.h:101/106`）；线程对象是 `ThreadObj`（`src/platform/posix/sysapi.cpp:4841`），其析构里 `pthread_join` —— 这是退出期 valgrind 报告形态的来源之一（见 §7）。
+- Win32 内核对象句柄统一包成 `_Handle`（`src/handle.h:8`）：`std::recursive_mutex + type + nRef + ptr + cbFree`。`AddHandleRef` / `CloseHandle` 按引用计数回收；创建入口是 GDI 侧的 `InitGdiObj`（`src/gdi/cairo/gdi.cpp:327` 与 `src/gdi/apple/gdi.cpp:559` 各一份）和 `src/region.cpp:458` 的 `alloc_gdi_handle`。
+- 同步对象族走 `_SynHandle` + `NewSynHandle` / `GetSynHandle`（`src/synhandle.h:102/107`）；线程对象是 `ThreadObj`（`src/platform/posix/sysapi.cpp:4841`），其析构里 `pthread_join` —— 这是退出期 valgrind 报告形态的来源之一（见 §7）。
 - GDI 对象存活计数是 `GetGuiResources(GR_GDIOBJECTS)` 的唯一数据源（`src/handle.cpp:11-30`）：`AddSwinxGdiObject` / `ReleaseSwinxGdiObject`。`HDC` 不走 `_Handle`（`src/sdc.cpp` 自己 new/delete，单独计数）。**新增对象族时必须同时接上计数**，否则 WebCore 的 GDIObjectCounter 观察不到它。
 - 被 DC / 图标引用的位图要 `RefGdiObj` 而不是裸持有，否则 `DeleteObject` 之后留下悬空引用。
 
@@ -85,7 +85,7 @@ swinx 是非 Windows 平台上的 **Win32 兼容层**：向 SOUI 4 与 WKE 浏�
 
 ## 9. 测试
 
-- 用例落在 soui4 的 `demos/fun_test/`，按**文件名约定**自动分层注册：`test_*.cpp` → `soui-unit`、`test_integration_*` → 集成、`test_e2e_*` → 无窗口 E2E（三层都带门禁标签 `soui-headless`，注册 504 条＝493 单元 + 1 集成 + 10 E2E，实跑 503 条，`test_misc.cpp:191` 的 `DISABLED_is_dbcs_lead_byte_codepage_dependent` 跳过），`test_gui_*` → `soui-gui`，`test_gdi.cpp` / `test_soui.cpp` → `soui-interactive`（默认不注册、不进门禁）。
+- 用例落在 soui4 的 `demos/fun_test/`，按**文件名约定**自动分层注册：`test_*.cpp` → `soui-unit`、`test_integration_*` → 集成、`test_e2e_*` → 无窗口 E2E（三层都带门禁标签 `soui-headless`，注册 507 条＝496 单元 + 1 集成 + 10 E2E，实跑 506 条，`test_misc.cpp:191` 的 `DISABLED_is_dbcs_lead_byte_codepage_dependent` 跳过），`test_gui_*` → `soui-gui`，`test_gdi.cpp` / `test_soui.cpp` → `soui-interactive`（默认不注册、不进门禁）。
 - 面向 WKE 的 swinx API 用例（`test_swinx_wke_*.cpp`）**不得使用 C++11 语法，要能在 VS2008 编译**，Linux / Windows / macOS 都得跑：用 `memset` + 逐字段赋值代替聚合初始化，`NULL` 代替 `nullptr`，不用 range-for / `auto` / lambda。
 - 平台专属断言用 `#ifndef _WIN32` 包住。注意 `gtest_add_tests` 扫的是**源码文本**而非预处理结果：被排除的分支仍会注册成条目，`--gtest_filter` 匹配 0 条时返回 0、CTest 报 Passed —— 这类用例的通过证据只能来自它真正编译到的平台。注释掉的 `//TEST(...)` 同样会被注册，删除用例要整行删。
 - **新增的空实现/语义桩不补用例**（断言「返回固定值」没有回归价值），但必须在清单里登记。要写的是「行为在回归时会失败」的用例，例如标准光标无条件销毁后仍存活、调用方自有的图标确实可销毁。

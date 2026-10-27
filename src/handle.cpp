@@ -36,9 +36,10 @@ HANDLE WINAPI AddHandleRef(HANDLE hHandle)
         return INVALID_HANDLE_VALUE;
     if (!hHandle)
         return 0;
-    hHandle->mutex.lock();
-    hHandle->nRef++;
-    hHandle->mutex.unlock();
+    _Handle *h = AsHandle(hHandle);
+    h->mutex.lock();
+    h->nRef++;
+    h->mutex.unlock();
     return hHandle;
 }
 
@@ -48,14 +49,15 @@ BOOL WINAPI CloseHandle(HANDLE h)
         return FALSE;
     if (!h)
         return TRUE;
-    if (!h->cbFree) // for static handle (stockobject etc.), cbFree is null and should not been free.
+    _Handle *handle = AsHandle(h);
+    if (!handle->cbFree) // for static handle (stockobject etc.), cbFree is null and should not been free.
         return TRUE;
-    h->mutex.lock();
-    BOOL bFree = --h->nRef == 0;
-    h->mutex.unlock();
+    handle->mutex.lock();
+    BOOL bFree = --handle->nRef == 0;
+    handle->mutex.unlock();
     if (bFree)
     {
-        delete h;
+        delete handle;
     }
     return TRUE;
 }

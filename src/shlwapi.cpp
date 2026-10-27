@@ -281,7 +281,6 @@ BOOL WINAPI PathRemoveFileSpecA(LPSTR pszPath)
             return TRUE;
         }
     }
-    pszPath[0] = '\0';
     return FALSE;
 }
 
@@ -305,7 +304,7 @@ BOOL WINAPI PathRemoveFileSpecW(LPWSTR pszPath)
             return TRUE;
         }
     }
-    pszPath[0] = L'\0';
+    /* 同 PathRemoveFileSpecA：没有目录部分时返回 FALSE 并保留原串。 */
     return FALSE;
 }
 
@@ -357,8 +356,7 @@ BOOL WINAPI PathRenameExtensionW(LPWSTR pszPath, LPCWSTR pszExt)
 /* SHGetValue 就是一个 RegOpenKeyEx + RegQueryValueEx + RegCloseKey 的组合。
  * 现在注册表族已经有真实后端（src/platform/posix/registry.cpp，只读、可由
  * 配置文件填充），这里改成真的去查，而不是恒返回 ERROR_FILE_NOT_FOUND。 */
-DWORD WINAPI SHGetValueA(HKEY hkey, LPCSTR pszSubKey, LPCSTR pszValue,
-                         LPDWORD pdwType, void *pvData, LPDWORD pcbData)
+DWORD WINAPI SHGetValueA(HKEY hkey, LPCSTR pszSubKey, LPCSTR pszValue, LPDWORD pdwType, void *pvData, LPDWORD pcbData)
 {
     HKEY opened = 0;
     LONG rc = RegOpenKeyExA(hkey, pszSubKey, 0, KEY_READ, &opened);
@@ -370,8 +368,7 @@ DWORD WINAPI SHGetValueA(HKEY hkey, LPCSTR pszSubKey, LPCSTR pszValue,
     return (DWORD)rc;
 }
 
-DWORD WINAPI SHGetValueW(HKEY hkey, LPCWSTR pszSubKey, LPCWSTR pszValue,
-                         LPDWORD pdwType, void *pvData, LPDWORD pcbData)
+DWORD WINAPI SHGetValueW(HKEY hkey, LPCWSTR pszSubKey, LPCWSTR pszValue, LPDWORD pdwType, void *pvData, LPDWORD pcbData)
 {
     HKEY opened = 0;
     LONG rc = RegOpenKeyExW(hkey, pszSubKey, 0, KEY_READ, &opened);

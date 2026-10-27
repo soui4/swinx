@@ -26,15 +26,15 @@
 #define VS_FF_INFOINFERRED 0x00000010L
 #define VS_FF_SPECIALBUILD 0x00000020L
 
-#define VOS_UNKNOWN     0x00000000L
-#define VOS_DOS         0x00010000L
-#define VOS_NT          0x00040000L
-#define VOS__WINDOWS16  0x00000001L
-#define VOS__WINDOWS32  0x00000004L
-#define VOS_OS216       0x00020000L
-#define VOS_OS232       0x00030000L
-#define VOS__PM16       0x00000002L
-#define VOS__PM32       0x00000003L
+#define VOS_UNKNOWN    0x00000000L
+#define VOS_DOS        0x00010000L
+#define VOS_NT         0x00040000L
+#define VOS__WINDOWS16 0x00000001L
+#define VOS__WINDOWS32 0x00000004L
+#define VOS_OS216      0x00020000L
+#define VOS_OS232      0x00030000L
+#define VOS__PM16      0x00000002L
+#define VOS__PM32      0x00000003L
 
 /* 组合形式（SDK 里就是这几条的按位或，但调用方经常直接用名字） */
 #define VOS_DOS_WINDOWS16 0x00010001L
@@ -52,10 +52,10 @@
 
 typedef struct tagVS_FIXEDFILEINFO
 {
-    DWORD dwSignature;        // VS_FFI_SIGNATURE
-    DWORD dwStrucVersion;     // VS_FFI_STRUCVERSION
-    DWORD dwFileVersionMS;    // 主版本 << 16 | 次版本
-    DWORD dwFileVersionLS;    // 构建号 << 16 | 修订号
+    DWORD dwSignature;     // VS_FFI_SIGNATURE
+    DWORD dwStrucVersion;  // VS_FFI_STRUCVERSION
+    DWORD dwFileVersionMS; // 主版本 << 16 | 次版本
+    DWORD dwFileVersionLS; // 构建号 << 16 | 修订号
     DWORD dwProductVersionMS;
     DWORD dwProductVersionLS;
     DWORD dwFileFlagsMask;

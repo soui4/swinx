@@ -261,7 +261,8 @@ static BOOL SbRefreshWindowClip(HWND hWnd, BOOL bForce)
     /* FreeRTOS 平台没有平台窗口系统（SConnection 为 mobile 形状），客户区
        裁剪没有平台落地；且这里的深层窗口锁重入会触发 bare-metal 垫片
        （FreeRTOS 递归互斥量）下的挂死，直接跳过。 */
-    (void)hWnd; (void)bForce;
+    (void)hWnd;
+    (void)bForce;
     return TRUE;
 #else
     WndObj wndObj = WndMgr::fromHwnd(hWnd);

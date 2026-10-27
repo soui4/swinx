@@ -349,12 +349,8 @@
 | `GetCurrentPositionEx` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `GetDIBits` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `GetDeviceCaps` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-<<<<<<< HEAD
+| `GetFontData` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 | 只读 sfnt 表（非 sfnt 字体与 dwTable=0 的「整文件」请求返回 GDI_ERROR，因此 Type1 判定恒为 false）。GDI 的 dwTable 是 MAKEFOURCC 口径（首字符在最低字节），FreeType 的 FT_MAKE_TAG 相反，实现先按 Win32 口径翻转查一次、失败再用原值查一次，两种写法都接受 |
 | `GetFontUnicodeRanges` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
-=======
-| `GetFontData` | 实现 | src/fontapi.cpp | 只读 sfnt 表（非 sfnt 字体与 dwTable=0 的「整文件」请求返回 GDI_ERROR，因此 Type1 判定恒为 false）。GDI 的 dwTable 是 MAKEFOURCC 口径（首字符在最低字节），FreeType 的 FT_MAKE_TAG 相反，实现先按 Win32 口径翻转查一次、失败再用原值查一次，两种写法都接受 |
-| `GetFontUnicodeRanges` | 实现 | src/fontapi.cpp |  |
->>>>>>> d2c9a09 (add agents.md)
 | `GetGdiObjPtr` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 | GDI 句柄表内部辅助 |
 | `GetGlyphIndicesA` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
 | `GetGlyphIndicesW` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
@@ -447,8 +443,8 @@
 | `GetBkColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `GetBkMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `GetBrushOrgEx` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetCharWidth32A` | 简单实现 | src/fontapi.cpp | 转发 GetCharWidthA：Win32 里 32 位版本与旧版语义相同，只是宽度按 32 位整数给出 |
-| `GetCharWidth32W` | 简单实现 | src/fontapi.cpp | 转发 GetCharWidthW |
+| `GetCharWidth32A` | 简单实现 | src/gdi/apple/fontapi.cpp 等 2 处 | 转发 GetCharWidthA：Win32 里 32 位版本与旧版语义相同，只是宽度按 32 位整数给出 |
+| `GetCharWidth32W` | 简单实现 | src/gdi/apple/fontapi.cpp 等 2 处 | 转发 GetCharWidthW |
 | `GetGraphicsMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 | 读取 DC 记录的 graphicsMode（纯状态存取，两种模式行为相同）；NULL HDC 返回 0 |
 | `GetMapMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 | 恒返回 MM_TEXT（唯一支持的映射模式），NULL HDC 返回 0 |
 | `GetMiterLimit` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
@@ -467,8 +463,8 @@
 | `SetROP2` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `SetTextAlign` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `SetTextColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetCharacterPlacementA` | 部分实现 | src/fontapi.cpp | ANSI 入参按 UTF-8 转宽字符后复用 W 版实现 |
-| `GetCharacterPlacementW` | 部分实现 | src/fontapi.cpp | 逐字符 charmap + horiAdvance 累加：不做连字 / 字距 / bidi / kinsoku，dwFlags 全部忽略；按 nMaxExtent 截断并回填 nMaxFit，lpDx/lpGlyphs 缓冲不足时按 Win32 约定把 lpGlyphs 置 NULL 并回传所需数量；返回值按 Win32 打包——低 16 位是总宽度、高 16 位是拟合字数 |
+| `GetCharacterPlacementA` | 部分实现 | src/gdi/apple/fontapi.cpp 等 2 处 | ANSI 入参按 UTF-8 转宽字符后复用 W 版实现 |
+| `GetCharacterPlacementW` | 部分实现 | src/gdi/apple/fontapi.cpp 等 2 处 | 逐字符 charmap + horiAdvance 累加：不做连字 / 字距 / bidi / kinsoku，dwFlags 全部忽略；按 nMaxExtent 截断并回填 nMaxFit，lpDx/lpGlyphs 缓冲不足时按 Win32 约定把 lpGlyphs 置 NULL 并回传所需数量；返回值按 Win32 打包——低 16 位是总宽度、高 16 位是拟合字数 |
 | `ExtEscape` | 空实现 | src/gdi/apple/gdi.cpp 等 2 处 | 恒返回 0（含 QUERYESCSUPPORT 探测）：本层没有打印机转义通道，如实报「不支持」比伪造成功安全 |
 | `RealizePalette` | 空实现 | src/gdi/apple/gdi.cpp 等 2 处 | 恒返回 0（无调色板概念） |
 | `SelectPalette` | 空实现 | src/gdi/apple/gdi.cpp 等 2 处 | 恒返回 NULL（无调色板概念） |
@@ -621,7 +617,7 @@
 | `GetTempFileNameW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetTempPathA` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetTempPathW` | 实现 | src/platform/*/sysapi.cpp |  |
-| `GetThreadTimes` | 实现 | src/platform/*/sysapi.cpp |  |
+| `GetThreadTimes` | 实现 | src/platform/*/sysapi.cpp | 四个出参都允许传 NULL，逐项跳过写回后仍返回 TRUE（Windows 实测如此，早期在入口拦成 ERROR_INVALID_PARAMETER 会在 Windows 端跑不过 fun_test）；POSIX 没有线程创建/退出时间的入口，除 user 外三项填 0，所以调用方只能断言 lpExitTime |
 | `GetUserDefaultLCID` | 实现 | src/winnsl.cpp |  |
 | `GetUserDefaultLangID` | 实现 | src/winnsl.cpp |  |
 | `GetUserDefaultUILanguage` | 实现 | src/winnsl.cpp |  |
@@ -950,8 +946,8 @@
 | `PathQuoteSpacesW` | 实现 | src/platform/*/shellapi.cpp |  |
 | `PathRemoveExtensionA` | 实现 | src/shlwapi.cpp |  |
 | `PathRemoveExtensionW` | 实现 | src/shlwapi.cpp |  |
-| `PathRemoveFileSpecA` | 实现 | src/shlwapi.cpp |  |
-| `PathRemoveFileSpecW` | 实现 | src/shlwapi.cpp |  |
+| `PathRemoveFileSpecA` | 实现 | src/shlwapi.cpp | 同 PathRemoveFileSpecW |
+| `PathRemoveFileSpecW` | 实现 | src/shlwapi.cpp | 整串只有文件名、没有目录部分时返回 FALSE 且不修改缓冲；系统 shlwapi 在这里把文件名本身当 file spec 去掉（返回非 0、缓冲清空），fun_test 按平台分别断言两种口径 |
 | `PathRenameExtensionA` | 实现 | src/shlwapi.cpp |  |
 | `PathRenameExtensionW` | 实现 | src/shlwapi.cpp |  |
 | `PathUnquoteSpacesW` | 实现 | src/platform/*/shellapi.cpp |  |
@@ -1101,10 +1097,10 @@
 | `RegisterClassW` | 实现 | src/class.cpp |  |
 | `ScriptFreeCache` | 实现 | src/platform/*/usp10.cpp |  |
 | `ScriptGetFontProperties` | 实现 | src/platform/*/usp10.cpp |  |
-| `ScriptItemize` | 实现 | src/platform/*/usp10.cpp | 把整串当成一个 run（sScript = SCRIPT_UNDEFINED），不做脚本分段；E_OUTOFMEMORY 表示 run 数组不足 2 项 |
+| `ScriptItemize` | 实现 | src/platform/*/usp10.cpp | 把整串当成一个 run（eScript = SCRIPT_UNDEFINED），不做脚本分段；入参校验照 SDK：pwcInChars/cInChars<=0/pItems/cMaxItems<2/pcItems 为空都是 E_INVALIDARG，出错不写 pcItems（原先 cMaxItems<2 报 E_OUTOFMEMORY，WebKit 传 5 项走不到那条分支）；字符串参数是本地 WCHAR，调用方必须逐 UTF-16 码元转换以保持下标对齐 |
 | `ScriptPlace` | 实现 | src/platform/*/usp10.cpp |  |
 | `ScriptShape` | 实现 | src/platform/*/usp10.cpp |  |
-| `ScriptStringAnalyse` | 实现 | src/platform/*/usp10.cpp |  |
+| `ScriptStringAnalyse` | 实现 | src/platform/*/usp10.cpp | pString 在 SDK 里是 const void*，类型拦不住调用方，靠 iCharset 区分：-1 = 本地 WCHAR（cString 数 WCHAR），其它 = ANSI（cString 数字节，swinx 按 UTF-8 解码）；空串返回 E_INVALIDARG，与 SDK 一致 |
 | `ScriptStringFree` | 实现 | src/platform/*/usp10.cpp |  |
 | `ScriptStringOut` | 实现 | src/platform/*/usp10.cpp |  |
 | `ScriptXtoCP` | 实现 | src/platform/*/usp10.cpp | 按 Advance 累加定位字形，再按「落在字形后半段」给出 trailing 标志 |

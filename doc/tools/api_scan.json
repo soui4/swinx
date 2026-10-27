@@ -4887,12 +4887,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -4903,12 +4909,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5445,12 +5457,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5461,12 +5479,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5477,12 +5501,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5493,12 +5523,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5509,12 +5545,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5525,12 +5567,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5541,12 +5589,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5557,12 +5611,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5573,12 +5633,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5589,12 +5655,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5605,12 +5677,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5621,12 +5699,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]
@@ -5637,12 +5721,18 @@
     "gdi.h"
    ],
    "files": [
-    "fontapi.cpp"
+    "gdi/apple/fontapi.cpp",
+    "gdi/cairo/fontapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "fontapi.cpp",
+     "gdi/apple/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/cairo/fontapi.cpp",
      "impl",
      ""
     ]

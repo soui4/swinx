@@ -21,14 +21,14 @@ typedef ULONG_PTR HCRYPTHASH;
 
 /* 提供者类型。只有 PROV_RSA_FULL 在 swinx 上有意义 —— 它对应"任意来源的
  * 强随机数"，其余类型都涉及真实的密钥算法实现。 */
-#define PROV_RSA_FULL      1
-#define PROV_RSA_SIG       2
-#define PROV_DSS           3
-#define PROV_DSS_DH        13
-#define PROV_RSA_SCHANNEL  12
-#define PROV_DH_SCHANNEL   18
-#define PROV_EC_ECDSA_SIG  14
-#define PROV_EC_ECNRA_SIG  15
+#define PROV_RSA_FULL     1
+#define PROV_RSA_SIG      2
+#define PROV_DSS          3
+#define PROV_DSS_DH       13
+#define PROV_RSA_SCHANNEL 12
+#define PROV_DH_SCHANNEL  18
+#define PROV_EC_ECDSA_SIG 14
+#define PROV_EC_ECNRA_SIG 15
 
 /* CryptAcquireContext 的 dwFlags */
 #define CRYPT_VERIFYCONTEXT  0xF0000000

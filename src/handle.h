@@ -1,10 +1,11 @@
 #ifndef _HANDLE_H_
 #define _HANDLE_H_
 
+#include <windows.h>
 #include <mutex>
 
 typedef void (*FreeHandlePtr)(void *ptr);
-typedef struct _Handle
+struct _Handle
 {
     std::recursive_mutex mutex;
     int type;
@@ -14,7 +15,7 @@ typedef struct _Handle
 
     _Handle(int _type, void *_ptr, FreeHandlePtr _cbFree);
     virtual ~_Handle();
-} * HANDLE;
+};
 
 enum
 {
@@ -29,13 +30,20 @@ enum
     WAIT_OBJ = 300,
 };
 
+/* 公共面的 HANDLE 是 void*（与 Windows SDK 一致），内部非空句柄一律指向上面
+ * 的 _Handle 包装。凡是需要读写包装成员（type/ptr/nRef/mutex）的地方都先经
+ * AsHandle 取回真实类型。 */
+inline _Handle *AsHandle(HANDLE h)
+{
+    return static_cast<_Handle *>(h);
+}
+
 /* GDI 句柄对外的类型与 Windows SDK 一致：HGDIOBJ 是 void*，HBITMAP/HPEN/...
  * 是各自独立的结构体指针，所以任何具体句柄都能隐式转成 HGDIOBJ，但反过来
- * （void* -> HFONT 等）需要显式转换。swinx 内部这些句柄指向的对象都是同一个
- * _Handle 包装，凡是需要读写包装成员（type/ptr/nRef）的地方统一走这里。 */
-inline HANDLE ToGdiHandle(void *h)
+ * （void* -> HFONT 等）需要显式转换。它们内部同样指向 _Handle 包装。 */
+inline _Handle *ToGdiHandle(HGDIOBJ h)
 {
-    return (HANDLE)h;
+    return AsHandle(h);
 }
 
 HANDLE WINAPI AddHandleRef(HANDLE hHandle);

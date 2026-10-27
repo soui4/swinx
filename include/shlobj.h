@@ -77,57 +77,57 @@ typedef FILEDESCRIPTORA FILEDESCRIPTOR, *LPFILEDESCRIPTOR;
 typedef FILEGROUPDESCRIPTORA FILEGROUPDESCRIPTOR, *LPFILEGROUPDESCRIPTOR;
 #endif
 
-#define FD_CLSID       0x00000001
-#define FD_SIZEPOINT   0x00000002
-#define FD_ATTRIBUTES  0x00000004
-#define FD_CREATETIME  0x00000008
-#define FD_ACCESSTIME  0x00000010
-#define FD_WRITESTIME  0x00000020
-#define FD_FILESIZE    0x00000040
-#define FD_PROGRESSUI  0x00004000
-#define FD_LINKUI      0x00008000
+#define FD_CLSID      0x00000001
+#define FD_SIZEPOINT  0x00000002
+#define FD_ATTRIBUTES 0x00000004
+#define FD_CREATETIME 0x00000008
+#define FD_ACCESSTIME 0x00000010
+#define FD_WRITESTIME 0x00000020
+#define FD_FILESIZE   0x00000040
+#define FD_PROGRESSUI 0x00004000
+#define FD_LINKUI     0x00008000
 
 /* Clipboard/drag format names (shlobj.h of the SDK). */
-#define CFSTR_SHELLIDLIST               TEXT("Shell IDList Array")
-#define CFSTR_SHELLIDLISTOFFSET         TEXT("Shell Object Offsets")
-#define CFSTR_NETRESOURCES              TEXT("Net Resource")
-#define CFSTR_FILEDESCRIPTORA           TEXT("FileGroupDescriptor")
-#define CFSTR_FILEDESCRIPTORW           TEXT("FileGroupDescriptorW")
-#define CFSTR_FILECONTENTS              TEXT("FileContents")
-#define CFSTR_FILENAMEA                 TEXT("FileName")
-#define CFSTR_FILENAMEW                 TEXT("FileNameW")
-#define CFSTR_PRINTERGROUP              TEXT("PrinterFriendlyName")
-#define CFSTR_FILENAMEMAPA              TEXT("FileNameMap")
-#define CFSTR_FILENAMEMAPW              TEXT("FileNameMapW")
-#define CFSTR_SHELLURL                  TEXT("UniformResourceLocator")
-#define CFSTR_INETURLA                  CFSTR_SHELLURL
-#define CFSTR_INETURLW                  TEXT("UniformResourceLocatorW")
-#define CFSTR_PREFERREDDROPEFFECT       TEXT("Preferred DropEffect")
-#define CFSTR_PERFORMEDDROPEFFECT       TEXT("Performed DropEffect")
-#define CFSTR_PASTESUCCEEDED            TEXT("Paste Succeeded")
-#define CFSTR_INDRAGLOOP                TEXT("InShellDragLoop")
-#define CFSTR_MOUNTEDVOLUME             TEXT("MountedVolume")
-#define CFSTR_PERSISTEDDATAOBJECT       TEXT("PersistedDataObject")
-#define CFSTR_TARGETCLSID               TEXT("TargetCLSID")
+#define CFSTR_SHELLIDLIST                TEXT("Shell IDList Array")
+#define CFSTR_SHELLIDLISTOFFSET          TEXT("Shell Object Offsets")
+#define CFSTR_NETRESOURCES               TEXT("Net Resource")
+#define CFSTR_FILEDESCRIPTORA            TEXT("FileGroupDescriptor")
+#define CFSTR_FILEDESCRIPTORW            TEXT("FileGroupDescriptorW")
+#define CFSTR_FILECONTENTS               TEXT("FileContents")
+#define CFSTR_FILENAMEA                  TEXT("FileName")
+#define CFSTR_FILENAMEW                  TEXT("FileNameW")
+#define CFSTR_PRINTERGROUP               TEXT("PrinterFriendlyName")
+#define CFSTR_FILENAMEMAPA               TEXT("FileNameMap")
+#define CFSTR_FILENAMEMAPW               TEXT("FileNameMapW")
+#define CFSTR_SHELLURL                   TEXT("UniformResourceLocator")
+#define CFSTR_INETURLA                   CFSTR_SHELLURL
+#define CFSTR_INETURLW                   TEXT("UniformResourceLocatorW")
+#define CFSTR_PREFERREDDROPEFFECT        TEXT("Preferred DropEffect")
+#define CFSTR_PERFORMEDDROPEFFECT        TEXT("Performed DropEffect")
+#define CFSTR_PASTESUCCEEDED             TEXT("Paste Succeeded")
+#define CFSTR_INDRAGLOOP                 TEXT("InShellDragLoop")
+#define CFSTR_MOUNTEDVOLUME              TEXT("MountedVolume")
+#define CFSTR_PERSISTEDDATAOBJECT        TEXT("PersistedDataObject")
+#define CFSTR_TARGETCLSID                TEXT("TargetCLSID")
 #define CFSTR_LOGICALPERFORMEDDROPEFFECT TEXT("Logical Performed DropEffect")
-#define CFSTR_AUTOPLAY_SHELLIDLISTS     TEXT("Autoplay Enumerated IDList Array")
-#define CFSTR_UNTRUSTEDDRAGDROP         TEXT("UntrustedDragDrop")
-#define CFSTR_FILE_ATTRIBUTES_ARRAY     TEXT("File Attributes Array")
+#define CFSTR_AUTOPLAY_SHELLIDLISTS      TEXT("Autoplay Enumerated IDList Array")
+#define CFSTR_UNTRUSTEDDRAGDROP          TEXT("UntrustedDragDrop")
+#define CFSTR_FILE_ATTRIBUTES_ARRAY      TEXT("File Attributes Array")
 #define CFSTR_INVOKECOMMAND_DROPPOSITION TEXT("InvokeCommand DropPosition")
-#define CFSTR_SHELLDROPHANDLER          TEXT("ShellDropHandler")
-#define CFSTR_DROPDESCRIPTION           TEXT("DropDescription")
-#define CFSTR_ZONEIDENTIFIER            TEXT("ZoneIdentifier")
+#define CFSTR_SHELLDROPHANDLER           TEXT("ShellDropHandler")
+#define CFSTR_DROPDESCRIPTION            TEXT("DropDescription")
+#define CFSTR_ZONEIDENTIFIER             TEXT("ZoneIdentifier")
 
 #ifdef UNICODE
-#define CFSTR_FILEDESCRIPTOR  CFSTR_FILEDESCRIPTORW
-#define CFSTR_FILENAME        CFSTR_FILENAMEW
-#define CFSTR_FILENAMEMAP     CFSTR_FILENAMEMAPW
-#define CFSTR_INETURL         CFSTR_INETURLW
+#define CFSTR_FILEDESCRIPTOR CFSTR_FILEDESCRIPTORW
+#define CFSTR_FILENAME       CFSTR_FILENAMEW
+#define CFSTR_FILENAMEMAP    CFSTR_FILENAMEMAPW
+#define CFSTR_INETURL        CFSTR_INETURLW
 #else
-#define CFSTR_FILEDESCRIPTOR  CFSTR_FILEDESCRIPTORA
-#define CFSTR_FILENAME        CFSTR_FILENAMEA
-#define CFSTR_FILENAMEMAP     CFSTR_FILENAMEMAPA
-#define CFSTR_INETURL         CFSTR_INETURLA
+#define CFSTR_FILEDESCRIPTOR CFSTR_FILEDESCRIPTORA
+#define CFSTR_FILENAME       CFSTR_FILENAMEA
+#define CFSTR_FILENAMEMAP    CFSTR_FILENAMEMAPA
+#define CFSTR_INETURL        CFSTR_INETURLA
 #endif
 
 #ifndef __IDragSourceHelper_FWD_DEFINED__

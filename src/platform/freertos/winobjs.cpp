@@ -10,8 +10,9 @@
  *
  * Framework conformance:
  *   * All objects are wrapped in the core _Handle registry (src/handle.cpp):
- *     HANDLE = struct _Handle*, CloseHandle()/AddHandleRef() come from the
- *     core -- this file defines NO handle-lifecycle functions of its own.
+ *     the public HANDLE is void* (as on Windows) and points at that wrapper;
+ *     CloseHandle()/AddHandleRef() come from the core -- this file defines NO
+ *     handle-lifecycle functions of its own.
  *   * Object kind is encoded in _Handle::type as SYN_OBJ + kind.
  *   * Named objects: a process-local name -> HANDLE registry (bare metal has
  *     a single "process"); the registry keeps one reference for the lifetime
@@ -118,9 +119,12 @@ HANDLE make_handle(int kind, void *obj)
 // typed object accessor: NULL unless h is a live handle of the given kind
 void *obj_of(HANDLE h, int kind)
 {
-    if (!h || h == INVALID_HANDLE_VALUE || h->type != SYN_OBJ + kind)
+    if (!h || h == INVALID_HANDLE_VALUE)
         return NULL;
-    return h->ptr;
+    _Handle *handle = AsHandle(h);
+    if (handle->type != SYN_OBJ + kind)
+        return NULL;
+    return handle->ptr;
 }
 
 // ---- named-object registry ----------------------------------------------
@@ -235,11 +239,12 @@ bool handle_ready(HANDLE h, bool consume)
 {
     if (!h || h == INVALID_HANDLE_VALUE)
         return false;
-    switch (h->type - SYN_OBJ)
+    _Handle *handle = AsHandle(h);
+    switch (handle->type - SYN_OBJ)
     {
     case kEvent:
     {
-        EventObj *ev = static_cast<EventObj *>(h->ptr);
+        EventObj *ev = static_cast<EventObj *>(handle->ptr);
         std::lock_guard<std::mutex> lk(ev->mtx);
         if (!ev->signaled)
             return false;
@@ -249,12 +254,12 @@ bool handle_ready(HANDLE h, bool consume)
     }
     case kThread:
     {
-        ThreadObj *t = static_cast<ThreadObj *>(h->ptr);
+        ThreadObj *t = static_cast<ThreadObj *>(handle->ptr);
         return t->done;
     }
     case kMutex:
     {
-        MutexObj *m = static_cast<MutexObj *>(h->ptr);
+        MutexObj *m = static_cast<MutexObj *>(handle->ptr);
         bool ok = swinx_fr::sem_take(m->sem, 0);
         if (ok && !consume)
             swinx_fr::sem_give(m->sem);   // peek only
@@ -262,7 +267,7 @@ bool handle_ready(HANDLE h, bool consume)
     }
     case kSem:
     {
-        SemObj *s = static_cast<SemObj *>(h->ptr);
+        SemObj *s = static_cast<SemObj *>(handle->ptr);
         std::lock_guard<std::mutex> lk(s->mtx);
         if (s->count <= 0)
             return false;
@@ -407,11 +412,12 @@ DWORD WINAPI WaitForSingleObject(HANDLE h, DWORD dwMilliseconds)
         return WAIT_TIMEOUT;
     }
 
-    switch (h->type - SYN_OBJ)
+    _Handle *handle = AsHandle(h);
+    switch (handle->type - SYN_OBJ)
     {
     case kEvent:
     {
-        EventObj *ev = static_cast<EventObj *>(h->ptr);
+        EventObj *ev = static_cast<EventObj *>(handle->ptr);
         std::unique_lock<std::mutex> lk(ev->mtx);
         while (!ev->signaled)
         {
@@ -425,12 +431,12 @@ DWORD WINAPI WaitForSingleObject(HANDLE h, DWORD dwMilliseconds)
     }
     case kMutex:
     {
-        MutexObj *m = static_cast<MutexObj *>(h->ptr);
+        MutexObj *m = static_cast<MutexObj *>(handle->ptr);
         return swinx_fr::sem_take(m->sem, ms_to_ticks(dwMilliseconds)) ? WAIT_OBJECT_0 : WAIT_TIMEOUT;
     }
     case kSem:
     {
-        SemObj *s = static_cast<SemObj *>(h->ptr);
+        SemObj *s = static_cast<SemObj *>(handle->ptr);
         std::unique_lock<std::mutex> lk(s->mtx);
         while (s->count <= 0)
         {
@@ -443,7 +449,7 @@ DWORD WINAPI WaitForSingleObject(HANDLE h, DWORD dwMilliseconds)
     }
     case kThread:
     {
-        ThreadObj *t = static_cast<ThreadObj *>(h->ptr);
+        ThreadObj *t = static_cast<ThreadObj *>(handle->ptr);
         if (t->done)
             return WAIT_OBJECT_0;
         bool ok = swinx_fr::sem_take(t->joinSem, ms_to_ticks(dwMilliseconds));

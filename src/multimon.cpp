@@ -226,30 +226,31 @@ static HMONITOR _monMonitorByIndex(SConnection *pConn, int nMonitorIndex, int *p
 /* DEVMODE 里除 dmDeviceName / dmFormName 之外的字段在 A/W 两个版本中布局一致，
  * 可以逐字段搬运。跳过 dmSize / dmDriverExtra（由调用方缓冲区决定），
  * 也跳过与 dmOrientation/dmPosition 共用的匿名联合体。 */
-#define SWINX_DEVMODE_COPY_FIELDS(dst, src)              \
-    do {                                                 \
-        (dst).dmSpecVersion = (src).dmSpecVersion;       \
-        (dst).dmDriverVersion = (src).dmDriverVersion;   \
-        (dst).dmFields = (src).dmFields;                 \
-        (dst).dmColor = (src).dmColor;                   \
-        (dst).dmDuplex = (src).dmDuplex;                 \
-        (dst).dmYResolution = (src).dmYResolution;       \
-        (dst).dmTTOption = (src).dmTTOption;             \
-        (dst).dmCollate = (src).dmCollate;               \
-        (dst).dmLogPixels = (src).dmLogPixels;           \
-        (dst).dmBitsPerPel = (src).dmBitsPerPel;         \
-        (dst).dmPelsWidth = (src).dmPelsWidth;           \
-        (dst).dmPelsHeight = (src).dmPelsHeight;         \
-        (dst).dmDisplayFlags = (src).dmDisplayFlags;     \
+#define SWINX_DEVMODE_COPY_FIELDS(dst, src)                  \
+    do                                                       \
+    {                                                        \
+        (dst).dmSpecVersion = (src).dmSpecVersion;           \
+        (dst).dmDriverVersion = (src).dmDriverVersion;       \
+        (dst).dmFields = (src).dmFields;                     \
+        (dst).dmColor = (src).dmColor;                       \
+        (dst).dmDuplex = (src).dmDuplex;                     \
+        (dst).dmYResolution = (src).dmYResolution;           \
+        (dst).dmTTOption = (src).dmTTOption;                 \
+        (dst).dmCollate = (src).dmCollate;                   \
+        (dst).dmLogPixels = (src).dmLogPixels;               \
+        (dst).dmBitsPerPel = (src).dmBitsPerPel;             \
+        (dst).dmPelsWidth = (src).dmPelsWidth;               \
+        (dst).dmPelsHeight = (src).dmPelsHeight;             \
+        (dst).dmDisplayFlags = (src).dmDisplayFlags;         \
         (dst).dmDisplayFrequency = (src).dmDisplayFrequency; \
-        (dst).dmICMMethod = (src).dmICMMethod;           \
-        (dst).dmICMIntent = (src).dmICMIntent;           \
-        (dst).dmMediaType = (src).dmMediaType;           \
-        (dst).dmDitherType = (src).dmDitherType;         \
-        (dst).dmReserved1 = (src).dmReserved1;           \
-        (dst).dmReserved2 = (src).dmReserved2;           \
-        (dst).dmPanningWidth = (src).dmPanningWidth;     \
-        (dst).dmPanningHeight = (src).dmPanningHeight;   \
+        (dst).dmICMMethod = (src).dmICMMethod;               \
+        (dst).dmICMIntent = (src).dmICMIntent;               \
+        (dst).dmMediaType = (src).dmMediaType;               \
+        (dst).dmDitherType = (src).dmDitherType;             \
+        (dst).dmReserved1 = (src).dmReserved1;               \
+        (dst).dmReserved2 = (src).dmReserved2;               \
+        (dst).dmPanningWidth = (src).dmPanningWidth;         \
+        (dst).dmPanningHeight = (src).dmPanningHeight;       \
     } while (0)
 
 /* swinx 没有显示模式表，只支持「当前设置」（ENUM_CURRENT_SETTINGS）。

@@ -1,7 +1,7 @@
 /* Uniscribe（usp10）的 POSIX 实现。
  *
  * 明确的实现边界：**不做整形**。
- *   - ScriptItemize 把整串当成一个 run（sScript = SCRIPT_UNDEFINED）；
+ *   - ScriptItemize 把整串当成一个 run（eScript = SCRIPT_UNDEFINED）；
  *   - ScriptShape 一个 UTF-16 码元对一个字形，clusters 恒等；
  *   - ScriptPlace 用 GetCharWidthI 取步进，GOFFSET 全 0。
  *
@@ -16,8 +16,12 @@
  * 覆盖该字符串的家族，把它的 HFONT 选进那个录制 DC —— 于是 CJK 回退能真的
  * 工作，而不是永远返回主字体。
  *
- * ⚠️ 宽度：入参字符串是 UTF-16 码元（见 usp10.h 的说明），交给 swinx 的
- * GDI 之前必须先转成本地 wchar_t 串。
+ * ⚠️ 文本口径（见 usp10.h 的说明）：
+ *   - ScriptItemize / ScriptShape 只收本地 WCHAR，调用方必须**逐 UTF-16 码元**转换，
+ *     因为 iCharPos / pwLogClust / piCP 都是传入数组的下标；所以这里拿到的是
+ *     "一个 WCHAR 一个码元"，代理半值原样保留，交给 GDI/fontconfig 时与改动前一致。
+ *   - ScriptStringAnalyse 按 SDK 允许两种口径，由 iCharset 区分：-1 是本地 WCHAR，
+ *     其它按 UTF-8 字节解码（swinx 只有这一种多字节口径）。
  */
 
 #include <windows.h>
@@ -35,19 +39,69 @@
 namespace
 {
 
-std::wstring toWideString(const SCRIPT_UCHAR *chars, int count)
+/* WCHAR 就是本地 wchar_t，所以这一步只是换个容器。调用方保证 chars 非空、
+ * count >= 0（三个入口都先判过）。 */
+std::wstring toWideString(const WCHAR *chars, int count)
 {
-    std::wstring out;
-    out.reserve((size_t)count);
-    for (int i = 0; i < count; ++i)
-        out.push_back((wchar_t)chars[i]);
-    return out;
+    return std::wstring(chars, chars + count);
+}
+
+/* ScriptStringAnalyse 的 ANSI 口径：pString 是 cString 个"该代码页的字符"，
+ * 也就是字节。swinx 全线只有两种文本口径 —— 本地 WCHAR 与 UTF-8（GetACP 恒返回
+ * CP_UTF8，见 sysapi.cpp），所以非 -1 的 iCharset 一律按 UTF-8 解码，不做
+ * charset -> 代码页的映射（真实 Uniscribe 走 GetCharsetInfo 那张表，而 swinx 的
+ * 调用方没有任何一条路径会喂进非 UTF-8 的 ANSI 串）。
+ *
+ * 解码后的码点数可以比 cString 少，这是与 Win32 的 DBCS 情形一致的：cString 数的
+ * 始终是**输入缓冲里的单位**，不是码点数。因此凡是会把"字符下标"交回给调用方的
+ * 接口（ScriptStringPtoCP / ScriptStringXtoCP、ScriptStringOut 的 iMinSel/iMaxSel）
+ * 以后要实现时，必须留着字节 -> 码点的映射表；现在这几个参数都没有落点。 */
+bool decodeAnsiToNative(const void *bytes, int cBytes, std::vector<WCHAR> &out)
+{
+    const char *src = (const char *)bytes;
+
+    /* 一趟搞定，容量按字节数取上界：UTF-8 的码点数永远不会超过字节数。
+     * 不先问长度是因为 swinx 的 UTF-8 解码器在非法字节上两趟的结果会不一致
+     * （探测趟报 0、写出趟报 1），先问再用那个数会误判成"缓冲不够"。 */
+    out.assign((size_t)cBytes, (WCHAR)0xFFFD);
+    int written = MultiByteToWideChar(CP_UTF8, 0, src, cBytes, &out[0], cBytes);
+    if (written < 1)
+    {
+        out.clear();
+        return false;
+    }
+    out.resize((size_t)written);
+
+    /* 用 sizeof(WCHAR) 而不是 WCHAR_SIZE 宏：后者要靠构建系统传 -DWCHAR_SIZE，
+     * 没传时只有 uniconv.h 的兜底值，而本文件没有引那个头。sizeof 在这里是编译期
+     * 常量，两条平台分支各自只在自己那一侧生效，条件本身会被折叠掉。
+     *
+     * 无效字节的产出可能越界（实测有 0x1C0000 这种），而 UTF-32 里也不该存代理值。
+     * Win32 在这里的语义是"替换成 U+FFFD 继续画 + 置 ERROR_NO_UNICODE_TRANSLATION"，
+     * 这里照做，别让一个坏字节把整条分析接口打成失败。2 字节构建上码点本来就是
+     * UTF-16 单元，代理半值是合法产出，清洗会连它们一起误伤，所以那一侧不做。 */
+    if (sizeof(WCHAR) == 4)
+    {
+        bool replaced = false;
+        for (size_t i = 0; i < out.size(); ++i)
+        {
+            WCHAR c = out[i];
+            if (c > 0x10FFFF || (c >= 0xD800 && c <= 0xDFFF))
+            {
+                out[i] = 0xFFFD;
+                replaced = true;
+            }
+        }
+        if (replaced)
+            SetLastError(ERROR_NO_UNICODE_TRANSLATION);
+    }
+    return true;
 }
 
 /* 找出覆盖这些码点的字体家族（UTF-8 家族名）。找不到返回空串。
  * 保持调用方当前的家族优先：fontconfig 的排序已经把"与 baseFamily 最接近"
  * 的字体排在前面，按顺序取第一个覆盖全部字符的即可。 */
-std::string findCoveringFamily(const std::vector<SCRIPT_UCHAR> &text, const char *baseFamily)
+std::string findCoveringFamily(const std::vector<WCHAR> &text, const char *baseFamily)
 {
     if (text.empty())
         return std::string();
@@ -113,7 +167,7 @@ HFONT createFontLike(HDC hdc, const std::string &familyUtf8)
 /* SSA_FALLBACK：当前字体画不全这些字符时，找一个能画全的。
  * 返回 0 表示"不需要 / 找不到"——两种情况下都沿用 DC 上已选的字体，
  * 与 Uniscribe 在找不到回退字体时的行为一致（画 .notdef）。 */
-HFONT pickFallbackFont(HDC hdc, const std::vector<SCRIPT_UCHAR> &text)
+HFONT pickFallbackFont(HDC hdc, const std::vector<WCHAR> &text)
 {
     if (text.empty())
         return 0;
@@ -150,7 +204,7 @@ struct ScriptStringImpl
 {
     HDC hdc;
     DWORD flags;
-    std::vector<SCRIPT_UCHAR> text;
+    std::vector<WCHAR> text;
     HFONT fallbackFont;
 
     ScriptStringImpl()
@@ -168,7 +222,7 @@ inline ScriptStringImpl *implOf(SCRIPT_STRING_ANALYSIS ssa)
 
 } // namespace
 
-HRESULT WINAPI ScriptItemize(const SCRIPT_UCHAR *pwcInChars, int cInChars, int cMaxItems,
+HRESULT WINAPI ScriptItemize(const WCHAR *pwcInChars, int cInChars, int cMaxItems,
                              const SCRIPT_CONTROL *psControl, const SCRIPT_STATE *psState,
                              SCRIPT_ITEM *pItems, int *pcItems)
 {
@@ -195,7 +249,7 @@ HRESULT WINAPI ScriptItemize(const SCRIPT_UCHAR *pwcInChars, int cInChars, int c
 
     memset(&pItems[0], 0, sizeof(SCRIPT_ITEM));
     pItems[0].iCharPos = 0;
-    pItems[0].a.sScript = SCRIPT_UNDEFINED;
+    pItems[0].a.eScript = SCRIPT_UNDEFINED;
     if (psState)
         pItems[0].a.state = *psState;
 
@@ -206,7 +260,7 @@ HRESULT WINAPI ScriptItemize(const SCRIPT_UCHAR *pwcInChars, int cInChars, int c
     return S_OK;
 }
 
-HRESULT WINAPI ScriptShape(HDC hdc, SCRIPT_CACHE *psc, const SCRIPT_UCHAR *pwcChars, int cChars,
+HRESULT WINAPI ScriptShape(HDC hdc, SCRIPT_CACHE *psc, const WCHAR *pwcChars, int cChars,
                            int cMaxGlyphs, SCRIPT_ANALYSIS *psa, WORD *pwOutGlyphs,
                            WORD *pwLogClust, SCRIPT_VISATTR *psva, int *pcGlyphs)
 {
@@ -304,8 +358,7 @@ HRESULT WINAPI ScriptGetFontProperties(HDC hdc, SCRIPT_CACHE *psc, SCRIPT_FONTPR
     /* 三个"特殊字形"一次问出来：空白、缺省字符（U+FFFF 不可用时的占位）、
      * 非法字符。FreeType 未命中时 GetGlyphIndicesW 给 0，也就是 .notdef，
      * 正是 Win32 在这里的语义。 */
-    static const SCRIPT_UCHAR kProbe[3] = { (SCRIPT_UCHAR)' ', (SCRIPT_UCHAR)0xFFFF,
-                                            (SCRIPT_UCHAR)0xFFFD };
+    static const WCHAR kProbe[3] = { (WCHAR)' ', (WCHAR)0xFFFF, (WCHAR)0xFFFD };
     std::wstring wide = toWideString(kProbe, 3);
     WORD glyphs[3] = { 0, 0, 0 };
     if (GetGlyphIndicesW(hdc, wide.c_str(), 3, glyphs, 0) == GDI_ERROR)
@@ -375,9 +428,10 @@ HRESULT WINAPI ScriptStringAnalyse(HDC hdc, const void *pString, int cString, in
                                    const int *piDx, SCRIPT_TABDEF *pTabdef,
                                    const BYTE *pbInClass, SCRIPT_STRING_ANALYSIS *pssa)
 {
-    /* 不做整形，这些参数没有落点；保留形参是为了与 SDK 的签名和调用点一致。 */
+    /* 不做整形，这些参数没有落点；保留形参是为了与 SDK 的签名和调用点一致。
+     * cGlyphs：SDK 里 -1 表示"最多一个字符一个字形"，0 表示让 Uniscribe 自己算
+     * （WebKit 的 FontCacheWin 就传 0）；本实现恒定 1 字符 1 字形，两者同义。 */
     (void)cGlyphs;
-    (void)iCharset;
     (void)iReserved;
     (void)pControl;
     (void)pState;
@@ -387,20 +441,31 @@ HRESULT WINAPI ScriptStringAnalyse(HDC hdc, const void *pString, int cString, in
 
     if (!hdc || !pssa)
         return E_INVALIDARG;
-    if (cString < 0 || (cString > 0 && !pString))
+    /* SDK 明确要求串至少有一个字符；空串在这里就拒掉，别让 ScriptStringOut
+     * 画出一个"看起来成功"的空结果。 */
+    if (!pString || cString < 1)
         return E_INVALIDARG;
 
     ScriptStringImpl *impl = new ScriptStringImpl;
     impl->hdc = hdc;
     impl->flags = dwFlags;
 
-    if (cString > 0)
+    /* pString 在 SDK 里是 const void*，靠类型拦不住调用方，只有 iCharset 能区分
+     * 两种口径：-1 = Unicode（本地 WCHAR，cString 数 WCHAR 个数）；
+     * 其它 = 该代码页的字符（swinx 按 UTF-8，cString 数字节数）。 */
+    if (iCharset == -1)
     {
-        const SCRIPT_UCHAR *chars = (const SCRIPT_UCHAR *)pString; /* UTF-16，见头文件说明 */
+        const WCHAR *chars = (const WCHAR *)pString;
         impl->text.assign(chars, chars + cString);
-        if (dwFlags & SSA_FALLBACK)
-            impl->fallbackFont = pickFallbackFont(hdc, impl->text);
     }
+    else if (!decodeAnsiToNative(pString, cString, impl->text))
+    {
+        delete impl;
+        return E_INVALIDARG;
+    }
+
+    if (dwFlags & SSA_FALLBACK)
+        impl->fallbackFont = pickFallbackFont(hdc, impl->text);
 
     *pssa = (SCRIPT_STRING_ANALYSIS)impl;
     return S_OK;

@@ -25,8 +25,10 @@
 #endif
 
 static inline bool CGAffineTransformIsInvertible_shim(CGAffineTransform t) {
+    if (!isfinite(t.a) || !isfinite(t.b) || !isfinite(t.c) || !isfinite(t.d) || !isfinite(t.tx) || !isfinite(t.ty))
+        return false;
     double det = t.a * t.d - t.b * t.c;
-    return det != 0.0 && isfinite(det);
+    return det != 0.0;
 }
 #define CGAffineTransformIsInvertible(t) CGAffineTransformIsInvertible_shim(t)
 
@@ -4747,8 +4749,15 @@ BOOL GetWorldTransform(HDC hdc, LPXFORM lpxf)
 
 BOOL SetWorldTransform(HDC hdc, const XFORM *lpxf)
 {
+    if (!lpxf)
+        return FALSE;
+    CGAffineTransform mtx = CGAffineTransformMake(lpxf->eM11, lpxf->eM12, lpxf->eM21, lpxf->eM22, lpxf->eDx, lpxf->eDy);
+    // 与 cairo 后端一致：拒绝不可逆/非有限矩阵。写入奇异 CTM 后
+    // CGAffineTransformInvert 也无法把它还原，整块绘制区域会一直退化为 0。
+    if (!CGAffineTransformIsInvertible(mtx))
+        return FALSE;
     CGAffineTransform oldTotal = calc_total(hdc);
-    *hdc->worldMtx = CGAffineTransformMake(lpxf->eM11, lpxf->eM12, lpxf->eM21, lpxf->eM22, lpxf->eDx, lpxf->eDy);
+    *hdc->worldMtx = mtx;
     update_transform(hdc, oldTotal);
     return TRUE;
 }
@@ -4771,17 +4780,23 @@ BOOL ModifyWorldTransform(HDC hdc,              // handle to device context
     if (!lpXform)
         return FALSE;
     CGAffineTransform mtx = CGAffineTransformMake(lpXform->eM11, lpXform->eM12, lpXform->eM21, lpXform->eM22, lpXform->eDx, lpXform->eDy);
+    if (!CGAffineTransformIsInvertible(mtx))
+        return FALSE;
+    CGAffineTransform result;
     switch (iMode)
     {
     case MWT_LEFTMULTIPLY:
-        *hdc->worldMtx = CGAffineTransformConcat(mtx, *hdc->worldMtx);
+        result = CGAffineTransformConcat(mtx, *hdc->worldMtx);
         break;
     case MWT_RIGHTMULTIPLY:
-        *hdc->worldMtx = CGAffineTransformConcat(*hdc->worldMtx, mtx);
+        result = CGAffineTransformConcat(*hdc->worldMtx, mtx);
         break;
     default:
         return FALSE;
     }
+    if (!CGAffineTransformIsInvertible(result))
+        return FALSE;
+    *hdc->worldMtx = result;
     update_transform(hdc, oldTotal);
     return TRUE;
 }
