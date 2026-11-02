@@ -153,6 +153,11 @@ class SConnection {
 
     BOOL GetCursorPos(LPPOINT ppt) const;
 
+    // 记录输入事件（如托盘图标点击）本身携带的全局光标位置。指针位于 X 服务器
+    // 不可见的区域（如 Wayland 原生面板）或收到合成事件时，xcb_query_pointer 会
+    // 停留在上一次已知位置，GetCursorPos 在该记录的有效期内优先返回它。
+    void SetCursorPosHint(POINT pt);
+
     int GetDpi(BOOL bx) const;
 
     void KillWindowTimer(HWND hWnd);
@@ -400,6 +405,12 @@ public:
     // when synthesizing WM_TIMER. Only touched by this connection's UI thread.
     POINT m_ptCursorCache={0,0};
     bool m_bCursorCache=false;
+    // 最近一次由输入事件（托盘图标点击等）记录的全局光标位置，仅在记录后的
+    // 短时间内由 GetCursorPos 使用，见 SetCursorPosHint。
+    mutable POINT m_ptCursorHint={0,0};
+    mutable bool m_bCursorHint=false;
+    mutable uint64_t m_tsCursorHint=0;
+    mutable std::mutex m_mutexCursorHint;
     HDC m_deskDC;
     HBITMAP m_deskBmp;
 

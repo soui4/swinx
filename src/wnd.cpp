@@ -16,10 +16,11 @@
 #include "sharedmem.h"
 #include "tostring.h"
 #include "wndobj.h"
+#include "sfr_config.h"   /* SFR_PLATFORM：freertos 端口没有真实窗口系统，见 §2.1 */
 #include "debug.h"
-#if defined(__linux__) && !defined(__OHOS__)
+#if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
 #include "SDragdrop.h"
-#endif // defined(__linux__) && !defined(__OHOS__)
+#endif // defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
 #include "synhandle.h"
 #include "cmnctl32/builtin_classname.h"
 #include "wndclip.h"
@@ -412,7 +413,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     pWnd->showSbFlags |= (cs->style & WS_HSCROLL) ? SB_HORZ : 0;
     pWnd->showSbFlags |= (cs->style & WS_VSCROLL) ? SB_VERT : 0;
     pWnd->visualId = conn->GetVisualID(TRUE);
-#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__)
+#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__) && !SFR_PLATFORM
     int depth = XCB_COPY_FROM_PARENT;
 #else
     int depth = 24;
@@ -983,7 +984,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     BOOL bSkipMsg = FALSE;
     switch (msg)
     {
-#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__)
+#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__) && !SFR_PLATFORM
     case UM_XDND_DRAG_ENTER:
     {
         SLOG_STMI() << "UM_XDND_DRAG_ENTER!";
@@ -1335,6 +1336,18 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(wndObj->bmp);
             surface = wndObj->mConnection->ResizeSurface(surface, hWnd, wndObj->visualId, sz.cx, sz.cy);
             SetGdiObjPtr(wndObj->bmp, surface);
+            /* DC 的 cairo 目标和裁剪基线都钉在旧表面上：表面在同一 HBITMAP
+             * 内被换掉后，SelectObject 遇到相同 bmp 会当作 no-op（gdi.cpp
+             * OBJ_BITMAP 分支），cairo 依旧写入已被孤立的旧表面——wasm 弹出窗
+             * (100x100 创建 -> MoveWindow 到最终尺寸)  resize 后所有绘制全部
+             * 丢失，上屏画布恒为全零（黑块）。重建 DC 回到 InitWndDC 的初始
+             * 状态：cairo 指向新表面、clip = 新表面全域。 */
+            if (wndObj->hdc && wndObj->hdc->nSave == 0)
+            {
+                DeleteDC(wndObj->hdc);
+                wndObj->hdc = new _SDC(hWnd);
+                SelectObject(wndObj->hdc, wndObj->bmp);
+            }
             RECT rc = wndObj->rc;
             OffsetRect(&rc, -rc.left, -rc.top);
             InvalidateRect(hWnd, &rc, TRUE);
@@ -1847,7 +1860,7 @@ BOOL SetForegroundWindow(HWND hWnd)
         return FALSE;
     if (!(wndObj->dwStyle & WS_VISIBLE))
         return FALSE;
-#if defined(__linux__) && !defined(__OHOS__)
+#if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
     if (!(wndObj->flags & kMapped))
     { // wait for mapped
         MSG msg;
@@ -3566,9 +3579,9 @@ BOOL SetLayeredWindowAttributes(HWND hWnd, COLORREF crKey __attribute__((unused)
     if ((dwFlags & LWA_ALPHA) && byAlpha != wndObj->byAlpha)
     {
         wndObj->byAlpha = byAlpha;
-#if defined(__linux__) && !defined(__OHOS__)
+#if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
         if (wndObj->flags & kMapped)
-#endif // defined(__linux__) && !defined(__OHOS__)
+#endif // defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
             wndObj->mConnection->SetWindowOpacity(hWnd, byAlpha);
     }
 
@@ -3961,46 +3974,20 @@ int WINAPI GetDlgCtrlID(HWND hWnd)
     return wndObj->wIDmenu;
 }
 
-/* ---- 窗口属性：GetProp / SetProp / RemoveProp ------------------------------
- * Win32 用「一个键对一个值」的窗口级映射承载插件/控件的私有指针。键可以是
- * 字符串（按内容比较），也可以是 GlobalAddAtom 返回的原子值（取值 <= 0xFFFF，
- * 按数值比较）。值由调用方拥有：swinx 只保存映射，窗口销毁时一并丢弃，
- * 不负责释放——与 Win32 语义一致。
- * swinx 的 A 版本按 UTF-8 解释字符串，与其它 A 系 API 保持一致。 */
-
-static bool _isAtomPropKey(const void *key)
+static HANDLE _getPropImpl(_Window *wnd, LPCSTR key)
 {
-    return (UINT_PTR)key <= 0xFFFF;
-}
-
-static std::wstring _propKeyFromUtf8(LPCSTR name)
-{
-    std::wstring ret;
-    if (!name)
-        return ret;
-    int n = MultiByteToWideChar(CP_UTF8, 0, name, -1, nullptr, 0);
-    if (n <= 1)
-        return ret;
-    std::vector<wchar_t> buf((size_t)n);
-    MultiByteToWideChar(CP_UTF8, 0, name, -1, &buf[0], n);
-    ret.assign(&buf[0]);
-    return ret;
-}
-
-static void *_getPropImpl(_Window *wnd, const std::wstring &name, const void *key)
-{
-    if (_isAtomPropKey(key))
+    if (IS_INTRESOURCE(key))
     {
         std::map<UINT, void *>::iterator it = wnd->atomProps.find((UINT)(UINT_PTR)key);
         return it == wnd->atomProps.end() ? nullptr : it->second;
     }
-    std::map<std::wstring, void *>::iterator it = wnd->props.find(name);
+    auto it = wnd->props.find(key);
     return it == wnd->props.end() ? nullptr : it->second;
 }
 
-static BOOL _setPropImpl(_Window *wnd, const std::wstring &name, const void *key, void *hData)
+static BOOL _setPropImpl(_Window *wnd, LPCSTR key, HANDLE hData)
 {
-    if (_isAtomPropKey(key))
+    if (IS_INTRESOURCE(key))
     {
         UINT atom = (UINT)(UINT_PTR)key;
         if (hData)
@@ -4010,19 +3997,19 @@ static BOOL _setPropImpl(_Window *wnd, const std::wstring &name, const void *key
         return TRUE;
     }
     if (hData)
-        wnd->props[name] = hData;
+        wnd->props[key] = hData;
     else
-        wnd->props.erase(name);
+        wnd->props.erase(key);
     return TRUE;
 }
 
-static void *_removePropImpl(_Window *wnd, const std::wstring &name, const void *key)
+static HANDLE _removePropImpl(_Window *wnd, LPCSTR lpString)
 {
-    void *ret = _getPropImpl(wnd, name, key);
-    if (_isAtomPropKey(key))
-        wnd->atomProps.erase((UINT)(UINT_PTR)key);
+    HANDLE ret = _getPropImpl(wnd, lpString);
+    if (IS_INTRESOURCE(lpString))
+        wnd->atomProps.erase((UINT)(UINT_PTR)lpString);
     else
-        wnd->props.erase(name);
+        wnd->props.erase(lpString);
     return ret;
 }
 
@@ -4030,10 +4017,14 @@ void *GetPropW(HWND hWnd, LPCWSTR lpString)
 {
     if (!lpString)
         return nullptr;
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return nullptr;
-    return _getPropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : std::wstring(lpString), lpString);
+    if(IS_INTRESOURCE(lpString))
+    {
+        return GetPropA(hWnd,(LPCSTR)lpString);
+    }else{
+        std::string str;
+        tostring(lpString,-1,str);
+        return GetPropA(hWnd,str.c_str());
+    }
 }
 
 void *GetPropA(HWND hWnd, LPCSTR lpString)
@@ -4043,47 +4034,55 @@ void *GetPropA(HWND hWnd, LPCSTR lpString)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return nullptr;
-    return _getPropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : _propKeyFromUtf8(lpString), lpString);
+    return _getPropImpl(wndObj.data(), lpString);
 }
 
-BOOL SetPropW(HWND hWnd, LPCWSTR lpString, void *hData)
+BOOL SetPropW(HWND hWnd, LPCWSTR lpString, HANDLE hData)
+{
+    if (!lpString)
+        return FALSE;
+    if(IS_INTRESOURCE(lpString))
+    {
+        return SetPropA(hWnd,(LPCSTR)lpString,hData);
+    }else{
+        std::string str;
+        tostring(lpString,-1,str);
+        return SetPropA(hWnd,str.c_str(),hData);
+    }
+}
+
+BOOL SetPropA(HWND hWnd, LPCSTR lpString, HANDLE hData)
 {
     if (!lpString)
         return FALSE;
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return FALSE;
-    return _setPropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : std::wstring(lpString), lpString, hData);
+    return _setPropImpl(wndObj.data(),lpString, hData);
 }
 
-BOOL SetPropA(HWND hWnd, LPCSTR lpString, void *hData)
-{
-    if (!lpString)
-        return FALSE;
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return FALSE;
-    return _setPropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : _propKeyFromUtf8(lpString), lpString, hData);
-}
-
-void *RemovePropW(HWND hWnd, LPCWSTR lpString)
+HANDLE RemovePropW(HWND hWnd, LPCWSTR lpString)
 {
     if (!lpString)
         return nullptr;
-    WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return nullptr;
-    return _removePropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : std::wstring(lpString), lpString);
+    if(IS_INTRESOURCE(lpString))
+    {
+        return RemovePropA(hWnd,(LPCSTR)lpString);
+    }else{
+        std::string str;
+        tostring(lpString,-1,str);
+        return RemovePropA(hWnd,str.c_str());
+    }
 }
 
-void *RemovePropA(HWND hWnd, LPCSTR lpString)
+HANDLE RemovePropA(HWND hWnd, LPCSTR lpString)
 {
     if (!lpString)
         return nullptr;
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return nullptr;
-    return _removePropImpl(wndObj.data(), _isAtomPropKey(lpString) ? std::wstring() : _propKeyFromUtf8(lpString), lpString);
+    return _removePropImpl(wndObj.data(), lpString);
 }
 
 LONG WINAPI GetMessageTime(VOID)

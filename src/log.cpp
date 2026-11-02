@@ -264,8 +264,6 @@ Log::Log(const char *tag, int level, const char *filename, const char *funname, 
 
 Log::~Log()
 {
-    SYSTEMTIME wtm;
-    GetLocalTime(&wtm);
     tid_t tid = GetCurrentThreadId();
     if (gs_LogFunc != NULL)
     {
@@ -275,6 +273,8 @@ Log::~Log()
 #ifdef NDEBUG
         snprintf(buf, sizeof(buf), "tid=%ld,%s,%s,%s", (long int)tid, m_tag, levelStr, m_logbuf);
 #else
+        SYSTEMTIME wtm;
+        GetLocalTime(&wtm);
         snprintf(buf, sizeof(buf), "tid=%ld,%04d-%02d-%02d %02d:%02d:%02d %03dms %s,%s,%s,%s", (long int)tid, wtm.wYear, wtm.wMonth, wtm.wDay, wtm.wHour, wtm.wMinute, wtm.wSecond, wtm.wMilliseconds, m_tag, levelStr, m_logbuf, m_lineInfo.str().c_str());
 #endif
         gs_LogFunc(buf, m_level);
@@ -283,6 +283,8 @@ Log::~Log()
     else if (m_level >= gs_level)
     {
         char buf[MAX_LOGLEN] = { 0 };
+        SYSTEMTIME wtm;
+        GetLocalTime(&wtm);
         snprintf(buf, sizeof(buf), "tid=%ld,%04d-%02d-%02d %02d:%02d:%02d %03dms %s,%d,%s,%s\n", (long int)tid, wtm.wYear, wtm.wMonth, wtm.wDay, wtm.wHour, wtm.wMinute, wtm.wSecond, wtm.wMilliseconds, m_tag, m_level, m_logbuf, m_lineInfo.str().c_str());
 #ifdef __ANDROID__
         int level = 0;

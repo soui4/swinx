@@ -8,10 +8,12 @@
 #include "tostring.h"
 #include "SConnection.h"
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
+// GetUserLocaleLCID()/GetLocaleInfoA() below call setlocale() on every glibc
+// and musl host, Emscripten included.
 #include <locale.h>
 #include <langinfo.h>
-#endif // __linux__
+#endif // defined(__linux__) || defined(__EMSCRIPTEN__)
 
 #ifdef __APPLE__
 int GetLocal(char *lpCData, int nSize);
@@ -193,8 +195,10 @@ int GetLocaleInfoA(LCID Locale, LCTYPE LCType, LPSTR lpLCData, int cchData)
     char szLCData[LOCALE_NAME_MAX_LENGTH] = { 0 };
     GetLocal(szLCData, LOCALE_NAME_MAX_LENGTH);
     const char *locale = szLCData;
-#elif defined(__linux__)
-    // For now, return locale name as string
+#elif defined(__linux__) || defined(__EMSCRIPTEN__)
+    // For now, return locale name as string.  Emscripten's musl answers this
+    // too; there it stays "C" until the JS host seeds the locale, which is the
+    // same fallback every caller already handles.
     const char *locale = setlocale(LC_ALL, NULL);
     if (!locale)
         locale = "C";

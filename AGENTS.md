@@ -16,7 +16,7 @@ swinx 是非 Windows 平台上的 **Win32 兼容层**：向 SOUI 4 与 WKE 浏�
 | 绘图维度 | `src/gdi/{cairo,apple}`（+ `src/gdi/freertos/`） | DC、位图、文本、路径、图像编解码 |
 | 依赖 | `thirdparty/`（cairo、pixman、fontconfig、freetype、libpng、zlib、brotli、expat、libxcb、xcb-util 家族、xcb-imdkit、xkbcommon、dbus、sysinclude） | 全部 vendor 化、内置构建的第三方栈，**不在其中做功能开发** |
 
-按平台选目录的机制是 `file(GLOB)`：见 `linux.cmake` / `macos.cmake` / `ios.cmake` / `mobile.cmake` / `freeRTOS.cmake`，由 `CMakeLists.txt` 按 `CMAKE_SYSTEM_NAME` 或 `SOUI_PLATFORM` 分派。**新增源文件必须落在某个 GLOB 覆盖的目录里**，否则不会被编译（新目录要同时改所有相关 `.cmake`）。
+按平台选目录的机制是 `file(GLOB)`：见 `linux.cmake` / `macos.cmake` / `ios.cmake` / `mobile.cmake` / `freeRTOS.cmake` / `wasm.cmake`，由 `CMakeLists.txt` 按 `CMAKE_SYSTEM_NAME` 或 `SOUI_PLATFORM` 分派。**新增源文件必须落在某个 GLOB 覆盖的目录里**，否则不会被编译（新目录要同时改所有相关 `.cmake`）。
 
 一个 API 的完整链路，缺一即视为未完成：
 
@@ -35,7 +35,7 @@ swinx 是非 Windows 平台上的 **Win32 兼容层**：向 SOUI 4 与 WKE 浏�
 按优先级选其中一种，不要新造第五种，也不要退回散落的 `#ifdef __APPLE__`。
 
 1. **实现下沉**：平台相关实现放 `src/platform/<平台>/`，`src/*.cpp` 只写 Win32 语义、不含平台分支。这是首选形态。
-2. **同一符号、分目录实现、链接期解析**：公共助手契约集中在 `src/SwinxUtils.h`（当前是 `swinx_messageBeep` 等），各平台目录给出**同名同签名**实现，`file(GLOB)` 只把当前平台的源文件放进构建，由链接器决定哪份进二进制 —— 调用方零 `#ifdef`。暂不实现的平台也要**保留占位定义**（如 `platform/mobile/utils.cpp` 返回 `FALSE`），维持这一形态而不是退回条件编译。移动端需要宿主能力时转发 `g_platformAPI`（`include/platform_api.h`，现 v4）。跨 TU 边界的返回类型用 `int` 而不是 `BOOL` —— swinx 的 `BOOL` 在 Objective-C++ 单元里是 `bool`/`signed char`（clang 预定义 `__OBJC_BOOL_IS_BOOL`），在 `.cpp` 里是 `int`，两边不一致（见 `include/ctypes.h`）。
+2. **同一符号、分目录实现、链接期解析**：公共助手契约集中在 `src/SwinxUtils.h`（当前是 `swinx_messageBeep` 等），各平台目录给出**同名同签名**实现，`file(GLOB)` 只把当前平台的源文件放进构建，由链接器决定哪份进二进制 —— 调用方零 `#ifdef`。暂不实现的平台也要**保留占位定义**（如 `platform/mobile/utils.cpp` 返回 `FALSE`），维持这一形态而不是退回条件编译。移动端需要宿主能力时转发 `g_platformAPI`（`include/platform_api.h`，现 v4）。跨 TU 边界的返回类型用 `int` 而不是 `BOOL` —— swinx 的 `BOOL` 在 Apple Objective-C++ 单元里是 `bool`/`signed char`（clang 预定义 `__OBJC_BOOL_IS_BOOL`，`include/ctypes.h` 只在 `__APPLE__` 下镜像它），在别的 `.cpp` 里是 `int`，两边不一致。
 3. **把「平台能力的差异」抽象成句柄族**：顶层入口保持 Win32 的句柄语义，差异压到各平台 `SConnection` 的同名方法里，句柄取值约定收在一个内部头供四平台共用。范例 `src/hkl.h`：`HKL = 布局索引 + SWINX_HKL_BASE`，必须避开 Win32 魔法值 `HKL_PREV(0)` / `HKL_NEXT(1)`，且 0 另作「尚未与真实布局同步」用（历史上 cocoa 用过 4、其余用裸索引，分叉本身就是缺陷来源）。
 4. **能力门控 + 延迟创建**（OpenGL 专用）：依赖不能落地时不引入链接期依赖，改运行期解析并让缺库如实失败。范例 `src/platform/posix/wgl.cpp`：公共层对平台只要求 8 个入口 —— 7 个 `swinxGL*`（Create / Destroy / MakeCurrent / ClearCurrent / Swap / GetProcAddress / SetSwapInterval，macOS 侧由 `cocoa/SGLBridge.mm` 以 `extern "C"` 给出，Linux 侧在同文件内联 GLX 实现）加每分支一个 `static PlatformSupportsContextAttribs()`；两个 `#ifdef __APPLE__` 分支只出现在文件首尾，Linux 全量走 `dlopen` + `dlsym`，缺 libGL 时 GL 入口返回失败而不影响其它功能；上下文延迟到首次 `wglMakeCurrent` 才真正创建，这样 `wglShareLists` 才能在「创建之后、绑定之前」生效（GLX/NSOpenGL 都只允许创建时指定 share group）。
 
@@ -82,6 +82,19 @@ swinx 是非 Windows 平台上的 **Win32 兼容层**：向 SOUI 4 与 WKE 浏�
 `src/gdi/{cairo,apple}` 与 `src/platform/*` 是**同名符号、链接期解析**，`api_scan.py` 只报告定义出现在哪些文件、不会替你检查对称性。
 
 新增 GDI / 平台 API 时，**两个后端都要给出定义**（没有对应能力就给显式拒绝的桩）。只在一个后端定义 = 另一个平台是**链接错误**，不是运行期降级。当前已知不对称项：`AddFontMemResourceEx` / `RemoveFontMemResourceEx` 仅有 `src/gdi/apple/gdi.cpp`（CoreText 路径），Linux 引用即链接失败 —— 已在清单第 8 节登记，补齐前不要假设跨平台可用。
+
+- **`SetTimer` 带 `TIMERPROC` 时的派发契约**（Win32 语义：回调由 `PeekMessage`/`GetMessage` **内部**调用，`WM_TIMER` 不进入可派发流）。六个后端两种实现形态，新增第七个后端必须落进其中一种，否则 `SOUI` 的 `STimer` / `STimerGenerator::SetTimer`（恒为 `::SetTimer(NULL, 0, elapse, _TimerProc)`，`hwnd` 恒 `NULL`，而 `DispatchMessage` 见 `pMsg->hwnd == NULL` 直接返回 `FALSE`）会**静默不跑**：
+  - 自驱计时器入队的后端（`linux` / `cocoa` / `ios` / `wasm` / `freertos`）：在 `peekMsg` 的扫描里识别 `WM_TIMER && lParam`，快照后出队、**放锁**调 `proc`、再重扫 —— `linux/SConnection.cpp:1032`、`cocoa/SConnection.mm:749`、`ios/SConnection.mm:559`、`wasm/SConnection.cpp:593`、`freertos/SConnection.cpp:475`。**队列规则与这条分支只能写一处**：`getMsg` 再扫一遍队列 = 两条入口分叉，带回调的计时器从其中一条静默消失。
+  - **`GetMessage` 与 `PeekMessage` 的差别是"等"**，别把它压平：能睡的后端（`linux`、`freertos`）`getMsg` 必须是 `peekMsg` 拿不到就进 `waitMsg`（`freertos/SConnection.cpp:547`，等待上界每轮按"下一个计时器到期"重算，见同文件 `waitMsg`；`WM_QUIT` 返回 `FALSE` 而不是派发）；不能睡的后端（`wasm`：阻塞浏览器主线程会停掉 `requestAnimationFrame`，整个页面冻住）才允许 `return peekMsg(..., PM_REMOVE)` 一步走（`wasm/SConnection.cpp:625`）。
+  - 转发宿主桥的后端（`mobile`＝Android/OHOS）：`g_platformAPI.window.setTimer` 记下 `proc`，到期由宿主直接回调（`soui-android-lib/.../AndroidPlatformAPI.cpp:551`，`proc == NULL` 才 `SendMessage(hWnd, WM_TIMER, …)`），队列不承担回调职责。
+  - 裸金属后端（`freertos`）不要用递归重扫实现这条分支：任务栈只有几 KB，栈深会随"同一拍到期的计时器个数"增长，用外层循环把栈框钉死在一层。
+- **`freertos` 消息循环的已知缺口（未补齐，读代码得出，2026-10-30）**：`PostThreadMessageA` 在 `src/platform/freertos/sysbridge.cpp:1318` 是空桩，所以 `PostQuitMessage` 永远不落地；`PostMessageA(NULL, …)` 走 `src/wnd.cpp:1747` 的「无 WndObj → IPC」分支后返回 `FALSE`，也进不了队列 —— 两者叠加使 `src/cmnctl32/msgbox.cpp:217` 的 `while (GetMessage(...))` 没有退出路径。模态对话框在该端口上会卡死，不是「等待」而是「永不返回」。要在该端口用模态/退出流程，先把这两条打通，不要靠给 `GetMessage` 加超时绕过。
+- 同端口另一处：`src/gdi/cairo/fontapi.cpp` 依赖 `std::once_flag`，而 `src/platform/freertos/stl/mutex` 未提供 → 该 TU 在 freertos 上编不过（`freeRTOS.cmake` 因此尚未把 cairo GDI 后端接入）。补 `stl/` 时要一并补这一原语。
+- **`PlaySound` 谁去读文件、谁去发声**（`include/mmsystem.h`）：共同骨架是"只支持 `SND_FILENAME`（`SND_MEMORY`/`SND_RESOURCE`/`SND_ALIAS` 显式 FALSE）、一律异步（`SND_SYNC` 按 `SND_ASYNC`）"，通道分三种：
+  - `linux` / `cocoa` / `ios`：`src/platform/posix/mmsystem.cpp` 的播放线程（ALSA；没编 ALSA 时 fork `aplay`）。
+  - `mobile`（Android/OHOS）：转发 `g_platformAPI.audio.playSound`。
+  - `wasm`：`src/platform/wasm/audio.cpp`（**不是** posix 那份）——从 wasm 文件系统读出 wav，把字节交给页面实现的 `Module.swinxAudioPlay`，解码与播放由 WebAudio 完成；宿主没装钩子时返回 FALSE（与未适配前一致）。`wasm.cmake` 同时 glob `posix/` 与 `wasm/`，所以 posix 的 `PlaySound` 用 `#if !defined(__EMSCRIPTEN__)` 让位。**这道守卫要留着**：去掉它不会报重复定义——`mmsystem.o` 的桩先满足引用、`audio.o` 根本不会被拉进链接，结果是静默退回"不出声"；同名符号并存时，"链接器悄悄选错后端"比重复符号更难查（实测见 `doc/soui-wasm-port-plan.md` §24.4）。
+  - `freertos`：不编译本 API（`posix/` 与 `wasm/` 都不入构建），引用即链接错误。
 
 ## 9. 测试
 

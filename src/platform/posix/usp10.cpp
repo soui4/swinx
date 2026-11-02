@@ -27,11 +27,19 @@
 #include <windows.h>
 #include <usp10.h>
 
+#include <stdio.h>
+
+/* 文本整形诊断：需要时打开（打每个 glyph 的码点/宽度，stderr 量大，
+ * 只用于排查字体回退/字形映射问题，平时保持关闭）。 */
+/* #define SWINX_USP_TRACE 1 */
+
 #include <string.h>
 #include <string>
 #include <vector>
 
+#ifndef SWINX_NO_FONTCONFIG
 #include <fontconfig/fontconfig.h>
+#endif /* route C（wasm canvas2d）：无 fontconfig，字体回退禁用 */
 
 #include "debug.h"
 #define kLogTag "usp10"
@@ -103,6 +111,7 @@ bool decodeAnsiToNative(const void *bytes, int cBytes, std::vector<WCHAR> &out)
  * 的字体排在前面，按顺序取第一个覆盖全部字符的即可。 */
 std::string findCoveringFamily(const std::vector<WCHAR> &text, const char *baseFamily)
 {
+#ifndef SWINX_NO_FONTCONFIG
     if (text.empty())
         return std::string();
 
@@ -147,6 +156,11 @@ std::string findCoveringFamily(const std::vector<WCHAR> &text, const char *baseF
 
     FcFontSetDestroy(fonts);
     return found;
+#else
+    (void)text;
+    (void)baseFamily;
+    return std::string(); /* route C：无 fontconfig，不做字体回退，调用方保留原字体 */
+#endif
 }
 
 /* 以 DC 上当前字体的字号/字重为准，换成另一个家族。 */
@@ -297,6 +311,12 @@ HRESULT WINAPI ScriptShape(HDC hdc, SCRIPT_CACHE *psc, const WCHAR *pwcChars, in
     }
 
     *pcGlyphs = cChars;
+#ifdef SWINX_USP_TRACE
+    fprintf(stderr, "[usp] shape cch=%d glyphs=", cChars);
+    for (int i = 0; i < cChars && i < 20; i++)
+        fprintf(stderr, "%04x ", pwOutGlyphs[i]);
+    fprintf(stderr, "\n");
+#endif
     return S_OK;
 }
 
@@ -321,10 +341,18 @@ HRESULT WINAPI ScriptPlace(HDC hdc, SCRIPT_CACHE *psc, const WORD *pwGlyphs, int
     if (!hdc)
         return E_PENDING;
 
+#ifdef SWINX_USP_TRACE
+    fprintf(stderr, "[usp] place cg=%d g0=%04x\n", cGlyphs, pwGlyphs[0]);
+#endif
     /* GetCharWidthI 的 pgi 不是 const，拷一份再问。 */
     std::vector<WORD> glyphs(pwGlyphs, pwGlyphs + cGlyphs);
     if (!GetCharWidthI(hdc, 0, (UINT)cGlyphs, &glyphs[0], piAdvance))
+    {
+#ifdef SWINX_USP_TRACE
+        fprintf(stderr, "[usp] place FAIL (GetCharWidthI)\n");
+#endif
         return E_FAIL;
+    }
 
     int total = 0;
     for (int i = 0; i < cGlyphs; ++i)

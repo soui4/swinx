@@ -1,6 +1,5 @@
 #include <sfr_config.h>
 #include <windows.h>
-#include <io.h>
 #include <stdarg.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -789,15 +788,4 @@ int _snwprintf(wchar_t *buffer, size_t size, const wchar_t *format, ...)
     int len = vswprintf(buffer, size, format, args);
     va_end(args);
     return len > (int)size ? -1 : len;
-}
-
-errno_t _chsize_s(int fd, long long size)
-{
-    if (fd < 0)
-        return EBADF;
-    if (size < 0)
-        return EINVAL;
-    if (ftruncate(fd, (off_t)size) != 0)
-        return errno ? errno : EIO;
-    return 0;
 }

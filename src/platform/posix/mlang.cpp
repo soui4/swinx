@@ -31,7 +31,14 @@
 #include <map>
 #include <mutex>
 
+#ifndef SWINX_NO_FONTCONFIG
 #include <fontconfig/fontconfig.h>
+#else
+/* route C（wasm canvas2d）：不链接 fontconfig。FcChar32 在 fontconfig 里就是
+ * unsigned int（见 thirdparty/fontconfig/fontconfig/fontconfig.h.in），本文件其余
+ * 逻辑（CharCodePages 等纯码点运算）仍需要该类型名，故此处给出等价 typedef。 */
+typedef unsigned int FcChar32;
+#endif
 
 #include "debug.h"
 #define kLogTag "mlang"
@@ -731,6 +738,7 @@ std::mutex &FontMutex()
 /* 把 family 解析成实际字体，返回它的 charset 覆盖了哪些族。 */
 DWORD FontCodePagesOfFamily(const char *familyUtf8)
 {
+#ifndef SWINX_NO_FONTCONFIG
     DWORD mask = 0;
 
     FcPattern *pattern = FcPatternCreate();
@@ -774,12 +782,17 @@ DWORD FontCodePagesOfFamily(const char *familyUtf8)
 
     FcPatternDestroy(match);
     return mask;
+#else
+    (void)familyUtf8;
+    return 0; /* route C：无 fontconfig，无法探测字体覆盖，返回 0（未知） */
+#endif
 }
 
 /* 找一个覆盖 ch 且家族名不同于 baseFamily 的字体族。
  * 返回空串表示"没有别的字体能画它"。 */
 std::string FindCoveringFamily(FcChar32 ch, const char *baseFamily)
 {
+#ifndef SWINX_NO_FONTCONFIG
     FcPattern *pattern = FcPatternCreate();
     if (!pattern)
         return std::string();
@@ -820,6 +833,11 @@ std::string FindCoveringFamily(FcChar32 ch, const char *baseFamily)
 
     FcFontSetDestroy(fonts);
     return found;
+#else
+    (void)ch;
+    (void)baseFamily;
+    return std::string(); /* route C：无字体回退，调用方保留原字体 */
+#endif
 }
 
 /* mlang 自己创建、需要由 ReleaseFont 回收的字体。真实 mlang 的所有权模型是

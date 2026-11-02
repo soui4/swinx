@@ -20,6 +20,10 @@
 #include <log.h>
 #include <algorithm>
 #include <functional>
+#include <sfr_config.h>
+#if !SFR_KERNEL_REAL
+#include <sched.h>  /* 主机 emu / passthrough 没有 FreeRTOS 内核，让出宿主时间片用 */
+#endif
 
 #define kLogTag "SConnection"
 
@@ -327,32 +331,38 @@ void SConnection::updateMsgQueue(DWORD dwTimeout)
 bool SConnection::waitMsg(UINT timeOut)
 {
     updateMsgQueue(0);   // fire due timers before computing the wait bound
-
-    // wait bound: user timeout, or until the next timer is due
-    uint64_t waitMs = timeOut;
     {
         std::unique_lock<CountMutex> lock(m_mutex);
         if (!m_msgQueue.empty())
             return true;
     }
-    if (!m_bBlockTimer && !m_lstTimer.empty())
-    {
-        uint64_t now = GetTickCount();
-        for (auto &ti : m_lstTimer)
-        {
-            uint64_t due = (uint64_t)ti.fireRemain + ti.elapse;
-            uint64_t delta = due > now ? due - now : 0;
-            if (delta < waitMs)
-                waitMs = delta;
-        }
-    }
-    if (waitMs > 0x7fffffff)
-        waitMs = 0x7fffffff;
 
     uint64_t start = GetTickCount();
     for (;;)
     {
-        DWORD wait = WaitForSingleObject(m_hQueueEvt, (DWORD)waitMs);
+        // 上界每轮重算：取"剩余用户超时"和"下一个计时器到期"的较小者。原实现只在进
+        // 循环前算一次，超时后把上界换成剩余用户超时，就再也看不到计时器了 ——
+        // timeOut=INFINITE 时等于最长睡 0x7fffffff ms，getMsg 正是靠这一条把 50ms 的
+        // 脚本节拍叫醒，睡过头就又回到"计时器不回调"的老症状。
+        uint64_t elapsed = GetTickCount() - start;
+        uint64_t waitMs = elapsed >= (uint64_t)timeOut ? 0 : (uint64_t)timeOut - elapsed;
+        if (!m_bBlockTimer)
+        {
+            uint64_t now = GetTickCount();
+            std::unique_lock<CountMutex> lock(m_mutex);
+            for (auto &ti : m_lstTimer)
+            {
+                uint64_t due = (uint64_t)ti.fireRemain + ti.elapse;
+                uint64_t delta = due > now ? due - now : 0;
+                if (delta < waitMs)
+                    waitMs = delta;
+            }
+        }
+        if (waitMs > 0x7fffffff)
+            waitMs = 0x7fffffff;
+
+        // 放锁之后再 WaitForSingleObject：持锁睡等会让别的线程 postMsg 进不来。
+        WaitForSingleObject(m_hQueueEvt, (DWORD)waitMs);
         // timers are driven inside waitMsg: a due timer enqueues WM_TIMER
         // and sets the queue event, waking this very loop
         updateMsgQueue(0);
@@ -361,11 +371,9 @@ bool SConnection::waitMsg(UINT timeOut)
             if (!m_msgQueue.empty())
                 return true;
         }
-        // spurious wake or timeout: recompute the remainder
-        uint64_t elapsed = GetTickCount() - start;
-        if (elapsed >= (uint64_t)timeOut)
+        // spurious wake or timeout
+        if (GetTickCount() - start >= (uint64_t)timeOut)
             return false;
-        waitMs = (uint64_t)timeOut - elapsed;
     }
 }
 
@@ -421,7 +429,11 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
                 return WAIT_TIMEOUT;
         }
         updateMsgQueue(1);
+#if SFR_KERNEL_REAL
         taskYIELD();
+#else
+        sched_yield();
+#endif
     }
     // not reached
     (void)dwWaitMask;
@@ -474,63 +486,116 @@ static bool hasQueuedPaintMsg(const std::list<Msg *> &queue, HWND hWnd)
 
 BOOL SConnection::peekMsg(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
 {
-    // Win32 generates WM_TIMER for expired timers from inside PeekMessage too,
-    // so a PeekMessage-only pump (the simulator) gets timer ticks.  Called
-    // before taking m_mutex: updateMsgQueue() locks it as well.
-    updateMsgQueue(0);
-
-    std::unique_lock<CountMutex> lock(m_mutex);
-    // Win32 semantics: (0,0) means "no filter"
-    bool bNoFilter = (wMsgFilterMin == 0 && wMsgFilterMax == 0);
-    for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); ++it)
+    // 外层循环只为了承载"带 TIMERPROC 的 WM_TIMER 就地回调，然后重新取一条"这一步。
+    // 同一语义在 src/platform/wasm/SConnection.cpp 里写成 peekMsg 递归，这里用循环：
+    // FreeRTOS 任务栈常只有几 KB，递归深度会跟着"同一拍里到期的计时器个数"涨，
+    // 钉死在一层栈框更稳妥。
+    for (;;)
     {
-        Msg *msg = *it;
-        if (hWnd && hWnd != msg->hwnd && msg->hwnd != NULL)
-            continue;
-        UINT id = msg->message;
-        if (!bNoFilter)
+        // Win32 generates WM_TIMER for expired timers from inside PeekMessage too,
+        // so a PeekMessage-only pump (the simulator) gets timer ticks.  Called
+        // before taking m_mutex: updateMsgQueue() locks it as well.
+        updateMsgQueue(0);
+
+        std::unique_lock<CountMutex> lock(m_mutex);
+        // Win32 semantics: (0,0) means "no filter"
+        bool bNoFilter = (wMsgFilterMin == 0 && wMsgFilterMax == 0);
+        bool bTimerFired = false;
+        HWND hTimer = NULL;
+        WPARAM wpTimer = 0;
+        DWORD tTimer = 0;
+        TIMERPROC procTimer = NULL;
+        for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); ++it)
         {
-            if (wMsgFilterMin <= wMsgFilterMax && (id < wMsgFilterMin || id > wMsgFilterMax))
+            Msg *msg = *it;
+            if (hWnd && hWnd != msg->hwnd && msg->hwnd != NULL)
                 continue;
-            if (wMsgFilterMin > wMsgFilterMax && (id > wMsgFilterMax && id < wMsgFilterMin))
-                continue;   // wrapped range (Win32): only messages outside (max, min)
+            UINT id = msg->message;
+            if (!bNoFilter)
+            {
+                if (wMsgFilterMin <= wMsgFilterMax && (id < wMsgFilterMin || id > wMsgFilterMax))
+                    continue;
+                if (wMsgFilterMin > wMsgFilterMax && (id > wMsgFilterMax && id < wMsgFilterMin))
+                    continue;   // wrapped range (Win32): only messages outside (max, min)
+            }
+            if (msg->message == WM_TIMER && msg->lParam)
+            {
+                // 带 TIMERPROC 的 SetTimer：Win32 由 PeekMessage 内部直接回调，不把
+                // WM_TIMER 交给 DispatchMessage。这类消息的 hwnd 恒为 NULL（SOUI 的
+                // STimerGenerator::SetTimer 就是 ::SetTimer(NULL, 0, elapse, _TimerProc)），
+                // 而 DispatchMessage 见 pMsg->hwnd==NULL 直接返回 FALSE —— 队列抽干、
+                // 计数照涨，回调却一次都不跑，脚本层的 ITimer（SOUI 的 STimer、
+                // 动画与游戏逻辑的节拍）于是静默失效。语义与
+                // src/platform/linux|cocoa|ios|wasm 的 peekMsg 同名分支一致。
+                hTimer = msg->hwnd;
+                wpTimer = msg->wParam;
+                tTimer = msg->time;
+                procTimer = (TIMERPROC)msg->lParam;
+                m_msgQueue.erase(it);
+                delete msg;
+                bTimerFired = true;
+                break;
+            }
+            memcpy((void *)pMsg, (MSG *)msg, sizeof(MSG));
+            if (wRemoveMsg & PM_REMOVE)
+            {
+                m_msgQueue.erase(it);
+                delete msg;
+            }
+            return TRUE;
         }
-        memcpy((void *)pMsg, (MSG *)msg, sizeof(MSG));
-        if (wRemoveMsg & PM_REMOVE)
-        {
-            m_msgQueue.erase(it);
-            delete msg;
-        }
-        return TRUE;
+        if (!bTimerFired)
+            return FALSE;
+        // 放锁再回调：回调里会 SetTimer/KillTimer/postMsg（同一把 m_mutex，递归锁
+        // 同线程不会自锁，但还可能 SendMessage 等别的线程回包），持锁调用等于自己
+        // 堵住那条回包路径。
+        lock.unlock();
+        procTimer(hTimer, WM_TIMER, wpTimer, tTimer);
+        lock.lock();
+        // 回调可能又投递了新消息（包括重新排定的计时器），回到循环顶部重扫
     }
-    return FALSE;
 }
 
 BOOL SConnection::getMsg(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
 {
-    updateMsgQueue(0);
-    std::unique_lock<CountMutex> lock(m_mutex);
-    // Win32 semantics: (0,0) means "no filter"
-    bool bNoFilter = (wMsgFilterMin == 0 && wMsgFilterMax == 0);
-    for (auto it = m_msgQueue.begin(); it != m_msgQueue.end(); ++it)
+    // GetMessage 与 PeekMessage 的差别就在"等"：拿不到一条可派发的消息就一直睡到
+    // 有消息投递或下一个计时器到期，所以不能只委托 peekMsg 就返回（模态消息盒
+    // src/cmnctl32/msgbox.cpp:217 的 while(GetMessage(...)) 靠的就是这个"睡"，
+    // 不睡就是空转烧 CPU）。睡醒仍回 peekMsg：带 TIMERPROC 的 WM_TIMER 在 peek 内部
+    // 就回调掉了，不占返回的那一次机会，所以计时器不会因为这里在睡而丢拍。
+    // 队列规则与过滤条件仍然只有 peekMsg 一处实现（这里再扫一遍队列会让两条入口
+    // 分叉，带回调的计时器就会从其中一条里静默消失）。
+    for (;;)
     {
-        Msg *msg = *it;
-        if (hWnd && hWnd != msg->hwnd && msg->hwnd != NULL)
-            continue;
-        UINT id = msg->message;
-        if (!bNoFilter)
+        if (peekMsg(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax, PM_REMOVE))
         {
-            if (wMsgFilterMin <= wMsgFilterMax && (id < wMsgFilterMin || id > wMsgFilterMax))
-                continue;
-            if (wMsgFilterMin > wMsgFilterMax && (id > wMsgFilterMax && id < wMsgFilterMin))
-                continue;   // wrapped range (Win32)
+            if (lpMsg->message == WM_QUIT)
+            {
+                // Win32 的 GetMessage 收到 WM_QUIT 返回 FALSE（退出码留在 wParam 里），
+                // 而不是把它交给 DispatchMessage；调用方的 while(GetMessage(...)) 就靠
+                // 这一次 FALSE 退出。与 src/platform/linux/SConnection.cpp:1077 同口径。
+                return FALSE;
+            }
+            return TRUE;
         }
-        m_msgQueue.erase(it);
-        memcpy((void *)lpMsg, (MSG *)msg, sizeof(MSG));
-        delete msg;
-        return TRUE;
+        bool bQueueEmpty;
+        {
+            std::unique_lock<CountMutex> lock(m_mutex);
+            bQueueEmpty = m_msgQueue.empty();
+        }
+        if (bQueueEmpty)
+        {
+            // 睡到有新投递（postMsg 置 m_hQueueEvt）或下一个计时器到期（waitMsg 内部
+            // 按 next-due 收窄上界，见本文件 waitMsg）。
+            waitMsg();
+        }
+        else
+        {
+            // 队列非空却没有一条落在过滤范围里：waitMsg 的"队列非空即返回 true"在这里
+            // 会变成死转，所以让出一个短时间片再试。
+            Sleep(10);
+        }
     }
-    return FALSE;
 }
 
 void SConnection::postMsg(HWND hWnd, UINT message, WPARAM wp, LPARAM lp)

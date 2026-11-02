@@ -13,9 +13,11 @@
 #include "tostring.h"
 #include "uniconv.h"
 #include "log.h"
+#define kLogTag "gdi"
 #include <CoreGraphics/CoreGraphics.h>
 #include <CoreText/CoreText.h>
 #include <fontconfig/fontconfig.h>
+
 
 #ifndef kCTStrikethroughStyleAttributeName
 #define kCTStrikethroughStyleAttributeName CFSTR("NSStrikethroughStyle")
@@ -534,6 +536,21 @@ struct PatternInfo
                 outType       = 2;
                 return true;
             }
+            else if (gd.info.type == grad_sweep)
+            {
+                // CoreGraphics 没有与 SOUI sweep（锥形）渐变一一对应的填充路径，
+                // 这里退回首位色标纯色，至少保住主色调；由 ApplyBrush 负责取色。
+                // cairo 后端已经用 mesh pattern 实现了真正的 sweep，补齐 apple 前
+                // 这条路径只告警一次，不做无声降级。
+                CGColorSpaceRelease(cs);
+                static bool s_warnedSweep = false;
+                if (!s_warnedSweep)
+                {
+                    s_warnedSweep = true;
+                    SLOG_STMW() << "grad_sweep not implemented on apple backend, falling back to first-stop solid color";
+                }
+                return false;
+            }
             CGColorSpaceRelease(cs);
             return false;
         }
@@ -907,7 +924,19 @@ static bool ApplyBrush(HDC hdc, HBRUSH hbr, double wid, double hei, double x, do
         }
         else
         {
-            setColor(1.0, 1.0, 1.0, 1.0);
+            // 无法构造 pattern 时按 Win32 行为退成纯色：sweep 用首位色标，
+            // 其余情况保持原来的白色兜底。
+            if (!info->useBmp && info->data.gradientDetail && !info->data.gradientDetail->items.empty() &&
+                info->data.gradientDetail->info.type == grad_sweep)
+            {
+                CairoColor cr(info->data.gradientDetail->items[0].cr);
+                cr.a *= info->alpha;
+                setColor(cr.r, cr.g, cr.b, cr.a);
+            }
+            else
+            {
+                setColor(1.0, 1.0, 1.0, 1.0);
+            }
         }
     }
     break;
@@ -983,20 +1012,29 @@ static void DrawPathStroke(CGContextRef ctx, HDC hdc, double wid, double hei, do
     }
 }
 
+// 与 cairo 后端同理（见 src/gdi/cairo/gdi.cpp 的 kDefaultFontSizePx）：Win32 的
+// HDC 天生带系统字体，没调过 SelectObject 也能量出非零行高；Core Graphics 的
+// 上下文没有这种默认值，什么都不选就会量出 0，SOUI 里按行高做除法的控件
+// （SHexEdit::CalculatePaintingDetails）会崩。这里补上同样的默认字体语义。
+static const CGFloat kDefaultFontSizePx = 12.0;
+
 static BOOL ApplyFont(HDC hdc)
 {
+    CGContextRef ctx = hdc->cgCtx;
     if (hdc->hfont)
     {
         LOGFONTA *lf = (LOGFONTA *)GetGdiObjPtr(hdc->hfont);
         if (!hdc->cgCtx)
             return FALSE;
-        CGContextRef ctx = hdc->cgCtx;
         const char *fontName = lf->lfFaceName;
         //todo: hjx: resolve non-ASCII face names to an available CG font
         CGContextSelectFont(ctx, fontName[0] ? fontName : "Helvetica", abs(lf->lfHeight), kCGEncodingMacRoman);
         return TRUE;
     }
-    return FALSE;
+    if (!ctx)
+        return FALSE;
+    CGContextSelectFont(ctx, "Helvetica", kDefaultFontSizePx, kCGEncodingMacRoman);
+    return TRUE;
 }
 
 // 字体对象的解析统一收敛在 fontapi.cpp（CoreText）。只有「取字形索引」与
@@ -1853,7 +1891,7 @@ int GetClipRgn(HDC hdc, HRGN hrgn)
     HRGN rgnSrc = CreateRectRgnIndirect(&rcClip);
     CombineRgn(hrgn, rgnSrc, nullptr, RGN_COPY);
     DeleteObject(rgnSrc);
-    return RgnComplexity(hrgn) == NULLREGION ? 0 : 1;
+    return GetRgnBox(hrgn,NULL) == NULLREGION ? 0 : 1;
 }
 
 int SelectClipRgn(HDC hdc, HRGN hrgn)
@@ -1863,7 +1901,7 @@ int SelectClipRgn(HDC hdc, HRGN hrgn)
     // apply with the active CTM so the region is interpreted in the current
     // logical space (see the clip semantics note above calc_total)
     ApplyRegion(hdc->cgCtx, hrgn);
-    return RgnComplexity(hrgn);
+    return GetRgnBox(hrgn, NULL);
 }
 
 // 将区域作为交集应用到 CG context（不 reset clip，直接 CGContextClipToRects）。
@@ -4976,19 +5014,6 @@ int GetDeviceCaps(HDC hdc, int cap)
     return 0;
 }
 
-struct HICON__
-{
-    BOOL fIcon;
-    DWORD xHotspot;
-    DWORD yHotspot;
-    HBITMAP hbmMask;
-    HBITMAP hbmColor;
-    WORD cursorId;
-};
-
-/* 既有实现代码里的名称，保持不变。 */
-typedef HICON__ _IconObj;
-
 void SetCursorID(HICON hIcon, WORD cursorId)
 {
     hIcon->cursorId = cursorId;
@@ -5037,7 +5062,7 @@ BOOL GetIconInfo(HICON hIcon, PICONINFO piconinfo)
 
 HICON CreateIconIndirect(PICONINFO piconinfo)
 {
-    _IconObj *icon = new _IconObj();
+    HICON__ *icon = new HICON__();
     icon->fIcon = piconinfo->fIcon;
     icon->hbmColor = (HBITMAP)RefGdiObj(piconinfo->hbmColor);
     icon->hbmMask = (HBITMAP)RefGdiObj(piconinfo->hbmMask);
@@ -6144,19 +6169,112 @@ BOOL StrokeAndFillPath(HDC hdc)
     return TRUE;
 }
 
+namespace
+{
+struct AppleRegionSpan
+{
+    int l, r, top;
+};
+} // namespace
+
+// 这里不能走 GetClipRgn：它只能给出裁剪的包围盒，弧线/圆角矩形会被
+// 放大成矩形区域（仪表盘的彩色圆弧会填满整个方框）。区域按像素集合定义，
+// 所以把路径栅格化成 8 位掩膜，再逐行合并成矩形，与 cairo 后端同构。
 HRGN PathToRegion(HDC hdc)
 {
     if (!hdc || !hdc->cgCtx || !hdc->recordedPath)
         return nullptr;
-    CGContextSaveGState(hdc->cgCtx);
-    CGContextResetClip(hdc->cgCtx);
-    CGContextAddPath(hdc->cgCtx,hdc->recordedPath);
-    CGContextClip(hdc->cgCtx);
-    HRGN hrgn = CreateRectRgn(0, 0, 0, 0);
-    GetClipRgn(hdc,hrgn);
-    CGContextRestoreGState(hdc->cgCtx);
-    CGPathRelease(hdc->recordedPath);
+    CGPathRef path = hdc->recordedPath;
     hdc->recordedPath = nullptr;
+
+    CGRect bb = CGPathGetPathBoundingBox(path);
+    int left = (int)floor(bb.origin.x), top = (int)floor(bb.origin.y);
+    int right = (int)ceil(CGRectGetMaxX(bb)), bottom = (int)ceil(CGRectGetMaxY(bb));
+    if (right <= left || bottom <= top)
+    {
+        CGPathRelease(path);
+        return CreateRectRgn(0, 0, 0, 0); // 空路径 -> 空区域
+    }
+
+    int wid = right - left, hei = bottom - top;
+    std::vector<unsigned char> bits((size_t)wid * hei, 0);
+    CGColorSpaceRef gray = CGColorSpaceCreateDeviceGray();
+    CGContextRef mc = CGBitmapContextCreate(bits.data(), wid, hei, 8, wid, gray, kCGImageAlphaNone);
+    CGColorSpaceRelease(gray);
+    if (!mc)
+    {
+        CGPathRelease(path);
+        return CreateRectRgn(left, top, right, bottom); // 退化为包围盒
+    }
+    CGContextSetShouldAntialias(mc, false); // 区域是像素集合，没有半覆盖
+    CGContextSetGrayFillColor(mc, 1.0, 1.0);
+    CGContextTranslateCTM(mc, -left, -top);
+    CGContextAddPath(mc, path);
+    CGContextFillPath(mc); // nonzero winding，对应 GDI 的 WINDING 填充模式
+    CGContextRelease(mc);
+    CGPathRelease(path);
+
+    std::vector<RECT> rects;
+    std::vector<AppleRegionSpan> open, cur;
+    for (int r = 0; r < hei; r++)
+    {
+        // 位图首行是图像顶部，而 CG 设备原点在左下角：行序与路径 y 相反
+        int y = top + (hei - 1 - r);
+        cur.clear();
+        const unsigned char *row = bits.data() + (size_t)r * wid;
+        for (int x = 0; x < wid;)
+        {
+            while (x < wid && row[x] == 0) x++;
+            if (x >= wid) break;
+            int start = x;
+            while (x < wid && row[x] != 0) x++;
+            cur.push_back({start, x, y});
+        }
+        for (AppleRegionSpan &s : cur)
+        {
+            for (AppleRegionSpan &o : open)
+            {
+                if (o.top >= 0 && o.l == s.l && o.r == s.r)
+                {
+                    s.top = o.top;
+                    o.top = -1; // 标记为已续接
+                    break;
+                }
+            }
+        }
+        // y 在这一循环里是递减的（行序与 GDI 的 y 相反），o.top 记的是同段
+        // 起始行那只更大的 y；RECT 必须给出 top < bottom，所以收口行的 y+1
+        // 才是 top，起始行的 o.top+1 才是 bottom（区间半开，下界不含）。
+        for (const AppleRegionSpan &o : open)
+            if (o.top >= 0)
+                rects.push_back({left + o.l, y + 1, left + o.r, o.top + 1});
+        open.swap(cur);
+    }
+    for (const AppleRegionSpan &o : open)
+        rects.push_back({left + o.l, top, left + o.r, o.top + 1});
+
+    HRGN hrgn = CreateRectRgn(0, 0, 0, 0);
+    if (rects.empty())
+        return hrgn;
+
+    DWORD dwSize = FIELD_OFFSET(RGNDATA, Buffer) + (DWORD)rects.size() * sizeof(RECT);
+    RGNDATA *pData = (RGNDATA *)malloc(dwSize);
+    pData->rdh.dwSize = dwSize;
+    pData->rdh.iType = RDH_RECTANGLES;
+    pData->rdh.nCount = (DWORD)rects.size();
+    pData->rdh.nRgnSize = (DWORD)rects.size() * sizeof(RECT);
+    pData->rdh.rcBound.left = left;
+    pData->rdh.rcBound.top = top;
+    pData->rdh.rcBound.right = right;
+    pData->rdh.rcBound.bottom = bottom;
+    memcpy(pData->Buffer, rects.data(), rects.size() * sizeof(RECT));
+    HRGN rgnSrc = ExtCreateRegion(nullptr, dwSize, pData);
+    free(pData);
+    if (rgnSrc)
+    {
+        CombineRgn(hrgn, rgnSrc, nullptr, RGN_COPY);
+        DeleteObject(rgnSrc);
+    }
     return hrgn;
 }
 

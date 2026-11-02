@@ -29,6 +29,8 @@
 /* glibc/BSD: malloc_usable_size lives in the real <malloc.h>.  include_next
  * skips this shim and pulls the system header. */
 #include_next <malloc.h>
+#include <mm_malloc.h>
+
 #endif
 
 #ifdef __cplusplus

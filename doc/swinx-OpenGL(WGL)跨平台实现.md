@@ -655,9 +655,10 @@ if (pfnCreate) {
 
 ## 11. 已知限制
 
-1. **当前上下文是进程级全局而非线程级。** Win32 的 current context 是 per-thread；
-   swinx 的 `s_pCurCtx` 是单个静态变量。单线程渲染（SOUI 的用法）不受影响，但多线程各持
-   上下文交叉 `MakeCurrent` 时会互相干扰。需要时改为 `thread_local`/TLS 即可。
+1. ~~**当前上下文是进程级全局而非线程级。**~~ **已修复（2026-10-29）**：`s_pCurCtx` 改为
+   `thread_local`（`src/platform/posix/wgl.cpp`），与 Win32 的 per-thread 语义一致；
+   多线程各自 `wglMakeCurrent` 不再互相覆盖。仍需要注意：一个 `HGLRC` 同一时刻只应由
+   一个线程持有（驱动侧同样如此），跨线程移交必须经 `wglMakeCurrent(NULL,NULL)` 释放。
 2. **`wglChoosePixelFormatARB` 未实现**（无 `WGL_ARB_pixel_format`），因此拿不到 MSAA。
    入口探测返回 NULL，调用方按"不支持"降级。
 3. **`wglShareLists` 只在平台资源创建前有效**。资源已建后再共享返回 FALSE（两个平台都只允许

@@ -2334,22 +2334,13 @@ extern "C"
 #define GA_ROOT      2 // GetAncestor (top level window)
 #define GA_ROOTOWNER 3 // root owner window (top level window)
 
-    /*
-     * Window properties.
-     *
-     * lpString 既可以是字符串指针，也可以是 GlobalAddAtom 返回的原子值
-     * （此时取值 <= 0xFFFF）。hData 由调用方拥有，窗口销毁时 swinx 只丢弃映射，
-     * 不负责释放——与 Win32 语义一致。
-     *
-     * hData / 返回值用 void* 声明：HANDLE 在 swinx 与 Windows 上同为 void*，
-     * 两者源码兼容，这里保留 void* 只是为了让读代码的人一眼看出它是属性值。
-     */
-    void *WINAPI GetPropA(HWND hWnd, LPCSTR lpString);
-    void *WINAPI GetPropW(HWND hWnd, LPCWSTR lpString);
-    BOOL WINAPI SetPropA(HWND hWnd, LPCSTR lpString, void *hData);
-    BOOL WINAPI SetPropW(HWND hWnd, LPCWSTR lpString, void *hData);
-    void *WINAPI RemovePropA(HWND hWnd, LPCSTR lpString);
-    void *WINAPI RemovePropW(HWND hWnd, LPCWSTR lpString);
+
+    HANDLE WINAPI GetPropA(HWND hWnd, LPCSTR lpString);
+    HANDLE WINAPI GetPropW(HWND hWnd, LPCWSTR lpString);
+    BOOL WINAPI SetPropA(HWND hWnd, LPCSTR lpString, HANDLE hData);
+    BOOL WINAPI SetPropW(HWND hWnd, LPCWSTR lpString, HANDLE hData);
+    HANDLE WINAPI RemovePropA(HWND hWnd, LPCSTR lpString);
+    HANDLE WINAPI RemovePropW(HWND hWnd, LPCWSTR lpString);
 
 #ifdef UNICODE
 #define GetProp    GetPropW

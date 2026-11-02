@@ -6,9 +6,6 @@
 #include "hook.h"
 #include "SRwLock.hpp"
 #include "SConnection.h"
-#ifdef __linux__
-#include "SClipboard.h"
-#endif //__linux
 #include "debug.h"
 #define kLogTag "hook"
 
@@ -233,10 +230,10 @@ LRESULT HookMgr::call_hook(HHOOK hhk, int nCode, WPARAM wParam, LPARAM lParam)
                 data.code = nCode;
                 data.wp = wParam;
                 data.lp = lParam;
-#ifdef __linux__
-                // using clipboard owner of the target thread
-                SendMessageTimeoutA(hwndFromXcb(conn->getClipboard()->getClipboardOwner()), UM_CALLHOOK, 0, (LPARAM)&data, 0, get_hook_timeout(), &ret);
-#endif //__linux__
+                // Every port's SConnection::GetClipboardOwner() already hands back
+                // a swinx HWND (the xcb port converts its window id inside the
+                // method), so the cross-thread target needs no platform branch.
+                SendMessageTimeoutA(conn->GetClipboardOwner(), UM_CALLHOOK, 0, (LPARAM)&data, 0, get_hook_timeout(), &ret);
             }
         }
     }

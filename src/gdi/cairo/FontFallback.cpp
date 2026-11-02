@@ -165,7 +165,19 @@ public:
         if (!m_started.compare_exchange_strong(expected, true))
             return;
         m_quit.store(false, std::memory_order_release); // allow restart after a shutdown
+#ifdef __EMSCRIPTEN__
+        // 浏览器形态不链 pthread（-sUSE_PTHREADS=0），libc++ 的 std::thread 构造会
+        // 抛 system_error("thread constructor failed")，而本模块编在 -fno-exceptions
+        // 下，抛出点直接 abort()。触发路径是第一次文本绘制：
+        // DrawTextA -> ApplyFont -> AttachFontFallback -> SwinXFontFallbackPrefetch。
+        // wasm 的字体只来自 AddFontResource 注册的 app font
+        // （FcConfigAppFontAddFile），FcFontList 枚举的是内存里已有的 fontconfig
+        // 配置，没有磁盘 I/O，异步没有收益 —— 所以这里同步枚举，
+        // m_thread 保持不可 join，shutdown() 的 joinable() 分支自然跳过。
+        build();
+#else
         m_thread = std::thread([this]() { build(); });
+#endif
     }
 
     // ask the enumeration thread to stop as soon as it reaches the next

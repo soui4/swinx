@@ -31,6 +31,11 @@
  *     manual-reset event signalled while MANY tasks are already blocked will
  *     wake one per SetEvent. The tested fun_test cases use at most one blocked
  *     waiter per event, so the contract holds for them.
+ *   * Under SOUI_FREERTOS_HOST_EMU there is no portable way to freeze one
+ *     running pthread (pthread_kill(tid, SIGSTOP) stops the whole process), so
+ *     SuspendThread()/ResumeThread() return (DWORD)-1 and a thread created with
+ *     CREATE_SUSPENDED starts running. The FreeRTOS target keeps the real
+ *     vTaskSuspend/vTaskResume behavior. No in-tree caller uses either API.
  */
 #include <sfr_config.h>
 #include <windows.h>
@@ -45,6 +50,10 @@
 #include <chrono>
 #include <map>
 #include <string>
+// Declared by newlib on the bare-metal target too (pthread_self() below maps
+// onto the FreeRTOS task identity), so this include is safe in every mode;
+// the SFR_KERNEL_EMU irq_save/irq_restore pair really needs it.
+#include <pthread.h>
 
 #include "swinx_freertos_api.h"
 
@@ -207,6 +216,28 @@ inline void irq_restore(uint32_t pr)
     (void)pr;
     taskEXIT_CRITICAL();
 }
+#elif SFR_KERNEL_EMU
+// Host pthread emulation: there is no interrupt mask, and a per-thread
+// SIGSTOP-style freeze is not portable.  The only thing these two helpers
+// guard is the pair of 64-bit interlocked ops below, so a process-wide lock
+// gives the same mutual exclusion.
+inline pthread_mutex_t &irq_mutex(void)
+{
+    static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+    return mtx;
+}
+
+inline uint32_t irq_save(void)
+{
+    pthread_mutex_lock(&irq_mutex());
+    return 0;
+}
+
+inline void irq_restore(uint32_t pr)
+{
+    (void)pr;
+    pthread_mutex_unlock(&irq_mutex());
+}
 #else
 inline uint32_t irq_save(void)
 {
@@ -221,7 +252,7 @@ inline void irq_restore(uint32_t pr)
     if (!pr)
         __asm volatile("cpsie i" ::: "memory");
 }
-#endif // SFR_HOSTED
+#endif // SFR_HOSTED / SFR_KERNEL_EMU / bare-metal Cortex-M
 
 // ---- thread trampoline ----------------------------------------------------
 void thread_trampoline(void *p)
@@ -231,7 +262,7 @@ void thread_trampoline(void *p)
     t->done = true;
     swinx_fr::sem_give(t->joinSem);
     // A FreeRTOS task function MUST NOT return.
-    vTaskDelete(nullptr);
+    swinx_fr::task_exit();
 }
 
 // readiness probe used by WaitForMultipleObjects' polling loop
@@ -335,7 +366,7 @@ HANDLE WINAPI CreateMutexA(LPSECURITY_ATTRIBUTES, BOOL bInitialOwner, LPCSTR lpN
     if (!o)
         return NULL;
     o->sem = swinx_fr::sem_create();   // binary semaphore (born EMPTY = locked)
-    if (!o->sem)
+    if (!swinx_fr::sem_handle_valid(o->sem))
     {
         delete o;
         return NULL;
@@ -516,7 +547,7 @@ HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES, SIZE_T dwStackSize, LPTHREAD_S
     if (!t)
         return NULL;
     t->joinSem = swinx_fr::sem_create();
-    if (!t->joinSem)
+    if (!swinx_fr::sem_handle_valid(t->joinSem))
     {
         delete t;
         return NULL;
@@ -543,7 +574,7 @@ HANDLE WINAPI CreateThread(LPSECURITY_ATTRIBUTES, SIZE_T dwStackSize, LPTHREAD_S
     HANDLE h = make_handle(kThread, t);
     if (!h)
     {
-        vTaskDelete(t->task);
+        swinx_fr::task_delete(t->task);
         swinx_fr::sem_delete(t->joinSem);
         delete t;
         return NULL;
@@ -559,8 +590,11 @@ DWORD WINAPI SuspendThread(HANDLE h)
     if (!t)
         return (DWORD)-1;
     int prev = t->suspendCount;
-    if (prev == 0)
-        vTaskSuspend(t->task);
+    // task_suspend reports false where the backend has no freeze primitive
+    // (the host emulation); fail the call instead of leaving the caller
+    // believing a running thread stopped.
+    if (prev == 0 && !swinx_fr::task_suspend(t->task))
+        return (DWORD)-1;
     t->suspendCount = prev + 1;
     return (DWORD)prev;
 }
@@ -574,8 +608,8 @@ DWORD WINAPI ResumeThread(HANDLE h)
     if (prev > 0)
     {
         t->suspendCount = prev - 1;
-        if (t->suspendCount == 0)
-            vTaskResume(t->task);
+        if (t->suspendCount == 0 && !swinx_fr::task_resume(t->task))
+            return (DWORD)-1;
     }
     return (DWORD)prev;
 }
@@ -682,10 +716,19 @@ int64_t WINAPI InterlockedDecrement64(int64_t volatile *v)
 // on POSIX platforms to identify the owning thread.  newlib declares the
 // pthread_t type but ships no implementation, so map it onto the FreeRTOS
 // task identity (same value GetCurrentThreadId() returns).
+//
+// NOT under SOUI_FREERTOS_HOST_EMU: there swinx_fr::task_current() asks the
+// host's pthread_self(), so defining this symbol here would replace libc's
+// and the two would call each other forever (GetCurrentThreadId ->
+// task_current -> our pthread_self -> GetCurrentThreadId -> stack overflow).
+// The host already has a real pthread_self, and its pthread_t is exactly the
+// per-thread identity the port needs.
 // ---------------------------------------------------------------------------
 #include <pthread.h>
 
+#if !SFR_KERNEL_EMU
 pthread_t pthread_self(void)
 {
     return (pthread_t)GetCurrentThreadId();
 }
+#endif

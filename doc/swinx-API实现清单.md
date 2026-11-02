@@ -18,23 +18,23 @@
 
 | 分级 | 数量 |
 |---|---|
-| 实现 | 1003 |
+| 实现 | 999 |
 | 简单实现 | 86 |
-| 部分实现 | 12 |
+| 部分实现 | 14 |
 | 空实现 / 语义桩 | 41 |
 | 未提供（仅声明） | 126 |
-| **合计（有定义）** | **1142** |
+| **合计（有定义）** | **1140** |
 
 ## 3. 模块分布
 
 | 模块 | 实现 | 简单实现 | 部分实现 | 空实现 |
 |---|---|---|---|---|
 | 窗口、消息与用户界面（USER32 等价） | 197 | 8 | 0 | 6 |
-| 图形设备接口（GDI32 等价） | 173 | 26 | 2 | 6 |
-| 系统、文件、进程与线程（KERNEL32 等价） | 304 | 17 | 5 | 2 |
+| 图形设备接口（GDI32 等价） | 172 | 26 | 2 | 6 |
+| 系统、文件、进程与线程（KERNEL32 等价） | 302 | 17 | 7 | 2 |
 | COM / OLE（OLE32·OLEAUT32 等价） | 56 | 8 | 0 | 4 |
 | 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 77 | 18 | 4 | 2 |
-| 多媒体、资源及其它（WINMM·杂项） | 196 | 9 | 1 | 21 |
+| 多媒体、资源及其它（WINMM·杂项） | 195 | 9 | 1 | 21 |
 
 ## 4. 模块 API 明细
 
@@ -121,8 +121,8 @@
 | `GetMonitorInfoA` | 实现 | src/multimon.cpp |  |
 | `GetMonitorInfoW` | 实现 | src/multimon.cpp |  |
 | `GetParent` | 实现 | src/wnd.cpp |  |
-| `GetPropA` | 实现 | src/wnd.cpp（另有 1 个平台分支） |  |
-| `GetPropW` | 实现 | src/wnd.cpp（另有 1 个平台分支） |  |
+| `GetPropA` | 实现 | src/wnd.cpp |  |
+| `GetPropW` | 实现 | src/wnd.cpp |  |
 | `GetRawInputDeviceInfoA` | 实现 | src/winuser.cpp |  |
 | `GetRawInputDeviceInfoW` | 实现 | src/winuser.cpp |  |
 | `GetRawInputDeviceList` | 实现 | src/winuser.cpp |  |
@@ -182,8 +182,8 @@
 | `ReleaseCapture` | 实现 | src/wnd.cpp |  |
 | `ReleaseDC` | 实现 | src/wnd.cpp |  |
 | `RemoveMenu` | 实现 | src/cmnctl32/menu.cpp |  |
-| `RemovePropA` | 实现 | src/wnd.cpp（另有 1 个平台分支） |  |
-| `RemovePropW` | 实现 | src/wnd.cpp（另有 1 个平台分支） |  |
+| `RemovePropA` | 实现 | src/wnd.cpp |  |
+| `RemovePropW` | 实现 | src/wnd.cpp |  |
 | `ScreenToClient` | 实现 | src/wnd.cpp |  |
 | `SendMessageA` | 实现 | src/wnd.cpp |  |
 | `SendMessageCallbackA` | 实现 | src/wnd.cpp |  |
@@ -207,8 +207,8 @@
 | `SetMenuItemInfoA` | 实现 | src/cmnctl32/menu.cpp |  |
 | `SetMenuItemInfoW` | 实现 | src/cmnctl32/menu.cpp |  |
 | `SetParent` | 实现 | src/cmnctl32/menu.cpp 等 2 处 |  |
-| `SetPropA` | 实现 | src/wnd.cpp（另有 1 个平台分支） |  |
-| `SetPropW` | 实现 | src/wnd.cpp（另有 1 个平台分支） |  |
+| `SetPropA` | 实现 | src/wnd.cpp |  |
+| `SetPropW` | 实现 | src/wnd.cpp |  |
 | `SetScrollInfo` | 实现 | src/wnd.cpp |  |
 | `SetScrollPos` | 实现 | src/wnd.cpp |  |
 | `SetScrollRange` | 实现 | src/wnd.cpp |  |
@@ -341,7 +341,7 @@
 | `FrameRect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `FrameRgn` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `GetCharWidthA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetCharWidthI` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
+| `GetCharWidthI` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
 | `GetCharWidthW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `GetClipBox` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `GetClipRgn` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
@@ -353,7 +353,7 @@
 | `GetFontUnicodeRanges` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
 | `GetGdiObjPtr` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 | GDI 句柄表内部辅助 |
 | `GetGlyphIndicesA` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
-| `GetGlyphIndicesW` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
+| `GetGlyphIndicesW` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
 | `GetGlyphOutlineA` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
 | `GetGlyphOutlineW` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
 | `GetIconInfo` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
@@ -412,7 +412,6 @@
 | `RefGdiObj` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `RemoveFontMemResourceEx` | 实现 | src/gdi/apple/gdi.cpp | 仅 CoreText 后端有定义：CTFontManagerUnregisterGraphicsFont + CGFontRelease + delete，句柄为 AddFontMemResourceEx 的返回值 |
 | `RestoreDC` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `RgnComplexity` | 实现 | src/region.cpp |  |
 | `RoundRect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `SaveDC` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
 | `SelectClipPath` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
@@ -532,13 +531,11 @@
 | `FileTimeToLocalFileTime` | 实现 | src/platform/*/sysapi.cpp |  |
 | `FindClose` | 实现 | src/platform/*/fileapi.cpp 等 2 处 |  |
 | `FindCloseChangeNotification` | 实现 | src/platform/*/sysapi.cpp |  |
-| `FindFirstChangeNotificationA` | 实现 | src/platform/*/sysapi.cpp |  |
 | `FindFirstChangeNotificationW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `FindFirstFileA` | 实现 | src/platform/*/fileapi.cpp 等 2 处 |  |
 | `FindFirstFileExA` | 实现 | src/platform/*/fileapi.cpp |  |
 | `FindFirstFileExW` | 实现 | src/platform/*/fileapi.cpp |  |
 | `FindFirstFileW` | 实现 | src/platform/*/fileapi.cpp |  |
-| `FindNextChangeNotification` | 实现 | src/platform/*/sysapi.cpp |  |
 | `FindNextFileA` | 实现 | src/platform/*/fileapi.cpp 等 2 处 |  |
 | `FindNextFileW` | 实现 | src/platform/*/fileapi.cpp |  |
 | `FlushInstructionCache` | 实现 | src/platform/*/memory.cpp |  |
@@ -617,7 +614,7 @@
 | `GetTempFileNameW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetTempPathA` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetTempPathW` | 实现 | src/platform/*/sysapi.cpp |  |
-| `GetThreadTimes` | 实现 | src/platform/*/sysapi.cpp | 四个出参都允许传 NULL，逐项跳过写回后仍返回 TRUE（Windows 实测如此，早期在入口拦成 ERROR_INVALID_PARAMETER 会在 Windows 端跑不过 fun_test）；POSIX 没有线程创建/退出时间的入口，除 user 外三项填 0，所以调用方只能断言 lpExitTime |
+| `GetThreadTimes` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetUserDefaultLCID` | 实现 | src/winnsl.cpp |  |
 | `GetUserDefaultLangID` | 实现 | src/winnsl.cpp |  |
 | `GetUserDefaultUILanguage` | 实现 | src/winnsl.cpp |  |
@@ -799,6 +796,8 @@
 | `SetLastError` | 简单实现 | src/platform/*/sysapi.cpp 等 2 处 | 以线程局部 errno 模拟 last-error，错误码语义与 Win32 不完全一致 |
 | `SystemParametersInfoA` | 简单实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `set_error` | 简单实现 | src/platform/*/sysapi.cpp |  |
+| `FindFirstChangeNotificationA` | 部分实现 | src/platform/*/sysapi.cpp | Linux 用 inotify、macOS 用 kqueue 真实监控目录；既无 inotify 也无 kqueue 的平台（wasm —— Emscripten 的 musl 没有 <sys/inotify.h>，也没有事件队列）恒返回 INVALID_HANDLE_VALUE 并 SetLastError(ERROR_CALL_NOT_IMPLEMENTED) |
+| `FindNextChangeNotification` | 部分实现 | src/platform/*/sysapi.cpp | 同上：Linux/macOS 读各自的 inotify/kqueue 事件，其余平台恒返回 FALSE 并 SetLastError(ERROR_CALL_NOT_IMPLEMENTED)。FindFirstChangeNotificationW 在平台守卫之外，转发 A 版 |
 | `FormatMessageA` | 部分实现 | src/platform/*/sysapi.cpp | 无 Windows 系统消息表：FORMAT_MESSAGE_FROM_SYSTEM 把 dwMessageId 当 errno 交给 strerror，其余来源统一返回 "unknown error <id>"；忽略 FROM_STRING / FROM_HMODULE / ARGUMENT_LIST，FORMAT_MESSAGE_ALLOCATE_BUFFER 用 LocalAlloc 兑现「调用方 LocalFree」的所有权约定 |
 | `FormatMessageW` | 部分实现 | src/platform/*/sysapi.cpp | 同上，输出侧按 WCHAR 宽度转换（macOS 的 wchar_t 是 4 字节） |
 | `GetThreadContext` | 部分实现 | src/platform/*/sysapi.cpp | 仅 x86_64 给出寄存器：Linux 读 SuspendThread 用 SIGPARK 挂起时快照的 ucontext（只在挂起期间有意义，未挂起返回 FALSE），macOS x86_64 走 thread_get_state；其它架构如实返回 FALSE，绝不给伪造的 Rsp（WebCore 的 MachineStackMarker 会从这个指针开始扫栈） |
@@ -821,15 +820,15 @@
 | `CoTaskMemAlloc` | 实现 | src/malloc_impl.cpp |  |
 | `CoTaskMemFree` | 实现 | src/malloc_impl.cpp |  |
 | `CoTaskMemRealloc` | 实现 | src/malloc_impl.cpp |  |
-| `DoDragDrop` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
+| `DoDragDrop` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
 | `OleDuplicateData` | 实现 | src/platform/*/ole2.cpp 等 3 处 |  |
-| `OleFlushClipboard` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
-| `OleGetClipboard` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
-| `OleIsCurrentClipboard` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
-| `OleSetClipboard` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
-| `RegisterDragDrop` | 实现 | src/platform/*/dlghelper.cpp 等 5 处 |  |
-| `ReleaseStgMedium` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
-| `RevokeDragDrop` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
+| `OleFlushClipboard` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
+| `OleGetClipboard` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
+| `OleIsCurrentClipboard` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
+| `OleSetClipboard` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
+| `RegisterDragDrop` | 实现 | src/platform/*/dlghelper.cpp 等 6 处 |  |
+| `ReleaseStgMedium` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
+| `RevokeDragDrop` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
 | `SHCreateDirectoryExA` | 实现 | src/platform/*/shellobj.cpp |  |
 | `SHCreateDirectoryExW` | 实现 | src/platform/*/shellobj.cpp |  |
 | `SHCreateStdEnumFmtEtc` | 实现 | src/platform/*/shellobj.cpp |  |
@@ -890,8 +889,8 @@
 |---|---|---|---|
 | `ChooseColorA` | 实现 | src/cmmmdlg.cpp |  |
 | `ChooseColorW` | 实现 | src/cmmmdlg.cpp |  |
-| `ChooseFontA` | 实现 | src/platform/*/dlghelper.cpp 等 4 处 |  |
-| `ChooseFontW` | 实现 | src/platform/*/dlghelper.cpp 等 4 处 |  |
+| `ChooseFontA` | 实现 | src/platform/*/dlghelper.cpp 等 5 处 |  |
+| `ChooseFontW` | 实现 | src/platform/*/dlghelper.cpp 等 5 处 |  |
 | `DragAcceptFiles` | 实现 | src/platform/*/shellapi.cpp |  |
 | `DragFinish` | 实现 | src/platform/*/shellapi.cpp | 释放 WM_DROPFILES 交付给宿主的拖放数据；宿主未调用时由 CDropFileTarget::Drop 兜底释放，重复调用幂等 |
 | `DragQueryFileA` | 实现 | src/platform/*/shellapi.cpp |  |
@@ -902,24 +901,24 @@
 | `GetOpenFileNameW` | 实现 | src/cmmmdlg.cpp |  |
 | `GetSaveFileNameA` | 实现 | src/cmmmdlg.cpp |  |
 | `GetSaveFileNameW` | 实现 | src/cmmmdlg.cpp |  |
-| `ImmAssociateContext` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmCreateContext` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmDestroyContext` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmAssociateContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmCreateContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmDestroyContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
 | `ImmEscapeA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmEscapeW` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetContext` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmGetDefaultIMEWnd` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetProperty` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmEscapeW` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmGetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmGetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmGetContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmGetDefaultIMEWnd` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmGetProperty` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
 | `ImmGetVirtualKey` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmIsIME` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmNotifyIME` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmReleaseContext` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmSetCompositionFontA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetCompositionFontW` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmIsIME` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmNotifyIME` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmReleaseContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmSetCompositionFontA` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmSetCompositionFontW` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
 | `ImmSetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmSetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
 | `PathAppendA` | 实现 | src/shlwapi.cpp |  |
 | `PathAppendW` | 实现 | src/shlwapi.cpp |  |
 | `PathCanonicalizeA` | 实现 | src/platform/*/shellapi.cpp |  |
@@ -966,15 +965,15 @@
 | `Shell_NotifyIconA` | 实现 | src/platform/*/shellapi.cpp |  |
 | `Shell_NotifyIconW` | 实现 | src/platform/*/shellapi.cpp |  |
 | `DragQueryPoint` | 简单实现 | src/platform/*/shellapi.cpp |  |
-| `ImmGetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmGetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
 | `ImmGetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmGetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmGetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
 | `ImmGetStatusWindowPos` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmSetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmSetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmSetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmSetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
 | `ImmSetStatusWindowPos` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `PathFindExtensionW` | 简单实现 | src/platform/*/shellapi.cpp |  |
 | `PathFindFileNameW` | 简单实现 | src/platform/*/shellapi.cpp |  |
@@ -1069,7 +1068,7 @@
 | `OemToCharBuffW` | 实现 | src/strapi.cpp |  |
 | `OemToCharW` | 实现 | src/strapi.cpp |  |
 | `PlatformAPI_Deinit` | 实现 | src/platform_api.cpp | 平台注入接口内部辅助 |
-| `PlaySound` | 实现 | src/platform/*/mmsystem.cpp |  |
+| `PlaySound` | 实现 | src/platform/*/audio.cpp 等 2 处 | 只支持文件播放（SND_MEMORY / SND_RESOURCE / SND_ALIAS 显式返回 FALSE），且一律异步：SND_SYNC 按 SND_ASYNC 处理。各后端的通道不同——linux/macOS/iOS 用播放线程（ALSA 或 aplay），Android/OHOS 转发 g_platformAPI.audio.playSound，wasm 从 wasm 文件系统读出 wav 交给页面实现的 Module.swinxAudioPlay（WebAudio；宿主未安装该钩子时返回 FALSE）；freertos 不编译本 API，引用即链接失败 |
 | `QueryInterface` | 实现 | src/malloc_impl.cpp（另有 1 个平台分支） | COM 方法而非 Win32 导出 API：这里统计的是 IMalloc（src/malloc_impl.cpp，CoGetMalloc 的可替换分配器）与 macOS 可访问性对象的实现 |
 | `RegCloseKey` | 实现 | src/platform/*/registry.cpp |  |
 | `RegCreateKeyExA` | 实现 | src/platform/*/registry.cpp |  |
@@ -1097,9 +1096,9 @@
 | `RegisterClassW` | 实现 | src/class.cpp |  |
 | `ScriptFreeCache` | 实现 | src/platform/*/usp10.cpp |  |
 | `ScriptGetFontProperties` | 实现 | src/platform/*/usp10.cpp |  |
-| `ScriptItemize` | 实现 | src/platform/*/usp10.cpp | 把整串当成一个 run（eScript = SCRIPT_UNDEFINED），不做脚本分段；入参校验照 SDK：pwcInChars/cInChars<=0/pItems/cMaxItems<2/pcItems 为空都是 E_INVALIDARG，出错不写 pcItems（原先 cMaxItems<2 报 E_OUTOFMEMORY，WebKit 传 5 项走不到那条分支）；字符串参数是本地 WCHAR，调用方必须逐 UTF-16 码元转换以保持下标对齐 |
+| `ScriptItemize` | 实现 | src/platform/*/usp10.cpp | 把整串当成一个 run（eScript = SCRIPT_UNDEFINED），不做脚本分段；空串 S_OK + 0 项、cMaxItems<2 报 E_OUTOFMEMORY 并给出需要项数（WebKit 靠这个码扩容重试），这两点与系统 usp10 的 E_INVALIDARG 口径不同，fun_test 按平台分开断言；字符串参数是本地 WCHAR，调用方必须逐 UTF-16 码元转换以保持下标对齐 |
 | `ScriptPlace` | 实现 | src/platform/*/usp10.cpp |  |
-| `ScriptShape` | 实现 | src/platform/*/usp10.cpp |  |
+| `ScriptShape` | 实现 | src/platform/*/usp10.cpp | 一个 UTF-16 码元对一个字形、clusters 恒等，不做整形；psc 被忽略（真 Uniscribe 把它当必需的 in/out 参数，传 NULL 报 E_INVALIDARG）；没有 DC 时报 E_PENDING 让调用方选好字体再试 |
 | `ScriptStringAnalyse` | 实现 | src/platform/*/usp10.cpp | pString 在 SDK 里是 const void*，类型拦不住调用方，靠 iCharset 区分：-1 = 本地 WCHAR（cString 数 WCHAR），其它 = ANSI（cString 数字节，swinx 按 UTF-8 解码）；空串返回 E_INVALIDARG，与 SDK 一致 |
 | `ScriptStringFree` | 实现 | src/platform/*/usp10.cpp |  |
 | `ScriptStringOut` | 实现 | src/platform/*/usp10.cpp |  |
@@ -1134,7 +1133,6 @@
 | `WSAWaitForMultipleEvents` | 实现 | src/platform/*/winsock2.cpp |  |
 | `_InitResourceSystem` | 实现 | src/resapi.cpp |  |
 | `__WSAFDIsSet` | 实现 | src/platform/*/winsock2.cpp | 在 fd_array 里线性查表找句柄（Win32 里这个导出名就是给 FD_ISSET 宏调用的） |
-| `_chsize_s` | 实现 | src/strapi.cpp | ftruncate；失败时把 errno 作为 errno_t 返回，0 表示成功 |
 | `_mbscvt` | 实现 | src/strapi.cpp |  |
 | `_mbsinc` | 实现 | src/strapi.cpp |  |
 | `_snprintf` | 实现 | src/strapi.cpp |  |

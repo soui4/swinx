@@ -1405,6 +1405,8 @@ BOOL WINAPI ShellExecuteA(HWND hwnd __attribute__((unused)), LPCSTR lpOperation,
         delete[] cmd;
         return (ret == 0);
 #else
+        // wasm 不能 xdg-open（Emscripten 的 system() 直接失败），开 URL 要经 JS
+        // 宿主的 window.open；那座桥还没接，所以如实返回失败。
         return FALSE;
 #endif
     }

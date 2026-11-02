@@ -4,13 +4,55 @@
  * Routing: the target window's owning thread is looked up through the
  * window map (_Window::tid), and the event is posted into THAT thread's
  * SConnection -- so a driver task can inject into the UI task's queue while
- * it is blocked in WaitMessage().  Keyboard state and cursor position are
- * updated on the same (target) connection, keeping GetKeyState /
- * GetCursorPos consistent with the delivered messages.
+ * it is blocked in WaitMessage()).  Keyboard state, mouse button state and
+ * cursor position are updated on the same (target) connection, keeping
+ * GetKeyState / GetAsyncKeyState / GetCursorPos consistent with the
+ * delivered messages.
  */
 #include "input.h"
 #include "SConnection.h"
 #include "wndobj.h"
+
+// Win32: GetAsyncKeyState(VK_xBUTTON) reports the physical button state no
+// matter which window has capture; richedit41 (CTxtEdit::OnTxMouseMove) and
+// drag-drop loops gate selection extension on it.  A touch/driver layer only
+// injects messages, so keep the injected button bits in sync here, the same
+// way SwinxInjectKey maintains key state.
+static void SyncMouseButtonState(SConnection *conn, UINT message)
+{
+    switch (message)
+    {
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONDBLCLK:
+    case WM_NCLBUTTONDOWN:
+        conn->SetKeyDown(VK_LBUTTON, TRUE);
+        break;
+    case WM_LBUTTONUP:
+    case WM_NCLBUTTONUP:
+        conn->SetKeyDown(VK_LBUTTON, FALSE);
+        break;
+    case WM_MBUTTONDOWN:
+    case WM_MBUTTONDBLCLK:
+    case WM_NCMBUTTONDOWN:
+        conn->SetKeyDown(VK_MBUTTON, TRUE);
+        break;
+    case WM_MBUTTONUP:
+    case WM_NCMBUTTONUP:
+        conn->SetKeyDown(VK_MBUTTON, FALSE);
+        break;
+    case WM_RBUTTONDOWN:
+    case WM_RBUTTONDBLCLK:
+    case WM_NCRBUTTONDOWN:
+        conn->SetKeyDown(VK_RBUTTON, TRUE);
+        break;
+    case WM_RBUTTONUP:
+    case WM_NCRBUTTONUP:
+        conn->SetKeyDown(VK_RBUTTON, FALSE);
+        break;
+    default:
+        break;
+    }
+}
 
 void SwinxInjectMouse(HWND hWnd, UINT message, int x, int y, WPARAM fwKeys)
 {
@@ -24,6 +66,8 @@ void SwinxInjectMouse(HWND hWnd, UINT message, int x, int y, WPARAM fwKeys)
 
     // update the (virtual) cursor position in screen coordinates
     conn->SetCursorPos(x, y);
+
+    SyncMouseButtonState(conn, message);
 
     // screen -> client (client origin == window origin on this port)
     if (wndObj)

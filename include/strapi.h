@@ -74,8 +74,13 @@ extern "C"
 
     int WINAPI _vsnprintf(char *buffer, size_t size, const char *format, va_list args);
 
+#if !SFR_HOSTED
     /* MSVC CRT 的 _timeb/_ftime（<sys/timeb.h> 在 Windows 上提供）。
-     * 与 POSIX 的 struct timeb/ftime 同义，只是命名不同。 */
+     * 与 POSIX 的 struct timeb/ftime 同义，只是命名不同。
+     * 只在没有真实 CRT 的目标上自带：宿主构建里 mingw 的 <sys/timeb.h>
+     * （由 ctypes.h -> <time.h> 带进来）已经定义了 struct __timeb64，
+     * 而 _timeb 是 #define _timeb __timeb64 —— 再写一次 struct _timeb
+     * 展开后就是 __timeb64 的重复定义。 */
     struct _timeb
     {
         time_t time;
@@ -84,6 +89,7 @@ extern "C"
         short dstflag;
     };
     void WINAPI _ftime(struct _timeb *tp);
+#endif // !SFR_HOSTED
 
     int WINAPI _snwprintf(wchar_t *buffer, size_t size, const wchar_t *format, ...);
 
@@ -104,24 +110,41 @@ extern "C"
 #define _trename    rename
 #endif // UNICODE
 
-#if SFR_HOSTED
-// mingw's CRT provides _wcsicmp/_wcsnicmp (no POSIX wcscasecmp there);
-// strcasecmp/strncasecmp do exist in mingw's string.h.
+/* Case-insensitive string comparison, one table for the whole family.
+ *
+ * Windows code spells these stricmp/_stricmp/wcsicmp/_wcsicmp, POSIX spells
+ * them strcasecmp/wcscasecmp.  There is exactly one situation where the MSVC
+ * spelling must stay a no-op identity macro instead of an alias: a hosted
+ * Windows build, where the CRT already exports those symbols *and* implements
+ * strcasecmp as an __CRT_INLINE wrapper around _stricmp (mingw's <string.h>).
+ * Aliasing _stricmp back onto strcasecmp there rewrites the body of that
+ * wrapper into a call to itself; gcc folds the self-recursion into `jmp $` and
+ * every case-insensitive lookup spins at 100% CPU instead of returning -- it
+ * stranded ClassMgr::find_class inside SApplication's constructor in the
+ * Windows simulator.  POSIX hosts and bare targets have a real strcasecmp
+ * function and no Windows spellings, so the plain aliases are correct there.
+ *
+ * Note both branches define every name: swapping the CRT surface below this
+ * header must never leave `_stricmp` (or any sibling) silently undefined. */
+#if SFR_HOSTED && defined(_WIN32)
+#define stricmp(s1, s2)        stricmp(s1, s2)
+#define strnicmp(s1, s2, num)  strnicmp(s1, s2, num)
+#define _stricmp(s1, s2)       _stricmp(s1, s2)
+#define _strnicmp(s1, s2, num) _strnicmp(s1, s2, num)
 #define _wcsicmp(s1, s2)       _wcsicmp(s1, s2)
 #define _wcsnicmp(s1, s2, num) _wcsnicmp(s1, s2, num)
 #else
+#define stricmp(s1, s2)        strcasecmp(s1, s2)
+#define strnicmp(s1, s2, num)  strncasecmp(s1, s2, num)
+#define _stricmp(s1, s2)       stricmp(s1, s2)
+#define _strnicmp(s1, s2, num) strnicmp(s1, s2, num)
 #define _wcsicmp(s1, s2)       wcscasecmp(s1, s2)
 #define _wcsnicmp(s1, s2, num) wcsncasecmp(s1, s2, num)
 #endif
+
+/* Unprefixed spellings the CRT does not always declare; resolve to the above. */
+#define wcsicmp  _wcsicmp
 #define wcsnicmp _wcsnicmp
-
-#define stricmp(s1, s2)       strcasecmp(s1, s2)
-#define strnicmp(s1, s2, num) strncasecmp(s1, s2, num)
-#define wcsicmp               _wcsicmp
-
-/* MSVC CRT spellings of the above; code ported from Windows uses them. */
-#define _stricmp(s1, s2)       stricmp(s1, s2)
-#define _strnicmp(s1, s2, num) strnicmp(s1, s2, num)
 
 /* _putenv()/putenv() both take a mutable "NAME=value" string and do not copy
  * it, so keeping the caller's buffer alive is the caller's business either way. */

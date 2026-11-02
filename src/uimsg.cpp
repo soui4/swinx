@@ -1,9 +1,10 @@
 #include <windows.h>
 #include <atomic>
 #include "uimsg.h"
-#if defined(__linux__) && !defined(__OHOS__)
+#include "sfr_config.h"   /* SFR_PLATFORM，见 src/wnd.cpp 同名注释 */
+#if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
 #include "SDragdrop.h"
-#endif // defined(__linux__) && !defined(__OHOS__)
+#endif // defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
 #include "log.h"
 #define kLogTag "uimsg"
 
@@ -106,7 +107,7 @@ void IpcMsg::SetResult(LRESULT res)
     SetEvent(synEvt);
 }
 //-----------------------------------------------------------
-#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__)
+#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__) && !SFR_PLATFORM
 DragEnterData::DragEnterData(XDndDataObjectProxy *_pData)
 {
     pData = _pData;
@@ -121,4 +122,4 @@ DragEnterData::~DragEnterData()
         pData = NULL;
     }
 }
-#endif // defined(__linux__) && !defined(__OHOS__)&& !defined(__ANDROID__)
+#endif // defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__) && !SFR_PLATFORM

@@ -27,8 +27,6 @@ extern "C"
 #define COMPLEXREGION 3
 #define RGN_ERROR     ERROR
 
-    int WINAPI RgnComplexity(HRGN hRgn);
-
     int WINAPI CombineRgn(HRGN hrgnDst, HRGN hrgnSrc1, HRGN hrgnSrc2, int iMode);
 
     HRGN WINAPI CreateEllipticRgn(int nLeftRect,  // x-coord of upper-left corner of rectangle

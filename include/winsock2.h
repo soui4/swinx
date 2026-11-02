@@ -422,7 +422,7 @@ typedef struct swinx_fd_set
 /* Win32 的 timeval 用 LONG 计秒/微秒。POSIX 的 <sys/time.h> 已经有同名结构
  * （tv_sec 是 time_t），两者都出现在同一个 TU 时只能留一个 —— 各家的 guard
  * 宏不同，这里把三个都认上。 */
-#if !defined(_TIMEVAL_DEFINED) && !defined(_STRUCT_TIMEVAL) && !defined(__timeval_defined)
+#if !defined(_TIMEVAL_DEFINED) && !defined(_STRUCT_TIMEVAL) && !defined(__timeval_defined) && !defined(_STRUCT_TIMESPEC)
 #define _TIMEVAL_DEFINED 1
 struct timeval
 {

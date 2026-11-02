@@ -87,6 +87,90 @@ struct GradientDetail
     std::vector<GRADIENTITEM> items;
     GRADIENTINFO info;
 };
+
+/* cairo 没有 conic/sweep 渐变。这里按角度切扇形用 mesh 逼近：每段三角形的
+ * 三个角分别取圆心中点色、起角处颜色、终角处颜色；分段足够密时视觉上与
+ * 真 sweep 渐变一致（SOUI 的 SSpeedMeter 表盘弧就是这种渐变）。 */
+static CairoColor SweepSampleAt(const std::vector<GRADIENTITEM> &items, double alpha, double t)
+{
+    if (t <= items.front().pos)
+    {
+        CairoColor c(items.front().cr);
+        c.a *= alpha;
+        return c;
+    }
+    const GRADIENTITEM *prev = &items.front();
+    for (size_t i = 1; i < items.size(); i++)
+    {
+        const GRADIENTITEM &cur = items[i];
+        if (t <= cur.pos || i + 1 == items.size())
+        {
+            double span = cur.pos - prev->pos;
+            double k = span > 1e-9 ? (t - prev->pos) / span : 0.0;
+            if (k < 0)
+                k = 0;
+            if (k > 1)
+                k = 1;
+            CairoColor a(prev->cr), b(cur.cr);
+            CairoColor out(prev->cr);
+            out.r = a.r + (b.r - a.r) * k;
+            out.g = a.g + (b.g - a.g) * k;
+            out.b = a.b + (b.b - a.b) * k;
+            out.a = (a.a + (b.a - a.a) * k) * alpha;
+            return out;
+        }
+        prev = &cur;
+    }
+    CairoColor c(items.back().cr);
+    c.a *= alpha;
+    return c;
+}
+
+static cairo_pattern_t *CreateSweepGradientPattern(const GradientDetail &gd, double wid, double hei, double x, double y, double alpha)
+{
+    const std::vector<GRADIENTITEM> &items = gd.items;
+    if (items.empty())
+        return nullptr;
+    double cx = wid * gd.info.sweep.centerX + x;
+    double cy = hei * gd.info.sweep.centerY + y;
+    const double corners[4][2] = { { x, y }, { x + wid, y }, { x + wid, y + hei }, { x, y + hei } };
+    double radius = 0;
+    for (int i = 0; i < 4; i++)
+    {
+        double dx = corners[i][0] - cx;
+        double dy = corners[i][1] - cy;
+        double d = sqrt(dx * dx + dy * dy);
+        if (d > radius)
+            radius = d;
+    }
+    radius = radius * 1.02 + 1.0; // 覆盖整个包围盒（含圆心在盒外的情况）
+    const int kSegments = 180;
+    const double startDeg = gd.info.sweep.startAngle;
+    cairo_pattern_t *pat = cairo_pattern_create_mesh();
+    for (int i = 0; i < kSegments; i++)
+    {
+        double t0 = (double)i / kSegments, t1 = (double)(i + 1) / kSegments;
+        double a0 = (startDeg + t0 * 360.0) * M_PI / 180.0;
+        double a1 = (startDeg + t1 * 360.0) * M_PI / 180.0;
+        CairoColor cMid = SweepSampleAt(items, alpha, (t0 + t1) * 0.5);
+        CairoColor c0 = SweepSampleAt(items, alpha, t0);
+        CairoColor c1 = SweepSampleAt(items, alpha, t1);
+        cairo_mesh_pattern_begin_patch(pat);
+        cairo_mesh_pattern_move_to(pat, cx, cy);
+        cairo_mesh_pattern_line_to(pat, cx + radius * cos(a0), cy + radius * sin(a0));
+        cairo_mesh_pattern_line_to(pat, cx + radius * cos(a1), cy + radius * sin(a1));
+        cairo_mesh_pattern_set_corner_color_rgba(pat, 0, cMid.r, cMid.g, cMid.b, cMid.a);
+        cairo_mesh_pattern_set_corner_color_rgba(pat, 1, c0.r, c0.g, c0.b, c0.a);
+        cairo_mesh_pattern_set_corner_color_rgba(pat, 2, c1.r, c1.g, c1.b, c1.a);
+        cairo_mesh_pattern_end_patch(pat);
+    }
+    if (cairo_pattern_status(pat) != CAIRO_STATUS_SUCCESS)
+    {
+        cairo_pattern_destroy(pat);
+        return nullptr;
+    }
+    return pat;
+}
 struct PatternInfo
 {
     TILEMODE tileMode;
@@ -243,7 +327,10 @@ struct PatternInfo
         cairo_pattern_t *ret = nullptr;
         if (useBmp)
         {
-            ret = cairo_pattern_create_for_surface((cairo_surface_t *)GetGdiObjPtr(data.bmp));
+            cairo_surface_t *surf = (cairo_surface_t *)GetGdiObjPtr(data.bmp);
+            if (!surf)
+                return nullptr;
+            ret = cairo_pattern_create_for_surface(surf);
             // Set pattern matrix to adjust position
             cairo_matrix_t matrix;
             cairo_matrix_init_translate(&matrix, x, y);
@@ -273,14 +360,21 @@ struct PatternInfo
                 ret = cairo_pattern_create_radial(centerX, centerY, 0, centerX, centerY, data.gradientDetail->info.radial.radius);
             }
             break;
+            case grad_sweep:
+                // mesh 扇形自带颜色，不能再 add_color_stop（对 mesh 调用会记录类型错误）
+                ret = CreateSweepGradientPattern(*data.gradientDetail, wid, hei, x, y, alpha);
+                break;
             default:
                 return nullptr;
             }
-            for (uint32_t i = 0, cnt = data.gradientDetail->items.size(); i < cnt; i++)
+            if (data.gradientDetail->info.type != grad_sweep)
             {
-                CairoColor cr(data.gradientDetail->items[i].cr);
-                cr.a *= alpha;
-                cairo_pattern_add_color_stop_rgba(ret, data.gradientDetail->items[i].pos, cr.r, cr.g, cr.b, cr.a);
+                for (uint32_t i = 0, cnt = data.gradientDetail->items.size(); i < cnt; i++)
+                {
+                    CairoColor cr(data.gradientDetail->items[i].cr);
+                    cr.a *= alpha;
+                    cairo_pattern_add_color_stop_rgba(ret, data.gradientDetail->items[i].pos, cr.r, cr.g, cr.b, cr.a);
+                }
             }
         }
         if (!ret)
@@ -584,6 +678,8 @@ static bool ApplyBrush(HDC hdc, HBRUSH hbr, double wid, double hei, double x, do
             y = -hdc->brushOrg.y;
         }
         cairo_pattern_t *pattern = info->create(wid, hei, x, y);
+        if (!pattern)
+            return false; // 无法构造 pattern：不绘制，绝不把 NULL 交给 cairo（会毒化整个上下文）
         cairo_set_source(ctx, pattern);
         break;
     }
@@ -621,12 +717,21 @@ static void DrawPathStroke(cairo_t *ctx, HDC hdc, double wid, double hei, double
 }
 
 
+// Win32: an HDC is never font-less. CreateCompatibleDC selects the system font
+// (12 px high at 96 dpi), so GetTextExtentPoint32 on a fresh DC returns that
+// font's metrics even when the caller never calls SelectObject. cairo's default
+// font has a zero size, so doing nothing here makes MeasureText report 0x0;
+// SOUI controls that measure text without carrying a `font` attribute (e.g. the
+// plain <hexedit> page in demos/demo, which relies on the Windows default font)
+// then get a zero line height and divide by it (SHexEdit::CalculatePaintingDetails).
+static const double kDefaultFontSizePx = 12.0;
+
 static BOOL ApplyFont(HDC hdc)
 {
+    cairo_t *cr = hdc->cairo;
     if (hdc->hfont)
     {
         LOGFONTA *lf = (LOGFONTA *)GetGdiObjPtr(hdc->hfont);
-        cairo_t *cr = hdc->cairo;
 
         cairo_font_face_t *fontFace = SwinXGetCachedFontFace(lf);
         if (fontFace)
@@ -642,7 +747,11 @@ static BOOL ApplyFont(HDC hdc)
         AttachFontFallback(cr, lf);
         return TRUE;
     }
-    return FALSE;
+
+    // No SelectObject yet: emulate the system font a Win32 DC carries by default.
+    cairo_select_font_face(cr, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_set_font_size(cr, kDefaultFontSizePx);
+    return TRUE;
 }
 
 static void ApplyRegion(cairo_t *ctx, HRGN hRgn)
@@ -1422,7 +1531,7 @@ int GetClipRgn(HDC hdc, HRGN hrgn)
     cairo_rectangle_list_destroy(rcList);
     CombineRgn(hrgn, rgnSrc, nullptr, RGN_COPY);
     DeleteObject(rgnSrc);
-    return RgnComplexity(hrgn) == NULLREGION ? 0 : 1;
+    return GetRgnBox(hrgn,NULL) == NULLREGION ? 0 : 1;
 }
 
 int SelectClipRgn(HDC hdc, HRGN hrgn)
@@ -1430,7 +1539,7 @@ int SelectClipRgn(HDC hdc, HRGN hrgn)
     // apply with the active CTM so the region is interpreted in the current
     // logical space (see the clip semantics note above ApplyRegion)
     ApplyRegion(hdc->cairo, hrgn);
-    return RgnComplexity(hrgn);
+    return GetRgnBox(hrgn, NULL);
 }
 
 int ExtSelectClipRgn(HDC hdc, HRGN hrgn, int mode)
@@ -1455,7 +1564,7 @@ int ExtSelectClipRgn(HDC hdc, HRGN hrgn, int mode)
     if (bNoClip && mode == RGN_AND)
     { // no current clip: intersecting with it is a no-op, so the result is
       // just hrgn itself (matches Win32)
-        ret = RgnComplexity(hrgn);
+        ret = GetRgnBox(hrgn,NULL);
         ApplyRegion(hdc->cairo, hrgn);
     }
     else
@@ -1685,6 +1794,8 @@ BOOL AlphaBlend(HDC hdc, int x, int y, int wDst, int hDst, HDC hdcSrc, int x1, i
 {
     assert(hdc && hdcSrc);
     cairo_surface_t *src = (cairo_surface_t *)GetGdiObjPtr(hdcSrc->bmp);
+    if (!src)
+        return FALSE;
     cairo_save(hdc->cairo);
 
     cairo_matrix_t mtxSrc;
@@ -1714,6 +1825,8 @@ BOOL AlphaBlend(HDC hdc, int x, int y, int wDst, int hDst, HDC hdcSrc, int x1, i
 static BOOL AlphaBlendEx(HDC hdc, int x, int y, int wDst, int hDst, cairo_surface_t *src, int x1, int y1, int wSrc, int hSrc, BLENDFUNCTION ftn, int filterLevel)
 {
     assert(hdc);
+    if (!src)
+        return FALSE;
     cairo_save(hdc->cairo);
 
     cairo_rectangle(hdc->cairo, x, y, wDst, hDst);
@@ -1882,6 +1995,8 @@ BOOL DrawBitmap9Patch(HDC hdc, LPCRECT pRcDest, HBITMAP hBmp, LPCRECT pRcSrc, LP
 static cairo_surface_t *cairo_surface_create_copy(cairo_surface_t *src)
 {
     // create an copy of src
+    if (!src)
+        return nullptr;
     int bmpWid = cairo_image_surface_get_width(src);
     int bmpHei = cairo_image_surface_get_height(src);
     cairo_format_t fmt = cairo_image_surface_get_format(src);
@@ -2217,6 +2332,8 @@ BOOL BitBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y1, D
 {
     assert(hdc && hdcSrc);
     cairo_surface_t *src = (cairo_surface_t *)GetGdiObjPtr(hdcSrc->bmp);
+    if (!src)
+        return FALSE; // 源 DC 没有可用 surface：Win32 下 BitBlt 亦失败且不绘制
     if (hdc == hdcSrc)
     {
         // create an copy of src
@@ -2296,6 +2413,8 @@ BOOL StretchBlt(HDC hdc, int x, int y, int cx, int cy, HDC hdcSrc, int x1, int y
 {
     assert(hdc && hdcSrc);
     cairo_surface_t *src = (cairo_surface_t *)GetGdiObjPtr(hdcSrc->bmp);
+    if (!src)
+        return FALSE; // 同上：无 surface 的源 DC 不绘制
     if (hdc == hdcSrc)
     {
         // create an copy of src
@@ -3925,6 +4044,7 @@ BOOL LineTo(HDC hdc, int nXEnd, int nYEnd)
     {
         // path recording keeps user-space coordinates (GDI path semantics)
         cairo_line_to(ctx, nXEnd, nYEnd);
+        return TRUE;
     }
 
     // GDI: after LineTo the current position is the segment end (user space)
@@ -4405,19 +4525,6 @@ int GetDeviceCaps(HDC hdc __attribute__((unused)), int cap)
     return 0;
 }
 
-struct HICON__
-{
-    BOOL fIcon;
-    DWORD xHotspot;
-    DWORD yHotspot;
-    HBITMAP hbmMask;
-    HBITMAP hbmColor;
-    WORD cursorId;
-};
-
-/* 既有实现代码里的名称，保持不变。 */
-typedef HICON__ _IconObj;
-
 void SetCursorID(HICON hIcon, WORD cursorId)
 {
     hIcon->cursorId = cursorId;
@@ -4466,7 +4573,7 @@ BOOL GetIconInfo(HICON hIcon, PICONINFO piconinfo)
 
 HICON CreateIconIndirect(PICONINFO piconinfo)
 {
-    _IconObj *icon = new _IconObj();
+    HICON__ *icon = new HICON__();
     icon->fIcon = piconinfo->fIcon;
     icon->hbmColor = (HBITMAP)RefGdiObj(piconinfo->hbmColor);
     icon->hbmMask = (HBITMAP)RefGdiObj(piconinfo->hbmMask);
@@ -5364,23 +5471,122 @@ BOOL StrokeAndFillPath(HDC hdc)
     return TRUE;
 }
 
+namespace
+{
+struct Span
+{
+    int l, r, top;
+};
+} // namespace
+
 HRGN PathToRegion(HDC hdc)
 {
     if (!hdc || !hdc->cairo || !hdc->currentPath)
         return nullptr;
     cairo_path_t *path = hdc->currentPath;
-    cairo_save(hdc->cairo);
-    cairo_reset_clip(hdc->cairo);
-    cairo_append_path(hdc->cairo, path);
-    cairo_clip(hdc->cairo);
-    HRGN hrgn = CreateRectRgn(0, 0, 0, 0);
-    // must read the clip BEFORE cairo_restore() undoes it — after the
-    // restore the clip is unbounded again and GetClipRgn would leave the
-    // region empty (reported as an all-zero box by GetRgnBox)
-    GetClipRgn(hdc, hrgn);
-    cairo_restore(hdc->cairo);
-    cairo_path_destroy(hdc->currentPath);
     hdc->currentPath = nullptr;
+
+    // 区域在路径记录时的逻辑坐标下给出（与 GetClipRgn/SelectClipRgn 一致）
+    double x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+    if (path->status == CAIRO_STATUS_SUCCESS)
+    {
+        cairo_save(hdc->cairo);
+        cairo_new_path(hdc->cairo);
+        cairo_append_path(hdc->cairo, path);
+        cairo_path_extents(hdc->cairo, &x1, &y1, &x2, &y2);
+        cairo_new_path(hdc->cairo);
+        cairo_restore(hdc->cairo);
+    }
+    int left = (int)floor(x1), top = (int)floor(y1);
+    int right = (int)ceil(x2), bottom = (int)ceil(y2);
+    if (path->status != CAIRO_STATUS_SUCCESS || right <= left || bottom <= top)
+    {
+        cairo_path_destroy(path);
+        return CreateRectRgn(0, 0, 0, 0); // 空路径 -> 空区域
+    }
+
+    // cairo 只能用“裁剪矩形列表”询问路径几何，而该列表只支持轴对齐矩形：
+    // 弧线、圆角矩形这类路径会被判为 CAIRO_STATUS_CLIP_NOT_REPRESENTABLE，
+    // 直接导出会得到空区域。这里改为栅格化——Win32 的 PathToRegion 本来
+    // 就是按像素集合定义区域，没有半覆盖的概念，所以关掉抗锯齿。
+    int wid = right - left, hei = bottom - top;
+    cairo_surface_t *mask = cairo_image_surface_create(CAIRO_FORMAT_A8, wid, hei);
+    std::vector<RECT> rects;
+    if (cairo_surface_status(mask) != CAIRO_STATUS_SUCCESS)
+    {
+        cairo_surface_destroy(mask);
+        cairo_path_destroy(path);
+        return CreateRectRgn(left, top, right, bottom); // 退化为包围盒
+    }
+    cairo_t *mc = cairo_create(mask);
+    cairo_set_antialias(mc, CAIRO_ANTIALIAS_NONE);
+    cairo_translate(mc, -left, -top);
+    cairo_append_path(mc, path);
+    cairo_set_source_rgba(mc, 1, 1, 1, 1);
+    cairo_fill(mc); // 默认 nonzero，对应 GDI 的 WINDING 填充模式
+    cairo_destroy(mc);
+    cairo_path_destroy(path);
+    cairo_surface_flush(mask);
+
+    const unsigned char *bits = (const unsigned char *)cairo_image_surface_get_data(mask);
+    int stride = cairo_image_surface_get_stride(mask);
+    std::vector<Span> open, cur;
+    for (int y = 0; y < hei; y++)
+    {
+        cur.clear();
+        const unsigned char *row = bits + y * stride;
+        for (int x = 0; x < wid;)
+        {
+            while (x < wid && row[x] == 0) x++;
+            if (x >= wid) break;
+            int start = x;
+            while (x < wid && row[x] != 0) x++;
+            cur.push_back({start, x, y});
+        }
+        // 与上一行同位置的通段继续合并，其余在此收口
+        for (Span &s : cur)
+        {
+            for (Span &o : open)
+            {
+                if (o.top >= 0 && o.l == s.l && o.r == s.r)
+                {
+                    s.top = o.top;
+                    o.top = -1; // 标记为已续接
+                    break;
+                }
+            }
+        }
+        for (const Span &o : open)
+            if (o.top >= 0)
+                rects.push_back({left + o.l, top + o.top, left + o.r, top + y});
+        open.swap(cur);
+    }
+    for (const Span &o : open)
+        rects.push_back({left + o.l, top + o.top, left + o.r, top + hei});
+    cairo_surface_destroy(mask);
+
+    HRGN hrgn = CreateRectRgn(0, 0, 0, 0);
+    if (rects.empty())
+        return hrgn;
+
+    DWORD dwSize = FIELD_OFFSET(RGNDATA, Buffer) + (DWORD)rects.size() * sizeof(RECT);
+    RGNDATA *pData = (RGNDATA *)malloc(dwSize);
+    pData->rdh.dwSize = dwSize;
+    pData->rdh.iType = RDH_RECTANGLES;
+    pData->rdh.nCount = (DWORD)rects.size();
+    pData->rdh.nRgnSize = (DWORD)rects.size() * sizeof(RECT);
+    pData->rdh.rcBound.left = left;
+    pData->rdh.rcBound.top = top;
+    pData->rdh.rcBound.right = right;
+    pData->rdh.rcBound.bottom = bottom;
+    memcpy(pData->Buffer, rects.data(), rects.size() * sizeof(RECT));
+    HRGN rgnSrc = ExtCreateRegion(nullptr, dwSize, pData);
+    free(pData);
+    if (rgnSrc)
+    {
+        CombineRgn(hrgn, rgnSrc, nullptr, RGN_COPY);
+        DeleteObject(rgnSrc);
+    }
     return hrgn;
 }
 

@@ -6,10 +6,20 @@
 #include "log.h"
 #define kLogTag "traywnd"
 
-LRESULT TrayWnd::NotifyOwner(UINT uMsg, WPARAM wp __attribute__((unused)), LPARAM lp __attribute__((unused)))
+LRESULT TrayWnd::NotifyOwner(UINT uMsg, WPARAM wp __attribute__((unused)), LPARAM lp)
 {
     if (m_iconData->hWnd && (m_iconData->uFlags & NIF_MESSAGE))
     {
+        // 托盘图标位于系统面板上，指针可能已不在任何 X11 窗口内（如 Wayland
+        // 原生面板），此时 xcb_query_pointer 会停留在旧位置。先按点击事件的
+        // 窗口客户区坐标换算出全局坐标记录下来，供回调中的 GetCursorPos 使用。
+        POINT pt = {GET_X_LPARAM(lp), GET_Y_LPARAM(lp)};
+        if (ClientToScreen(m_hWnd, &pt))
+        {
+            SConnection *conn = SConnMgr::instance()->getConnection();
+            if (conn)
+                conn->SetCursorPosHint(pt);
+        }
         PostMessage(m_iconData->hWnd, m_iconData->uCallbackMessage, m_iconData->uID, uMsg);
     }
     return 0;

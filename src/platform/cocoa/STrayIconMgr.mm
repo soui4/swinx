@@ -5,6 +5,8 @@
 #include <gdi.h>
 
 #include <wnd.h>
+#include "SConnection.h"
+#include "SNsCoord.h"
 #include "log.h"
 #define kLogTag "traywnd"
 #undef interface
@@ -122,6 +124,16 @@ NSImage *imageFromHICON(HICON hIcon) {
     NSEvent *event = [NSApp currentEvent];
     if (_lpData->hWnd && (_lpData->uFlags & NIF_MESSAGE))
     {
+        // 状态栏点击不属于本进程的常规鼠标事件流，回调里 GetCursorPos 直接查询
+        // 可能拿到光标离开工作区时的旧位置。先把点击事件对应的全局坐标记下来，
+        // 供回调中 GetCursorPos 使用。
+        NSPoint screenPoint = event.window ? [event.window convertPointToScreen:event.locationInWindow]
+                                           : [NSEvent mouseLocation];
+        POINT pt;
+        swinxNsWinPointFromCocoa(screenPoint, &pt);
+        if (SConnection *conn = SConnMgr::instance()->getConnection())
+            conn->SetCursorPosHint(pt);
+
         PostMessage(_lpData->hWnd, _lpData->uCallbackMessage, _lpData->uID, event.type == NSEventTypeLeftMouseDown? WM_LBUTTONDOWN:WM_RBUTTONDOWN);
     }
 }

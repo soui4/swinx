@@ -71,3 +71,29 @@ void SplitTextRuns(cairo_t *cr, const char *utf8, int len, std::vector<TextRun> 
     run.scaled = NULL; // NULL -> use the context's current (primary) font
     runs.push_back(run);
 }
+
+/*
+ * 按字形工作的 GDI 字体 API（其它平台由 src/gdi/cairo/fontapi.cpp /
+ * src/gdi/apple/fontapi.cpp 实现，二者都依赖真实字体源）。FreeRTOS 没有
+ * 字体源，按本桥「text is a no-op」的语义如实报告失败 —— gdi.cpp 里
+ * GetTextMetricsA 的 fixed-pitch 探测对 GDI_ERROR/FALSE 有现成的降级路径。
+ */
+DWORD WINAPI GetGlyphIndicesW(HDC hdc, LPCWSTR lpstr, int c, LPWORD pgi, DWORD fl)
+{
+    (void)hdc;
+    (void)lpstr;
+    (void)c;
+    (void)pgi;
+    (void)fl;
+    return GDI_ERROR;
+}
+
+BOOL WINAPI GetCharWidthI(HDC hdc, UINT giFirst, UINT cgi, LPWORD pgi, LPINT lpBuffer)
+{
+    (void)hdc;
+    (void)giFirst;
+    (void)cgi;
+    (void)pgi;
+    (void)lpBuffer;
+    return FALSE;
+}

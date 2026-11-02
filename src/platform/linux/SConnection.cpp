@@ -33,6 +33,10 @@
 #include "log.h"
 #define kLogTag "SConnection"
 
+// SetCursorPosHint 记录的坐标只在这么短时间内覆盖实时查询结果：足够覆盖
+// 托盘回调派发的延迟，又不会在用户随后移动鼠标后继续返回旧位置。
+static const uint64_t CURSOR_HINT_TIMEOUT = 500;
+
 static SConnMgr *s_connMgr = NULL;
 
 #if defined(SOUI_ENABLE_ACC) && !defined(__ANDROID__) && !defined(__OHOS__) && !defined(OHOS)
@@ -2295,6 +2299,18 @@ HWND SConnection::WindowFromPoint(POINT pt, HWND hWnd) const
 
 BOOL SConnection::GetCursorPos(LPPOINT ppt) const
 {
+    // 托盘图标点击等场景下，指针位于系统面板或 X 服务器不可见的 Wayland 原生
+    // 表面上，xcb_query_pointer 会返回指针离开 X11 区域前的旧位置。此时优先使用
+    // 输入事件本身记录的全局坐标（见 SetCursorPosHint），保证回调里定位菜单正确。
+    {
+        std::unique_lock<std::mutex> lock(m_mutexCursorHint);
+        if (m_bCursorHint && GetTickCount64() - m_tsCursorHint <= CURSOR_HINT_TIMEOUT)
+        {
+            *ppt = m_ptCursorHint;
+            return TRUE;
+        }
+    }
+
     if (!screen)
     {
         SLOG_STMW() << "Screen is NULL, cannot get cursor position";
@@ -2318,6 +2334,14 @@ BOOL SConnection::GetCursorPos(LPPOINT ppt) const
     // Free resources
     free(pointer_reply);
     return TRUE;
+}
+
+void SConnection::SetCursorPosHint(POINT pt)
+{
+    std::unique_lock<std::mutex> lock(m_mutexCursorHint);
+    m_ptCursorHint = pt;
+    m_bCursorHint = true;
+    m_tsCursorHint = GetTickCount64();
 }
 
 int SConnection::GetDpi(BOOL bx) const

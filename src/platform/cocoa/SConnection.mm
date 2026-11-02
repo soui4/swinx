@@ -26,6 +26,10 @@ using namespace swinx;
 
 #define kLogTag "connection"
 
+// SetCursorPosHint 记录的坐标只在这么短时间内覆盖实时查询结果：足够覆盖
+// 托盘回调派发的延迟，又不会在用户随后移动鼠标后继续返回旧位置。
+static const uint64_t CURSOR_HINT_TIMEOUT = 500;
+
 // 1. 定义自定义事件类型（确保唯一性）
 static const NSEventType kFDReadyEventType = NSEventTypeApplicationDefined;
 static const NSEventType kDummyEventType = NSEventTypeApplicationDefined;
@@ -1022,7 +1026,25 @@ bool SConnection::MoveWindow(HWND hWnd, int x, int y, int cx, int cy) const {
 }
 
 bool SConnection::GetCursorPos(LPPOINT ppt) const {
+    // 点击菜单栏/托盘图标时，本进程可能还没有收到对应的鼠标事件，
+    // getNsCursorPos 查到的位置会停在光标离开窗口时的旧位置。此时优先使用
+    // 输入事件本身记录的全局坐标（见 SetCursorPosHint），保证弹出的菜单定位正确。
+    {
+        std::unique_lock<std::mutex> lock(m_mutexCursorHint);
+        if (m_bCursorHint && GetTickCount64() - m_tsCursorHint <= CURSOR_HINT_TIMEOUT)
+        {
+            *ppt = m_ptCursorHint;
+            return true;
+        }
+    }
     return getNsCursorPos(ppt);
+}
+
+void SConnection::SetCursorPosHint(POINT pt) {
+    std::unique_lock<std::mutex> lock(m_mutexCursorHint);
+    m_ptCursorHint = pt;
+    m_bCursorHint = true;
+    m_tsCursorHint = GetTickCount64();
 }
 
 int SConnection::GetDpi(bool bx) const {

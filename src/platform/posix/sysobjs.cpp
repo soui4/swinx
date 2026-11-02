@@ -35,7 +35,7 @@ using namespace swinx;
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
-
+#include "make_shm_tmp_path.h"
 // Android-specific shared memory implementation
 // Android doesn't support POSIX shm_open/shm_unlink, so we use a hybrid approach:
 // 1. Use ASharedMemory_create for new shared memory

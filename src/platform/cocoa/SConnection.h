@@ -105,6 +105,11 @@ class SConnection : public SConnBase{
 
     bool GetCursorPos(LPPOINT ppt) const;
 
+    // 记录输入事件（如托盘图标点击）本身携带的全局光标位置。状态栏/托盘点击
+    // 不在本进程常规鼠标事件流中，直接查询到的光标位置可能停在光标离开窗口
+    // 时的旧位置，GetCursorPos 在该记录的有效期内优先返回它。
+    void SetCursorPosHint(POINT pt);
+
     int GetDpi(bool bx) const;
 
     void KillWindowTimer(HWND hWnd);
@@ -286,6 +291,12 @@ public:
       STrayIconMgr* m_trayIconMgr;
       std::map<HWND,HCURSOR>          m_wndCursor;
       int m_cursorCount = 1;//default cursor is visible
+      // 最近一次由输入事件（托盘图标点击等）记录的全局光标位置，仅在记录后的
+      // 短时间内由 GetCursorPos 使用，见 SetCursorPosHint。
+      mutable POINT m_ptCursorHint = {0, 0};
+      mutable bool m_bCursorHint = false;
+      mutable uint64_t m_tsCursorHint = 0;
+      mutable std::mutex m_mutexCursorHint;
 };
 
 class SConnMgr {

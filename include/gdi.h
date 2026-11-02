@@ -512,6 +512,7 @@ typedef LPNONCLIENTMETRICSA LPNONCLIENTMETRICS;
     {
         grad_linear = 0, /*<linear gradient*/
         grad_radial,     /*<radial gradient*/
+        grad_sweep,      /*<sweep (conic) gradient*/
     } GRADIENTTYPE;
 
     typedef struct tagGRADIENTINFO
@@ -527,10 +528,12 @@ typedef LPNONCLIENTMETRICSA LPNONCLIENTMETRICS;
             } radial;
             struct
             {
-                BOOL bFullArc; // true(default) indicator gradient is rendered for full circle.
-                float centerX; // 0.0 -> 1.0, 0.5 is center of x
-                float centerY; // 0.0 -> 1.0, 0.5 is center of y
-            } sweep;           // sweep;
+                // 与 SOUI GRADIENTINFO::sweep 的成员顺序保持一致（SOUI 直接把
+                // GradientInfo 强转成 PGRADIENTINFO 交给 CreateGradientBrush）。
+                float startAngle; // 0° 沿 +x 轴、顺时针递增（与 GDI+ / SOUI 一致）
+                float centerX;    // 0.0 -> 1.0, 0.5 is center of x
+                float centerY;    // 0.0 -> 1.0, 0.5 is center of y
+            } sweep;              // sweep;
         };
     } GRADIENTINFO, FAR *LPGRADIENTINFO, *PGRADIENTINFO;
 

@@ -12,6 +12,11 @@
 #include <sys/inotify.h>
 #include <ucontext.h>
 #include <unistd.h>
+#elif defined(__EMSCRIPTEN__)
+// Emscripten 的 musl 有 <unistd.h>（sysconf 在本文件里是无条件调用的），但没有
+// <sys/inotify.h>：文件监控和 SIGPARK 停车线程因此留在上面的 __linux__ 分支，
+// wasm 走各自写在 #else 里的显式失败分支。
+#include <unistd.h>
 #elif defined(__APPLE__) && defined(__MACH__)
 #include <mach-o/dyld.h>
 #include <sys/event.h>
@@ -920,10 +925,16 @@ class DllLoader {
     {
         // search app dir
         char szPath[MAX_PATH] = { 0 };
-        GetModuleFileNameA(NULL, szPath, MAX_PATH);
-        char *p = strrchr(szPath, '/');
-        assert(p);
-        p[1] = 0;
+        // 拿不到可执行文件路径的平台（如 wasm 没有 /proc/self/exe）必须保持
+        // szPath 为空：此时 strrchr 返回 NULL，写 p[1] 会破坏地址 0 附近的内存。
+        if (GetModuleFileNameA(NULL, szPath, MAX_PATH) != 0)
+        {
+            char *p = strrchr(szPath, '/');
+            if (p)
+                p[1] = 0; // 保留结尾 '/'，目录名与文件名直接拼接
+            else
+                szPath[0] = 0;
+        }
 #ifdef __APPLE__
         const char rpaths[] = "@executable_path/";
         std::list<std::string> lstRPaths;
@@ -3201,7 +3212,8 @@ BOOL WINAPI IsDebuggerPresent(void)
         return FALSE;
     return (info.kp_proc.p_flag & P_TRACED) != 0;
 #else
-    // 其它平台（含移动端沙箱）没有通用的"是否被调试"查询，按未调试处理
+    // 其它平台（含移动端沙箱、wasm —— Emscripten 没有 /proc）没有通用的"是否被调试"
+    // 查询，按未调试处理
     return FALSE;
 #endif
 }
@@ -3331,6 +3343,12 @@ VOID WINAPI GetSystemInfo(LPSYSTEM_INFO lpSystemInfo)
     size_t size = sizeof(count);
     sysctlbyname("hw.ncpu", &count, &size, NULL, 0);
     lpSystemInfo->dwNumberOfProcessors = count;
+#elif defined(__EMSCRIPTEN__)
+    // 浏览器里真正的核数要看 navigator.hardwareConcurrency（Emscripten 用
+    // emscripten_num_logical_cores() 暴露），但只有 -pthread + SharedArrayBuffer
+    // 构建才允许 swinx 开出这么多线程；当前 wasm 端口是单线程的，报 1 才是
+    // 调用方能兑现的数字。开启 pthreads 时改这里。
+    lpSystemInfo->dwNumberOfProcessors = 1;
 #else
     lpSystemInfo->dwNumberOfProcessors = 1;
 #endif
@@ -4815,7 +4833,24 @@ BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
 }
 
 #else
-#pragma message("unsupport os")
+// 既没有 inotify 也没有 kqueue 的平台：wasm（Emscripten 的 musl 里没有
+// <sys/inotify.h>，也没有事件队列可挂）。这两个 API 在声明面上对所有 POSIX
+// 宿主都存在，只留一条 #pragma 会让调用方在链接期才发现缺口，所以给显式拒绝。
+HANDLE WINAPI FindFirstChangeNotificationA(LPCSTR lpPathName, BOOL bWatchSubtree, DWORD dwNotifyFilter)
+{
+    (void)lpPathName;
+    (void)bWatchSubtree;
+    (void)dwNotifyFilter;
+    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+    return INVALID_HANDLE_VALUE;
+}
+
+BOOL WINAPI FindNextChangeNotification(HANDLE hChangeHandle)
+{
+    (void)hChangeHandle;
+    SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
+    return FALSE;
+}
 #endif
 BOOL WINAPI FindCloseChangeNotification(HANDLE hChangeHandle)
 {
@@ -5181,6 +5216,11 @@ BOOL WINAPI TerminateThread(HANDLE hThread __attribute__((unused)), DWORD dwExit
     return 0;
 }
 
+// The CONTEXT type and its GetThreadContext declaration in include/sysapi.h
+// exist only on x86_64 (the AMD64 register subset), so the definition must be
+// excluded on every other architecture -- wasm32/emscripten and aarch64 have
+// no LPCONTEXT and this TU would not compile.
+#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64__)
 BOOL WINAPI GetThreadContext(HANDLE hThread, LPCONTEXT lpContext)
 {
     if (!lpContext)
@@ -5269,6 +5309,7 @@ BOOL WINAPI GetThreadContext(HANDLE hThread, LPCONTEXT lpContext)
     return FALSE;
 #endif
 }
+#endif // x86_64: CONTEXT / GetThreadContext
 
 VOID WINAPI ExitThread(DWORD dwExitCode)
 {

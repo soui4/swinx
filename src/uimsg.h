@@ -1,5 +1,6 @@
 #ifndef _UIMSG_H_
 #define _UIMSG_H_
+#include "sfr_config.h"   /* SFR_PLATFORM：freertos 端口没有真实窗口系统 */
 #include <mutex>
 #include <string>
 #include <string.h>
@@ -311,7 +312,7 @@ enum{
     SETTINGS_DPI=1,
 };
 
-#if defined(__linux__) && !defined(__OHOS__)
+#if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
 struct DragBase {
     HWND hFrom;
 };
@@ -352,6 +353,6 @@ struct DragOverMsg : Msg, DragOverData {
     }
 };
 
-#endif// defined(__linux__) && !defined(__OHOS__)
+#endif// defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
 
 #endif //_UIMSG_H_

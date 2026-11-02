@@ -12,6 +12,8 @@
                                      [--api 28] [--build <目录>] [--jobs 8]
   python tools/cross_build.py ohos    [--sdk <SDK native 目录>] [--abi arm64-v8a]
                                      [--build <目录>] [--jobs 8]
+  python tools/cross_build.py ios     [--abi arm64] [--build <目录>] [--jobs 8]
+                                     （只能在装好 Xcode 的 macOS 上跑）
   python tools/cross_build.py fetch-ohos-sdk [--url <tar.gz>] --dest <目录>
 
   --sdk 省略时依次尝试环境变量：
@@ -57,6 +59,8 @@ SWINX_ROOT = os.path.dirname(HERE)
 
 # ELF e_machine -> 可读名
 ELF_MACHINE = {0x28: "arm", 0xB7: "aarch64", 0x3E: "x86_64", 0x03: "x86"}
+# Mach-O cputype（iOS/macOS 产物）。0x01000000 是 64 位标志位。
+MACHO_CPU = {0x0100000C: "arm64", 0x0C: "arm", 0x01000007: "x86_64", 0x07: "x86"}
 
 ANDROID_MIN_API = 28
 
@@ -137,17 +141,29 @@ def run(cmd):
     return subprocess.call(cmd)
 
 
-def elf_machine(path):
+def binary_machine(path):
+    """读产物头部判断架构：ELF 看 e_machine，Mach-O 看 cputype。
+
+    iOS 产物是 Mach-O，只解析 ELF 会让 --abi arm64 的校验静默跳过（返回 None
+    就不比对），门禁就退化成"只要有个文件就算过"。这里补上 Mach-O 的两种 magic。
+    """
     try:
         with open(path, "rb") as fp:
             head = fp.read(20)
     except Exception:
         return None
-    if len(head) < 20 or head[:4] != b"\x7fELF":
-        return None
-    endian = "<" if head[5] == 1 else ">"
-    (machine,) = struct.unpack(endian + "H", head[18:20])
-    return ELF_MACHINE.get(machine, "0x%x" % machine)
+    if len(head) >= 20 and head[:4] == b"\x7fELF":
+        endian = "<" if head[5] == 1 else ">"
+        (machine,) = struct.unpack(endian + "H", head[18:20])
+        return ELF_MACHINE.get(machine, "0x%x" % machine)
+    magic = head[:4]
+    if magic in (b"\xcf\xfa\xed\xfe", b"\xce\xfa\xed\xfe"):
+        endian = "<" if magic[3] == 0xFE else ">"
+        (cpu,) = struct.unpack(endian + "I", head[4:8])
+        return MACHO_CPU.get(cpu, "cpu:0x%x" % cpu)
+    if magic in (b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca"):
+        return "fat"  # 多架构包：不展开，调用方按"无法判定"处理
+    return None
 
 
 def verify_artifacts(build_dir, expect_machine):
@@ -169,7 +185,7 @@ def verify_artifacts(build_dir, expect_machine):
         size = os.path.getsize(p)
         if size < 1024:
             fail("产物过小（%d 字节）：%s" % (size, p))
-        mach = elf_machine(p)
+        mach = binary_machine(p)
         if expect_machine and mach and mach != expect_machine:
             fail("产物架构不符：%s 是 %s，期望 %s" % (p, mach, expect_machine))
         log("产物 %s (%d 字节%s)" % (p, size, "，ELF %s" % mach if mach else ""))
@@ -372,7 +388,20 @@ def cmd_fetch_ohos(argv):
 
 
 def build(platform, args):
-    if platform == "android":
+    toolchain = None
+    if platform == "ios":
+        # --abi 的默认值按 Android 命名（arm64-v8a）写的，iOS 侧叫 arm64。
+        if args.abi == "arm64-v8a":
+            args.abi = "arm64"
+        # iOS 没有独立 SDK 路径参数：用 Xcode 自带的 iphoneos SDK，CMake 3.14+ 的
+        # iOS 交叉编译只需 CMAKE_SYSTEM_NAME=iOS。产物强制静态库（SOUI_ENABLE_CORE_LIB=ON）：
+        # iOS 不允许应用携带任意 dylib，静态库才是下游真正使用的形态，也省掉签名。
+        plat_args = ["-DCMAKE_SYSTEM_NAME=iOS",
+                     "-DCMAKE_OSX_ARCHITECTURES=%s" % args.abi,
+                     "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0",
+                     "-DCMAKE_OSX_SYSROOT=iphoneos",
+                     "-DSOUI_ENABLE_CORE_LIB=ON"]
+    elif platform == "android":
         if args.api < ANDROID_MIN_API:
             fail("Android platform 必须 >= %d（iconv 需要 28，ASharedMemory 需要 26）"
                  % ANDROID_MIN_API)
@@ -396,14 +425,14 @@ def build(platform, args):
         plat_args = ["-DOHOS_ARCH=%s" % args.abi]
 
     expect = {"arm64-v8a": "aarch64", "armeabi-v7a": "arm",
-              "x86_64": "x86_64"}.get(args.abi)
+              "x86_64": "x86_64", "arm64": "arm64"}.get(args.abi)
     build_dir = args.build or os.path.join(SWINX_ROOT, "build",
                                            "cross-%s-%s" % (platform, args.abi))
     gen = ["-G", args.generator] if args.generator else []
 
     log("platform=%s abi=%s build=%s" % (platform, args.abi, build_dir))
-    rc = run(["cmake", "-S", SWINX_ROOT, "-B", build_dir] + gen + [
-        "-DCMAKE_TOOLCHAIN_FILE=%s" % toolchain,
+    tc_args = ["-DCMAKE_TOOLCHAIN_FILE=%s" % toolchain] if toolchain else []
+    rc = run(["cmake", "-S", SWINX_ROOT, "-B", build_dir] + gen + tc_args + [
         "-DCMAKE_BUILD_TYPE=Release",
     ] + plat_args)
     if rc != 0:
@@ -424,7 +453,7 @@ def main():
         return cmd_fetch_ohos(sys.argv[2:])
 
     ap = argparse.ArgumentParser(description="swinx 移动端交叉编译门禁")
-    ap.add_argument("platform", choices=["android", "ohos"])
+    ap.add_argument("platform", choices=["android", "ohos", "ios"])
     ap.add_argument("--sdk", default=None, help="NDK / OHOS native SDK 路径")
     ap.add_argument("--abi", default="arm64-v8a")
     ap.add_argument("--api", type=int, default=ANDROID_MIN_API,

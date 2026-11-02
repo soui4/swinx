@@ -585,7 +585,15 @@ struct SwinxGLCtx
     BOOL bCreated;  /**< 平台资源已尝试创建（成功与否都置位，失败不重试） */
 };
 
-static SwinxGLCtx *s_pCurCtx = NULL;
+/**
+ * 当前上下文是**线程局部**的，与 WGL 语义一致。
+ *
+ * 曾经是进程级 `static SwinxGLCtx *`：一个线程 MakeCurrent 之后，另一个线程
+ * wglGetCurrentContext() 会拿到别人的上下文，多线程各自渲染时互相踩。真实驱动里
+ * current context 是 per-thread TLS，所以这里换成 thread_local——GLX/WGL 的
+ * "每个线程一个 current" 约束由调用方维持，本层只保证不串台。
+ */
+static thread_local SwinxGLCtx *s_pCurCtx = NULL;
 static int s_nSwapInterval = 1; /**< 与驱动默认一致：跟随垂直同步 */
 
 /** 确保平台上下文已创建；共享源未创建时先建它。 */

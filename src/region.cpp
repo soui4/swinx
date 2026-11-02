@@ -2702,11 +2702,6 @@ HRGN create_polypolygon_region(const POINT *Pts, const INT *Count, INT nbpolygon
     return hrgn;
 }
 
-int WINAPI RgnComplexity(HRGN hRgn)
-{
-    WINEREGION *obj = (WINEREGION *)GetGdiObjPtr(hRgn);
-    return get_region_type(obj);
-}
 
 HRGN WINAPI CreatePolygonRgn(CONST POINT *lppt, // array of points
                              int cPoints,       // number of points in array

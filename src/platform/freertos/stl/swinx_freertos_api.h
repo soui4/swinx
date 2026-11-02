@@ -91,6 +91,7 @@ constexpr uint32_t wait_forever() { return 0xFFFFFFFFu; }
     inline void  sem_delete(sem_handle& h)          { if (h) vSemaphoreDelete(h); }
     inline bool  sem_give(sem_handle& h)            { return xSemaphoreGive(h) == pdTRUE; }
     inline bool  sem_take(const sem_handle& h, uint32_t ticks) { return xSemaphoreTake(h, (TickType_t)ticks) == pdTRUE; }
+    inline bool  sem_handle_valid(sem_handle h)     { return h != nullptr; }
 
     inline uint32_t ticks_now()                    { return (uint32_t)xTaskGetTickCount(); }
     inline void  delay_ticks(uint32_t t)           { vTaskDelay((TickType_t)t); }
@@ -106,6 +107,9 @@ constexpr uint32_t wait_forever() { return 0xFFFFFFFFu; }
         return (r == pdPASS) ? h : nullptr;
     }
     inline void  task_delete(task_handle h)        { if (h) vTaskDelete(h); }
+    inline void  task_exit(void)                   { vTaskDelete(NULL); }
+    inline bool  task_suspend(task_handle h)       { if (h) { vTaskSuspend(h); return true; } return false; }
+    inline bool  task_resume(task_handle h)        { if (h) { vTaskResume(h); return true; } return false; }
     inline task_handle task_current()              { return xTaskGetCurrentTaskHandle(); }
     inline void  task_yield()                      { taskYIELD(); }
     inline uintptr_t task_id(task_handle h)        { return (uintptr_t)h; }
@@ -136,6 +140,7 @@ constexpr uint32_t wait_forever() { return 0xFFFFFFFFu; }
         pthread_cond_t  c;
         int count;   // number of signals available
         int max;     // capacity (1 for a binary sem, N for a counting sem)
+        bool ok;     // false when the underlying pthread objects failed to init
     };
     struct task_handle {
         pthread_t t;
@@ -163,16 +168,14 @@ constexpr uint32_t wait_forever() { return 0xFFFFFFFFu; }
 
     inline sem_handle sem_create() {
         sem_handle h;
-        pthread_mutex_init(&h.m, nullptr);
-        pthread_cond_init(&h.c, nullptr);
+        h.ok = (pthread_mutex_init(&h.m, nullptr) == 0) && (pthread_cond_init(&h.c, nullptr) == 0);
         h.count = 0;
         h.max = 1;   // binary semaphore
         return h;
     }
     inline sem_handle sem_create_counting(uint32_t max, uint32_t init) {
         sem_handle h;
-        pthread_mutex_init(&h.m, nullptr);
-        pthread_cond_init(&h.c, nullptr);
+        h.ok = (pthread_mutex_init(&h.m, nullptr) == 0) && (pthread_cond_init(&h.c, nullptr) == 0);
         h.count = (int)init;
         h.max = (int)max;
         return h;
@@ -208,6 +211,7 @@ constexpr uint32_t wait_forever() { return 0xFFFFFFFFu; }
         pthread_mutex_unlock(&h.m);
         return false;
     }
+    inline bool sem_handle_valid(sem_handle h) { return h.ok; }
 
     inline uint32_t ticks_now() {
         using namespace std::chrono;
@@ -236,6 +240,25 @@ constexpr uint32_t wait_forever() { return 0xFFFFFFFFu; }
     inline void task_delete(task_handle h) {
         if (h.t) { pthread_detach(h.t); }   // emulate FreeRTOS vTaskDelete by detaching
     }
+    // Terminates the calling thread.  On a real target a task function must
+    // never return (it would run off the end of its stack); on the host the
+    // trampoline IS a pthread start function, so exiting it is the correct
+    // way to end the thread.
+    inline void task_exit(void) {
+    #ifdef _WIN32
+        ExitThread(0);
+    #else
+        pthread_detach(pthread_self());
+        pthread_exit(nullptr);
+    #endif
+    }
+    // Suspending an arbitrary running thread has no portable host primitive:
+    // pthread_kill(h.t, SIGSTOP) stops the whole process, not the thread.  So
+    // the emulation reports "not supported" and the caller (winobjs'
+    // SuspendThread/ResumeThread) returns the Win32 failure value instead of
+    // pretending the thread froze.
+    inline bool task_suspend(task_handle) { return false; }
+    inline bool task_resume(task_handle)  { return false; }
     inline task_handle task_current() {
         task_handle h;
         h.t = pthread_self();

@@ -133,7 +133,13 @@ typedef int BOOL;
 // here so our typedef stays identical to the upstream objc.h typedef,
 // which avoids a hard typedef-redefinition error when objc.h is included
 // later (e.g. transitively via CoreGraphics / UIKit).
-#if defined(__OBJC_BOOL_IS_BOOL) && defined(__cplusplus)
+//
+// The mirror must stay gated on __APPLE__: only Apple ships objc/objc.h, but
+// other clang targets pre-define the macro too. Emscripten answers
+// __OBJC_BOOL_IS_BOOL=0 for every C++ TU, which would silently turn BOOL into
+// signed char and truncate every `GetKeyState(vk) & 0x8000` modifier test to 0
+// (the hotkey control then loses Ctrl/Shift/Alt on the wasm demo).
+#if defined(__APPLE__) && defined(__OBJC_BOOL_IS_BOOL) && defined(__cplusplus)
 #if __OBJC_BOOL_IS_BOOL
 typedef bool BOOL;
 #else
@@ -274,8 +280,17 @@ typedef struct HENHMETAFILE__ *HENHMETAFILE;
 struct HMETAFILEPICT__;
 typedef struct HMETAFILEPICT__ *HMETAFILEPICT;
 
-/* 内部实现类型沿用既有名字，只是让 SDK 名字指向同一类型。 */
-struct HICON__;
+struct HICON__
+{
+    BOOL fIcon;
+    DWORD xHotspot;
+    DWORD yHotspot;
+    HBITMAP hbmMask;
+    HBITMAP hbmColor;
+    WORD cursorId;
+};
+
+
 typedef struct HICON__ *HICON;
 
 // sdef.h (SOUI) defines tid_t as `unsigned int` under _WIN32; keep both

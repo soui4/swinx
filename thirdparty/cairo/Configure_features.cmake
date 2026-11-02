@@ -2,6 +2,12 @@ if(CMAKE_SYSTEM_NAME MATCHES "OHOS|OpenHarmony|HarmonyOS")
     set(CAIRO_HAS_XCB_SURFACE 0)
 elseif(CMAKE_SYSTEM_NAME MATCHES Android)
     set(CAIRO_HAS_XCB_SURFACE 0)
+elseif(EMSCRIPTEN)
+    # 浏览器里既没有 X server 也没有 xcb：thirdparty 的 xcb/dbus 家族只在
+    # linux.cmake 里加入构建，Emscripten 分支（wasm.cmake）不编译它们，而宿主机的
+    # /usr/include/xcb 又不在 emcc 的 sysroot 里，默认开启会让 cairo 编译期直接
+    # fatal error: 'xcb/xcb.h' file not found。wasm 只用 image surface 后端。
+    set(CAIRO_HAS_XCB_SURFACE 0)
 elseif(APPLE)
     # Quartz backends are enabled only when quartz_deps (CoreFoundation and
     # ApplicationServices) were found via ENABLE_QUARTZ, mirroring meson's
@@ -87,9 +93,17 @@ endif()
 #    set(CAIRO_HAS_SKIA_SURFACE 1)
 #endif()
 
-set(CAIRO_HAS_SVG_SURFACE 1)
-set(CAIRO_HAS_SCRIPT_SURFACE 1)
-set(CAIRO_HAS_INTERPRETER 1)
+# Route 1 (soui-wasm 体积治理): SOUI 的 swinx GDI 后端只用 cairo image surface +
+# freetype/fontconfig，从不创建 SVG / script / xml 这三类"记录/输出型" surface。
+# swinx 维护者确认不使用 cairo 的 svg / xml 能力，故全部平台关闭；源文件由
+# src/CMakeLists.txt + src/sources.cmake 按宏排除 (cairo-svg-surface.c /
+# cairo-script-surface.c / cairo-xml-surface.c 不再编入 libcairo.a)，可减小静态库体积。
+set(CAIRO_HAS_SVG_SURFACE 0)
+set(CAIRO_HAS_SCRIPT_SURFACE 0)
+set(CAIRO_HAS_INTERPRETER 0)
+# XML surface 依赖 libxml2；swinx 各平台均不 find libxml2，原本就是 undef。
+# 显式置 0 以防未来误探测到 libxml2 时把它打开。
+set(CAIRO_HAS_XML_SURFACE 0)
 
 
 set(CAIRO_HAS_GLESV2_SURFACE 0)

@@ -104,7 +104,7 @@ public:
     HMENU hSysMenu;     /* system menu */
     /* GetProp/SetProp/RemoveProp 的属性表：字符串键按内容比较，原子键按值比较。
      * 值（void*）由调用方拥有，窗口销毁时只丢弃映射，不释放。 */
-    std::map<std::wstring, void *> props;
+    std::map<std::string, HANDLE> props;
     std::map<UINT, void *> atomProps;
 
     void * pPrivData;   /* private data, used by sconnection */

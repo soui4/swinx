@@ -29,7 +29,9 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#ifndef SWINX_NO_LIBPNG /* route C（wasm canvas2d）不链接 libpng：PNG 光标/图标解码不可用，其余 .ico/.cur/.ani 路径不受影响 */
 #include <png.h>
+#endif
 #include <unistd.h>
 #include <stdlib.h>
 #include "gdi.h"
@@ -344,6 +346,7 @@ BOOL get_icon_size(HICON handle, SIZE *size)
     return TRUE;
 }
 
+#ifndef SWINX_NO_LIBPNG
 struct png_wrapper
 {
     const char *buffer;
@@ -544,6 +547,7 @@ static BITMAPINFO *load_png(const char *png_data, DWORD *size)
     *size = sizeof(BITMAPINFOHEADER) + image_size + mask_size;
     return info;
 }
+#endif /* !SWINX_NO_LIBPNG */
 
 /*
  *  The following macro functions account for the irregularities of
@@ -762,8 +766,10 @@ static BOOL CURSORICON_GetFileEntry(LPCVOID dir, DWORD size, int n, int *width, 
         return FALSE;
     info = (const BITMAPINFOHEADER *)((const char *)dir + entry->dwDIBOffset);
 
+#ifndef SWINX_NO_LIBPNG
     if (info->biSize == PNG_SIGN)
         return get_png_info(info, size, width, height, bits);
+#endif
     if (info->biSize != sizeof(BITMAPCOREHEADER))
     {
         if ((const char *)(info + 1) - (const char *)dir > size)
@@ -900,6 +906,7 @@ static BOOL create_icon_frame(const BITMAPINFO *bmi, DWORD maxsize, POINT hotspo
 
     /* Check bitmap header */
 
+#ifndef SWINX_NO_LIBPNG
     if (bmi->bmiHeader.biSize == PNG_SIGN)
     {
         BITMAPINFO *bmi_png;
@@ -909,6 +916,7 @@ static BOOL create_icon_frame(const BITMAPINFO *bmi, DWORD maxsize, POINT hotspo
         free(bmi_png);
         return ret;
     }
+#endif
 
     if (maxsize < sizeof(BITMAPCOREHEADER))
     {

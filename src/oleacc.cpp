@@ -43,8 +43,9 @@
 #include <mutex>
 #include <utility>
 #include <vector>
+#include "sfr_config.h"   /* SFR_PLATFORM，见 src/wnd.cpp 同名注释 */
 
-#if defined(__linux__) && !defined(__ANDROID__) && !defined(__OHOS__) && !defined(OHOS)
+#if defined(__linux__) && !defined(__ANDROID__) && !defined(__OHOS__) && !defined(OHOS) && !SFR_PLATFORM
 /* Linux/桌面 的 AT-SPI 桥接入口（swinx/src/platform/linux/SAtSpi.cpp）。
  * 主初始化点在 SConnMgr 构造函数（UI 线程、早于任何 WM_GETOBJECT）；这里是
  * 惰性兜底，覆盖不经 SConnMgr 的调用路径（如单元测试直接调 MSAA API）。

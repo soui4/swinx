@@ -449,7 +449,7 @@ UINT_PTR SConnection::SetTimer(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC p
     // If platform provides timer API, delegate to platform layer
     if (g_platformAPI.window.setTimer)
     {
-        return g_platformAPI.window.setTimer(reinterpret_cast<UINT_PTR>(hWnd), id, uElapse, proc);
+        return g_platformAPI.window.setTimer(hWnd, id, uElapse, proc);
     }
     return 0;
 }
@@ -459,7 +459,7 @@ BOOL SConnection::KillTimer(HWND hWnd, UINT_PTR id)
     // If platform provides timer kill API, delegate
     if (g_platformAPI.window.killTimer)
     {
-        return g_platformAPI.window.killTimer(reinterpret_cast<UINT_PTR>(hWnd), id);
+        return g_platformAPI.window.killTimer(hWnd, id);
     }
     return FALSE;
 }
@@ -597,7 +597,7 @@ void SConnection::KillWindowTimer(HWND hWnd)
     // If platform provides a way to cancel all timers for a window, use it
     if (g_platformAPI.window.killWindowTimers)
     {
-        g_platformAPI.window.killWindowTimers(reinterpret_cast<UINT_PTR>(hWnd));
+        g_platformAPI.window.killWindowTimers(hWnd);
         return;
     }
 }
@@ -1149,13 +1149,13 @@ HWND SConnection::OnWindowCreate(_Window *wnd, CREATESTRUCT *cs, int)
         // 12 参与 Win32 CreateWindowEx / platform_api.h PlatformWindowAPI::createWindow 完全对齐。
         // 关键：HMENU hMenu 在 WS_CHILD 子窗口语义 == 子窗口控件 ID（GetDlgCtrlID/事件映射
         // 按 ID 匹配依赖此字段），必须原封下传到各平台实现。
-        hWnd = reinterpret_cast<HWND>(g_platformAPI.window.createWindow(reinterpret_cast<UINT_PTR>(cs->hwndParent),
+        hWnd = reinterpret_cast<HWND>(g_platformAPI.window.createWindow(cs->hwndParent,
                                                         cs->lpszClass,
                                                         cs->lpszName,
                                                         cs->style,
                                                         cs->dwExStyle,
                                                         cs->x, cs->y, cs->cx, cs->cy,
-                                                        reinterpret_cast<UINT_PTR>(cs->hMenu),
+                                                        cs->hMenu,
                                                         reinterpret_cast<UINT_PTR>(cs->hInstance),
                                                         cs->lpCreateParams));
         if (!hWnd)
@@ -1173,7 +1173,7 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *)
 {
     if (g_platformAPI.window.destroyWindow)
     {
-        g_platformAPI.window.destroyWindow(reinterpret_cast<UINT_PTR>(hWnd));
+        g_platformAPI.window.destroyWindow(hWnd);
     }
 
     if (m_hWndCapture == hWnd)

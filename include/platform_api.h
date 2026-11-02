@@ -30,13 +30,13 @@ extern "C"
 
     struct PlatformWindowAPI
     {
-        UINT_PTR (*createWindow)(UINT_PTR hParent, LPCTSTR pszClsName, LPCTSTR pszTitle, DWORD dwStyle, DWORD dwExStyle, int x, int y, int nWidth, int nHeight, UINT_PTR hMenu, UINT_PTR hInstance, LPVOID lpParam);
-        BOOL (*destroyWindow)(UINT_PTR hWnd);
+        HWND (*createWindow)(HWND hParent, LPCTSTR pszClsName, LPCTSTR pszTitle, DWORD dwStyle, DWORD dwExStyle, int x, int y, int nWidth, int nHeight, HMENU hMenu, UINT_PTR hInstance, LPVOID lpParam);
+        BOOL (*destroyWindow)(HWND hWnd);
         HWND (*getWindow)(HWND hWnd, int code);
         /* Timer APIs: platform may supply timers when SConnection doesn't run its own loop */
-        UINT_PTR (*setTimer)(UINT_PTR hWnd, UINT_PTR id, UINT uElapse, TIMERPROC proc);
-        BOOL (*killTimer)(UINT_PTR hWnd, UINT_PTR id);
-        BOOL (*killWindowTimers)(UINT_PTR hWnd);
+        UINT_PTR (*setTimer)(HWND hWnd, UINT_PTR id, UINT uElapse, TIMERPROC proc);
+        BOOL (*killTimer)(HWND hWnd, UINT_PTR id);
+        BOOL (*killWindowTimers)(HWND hWnd);
         BOOL (*moveWindow)(HWND hWnd, int x, int y, int nWidth, int nHeight, BOOL bRepaint);
         BOOL (*setWindowPos)(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags);
         BOOL (*setWindowSize)(HWND hWnd, int cx, int cy);
