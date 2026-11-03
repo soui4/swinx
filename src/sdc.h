@@ -7,9 +7,6 @@ typedef struct CGContext *CGContextRef;
 struct CGAffineTransform;
 typedef const struct CGPath *CGPathRef;
 #elif defined(__EMSCRIPTEN__)
-// route C（canvas2d）：不依赖 cairo，故不 include <cairo.h>；cairo_surface_t 等
-// 不透明返回类型在下方 __EMSCRIPTEN__ 分支前向声明（base 代码把它当不透明指针）。
-#elif defined(__EMSCRIPTEN__)
 #include "gdi/canvas2d/js_glue.h"
 #else
 #include <cairo.h>

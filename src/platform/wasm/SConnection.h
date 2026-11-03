@@ -40,6 +40,8 @@
 #include "SClipboard.h"
 #include "countmutex.h"
 
+struct cairo_surface_t;
+
 struct TimerInfo
 {
     UINT_PTR id;
