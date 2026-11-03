@@ -39,21 +39,19 @@
 using emscripten::val;
 
 /* ---------- 小工具 ---------- */
-/* COLORREF 的 alpha 在高字节（SOUI 的 RGBA 宏就是 (b<<24|b<<16|g<<8|r)）。
- * 高字节为 0 时按"不透明"处理 —— GDI 传统 COLORREF 根本没有 alpha 位，
- * GetSysColor、RGB() 这类调用给出的高字节永远是 0，按透明解释会让所有文字和
- * 系统色一起消失；cairo 后端为此一直有同样的坑。真正的半透明（如
- * rgba(255,165,0,15)）高字节非 0，能正确走 rgba()。 */
-static std::string cssColor(COLORREF c)
+/* 渐变停靠点用的颜色串：必须**始终**保留 alpha（含 a==0）。
+ * COLORREF 的 alpha 在高字节（SOUI 的 RGBA 宏就是 (b<<24|b<<16|g<<8|r)）。
+ * 渐变停靠点的 alpha 都是 SVG/nanosvg 显式给定的：a==0 是**合法的透明段**
+ * （例如 main_window_bg.svg 的 innerGlow：#FFD700 0.10 → #FFD700 0.0，本意是
+ * 顶部一道渐隐的微光）。它必须保持透明，否则画布会把"淡金"一路插值成"实心金"，
+ * 九宫格一拉伸就成了整条亮金带。所以这里不像 GDI 实色那样把 a==0 当成"不透明"
+ * （GDI 的 RGB()/GetSysColor 高字节永远是 0，那是另一回事），而是永远出 rgba()。 */
+static std::string cssColorStop(COLORREF c)
 {
     char buf[40];
     unsigned a = (unsigned)GetAValue(c);
-    if (a == 0 || a == 255)
-        snprintf(buf, sizeof(buf), "#%02x%02x%02x",
-                 (int)GetRValue(c), (int)GetGValue(c), (int)GetBValue(c));
-    else
-        snprintf(buf, sizeof(buf), "rgba(%d,%d,%d,%.4f)",
-                 (int)GetRValue(c), (int)GetGValue(c), (int)GetBValue(c), a / 255.0);
+    snprintf(buf, sizeof(buf), "rgba(%d,%d,%d,%.4f)",
+             (int)GetRValue(c), (int)GetGValue(c), (int)GetBValue(c), a / 255.0);
     return std::string(buf);
 }
 
@@ -381,7 +379,7 @@ static val buildGradient(val &c, GdiBrush *b, double x, double y, double w, doub
         linearEndpoints(b->gradAngle, w, h, rx0, ry0, rx1, ry1);
         val g = c.call<val>("createLinearGradient", x + rx0, y + ry0, x + rx1, y + ry1);
         for (int i = 0; i < n; ++i)
-            g.call<void>("addColorStop", (double)b->gradItems[i].pos, cssColor(b->gradItems[i].cr));
+            g.call<void>("addColorStop", (double)b->gradItems[i].pos, cssColorStop(b->gradItems[i].cr));
         return g;
     }
     else if (b->gradType == grad_radial)
@@ -395,7 +393,7 @@ static val buildGradient(val &c, GdiBrush *b, double x, double y, double w, doub
         double cx = x + b->gradCX * w, cy = y + b->gradCY * h;
         val g = c.call<val>("createRadialGradient", cx, cy, 0.0, cx, cy, r);
         for (int i = 0; i < n; ++i)
-            g.call<void>("addColorStop", (double)b->gradItems[i].pos, cssColor(b->gradItems[i].cr));
+            g.call<void>("addColorStop", (double)b->gradItems[i].pos, cssColorStop(b->gradItems[i].cr));
         return g;
     }
     else
@@ -403,7 +401,7 @@ static val buildGradient(val &c, GdiBrush *b, double x, double y, double w, doub
         // sweep/conic：用 createConicGradient（较新浏览器）；失败退化为 radial
         val g = c.call<val>("createConicGradient", b->gradStart * M_PI / 180.0, x + w / 2, y + h / 2);
         for (int i = 0; i < n; ++i)
-            g.call<void>("addColorStop", (double)b->gradItems[i].pos, cssColor(b->gradItems[i].cr));
+            g.call<void>("addColorStop", (double)b->gradItems[i].pos, cssColorStop(b->gradItems[i].cr));
         return g;
     }
 }
