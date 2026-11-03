@@ -1,4 +1,4 @@
-#ifndef _SWINX_MALLOC_H_
+﻿#ifndef _SWINX_MALLOC_H_
 #define _SWINX_MALLOC_H_
 
 /*
@@ -23,10 +23,9 @@
 #include <malloc/malloc.h>
 #else
 #include_next <malloc.h>
-#include <mm_malloc.h>
 #endif
 
-#include <string.h>
+#include <string.h>//for memcpy
 
 #ifdef __cplusplus
 extern "C"
@@ -50,15 +49,11 @@ extern "C"
         return _msize(ptr);
     }
 
-    /* MSVC: _aligned_malloc(size, alignment). */
     static inline void *_aligned_malloc(size_t size, size_t alignment)
     {
-        void *p = NULL;
         if (alignment == 0 || (alignment & (alignment - 1)) != 0)
             return NULL;
-        if (posix_memalign(&p, alignment, size) != 0)
-            return NULL;
-        return p;
+        return memalign(alignment, size);
     }
 
     static inline void _aligned_free(void *ptr)
