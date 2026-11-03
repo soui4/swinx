@@ -470,21 +470,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/dlghelper.cpp",
-     "partial",
-     "not-implemented"
-    ],
-    [
-     "platform/wasm/dlghelper.cpp",
-     "partial",
-     "not-implemented"
-    ],
-    [
-     "platform/linux/dlghelper.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/cocoa/dlghelper.mm",
      "impl",
      ""
@@ -493,6 +478,21 @@
      "platform/ios/dlghelper.mm",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/dlghelper.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/mobile/dlghelper.cpp",
+     "partial",
+     "not-implemented"
+    ],
+    [
+     "platform/wasm/dlghelper.cpp",
+     "partial",
+     "not-implemented"
     ]
    ]
   },
@@ -510,21 +510,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/dlghelper.cpp",
-     "partial",
-     "not-implemented"
-    ],
-    [
-     "platform/wasm/dlghelper.cpp",
-     "partial",
-     "not-implemented"
-    ],
-    [
-     "platform/linux/dlghelper.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/cocoa/dlghelper.mm",
      "impl",
      ""
@@ -533,6 +518,21 @@
      "platform/ios/dlghelper.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/linux/dlghelper.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/mobile/dlghelper.cpp",
+     "partial",
+     "not-implemented"
+    ],
+    [
+     "platform/wasm/dlghelper.cpp",
+     "partial",
+     "not-implemented"
     ]
    ]
   },
@@ -1718,7 +1718,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1729,6 +1730,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1740,7 +1746,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1751,6 +1758,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1762,7 +1774,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1773,6 +1786,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1784,7 +1802,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1795,6 +1814,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1806,7 +1830,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1817,6 +1842,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1828,7 +1858,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1839,6 +1870,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1850,7 +1886,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1861,6 +1898,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1872,7 +1914,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1883,6 +1926,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1894,7 +1942,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1905,6 +1954,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1916,7 +1970,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1927,6 +1982,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1938,7 +1998,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1949,6 +2010,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1960,7 +2026,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1971,6 +2038,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -1982,7 +2054,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -1993,6 +2066,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2004,7 +2082,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2015,6 +2094,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2026,7 +2110,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2037,6 +2122,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2048,7 +2138,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2059,6 +2150,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2070,7 +2166,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2081,6 +2178,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2092,7 +2194,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2103,6 +2206,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2114,7 +2222,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2125,6 +2234,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2136,7 +2250,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2147,6 +2262,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2158,7 +2278,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2169,6 +2290,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2180,7 +2306,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2191,6 +2318,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2202,7 +2334,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2213,6 +2346,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2224,7 +2362,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2235,6 +2374,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2246,7 +2390,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2257,6 +2402,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2268,7 +2418,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2279,6 +2430,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2290,7 +2446,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2301,6 +2458,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2312,7 +2474,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2325,6 +2488,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -2334,7 +2502,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2345,6 +2514,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -2356,7 +2530,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2367,6 +2542,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -2378,7 +2558,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2391,6 +2572,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -2400,7 +2586,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2411,6 +2598,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -2422,7 +2614,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2433,6 +2626,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -2444,7 +2642,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2455,6 +2654,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -2466,7 +2670,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2477,6 +2682,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2488,7 +2698,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2499,6 +2710,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2510,7 +2726,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2521,6 +2738,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2532,7 +2754,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2543,6 +2766,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2554,7 +2782,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2565,6 +2794,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2576,7 +2810,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2587,6 +2822,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2598,7 +2838,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2609,6 +2850,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2620,7 +2866,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2631,6 +2878,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2642,7 +2894,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2653,6 +2906,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2664,7 +2922,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2675,6 +2934,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2686,7 +2950,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2697,6 +2962,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2708,7 +2978,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2719,6 +2990,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2730,7 +3006,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2741,6 +3018,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2752,7 +3034,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2763,6 +3046,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2774,7 +3062,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2785,6 +3074,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2796,7 +3090,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2807,6 +3102,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2818,7 +3118,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2831,6 +3132,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -2840,7 +3146,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2851,6 +3158,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2862,7 +3174,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2875,6 +3188,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -2884,7 +3202,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2895,6 +3214,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2906,7 +3230,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2917,6 +3242,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2928,7 +3258,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2941,6 +3272,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -2950,7 +3286,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2961,6 +3298,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -2972,7 +3314,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -2985,6 +3328,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -2994,7 +3342,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3007,6 +3356,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -3016,7 +3370,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3027,6 +3382,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3038,7 +3398,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3049,6 +3410,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3060,7 +3426,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3071,6 +3438,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3082,7 +3454,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3093,6 +3466,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3104,7 +3482,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3115,6 +3494,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3126,7 +3510,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3137,6 +3522,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3148,7 +3538,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3159,6 +3550,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3170,7 +3566,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3181,6 +3578,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3192,7 +3594,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3203,6 +3606,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3214,7 +3622,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3227,6 +3636,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -3236,7 +3650,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3249,6 +3664,11 @@
      "gdi/cairo/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -3258,7 +3678,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3269,6 +3690,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3280,7 +3706,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3291,6 +3718,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3302,7 +3734,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3313,6 +3746,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3324,7 +3762,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3335,6 +3774,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3346,7 +3790,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3357,6 +3802,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3368,7 +3818,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3379,6 +3830,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3390,7 +3846,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3401,6 +3858,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -3412,7 +3874,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3425,6 +3888,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -3433,10 +3901,16 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "platform/freertos/sysbridge.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/freertos/sysbridge.cpp",
      "impl",
@@ -3450,7 +3924,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3461,6 +3936,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3472,7 +3952,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3483,6 +3964,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3494,7 +3980,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3505,6 +3992,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3516,7 +4008,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3527,6 +4020,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3538,7 +4036,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3551,6 +4050,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -3560,7 +4064,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3573,6 +4078,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -3582,7 +4092,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3595,6 +4106,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -3604,7 +4120,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3617,6 +4134,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -3626,7 +4148,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3639,6 +4162,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -3648,7 +4176,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
@@ -3659,6 +4188,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -3670,7 +4204,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3681,6 +4216,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3692,7 +4232,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3703,6 +4244,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -3714,7 +4260,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3725,6 +4272,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3736,7 +4288,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3747,6 +4300,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3758,7 +4316,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
@@ -3769,6 +4328,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -3780,7 +4344,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3791,6 +4356,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3802,7 +4372,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3813,6 +4384,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3824,7 +4400,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3835,6 +4412,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3846,7 +4428,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3857,6 +4440,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3868,7 +4456,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3879,6 +4468,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3890,7 +4484,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3903,6 +4498,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -3912,7 +4512,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3923,6 +4524,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3934,7 +4540,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3945,6 +4552,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3956,7 +4568,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3967,6 +4580,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -3978,7 +4596,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3989,6 +4608,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4000,7 +4624,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4011,6 +4636,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4022,7 +4652,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4035,6 +4666,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -4044,7 +4680,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4055,6 +4692,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4066,7 +4708,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4077,6 +4720,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4088,7 +4736,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4099,6 +4748,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -4110,7 +4764,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4121,6 +4776,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -4132,7 +4792,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4143,6 +4804,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -4154,7 +4820,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4165,6 +4832,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -4176,7 +4848,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4187,6 +4860,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -4198,7 +4876,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4209,6 +4888,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4220,7 +4904,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4233,6 +4918,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -4242,7 +4932,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
@@ -4255,6 +4946,11 @@
      "gdi/cairo/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -4264,7 +4960,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4277,6 +4974,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -4285,10 +4987,16 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -4301,11 +5009,17 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/freertos/sysbridge.cpp",
      "stub",
@@ -4323,11 +5037,17 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/freertos/sysbridge.cpp",
      "stub",
@@ -4346,7 +5066,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4359,6 +5080,11 @@
      "gdi/cairo/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -4368,7 +5094,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4381,6 +5108,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -4390,7 +5122,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4403,6 +5136,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -4411,10 +5149,16 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -4427,10 +5171,16 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -4444,7 +5194,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4455,6 +5206,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4466,7 +5222,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4477,6 +5234,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4488,7 +5250,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4499,6 +5262,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4510,7 +5278,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4521,6 +5290,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4532,7 +5306,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4543,6 +5318,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4554,7 +5334,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4565,6 +5346,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -4576,7 +5362,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4587,6 +5374,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -4598,7 +5390,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
@@ -4609,6 +5402,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -4620,7 +5418,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4631,6 +5430,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4642,7 +5446,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4653,6 +5458,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4664,7 +5474,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4677,6 +5488,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -4686,7 +5502,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4699,6 +5516,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -4708,7 +5530,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4721,6 +5544,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -4730,7 +5558,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4741,6 +5570,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4752,7 +5586,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
@@ -4763,6 +5598,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -4774,7 +5614,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
@@ -4785,6 +5626,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -4796,7 +5642,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4809,6 +5656,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -4818,7 +5670,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4831,6 +5684,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -4839,6 +5697,7 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "uitools.cpp"
    ],
    "agg": "impl",
@@ -4847,6 +5706,11 @@
      "uitools.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -4856,7 +5720,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4867,6 +5732,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4878,7 +5748,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4889,6 +5760,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4900,7 +5776,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4911,6 +5788,11 @@
     ],
     [
      "gdi/cairo/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4922,7 +5804,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4935,6 +5818,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -4944,7 +5832,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4955,6 +5844,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -4966,7 +5860,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -4979,6 +5874,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -4987,12 +5887,18 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "uitools.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "uitools.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -5004,7 +5910,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5017,6 +5924,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5026,7 +5938,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5039,6 +5952,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5048,7 +5966,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5061,6 +5980,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5070,7 +5994,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5083,6 +6008,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5091,7 +6021,8 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/apple/gdi.cpp"
+    "gdi/apple/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5099,6 +6030,11 @@
      "gdi/apple/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5107,7 +6043,8 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/apple/gdi.cpp"
+    "gdi/apple/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5115,6 +6052,11 @@
      "gdi/apple/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5124,7 +6066,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5135,6 +6078,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -5146,7 +6094,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5159,6 +6108,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -5168,7 +6122,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5179,6 +6134,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -5190,7 +6150,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5201,6 +6162,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -5212,7 +6178,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5223,6 +6190,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -5234,7 +6206,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5245,6 +6218,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -5256,7 +6234,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5267,6 +6246,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -5278,7 +6262,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5289,6 +6274,11 @@
     ],
     [
      "gdi/cairo/gdi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ]
@@ -5300,7 +6290,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5313,6 +6304,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -5322,7 +6318,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "stub",
    "site_classes": [
@@ -5335,6 +6332,11 @@
      "gdi/cairo/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5344,7 +6346,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5357,6 +6360,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -5366,7 +6374,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5379,6 +6388,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -5388,7 +6402,8 @@
    ],
    "files": [
     "gdi/apple/gdi.cpp",
-    "gdi/cairo/gdi.cpp"
+    "gdi/cairo/gdi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5401,6 +6416,11 @@
      "gdi/cairo/gdi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -5409,11 +6429,17 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/freertos/sysbridge.cpp",
      "impl",
@@ -5431,11 +6457,17 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/freertos/sysbridge.cpp",
      "impl",
@@ -5453,10 +6485,16 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -5470,7 +6508,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5483,6 +6522,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5492,7 +6536,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5505,6 +6550,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5514,7 +6564,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5527,6 +6578,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5537,15 +6593,11 @@
    "files": [
     "gdi/apple/fontapi.cpp",
     "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp",
     "gdi/freertos/textbridge.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/freertos/textbridge.cpp",
-     "impl",
-     ""
-    ],
     [
      "gdi/apple/fontapi.cpp",
      "impl",
@@ -5553,6 +6605,16 @@
     ],
     [
      "gdi/cairo/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "gdi/freertos/textbridge.cpp",
      "impl",
      ""
     ]
@@ -5564,7 +6626,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5577,6 +6640,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5586,7 +6654,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5599,6 +6668,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5608,7 +6682,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5621,6 +6696,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5630,7 +6710,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5643,6 +6724,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5652,7 +6738,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5665,6 +6752,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5674,7 +6766,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5687,6 +6780,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5696,7 +6794,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5709,6 +6808,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5718,7 +6822,8 @@
    ],
    "files": [
     "gdi/apple/fontapi.cpp",
-    "gdi/cairo/fontapi.cpp"
+    "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -5731,6 +6836,11 @@
      "gdi/cairo/fontapi.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5741,15 +6851,11 @@
    "files": [
     "gdi/apple/fontapi.cpp",
     "gdi/cairo/fontapi.cpp",
+    "gdi/canvas2d/gdi.cpp",
     "gdi/freertos/textbridge.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/freertos/textbridge.cpp",
-     "impl",
-     ""
-    ],
     [
      "gdi/apple/fontapi.cpp",
      "impl",
@@ -5757,6 +6863,16 @@
     ],
     [
      "gdi/cairo/fontapi.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "gdi/freertos/textbridge.cpp",
      "impl",
      ""
     ]
@@ -5767,6 +6883,7 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "metafile.cpp"
    ],
    "agg": "impl",
@@ -5775,6 +6892,11 @@
      "metafile.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5783,6 +6905,7 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "metafile.cpp"
    ],
    "agg": "impl",
@@ -5791,6 +6914,11 @@
      "metafile.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5799,6 +6927,7 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "metafile.cpp"
    ],
    "agg": "impl",
@@ -5807,6 +6936,11 @@
      "metafile.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5815,6 +6949,7 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "metafile.cpp"
    ],
    "agg": "impl",
@@ -5823,6 +6958,11 @@
      "metafile.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5831,6 +6971,7 @@
     "gdi.h"
    ],
    "files": [
+    "gdi/canvas2d/gdi.cpp",
     "metafile.cpp"
    ],
    "agg": "impl",
@@ -5839,6 +6980,11 @@
      "metafile.cpp",
      "impl",
      ""
+    ],
+    [
+     "gdi/canvas2d/gdi.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -5969,17 +7115,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "partial",
-     "not-implemented"
-    ],
-    [
-     "platform/linux/imm.cpp",
+     "platform/cocoa/imm.mm",
      "impl",
      ""
     ],
@@ -5989,14 +7125,24 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/cocoa/imm.mm",
+     "platform/ios/imm.mm",
      "impl",
      ""
     ],
     [
-     "platform/ios/imm.mm",
+     "platform/linux/imm.cpp",
      "impl",
      ""
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "partial",
+     "not-implemented"
     ]
    ]
   },
@@ -6015,17 +7161,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "partial",
-     "not-implemented"
-    ],
-    [
-     "platform/linux/imm.cpp",
+     "platform/cocoa/imm.mm",
      "impl",
      ""
     ],
@@ -6035,14 +7171,24 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/cocoa/imm.mm",
+     "platform/ios/imm.mm",
      "impl",
      ""
     ],
     [
-     "platform/ios/imm.mm",
+     "platform/linux/imm.cpp",
      "impl",
      ""
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "partial",
+     "not-implemented"
     ]
    ]
   },
@@ -6061,17 +7207,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
+     "platform/cocoa/imm.mm",
      "impl",
      ""
     ],
@@ -6081,14 +7217,24 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/cocoa/imm.mm",
+     "platform/ios/imm.mm",
      "impl",
      ""
     ],
     [
-     "platform/ios/imm.mm",
+     "platform/linux/imm.cpp",
      "impl",
      ""
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -6106,21 +7252,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6129,6 +7260,21 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6146,21 +7292,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6169,6 +7300,21 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6185,16 +7331,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6203,6 +7339,16 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6219,16 +7365,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6237,6 +7373,16 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6253,16 +7399,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6271,6 +7407,16 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6288,21 +7434,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6311,6 +7442,21 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -6328,21 +7474,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6351,6 +7482,21 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -6368,21 +7514,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6391,6 +7522,21 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -6408,21 +7554,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6431,6 +7562,21 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6448,21 +7594,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6471,6 +7602,21 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6487,16 +7633,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6505,6 +7641,16 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6522,12 +7668,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
+     "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
-     "platform/wasm/imm.cpp",
+     "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -6537,12 +7683,12 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
     ],
     [
-     "platform/ios/imm.mm",
+     "platform/wasm/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -6562,12 +7708,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
+     "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
-     "platform/wasm/imm.cpp",
+     "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -6577,12 +7723,12 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
     ],
     [
-     "platform/ios/imm.mm",
+     "platform/wasm/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -6601,16 +7747,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6619,6 +7755,16 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6636,21 +7782,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6659,6 +7790,21 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6676,21 +7822,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6699,6 +7830,21 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6716,21 +7862,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6739,6 +7870,21 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -6756,21 +7902,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6779,6 +7910,21 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6795,16 +7941,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "stub",
      "仅返回常量/无操作"
@@ -6813,6 +7949,16 @@
      "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6831,17 +7977,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
+     "platform/cocoa/imm.mm",
      "impl",
      ""
     ],
@@ -6851,12 +7987,22 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/cocoa/imm.mm",
+     "platform/ios/imm.mm",
      "impl",
      ""
     ],
     [
-     "platform/ios/imm.mm",
+     "platform/linux/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
      "impl",
      ""
     ]
@@ -6877,17 +8023,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "partial",
-     "not-implemented"
-    ],
-    [
-     "platform/linux/imm.cpp",
+     "platform/cocoa/imm.mm",
      "impl",
      ""
     ],
@@ -6897,14 +8033,24 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/cocoa/imm.mm",
+     "platform/ios/imm.mm",
      "impl",
      ""
     ],
     [
-     "platform/ios/imm.mm",
+     "platform/linux/imm.cpp",
      "impl",
      ""
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "partial",
+     "not-implemented"
     ]
    ]
   },
@@ -6922,12 +8068,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
+     "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
-     "platform/wasm/imm.cpp",
+     "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -6937,12 +8083,12 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
     ],
     [
-     "platform/ios/imm.mm",
+     "platform/wasm/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -6962,21 +8108,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -6985,6 +8116,21 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -7002,21 +8148,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
@@ -7025,6 +8156,21 @@
      "platform/ios/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/linux/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -7042,12 +8188,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/imm.cpp",
-     "impl",
-     ""
+     "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
-     "platform/wasm/imm.cpp",
+     "platform/ios/imm.mm",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7057,12 +8203,12 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/cocoa/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
+     "platform/mobile/imm.cpp",
+     "impl",
+     ""
     ],
     [
-     "platform/ios/imm.mm",
+     "platform/wasm/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -7798,12 +8944,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/wasm/audio.cpp",
+     "platform/posix/audio.cpp",
      "impl",
      ""
     ],
     [
-     "platform/posix/audio.cpp",
+     "platform/wasm/audio.cpp",
      "impl",
      ""
     ]
@@ -8174,7 +9320,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ],
@@ -8184,12 +9335,7 @@
      ""
     ],
     [
-     "platform/cocoa/ole2.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/ios/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ]
@@ -8208,7 +9354,12 @@
    "agg": "stub",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/ios/ole2.mm",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -8218,12 +9369,7 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/cocoa/ole2.mm",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/ios/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -8242,7 +9388,12 @@
    "agg": "stub",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/ios/ole2.mm",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -8252,12 +9403,7 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/cocoa/ole2.mm",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/ios/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -8277,21 +9423,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/wasm/ole2.cpp",
-     "partial",
-     "not-implemented"
-    ],
-    [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/cocoa/ole2.mm",
      "impl",
      ""
@@ -8300,6 +9431,21 @@
      "platform/ios/ole2.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/linux/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/mobile/ole2.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/wasm/ole2.cpp",
+     "partial",
+     "not-implemented"
     ]
    ]
   },
@@ -8318,17 +9464,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/ole2.cpp",
-     "partial",
-     "not-implemented"
-    ],
-    [
-     "platform/linux/ole2.cpp",
+     "platform/cocoa/ole2.mm",
      "impl",
      ""
     ],
@@ -8338,14 +9474,24 @@
      ""
     ],
     [
-     "platform/cocoa/ole2.mm",
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ],
     [
-     "platform/ios/ole2.mm",
+     "platform/linux/ole2.cpp",
      "impl",
      ""
+    ],
+    [
+     "platform/mobile/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/ole2.cpp",
+     "partial",
+     "not-implemented"
     ]
    ]
   },
@@ -8363,21 +9509,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/ole2.cpp",
-     "partial",
-     "not-implemented"
-    ],
-    [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/cocoa/ole2.mm",
      "impl",
      ""
@@ -8386,6 +9517,21 @@
      "platform/ios/ole2.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/linux/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/mobile/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/ole2.cpp",
+     "partial",
+     "not-implemented"
     ]
    ]
   },
@@ -8403,12 +9549,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
      "impl",
      ""
     ],
     [
-     "platform/wasm/ole2.cpp",
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ],
@@ -8418,12 +9564,12 @@
      ""
     ],
     [
-     "platform/cocoa/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
     [
-     "platform/ios/ole2.mm",
+     "platform/wasm/ole2.cpp",
      "impl",
      ""
     ]
@@ -8443,21 +9589,6 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/wasm/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/cocoa/ole2.mm",
      "impl",
      ""
@@ -8466,6 +9597,21 @@
      "platform/ios/ole2.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/linux/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/mobile/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/ole2.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -8483,12 +9629,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
      "impl",
      ""
     ],
     [
-     "platform/wasm/ole2.cpp",
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ],
@@ -8498,12 +9644,12 @@
      ""
     ],
     [
-     "platform/cocoa/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
     [
-     "platform/ios/ole2.mm",
+     "platform/wasm/ole2.cpp",
      "impl",
      ""
     ]
@@ -8523,12 +9669,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
      "impl",
      ""
     ],
     [
-     "platform/wasm/ole2.cpp",
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ],
@@ -8538,12 +9684,12 @@
      ""
     ],
     [
-     "platform/cocoa/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
     [
-     "platform/ios/ole2.mm",
+     "platform/wasm/ole2.cpp",
      "impl",
      ""
     ]
@@ -8563,12 +9709,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
      "impl",
      ""
     ],
     [
-     "platform/wasm/ole2.cpp",
+     "platform/ios/ole2.mm",
      "impl",
      ""
     ],
@@ -8578,12 +9724,12 @@
      ""
     ],
     [
-     "platform/cocoa/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
     [
-     "platform/ios/ole2.mm",
+     "platform/wasm/ole2.cpp",
      "impl",
      ""
     ]
@@ -8601,7 +9747,7 @@
    "agg": "impl",
    "site_classes": [
     [
-     "platform/mobile/ole2.cpp",
+     "platform/cocoa/ole2.mm",
      "impl",
      ""
     ],
@@ -8611,7 +9757,7 @@
      ""
     ],
     [
-     "platform/cocoa/ole2.mm",
+     "platform/mobile/ole2.cpp",
      "impl",
      ""
     ]
