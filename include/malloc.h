@@ -19,19 +19,14 @@
 
 #else /* !_WIN32 */
 
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-
 #if defined(__APPLE__)
 #include <malloc/malloc.h>
 #else
-/* glibc/BSD: malloc_usable_size lives in the real <malloc.h>.  include_next
- * skips this shim and pulls the system header. */
 #include_next <malloc.h>
 #include <mm_malloc.h>
-
 #endif
+
+#include <cstring>
 
 #ifdef __cplusplus
 extern "C"
