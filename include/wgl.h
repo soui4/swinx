@@ -41,7 +41,11 @@
 #define APIENTRY
 #endif
 
-#if defined(__APPLE__)
+#if defined(__IOS__)
+/* iOS 只有 OpenGL ES / EAGL，没有桌面 GL 头，也没有可以给 WGL 上下文绑定
+ * 的窗口表面（这里沿用 Android 的处理：保留本头的 WGL 声明让"只包含
+ * <wgl.h> 但不建上下文"的代码能编译，wgl* 入口在 iOS 恒返回失败）。 */
+#elif defined(__APPLE__)
 #include <OpenGL/gl.h>
 #if defined(__has_include)
 #if __has_include(<OpenGL/glext.h>)

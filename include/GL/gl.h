@@ -12,7 +12,11 @@
 #ifndef __SWINX_GL_H__
 #define __SWINX_GL_H__
 
-#if defined(__APPLE__)
+#if defined(__IOS__)
+/* iOS 只有 OpenGL ES（<OpenGLES/ES2/gl.h> 等），没有桌面 GL 头。这里不转发
+ * 系统 GL 头：WGL 是桌面 GL 的窗口表面协议，iOS 上恒为"能力缺失"，只保留
+ * <wgl.h> 的声明面，让包含本头的代码不因缺 GL/gl.h 直接编译失败。 */
+#elif defined(__APPLE__)
 #include <OpenGL/gl.h>
 #elif defined(__ANDROID__)
 /* Android 是 GLES-only：桌面 GL 开发头（GL/gl.h、GL/glext.h）在 NDK 里根本

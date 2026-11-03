@@ -4,6 +4,8 @@
  *
  * @details    结构分两层：
  *             - 平台层（文件内 static）：上下文创建/绑定/交换/入口解析。
+ *                 __IOS__   : 只有 GLES/EAGL，没有 WGL 可落地的窗口表面，平台层
+ *                             恒返回失败（能力门控，不做伪造上下文）。
  *                 __APPLE__ : 转调 cocoa/SGLBridge.mm 的 NSOpenGLContext 桥接。
  *                 Linux     : 用 dlopen 加载 libGL/libX11 走 GLX，不引入 X11/GLX
  *                             开发头与链接期依赖；缺库时入口直接返回失败。
@@ -28,7 +30,60 @@
 // 平台层
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifdef __APPLE__
+#if defined(__IOS__)
+
+// iOS 只有 OpenGL ES / EAGL，没有桌面 GL，也没有 NSOpenGL/CGL 这类窗口表面
+// 上下文。WGL 是桌面 GL 的窗口表面协议，这里按"能力门控"给出显式失败的
+// 平台层：上下文创建返回 NULL、绑定/交换返回 FALSE，调用方按失败降级，
+// 而不是在 iOS 上伪造一个永远不可用的上下文。
+
+static void *PlatformCreateCtx(HWND hWnd, int nMajor, int nMinor, int nProfileMask, int nFlags,
+                               void *pShareCtx)
+{
+    (void)hWnd; (void)nMajor; (void)nMinor; (void)nProfileMask; (void)nFlags; (void)pShareCtx;
+    return NULL;
+}
+
+static void PlatformDestroyCtx(void *pCtx)
+{
+    (void)pCtx;
+}
+
+static BOOL PlatformMakeCurrent(void *pCtx, HWND hWnd)
+{
+    (void)pCtx; (void)hWnd;
+    return FALSE;
+}
+
+static void PlatformClearCurrent(void *pCtx)
+{
+    (void)pCtx;
+}
+
+static BOOL PlatformSwap(void *pCtx)
+{
+    (void)pCtx;
+    return FALSE;
+}
+
+static void *PlatformGetProcAddress(const char *pszName)
+{
+    (void)pszName;
+    return NULL;
+}
+
+static BOOL PlatformSetSwapInterval(void *pCtx, int nInterval)
+{
+    (void)pCtx; (void)nInterval;
+    return FALSE;
+}
+
+static BOOL PlatformSupportsContextAttribs(void)
+{
+    return FALSE;
+}
+
+#elif defined(__APPLE__)
 
 extern "C" {
 /** 创建绑定到 HWND(=SNsWindow NSView) 的 GL 上下文；nProfile 取 0/0x3200/0x4100。 */

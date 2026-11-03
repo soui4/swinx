@@ -22,12 +22,18 @@
 #include <sys/event.h>
 #include <crt_externs.h>
 #include <sys/sysctl.h>
-#include <sys/user.h>
 #include <sys/proc.h>
 #include <mach/mach.h>
+#ifndef __IOS__
+// iOS 的公开 SDK 里 <mach/mach_vm.h> 直接 #error "mach_vm.h unsupported"；
+// 对应的 queryMemoryRegion 分支同样在 __IOS__ 下走降级路径（见下方）。
 #include <mach/mach_vm.h>
+#endif
 #include <mach/thread_act.h>
-#include <os/log.h>
+#ifndef __IOS__
+// iOS 的公开 SDK 没有 <sys/user.h>，对应能力在 __IOS__ 下走降级路径。
+#include <sys/user.h>
+#endif // __IOS__
 #if defined(__x86_64__)
 #include <mach/i386/thread_status.h>
 #endif
@@ -3685,7 +3691,7 @@ static bool queryMemoryRegion(const void *address, MEMORY_BASIC_INFORMATION *out
     }
     fclose(maps);
     return found;
-#elif defined(__APPLE__) && defined(__MACH__)
+#elif defined(__APPLE__) && defined(__MACH__) && !defined(__IOS__)
     mach_vm_address_t regionAddress = (mach_vm_address_t)(uintptr_t)address;
     mach_vm_size_t regionSize = 0;
     vm_region_basic_info_data_64_t info;
