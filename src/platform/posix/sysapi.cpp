@@ -28,12 +28,9 @@
 // iOS 的公开 SDK 里 <mach/mach_vm.h> 直接 #error "mach_vm.h unsupported"；
 // 对应的 queryMemoryRegion 分支同样在 __IOS__ 下走降级路径（见下方）。
 #include <mach/mach_vm.h>
+#include <sys/user.h>
 #endif
 #include <mach/thread_act.h>
-#ifndef __IOS__
-// iOS 的公开 SDK 没有 <sys/user.h>，对应能力在 __IOS__ 下走降级路径。
-#include <sys/user.h>
-#endif // __IOS__
 #if defined(__x86_64__)
 #include <mach/i386/thread_status.h>
 #endif

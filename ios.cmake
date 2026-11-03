@@ -13,6 +13,7 @@ add_compile_options(-Wno-extern-c-compat)
 add_compile_options(-Wno-unknown-warning-option)
 add_compile_options(-Wno-constant-conversion)
 add_compile_options(-Wno-comment)
+add_definitions(-D__IOS__)
 
 file(GLOB_RECURSE HEADERS  include/*.hpp include/*.h)
 file(GLOB SRCS
