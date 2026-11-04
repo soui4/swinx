@@ -43,14 +43,17 @@ emscripten::val SwinxCanvasCreate(int w, int h, int alpha)
     c.set(std::string("height"), (h > 0) ? h : 1);
     val opts = val::object();
     opts.set(std::string("alpha"), alpha != 0);
-    /* willReadFrequently：告诉浏览器这块 canvas 会被反复 getImageData 读回。
-     * 窗口后备画布每帧要被 SConnection::presentPending 全屏读一遍（上屏），默认的
-     * GPU 后端在这种情况下每次都触发「同步回读」——真机上单是这一步就能吃掉十几
-     * 毫秒。声明之后浏览器把它放到 CPU 后端，getImageData 变成一次内存拷贝。
-     * 只对无 alpha 的窗口画布开：位图 canvas（alpha!=0，皮肤/位图资源）主要被写，
-     * 偶尔 GetDIBits 才读，开它反而让 drawImage 走软件路径吃亏。 */
-    if (alpha == 0)
-        opts.set(std::string("willReadFrequently"), true);
+    /* 不设 willReadFrequently：它会把这块 canvas 钉在 CPU（Skia 软件）后端。
+     * 以前上屏是 getImageData 全屏读回，那个标志确实省掉了"每次读回都强制同步"；
+     * 但现在 canvas2d 的上屏改成 SwxPresentSurface 把离屏画布直接 drawImage 到
+     * 显示画布（见 SConnection::presentPending），窗口画布全程只写不读 ——
+     * 留着它等于让所有绘制都走软件光栅，还要额外上传一次显存。
+     *
+     * 实测（有头 Edge，真 GPU，坦克大战一帧 ~1430 次调用）：
+     *   不设：spanMed 4.7~4.9ms   设：spanMed 5.3~5.6ms
+     * （无头 Edge 走 SwiftShader 软件光栅，A/B 结论相反 —— 别在无头下判这个。）
+     * 前提是没有任何代码对窗口画布做 getImageData/GetDIBits：目前只有位图
+     * （alpha!=0，全部位图操作都走它们自己的画布）会被读回。 */
     c.call<val>("getContext", std::string("2d"), opts);
     return c;
 }
@@ -269,16 +272,41 @@ static void swxEnsureJs(void)
     });
 }
 
+/* ctx 下标的回收表（不在 JS 侧维护：注册/注销都在 C++ 里同步完成，省掉跨语言
+ * 调用；空闲表为空时按 s_next 递增分配）。 */
+static std::vector<int> s_freeCtxIds;
+
 int SwinxCtxRegister(emscripten::val ctx)
 {
     static int s_next = 1;
     swxEnsureJs();
-    int id = s_next++;
+    int id;
+    if (!s_freeCtxIds.empty())
+    {
+        id = s_freeCtxIds.back();
+        s_freeCtxIds.pop_back();
+    }
+    else
+        id = s_next++;
     /* 直接写进 JS 侧的注册表数组。不用 call<void>()：embind 的 call 模板在这里
      * 选不到重载（参数是 val 而不是可隐式转换的类型），set 更省事。 */
     val table = val::global("__swxCtx");
     table.set(val(id), ctx);
     return id;
+}
+
+void SwinxCtxUnregister(int ctxId)
+{
+    if (ctxId <= 0)
+        return;
+    val table = val::global("__swxCtx");
+    if (table.isUndefined() || table.isNull())
+        return;
+    /* 置 undefined 而不是 delete：数组保持"快元素"，热路径 __swxCtx[id] 仍是
+     * 一次下标访问；下标本身进空闲表复用，数组长度只跟「同时存活的画布数」有关，
+     * 不再随游戏时长单调增长。 */
+    table.set(val(ctxId), val::undefined());
+    s_freeCtxIds.push_back(ctxId);
 }
 
 EM_JS(void, swx_op, (int id, int op, double a, double b, double c, double d, double e, double f),

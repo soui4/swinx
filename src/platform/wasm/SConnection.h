@@ -40,7 +40,9 @@
 #include "SClipboard.h"
 #include "countmutex.h"
 
-struct cairo_surface_t;
+#if defined(__EMSCRIPTEN__) && defined(SWINX_WASM_CANVAS2D)
+struct cairo_surface_t;  // canvas2d 后端不引入 cairo.h，前向声明 CreateWindowSurface/ResizeSurface 返回的不透明类型
+#endif
 
 struct TimerInfo
 {

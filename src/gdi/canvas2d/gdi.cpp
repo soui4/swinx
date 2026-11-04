@@ -524,6 +524,12 @@ static void gdi_bmp_free(void *p)
     Canvas2DSurface *s = (Canvas2DSurface *)p;
     if (s)
     {
+        /* 归还 JS 侧的下标。注册表（globalThis.__swxCtx）持有 ctx，ctx 又持有
+         * canvas 与其像素缓冲；不归还就永远回收不了 —— 位图反复创建销毁时
+         * （特效、精灵、临时离屏图）表现为「越玩越卡」而不是立刻报错。
+         * 0 尺寸占位位图共用 scratch 画布，不拥有下标，不能归还。 */
+        if (s->ownsCtx)
+            SwinxCtxUnregister(s->ctxId);
         if (s->bits)
             delete[] s->bits;
         delete s;
@@ -634,10 +640,59 @@ static GdiFont *makeFont(int height, const wchar_t *face, int weight, int italic
     return f;
 }
 
+/* ---------- 共享的空/占位绘制目标 ----------
+ * 两处用它：
+ *   1. 内存 DC 在 SelectObject(位图) 之前的占位目标（GDI 语义上那之前画不出东西）；
+ *   2. 0 尺寸的"假位图"（CreateCompatibleBitmap(hdc,0,0) 之类，见
+ *      SwinxCanvasCreateSurfaceRaw）。
+ * 都是 1x1、永远不会被读回的画布，全进程一份足够，让这两条高频路径完全不碰 JS。 */
+struct ScratchSurface
+{
+    emscripten::val canvas;
+    emscripten::val ctx;
+    int ctxId;
+};
+static ScratchSurface &scratchSurface()
+{
+    static ScratchSurface s = []() {
+        ScratchSurface r;
+        r.canvas = SwinxCanvasCreate(1, 1, 1);
+        r.ctx = r.canvas.call<val>("getContext", std::string("2d"));
+        r.canvas.set(std::string("_swinxC2dCtx"), r.ctx);
+        r.ctxId = SwinxCtxRegister(r.ctx);
+        return r;
+    }();
+    return s;
+}
+
 /* ---------- canvas 后备位图 ---------- */
 extern "C" Canvas2DSurface *SwinxCanvasCreateSurfaceRaw(
 int w, int h, BOOL alpha)
 {
+    /* 0 尺寸位图：CreateCompatibleBitmap(hdc,0,0) / SBitmap_GDI::Init(0,0) 这类
+     * "占位/去选中"用的假位图。SOUI 的 SRenderTarget_GDI::Resize 每次都会先建一个
+     * 0x0 兼容位图选中、再换成真位图（坦克大战实测 ~250 次/秒）。给它真造一块
+     * canvas 纯属浪费，直接复用共享的空画布（不拥有 ctx，销毁时不归还）。
+     * 两条限制：
+     *   - 只认 <=0：真正的 1x1 位图仍然要有自己的画布，否则两张位图会画到一起；
+     *   - 只认位图（alpha!=0）：窗口后备画布可来不得假货 —— ResizeSurface 是原地
+     *     缩放同一个 surface，拿到共享画布会把别的窗口的占位目标一起改坏。 */
+    if ((w <= 0 || h <= 0) && alpha)
+    {
+        ScratchSurface &scratch = scratchSurface();
+        Canvas2DSurface *s = new Canvas2DSurface();
+        s->canvas = scratch.canvas;
+        s->ctx = scratch.ctx;
+        s->ctxId = scratch.ctxId;
+        s->width = 0;
+        s->height = 0;
+        s->bitsPixel = 32;
+        s->stride = 0;
+        s->bits = nullptr;
+        s->alpha = alpha;
+        s->ownsCtx = FALSE;
+        return s;
+    }
     /* 1:1：canvas 物理分辨率 == 请求尺寸。DPI 缩放在 SOUI 布局层完成。 */
     val canvas = SwinxCanvasCreate(w, h, alpha ? 1 : 0);
     val ctx = canvas["_swinxC2dCtx"]; // 缓存的 2D context（见 HDC__ 构造）
@@ -667,6 +722,7 @@ int w, int h, BOOL alpha)
     s->stride = w * 4;
     s->bits = nullptr;
     s->alpha = alpha;
+    s->ownsCtx = TRUE;
     return s;
 }
 
@@ -675,18 +731,28 @@ extern "C" HBITMAP SwinxCanvasCreateBitmap(int w, int h, BOOL alpha)
     return (HBITMAP)InitGdiObj(OBJ_BITMAP, SwinxCanvasCreateSurfaceRaw(w, h, alpha));
 }
 
+/* ---------- 内存 DC 的占位绘制目标 ----------
+ * GDI 语义里 CreateCompatibleDC 建的 DC 在 SelectObject(位图) 之前没有可绘制内容，
+ * 而 SOUI 的 SRenderTarget_GDI::DrawBitmap 每贴一张图都走
+ *   CreateCompatibleDC → SelectObject(位图) → AlphaBlend → DeleteDC
+ * （坦克大战实测 ~200 次/秒）。以前每建一个 DC 就 document.createElement('canvas')
+ * + getContext('2d')：这在 Chromium 里是上百微秒级的 DOM 操作，还会把 canvas+ctx
+ * 登记进 JS 注册表，DC 删掉后没人归还 —— 白白吃掉每帧的预算并持续泄漏 JS 对象。
+ *
+ * 但 SelectObject 一定会把 canvas/ctx/ctxId 换成位图自己的，占位目标从来不是真正的
+ * 绘制目标（1x1，画不出东西）。所以全局共用一份就够：DC 的创建退化成一次
+ * C++ new，不再碰 JS。 */
+
 /* ===================== DC 生命周期（HDC__ 方法 + 创建/销毁）===================== */
 HDC__::HDC__(HWND _hwnd)
 {
     hwnd = _hwnd;
-    // 默认 1x1 内存画布；窗口 DC 随后 SelectObject(bmp) 换成窗口后备画布
-    val canvas = SwinxCanvasCreate(1, 1, 1);
-    val ctx = canvas.call<val>("getContext",std::string( "2d"), val::object());
-    canvas.set(std::string("_swinxC2dCtx"), ctx);
-    this->canvas = canvas;
-    this->ctx = ctx;
-    /* 1x1 的占位 ctx 也要登记（SelectObject 换位图时才换成真正的目标） */
-    this->ctxId = SwinxCtxRegister(ctx);
+    /* 占位 1x1 画布全局共用（见 scratchSurface 的注释）；SelectObject(位图) 会把它
+     * 换成真正的绘制目标。检查绘图目标是否为占位的代码不存在，所以共用安全。 */
+    ScratchSurface &scratch = scratchSurface();
+    this->canvas = scratch.canvas;
+    this->ctx = scratch.ctx;
+    this->ctxId = scratch.ctxId;
     this->surfW = 1;
     this->surfH = 1;
     crText = 0;
@@ -1874,7 +1940,8 @@ extern "C" BOOL WINAPI StretchDIBits(HDC hdc, INT x_dst, INT y_dst, INT w_dst, I
  * filterLevel 由 HIWORD(expendMode) 携带（kNone_FilterLevel == 0 ⇒ 关闭平滑）。
  * 注意 rcSrc 是"每状态子矩形"：多状态皮肤图把各状态按行/列排在一张图里，
  * 调用方通过 pRcSrc 选定其中一个状态，绝不能当成整图处理。 */
-static void canvas_blit_rect(HDC__ *hdc, val &c, Canvas2DSurface *s, const RECT *rcDest, const RECT *rcSrc, UINT expendMode, double alpha)
+static void canvas_blit_rect(HDC__ *hdc, Canvas2DSurface *s, const RECT *rcDest, const RECT *rcSrc,
+                             UINT expendMode, double alpha, int smooth)
 {
     int sw = (int)(rcSrc->right - rcSrc->left);
     int sh = (int)(rcSrc->bottom - rcSrc->top);
@@ -1882,22 +1949,30 @@ static void canvas_blit_rect(HDC__ *hdc, val &c, Canvas2DSurface *s, const RECT 
     int dh = (int)(rcDest->bottom - rcDest->top);
     if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) return;
 
-    C2DStateCache st0 = hdc->c2d; /* save/restore 配对：结束后缓存整体取回 */
-    Op(hdc, SWX_SAVE);
+    /* 只有「落点会超出 rcDest」时才真正需要那次 clip。NONE 模式的落点是源尺寸
+     * （可能比目标大，rcDest 只当作左上角定位 —— SRenderTarget_GDI::DrawBitmap
+     * 就是这么调的），STRETCH 的落点恒等于 rcDest，TILE 会铺满并溢出。
+     * 其余情况 drawImage 的范围天然被落点矩形限制，而 DC 已有的裁剪在 canvas 里
+     * 是累积生效的 —— 多出来的 save/clip/restore 纯属白花。九宫格一次拼 9 块，
+     * 省掉的是 9×3 = 27 次跨语言调用，贴图密集的帧里很可观。 */
+    const int drawW = (expendMode == EXPEND_MODE_NONE) ? sw : dw;
+    const int drawH = (expendMode == EXPEND_MODE_NONE) ? sh : dh;
+    const BOOL needClip = (expendMode == EXPEND_MODE_TILE) || drawW > dw || drawH > dh;
+
+    C2DStateCache st0 = hdc->c2d; /* 仅 needClip 时用来整体回滚 */
+    if (needClip)
+        Op(hdc, SWX_SAVE);
     if (alpha < 1.0)
-    {
-        Op(hdc, SWX_ALPHA, alpha);
-        hdc->c2d.alpha = alpha;
-    }
+        C2dAlpha(hdc, alpha); /* 走缓存：值没变就不下发 */
     /* 九宫格拼接时相邻块必须严丝合缝：打开平滑会在块边界产生半透明缝，
      * 与 cairo 后端 SetAntialiasMode(ANTIALIAS_NONE) 的做法对应。
-     * SwxBlit 里按需设 imageSmoothingEnabled（值没变就不下发）。 */
-    /* EXPEND_MODE_STRETCH 时平滑由调用方（DrawBitmapEx 的 filterLevel）决定，
-     * 这里传 -1 表示"别动"；其余模式强制关平滑以保证拼接无缝。 */
-    const int smooth = (expendMode == EXPEND_MODE_STRETCH) ? -1 : 0;
+     * 平滑开关由调用方给定（-1 = 别动，交给外层决定）。SwxBlit 内部按需设
+     * imageSmoothingEnabled，所以写完要把缓存同步成新值（否则 JS 侧状态和缓存
+     * 不一致，后续 C2dSmoothing 会误判"已经设过了"）。 */
 
-    Op(hdc, SWX_CLIP_RECT, (double)rcDest->left, (double)rcDest->top,
-       (double)rcDest->right, (double)rcDest->bottom);
+    if (needClip)
+        Op(hdc, SWX_CLIP_RECT, (double)rcDest->left, (double)rcDest->top,
+           (double)rcDest->right, (double)rcDest->bottom);
 
     /* 源 canvas 与坐标一一对应（1:1，无缩放） */
     double sx = (double)rcSrc->left, sy = (double)rcSrc->top;
@@ -1920,8 +1995,15 @@ static void canvas_blit_rect(HDC__ *hdc, val &c, Canvas2DSurface *s, const RECT 
         SwxBlit(hdc->ctxId, s->ctxId, (double)rcDest->left, (double)rcDest->top, (double)dw, (double)dh,
                 sx, sy, psw, psh, smooth);
     }
-    Op(hdc, SWX_RESTORE);
-    hdc->c2d = st0;
+    if (smooth >= 0)
+        hdc->c2d.smoothing = smooth;
+    if (needClip)
+    {
+        Op(hdc, SWX_RESTORE);
+        hdc->c2d = st0;
+    }
+    /* !needClip 时不 save/restore：alpha 与 smoothing 的缓存值就是 JS 侧的真实
+     * 状态，由外层 DrawBitmapEx / DrawBitmap9Patch 的 SAVE/RESTORE 统一回滚。 */
 }
 
 extern "C" BOOL WINAPI DrawBitmapEx(HDC hdc, LPCRECT pRcDest, HBITMAP bmp, LPCRECT pRcSrc, UINT expendMode, BYTE byAlpha)
@@ -1941,14 +2023,18 @@ extern "C" BOOL WINAPI DrawBitmapEx(HDC hdc, LPCRECT pRcDest, HBITMAP bmp, LPCRE
         rcSrc.right = s->width;
         rcSrc.bottom = s->height;
     }
-    val &c = hdc->ctx;
+    /* 不再整对 SAVE/RESTORE：那一对每贴一张图就要压/弹一次 canvas 状态栈（连 clip
+     * 路径一起复制），而这里真正需要回滚的只有 alpha 与平滑两项 —— 两者都有精确
+     * 缓存，改完显式还原即可（值没变时 C2d* 连跨语言调用都不发）。坦克大战实测
+     * 一帧 ~190 次贴图，这一项就是 380 次多余的状态栈操作。 */
     C2DStateCache st0 = hdc->c2d;
-    Op(hdc, SWX_SAVE);
-    Op(hdc, SWX_SMOOTH, filterLevel != 0 ? 1 : 0);
-    hdc->c2d.smoothing = (filterLevel != 0) ? 1 : 0;
-    canvas_blit_rect(hdc, c, s, pRcDest, &rcSrc, expendMode, (double)byAlpha / 255.0);
-    Op(hdc, SWX_RESTORE);
-    hdc->c2d = st0;
+    const double a = (double)byAlpha / 255.0;
+    const int smooth = (filterLevel != 0) ? 1 : 0;
+    canvas_blit_rect(hdc, s, pRcDest, &rcSrc, expendMode, a, smooth);
+    if (a < 1.0)
+        C2dAlpha(hdc, st0.alpha >= 0.0 ? st0.alpha : 1.0);
+    /* st0.smoothing 可能是 -1（未知）：按 canvas 默认值 1 回退 */
+    C2dSmoothing(hdc, st0.smoothing != 0);
     return TRUE;
 }
 
@@ -2023,14 +2109,13 @@ extern "C" BOOL WINAPI DrawBitmap9Patch(HDC hdc, LPCRECT pRcDest, HBITMAP hBmp, 
                         { expendMode, expendMode, expendMode },
                         { EXPEND_MODE_NONE, expendMode, EXPEND_MODE_NONE } };
 
-    val &c = hdc->ctx;
     double alpha = (double)byAlpha / 255.0;
     /* 对齐 cairo 版的 SetAntialiasMode(ANTIALIAS_NONE)：九宫格 9 块是拼接出来的，
-     * 只要有一块被抗锯齿/双线性过滤吃到邻居像素，块边界就会出现半透明缝。 */
+     * 只要有一块被抗锯齿/双线性过滤吃到邻居像素，块边界就会出现半透明缝。
+     * 这里不再用 SAVE/RESTORE 包 9 次拼接，改成开头关平滑、结尾显式还原
+     * alpha/平滑（都有精确缓存，值没变时不发跨语言调用）。 */
     C2DStateCache st0 = hdc->c2d;
-    Op(hdc, SWX_SAVE);
-    Op(hdc, SWX_SMOOTH, 0);
-    hdc->c2d.smoothing = 0;
+    C2dSmoothing(hdc, FALSE);
     for (int y = 0; y < 3; y++)
     {
         if (ySrc[y] == ySrc[y + 1]) continue;
@@ -2041,11 +2126,15 @@ extern "C" BOOL WINAPI DrawBitmap9Patch(HDC hdc, LPCRECT pRcDest, HBITMAP hBmp, 
             RECT rcDest = { xDest[x], yDest[y], xDest[x + 1], yDest[y + 1] };
             if (rcSrc.left >= rcSrc.right || rcSrc.top >= rcSrc.bottom) continue;
             if (rcDest.left >= rcDest.right || rcDest.top >= rcDest.bottom) continue;
-            canvas_blit_rect(hdc, c, s, &rcDest, &rcSrc, mode[y][x], alpha);
+            /* 四角 NONE、四边与中心用调用方模式；STRETCH 的平滑由外层（此处已设 0）
+             * 决定，传 -1 表示别动，其余模式强制关平滑保证拼接无缝。 */
+            const int smooth = (mode[y][x] == EXPEND_MODE_STRETCH) ? -1 : 0;
+            canvas_blit_rect(hdc, s, &rcDest, &rcSrc, mode[y][x], alpha, smooth);
         }
     }
-    Op(hdc, SWX_RESTORE);
-    hdc->c2d = st0;
+    if (alpha < 1.0)
+        C2dAlpha(hdc, st0.alpha >= 0.0 ? st0.alpha : 1.0);
+    C2dSmoothing(hdc, st0.smoothing != 0);
     return TRUE;
 }
 
@@ -3288,21 +3377,17 @@ extern "C" BOOL WINAPI SelectClipPath(HDC hdc, int)
 }
 extern "C" BOOL WINAPI WidenPath(HDC) { return FALSE; }
 
-/* ---------- 图标 / 位图加载（近似：图标走位图，字体资源忽略）---------- */
-extern "C" HANDLE WINAPI LoadImageW(HINSTANCE, LPCWSTR, UINT type, INT, INT, UINT) { return NULL; }
-extern "C" HANDLE WINAPI LoadImageA(HINSTANCE, LPCSTR, UINT type, INT, INT, UINT) { return NULL; }
-extern "C" HANDLE WINAPI LoadImageBuf(const void *, UINT, UINT, INT, INT, UINT) { return NULL; }
-extern "C" HBITMAP WINAPI LoadBitmapW(HINSTANCE, LPCWSTR) { return NULL; }
-extern "C" HBITMAP WINAPI LoadBitmapA(HINSTANCE, LPCSTR) { return NULL; }
+/* ---------- 图标 / 位图加载 ----------
+ * LoadImageW/A、LoadBitmapW/A、CreateIconFromResource(Ex)、LookupIconIdFromDirectoryEx
+ * 由 src/platform/posix/cursoricon.cpp 提供（wasm 下 posix 平台层始终编入 libswinx.a，
+ * 见 wasm.cmake 对 src/platform/posix 目录的 glob），这里再定义会触发链接期
+ * duplicate symbol，故不再重复。下面只保留 posix 未提供的图标桩。 */
 extern "C" HICON WINAPI CreateIconIndirect(PICONINFO) { return (HICON)1; }
 extern "C" BOOL WINAPI GetIconInfo(HICON, PICONINFO) { return FALSE; }
 extern "C" BOOL WINAPI DrawIcon(HDC hdc, INT x, INT y, HICON) { return TRUE; }
 extern "C" BOOL WINAPI DrawIconEx(HDC hdc, INT x, INT y, HICON, INT w, INT h, UINT, HBRUSH, UINT) { return TRUE; }
 extern "C" BOOL WINAPI DestroyIcon(HICON) { return TRUE; }
-extern "C" HICON WINAPI CreateIconFromResource(LPBYTE, UINT, BOOL, DWORD) { return (HICON)1; }
-extern "C" HICON WINAPI CreateIconFromResourceEx(LPBYTE, UINT, BOOL, DWORD, INT, INT, UINT) { return (HICON)1; }
 extern "C" BOOL WINAPI DestroyIconIndirect(HICON) { return TRUE; }
-extern "C" int WINAPI LookupIconIdFromDirectoryEx(LPBYTE, BOOL, INT, INT, UINT) { return 0; }
 extern "C" BOOL WINAPI GetIconInfoEx(HICON, void *) { return FALSE; }
 
 /* 图标/光标访问器：cursormgr.cpp 依赖 SetCursorID/GetCursorID，wnd.cpp 依赖

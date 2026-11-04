@@ -6,8 +6,9 @@
 typedef struct CGContext *CGContextRef;
 struct CGAffineTransform;
 typedef const struct CGPath *CGPathRef;
-#elif defined(__EMSCRIPTEN__)
+#elif defined(__EMSCRIPTEN__) && defined(SWINX_WASM_CANVAS2D)
 #include "gdi/canvas2d/js_glue.h"
+//   SWINX_WASM_CANVAS2D 未定义时（cairo 后端），落到下面的 #else（cairo.h）。
 #else
 #include <cairo.h>
 #endif
@@ -21,7 +22,7 @@ struct DCState;
 struct HDC__
 {
     HWND hwnd;
-#if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__) && defined(SWINX_WASM_CANVAS2D)
     // Canvas 2D 引用：窗口 DC 指向其后备离屏 canvas；内存 DC 选中位图后指向该
     // 位图的 canvas。坐标均为「逻辑像素」，Retina 缩放由上层（framebuffer 物理尺寸）
     // 统一处理，此处保持 1:1，便于与既有上屏链路逐字节兼容。
@@ -105,7 +106,7 @@ struct HDC__
 
     // Path support
     BOOL pathRecording;     // TRUE if path recording is active
-#if defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__) && defined(SWINX_WASM_CANVAS2D)
     // 路径操作记录在 recordedPath（见 js_glue.h），不持有 cairo 类型
 #elif !defined(__APPLE__)
     cairo_path_t *currentPath;  // Current path being recorded (non-APPLE keeps cairo_path_t)

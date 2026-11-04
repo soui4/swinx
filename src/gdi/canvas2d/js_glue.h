@@ -61,6 +61,10 @@ struct Canvas2DSurface
     int stride;             // DIB 位图：每行字节数
     uint8_t *bits;          // DIB 位图拥有的 ARGB32 缓冲（GetDIBits/UpdateDIBPixmap 用），可空
     BOOL alpha;             // context 是否带 alpha（窗口画布=false，位图=true）
+    /* 本 surface 是否**拥有** ctxId（销毁时要归还给注册表）。
+     * 0 尺寸的"占位位图"（CreateCompatibleBitmap(hdc,0,0)）共用全局的 scratch
+     * 画布，不拥有下标，置 FALSE。 */
+    BOOL ownsCtx;
     /* JS 侧 ctx 注册表下标。热路径上的绘制调用不走 embind（跨边界 3~10µs/次），
      * 而是经 SwxOp/SwxOpStr/SwxBlit 直接调进 JS 的派发器，用这个整数换 ctx
      * （JS 侧 Module.swxCtx[id]），既省掉 val 装箱，也省掉 method name 的字符串
@@ -234,8 +238,13 @@ enum SwxOpCode
     SWX_FONT,               /* 经 SwxOpStr：(utf8,len) */
 };
 
-/* ctx 注册表：创建 canvas 时登记一次，返回的整数就是 Canvas2DSurface::ctxId。 */
+/* ctx 注册表：创建 canvas 时登记一次，返回的整数就是 Canvas2DSurface::ctxId。
+ * 下标**必须**在 surface 销毁时经 SwinxCtxUnregister 归还：注册表是 JS 侧的数组，
+ * 一直持有 ctx（ctx 又持有 canvas），不归还就等于把整块画布连同显存/光栅缓冲
+ * 永久钉在内存里。游戏里位图是反复创建销毁的（特效/精灵），漏掉这一步的表现
+ * 就是「玩得越久越卡」，而不是立刻出错。 */
 int SwinxCtxRegister(emscripten::val ctx);
+void SwinxCtxUnregister(int ctxId);
 
 void SwxOp(int ctxId, int op, double a, double b, double c, double d, double e, double f);
 void SwxOpStr(int ctxId, int op, const char *utf8, int len, double a, double b, double c, double d);

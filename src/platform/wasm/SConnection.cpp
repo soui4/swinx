@@ -1,9 +1,33 @@
+/*
+ * SConnection.cpp -- WebAssembly platform connection implementation.
+ *
+ * Forked from src/platform/freertos/SConnection.cpp, whose message-queue
+ * semantics come from src/platform/mobile/SConnection.cpp (WM_PAINT /
+ * WM_MOUSEMOVE / WM_TIMER coalescing, msg stack, callback tasks).  What
+ * changes on wasm:
+ *   - the blocking primitives are the POSIX-port Win32-compat events
+ *     (src/platform/posix/sysobjs.cpp) rather than FreeRTOS-backed ones, so
+ *     waitMsg() blocks in WaitForSingleObject(m_hQueueEvt), which is a
+ *     std::condition_variable under the hood;
+ *   - timers are driven inside updateMsgQueue() from GetTickCount().  A
+ *     browser tab has no thread to spare: the JS host pumps from
+ *     requestAnimationFrame, so that pump must use a finite timeout (or
+ *     peekMsg) -- blocking the main thread would stop rAF and freeze the page
+ *     (see the pump design in doc/soui-wasm-port-plan.md);
+ *   - rendering: window canvases are cairo image surfaces (software), and
+ *     commitCanvas() blits dirty regions into the framebuffer
+ *     (framebuffer.h), whose present callback hands pixels to JS.
+ */
 #include "SConnection.h"
 #include "wndobj.h"
 #include "framebuffer.h"
 #include "lowmem.h"
 #include <gdi.h>
+#ifdef SWINX_WASM_CANVAS2D
 #include "gdi/canvas2d/js_glue.h"
+#else
+#include <cairo.h>
+#endif
 #include <log.h>
 #include <algorithm>
 #include <functional>
@@ -403,11 +427,13 @@ SConnection::SConnection(int screenNum)
     memset(&m_caretInfo, 0, sizeof(m_caretInfo));
     memset(m_keyboardState, 0, sizeof(m_keyboardState));
     m_hQueueEvt = CreateEventA(nullptr, FALSE /*auto reset*/, FALSE, nullptr);
-    /* 告诉 JS 上屏链路：这块后端不用帧缓冲承载像素，脏矩形由 C++ 侧直接
+#ifdef SWINX_WASM_CANVAS2D
+    /* 告诉 JS 上屏链路：canvas2d 后端不用帧缓冲承载像素，脏矩形由 C++ 侧直接
      * drawImage 合成到显示画布（见 presentPending）。soui.html 见到这个标记就
      * 只做耗时统计、不再读 HEAPU8 搬像素。cairo 后端不设它，走原来的 fb 路径。
      * 用 run_script 而不是 val::module_property：后者返回右值，无法赋值。 */
     emscripten_run_script("Module.fbFormat = 'canvas';");
+#endif
     SLOG_FMTI("SConnection created for thread %d", m_tid);
 }
 
@@ -1362,6 +1388,7 @@ uint32_t SConnection::GetIpcAtom() const
     return 0;
 }
 
+#ifdef SWINX_WASM_CANVAS2D
 cairo_surface_t *SConnection::CreateWindowSurface(HWND, uint32_t, int cx, int cy)
 {
     // route C (canvas2d): 每个窗口绘制进自己的离屏 HTMLCanvasElement 后备画布；
@@ -1392,6 +1419,25 @@ cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND, uint
     surf->height = cy;
     return surface;
 }
+#else
+cairo_surface_t *SConnection::CreateWindowSurface(HWND, uint32_t, int cx, int cy)
+{
+    // software renderer: every window paints into its own ARGB32 image
+    // surface; commitCanvas() blits dirty regions into the framebuffer.
+    if (cx < 1)
+        cx = 1;
+    if (cy < 1)
+        cy = 1;
+    return cairo_image_surface_create(CAIRO_FORMAT_ARGB32, cx, cy);
+}
+
+cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd, uint32_t visualId, int cx, int cy)
+{
+    if (surface)
+        cairo_surface_destroy(surface);
+    return CreateWindowSurface(hWnd, visualId, cx, cy);
+}
+#endif
 
 DWORD SConnection::GetWndProcessId(HWND)
 {
@@ -1603,12 +1649,23 @@ void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
     // 底→顶整幅重组，杜绝局部上屏路径在 z 序上的任何缝隙。
     if (m_committed.insert(hWnd).second)
         m_bScreenDirty = true;
+#ifdef SWINX_WASM_CANVAS2D
     Canvas2DSurface *surface = (Canvas2DSurface *)GetGdiObjPtr(wndObj->bmp);
     if (!surface)
         return;
 
     int sw = surface->width;
     int sh = surface->height;
+#else
+    cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(wndObj->bmp);
+    if (!surface || cairo_surface_get_type(surface) != CAIRO_SURFACE_TYPE_IMAGE)
+        return;
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
+        return;
+
+    int sw = cairo_image_surface_get_width(surface);
+    int sh = cairo_image_surface_get_height(surface);
+#endif
 
     // clip rc to the window canvas (window-local coordinates)
     RECT rcSrc = rc;
@@ -1644,6 +1701,10 @@ void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
             return;
     }
 
+    // queue (window-local): merge into whatever this window already owes the
+    // screen.  Keeping only local rects is what makes the merge safe — a
+    // screen-space pair would lose the src/fb size correspondence as soon as
+    // two commits get clipped against the framebuffer edge differently.
     std::map<HWND, PendingCommit>::iterator it = m_pendingCommits.find(hWnd);
     if (it == m_pendingCommits.end())
     {
@@ -1675,20 +1736,23 @@ void SConnection::presentPending(HWND hWnd, const RECT &rcPending)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return;  // 窗口已经销毁，画布不存在，这块改动自然也不用上屏
+#ifdef SWINX_WASM_CANVAS2D
     Canvas2DSurface *surface = (Canvas2DSurface *)GetGdiObjPtr(wndObj->bmp);
     if (!surface)
         return;
-    // canvas 的绘制总是最新的（绘制直接落到 2D context），无需 flush。
+
+    int sw = surface->width;
+    int sh = surface->height;
 
     RECT rcSrc = rcPending;
-    if (rcSrc.right > surface->width)
-        rcSrc.right = surface->width;
-    if (rcSrc.bottom > surface->height)
-        rcSrc.bottom = surface->height;
     if (rcSrc.left < 0)
         rcSrc.left = 0;
     if (rcSrc.top < 0)
         rcSrc.top = 0;
+    if (rcSrc.right > sw)
+        rcSrc.right = sw;
+    if (rcSrc.bottom > sh)
+        rcSrc.bottom = sh;
     if (rcSrc.left >= rcSrc.right || rcSrc.top >= rcSrc.bottom)
         return;
 
@@ -1703,8 +1767,8 @@ void SConnection::presentPending(HWND hWnd, const RECT &rcPending)
     /* clamp 到 canvas */
     if (sx < 0) sx = 0;
     if (sy < 0) sy = 0;
-    if (ex > surface->width) ex = surface->width;
-    if (ey > surface->height) ey = surface->height;
+    if (ex > sw) ex = sw;
+    if (ey > sh) ey = sh;
     if (sx >= ex || sy >= ey)
         return;
 
@@ -1732,13 +1796,66 @@ void SConnection::presentPending(HWND hWnd, const RECT &rcPending)
         return;
 
     // 上屏：把这块离屏画布的脏矩形**直接 drawImage 合成到显示画布**。
-    // 改造前是 getImageData 把像素读回 framebuffer、另一次 putImageData 再上传，
-    // 一帧两次全幅像素搬运（800x600 各约 2.6ms；CPU 采样里 getImageData 占空闲帧
-    // 总时间的 16%），而 cairo 后端本来就直接画在内存 fb 上、没有这一对往返。
-    // fb（SwinxFbBits）在 canvas2d 下从此只作为"有新帧"的信令载体，不再承载像素；
+    // fb（SwinxFbBits）在 canvas2d 下只作为"有新帧"的信令载体，不再承载像素；
     // JS 侧按 Module.fbFormat==='canvas' 跳过像素搬运（见 soui.html 的 presentDirtyRect）。
     SwxPresentSurface(surface->ctxId, sx, sy, w, h, fx, fy);
     RECT dirty = { fx, fy, fx + w, fy + h };
+#else
+    cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(wndObj->bmp);
+    if (!surface || cairo_surface_get_type(surface) != CAIRO_SURFACE_TYPE_IMAGE)
+        return;
+    if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
+        return;
+    // the canvas may have been drawn into again after the request was queued
+    cairo_surface_flush(surface);
+    uint32_t *srcBase = (uint32_t *)cairo_image_surface_get_data(surface);
+    if (!srcBase)
+        return;
+    int stride = cairo_image_surface_get_stride(surface) / 4;
+
+    RECT rcSrc = rcPending;
+    if (rcSrc.right > cairo_image_surface_get_width(surface))
+        rcSrc.right = cairo_image_surface_get_width(surface);
+    if (rcSrc.bottom > cairo_image_surface_get_height(surface))
+        rcSrc.bottom = cairo_image_surface_get_height(surface);
+    if (rcSrc.left >= rcSrc.right || rcSrc.top >= rcSrc.bottom)
+        return;
+
+    // screen-space dirty rect, clipped to the framebuffer
+    int ox = wndObj->rc.left, oy = wndObj->rc.top;
+    RECT rcFb = { ox + rcSrc.left, oy + rcSrc.top, ox + rcSrc.right, oy + rcSrc.bottom };
+    if (rcFb.left < 0)
+    {
+        rcSrc.left -= rcFb.left;
+        rcFb.left = 0;
+    }
+    if (rcFb.top < 0)
+    {
+        rcSrc.top -= rcFb.top;
+        rcFb.top = 0;
+    }
+    if (rcFb.right > SwinxFbWidth())
+    {
+        rcSrc.right -= (rcFb.right - SwinxFbWidth());
+        rcFb.right = SwinxFbWidth();
+    }
+    if (rcFb.bottom > SwinxFbHeight())
+    {
+        rcSrc.bottom -= (rcFb.bottom - SwinxFbHeight());
+        rcFb.bottom = SwinxFbHeight();
+    }
+    if (rcFb.left >= rcFb.right || rcFb.top >= rcFb.bottom)
+        return;
+
+    int w = rcFb.right - rcFb.left;
+    for (int y = 0; y < rcFb.bottom - rcFb.top; ++y)
+    {
+        memcpy(SwinxFbBits() + (size_t)(rcFb.top + y) * SwinxFbStride() + rcFb.left,
+               srcBase + (size_t)(rcSrc.top + y) * stride + rcSrc.left,
+               w * sizeof(uint32_t));
+    }
+    RECT dirty = rcFb;
+#endif
     swinxFbPresent(&dirty);
 }
 
