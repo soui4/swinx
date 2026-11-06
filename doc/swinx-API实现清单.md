@@ -18,8 +18,8 @@
 
 | 分级 | 数量 |
 |---|---|
-| 实现 | 999 |
-| 简单实现 | 86 |
+| 实现 | 994 |
+| 简单实现 | 91 |
 | 部分实现 | 14 |
 | 空实现 / 语义桩 | 41 |
 | 未提供（仅声明） | 126 |
@@ -30,7 +30,7 @@
 | 模块 | 实现 | 简单实现 | 部分实现 | 空实现 |
 |---|---|---|---|---|
 | 窗口、消息与用户界面（USER32 等价） | 197 | 8 | 0 | 6 |
-| 图形设备接口（GDI32 等价） | 172 | 26 | 2 | 6 |
+| 图形设备接口（GDI32 等价） | 167 | 31 | 2 | 6 |
 | 系统、文件、进程与线程（KERNEL32 等价） | 302 | 17 | 7 | 2 |
 | COM / OLE（OLE32·OLEAUT32 等价） | 56 | 8 | 0 | 4 |
 | 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 77 | 18 | 4 | 2 |
@@ -264,212 +264,212 @@
 
 | API | 级别 | 实现位置 | 备注 |
 |---|---|---|---|
-| `AbortPath` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `AddFontMemResourceEx` | 实现 | src/gdi/apple/gdi.cpp | 仅 CoreText 后端（src/gdi/apple/gdi.cpp）有定义：CGFont 从内存缓冲建出后经 CTFontManagerRegisterGraphicsFont 注册，*pNumFonts 返回 1，句柄是 FontMemResource*。**cairo 后端没有同名实现，Linux 上引用即链接失败** |
-| `AddFontResourceA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `AddFontResourceExA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `AddFontResourceExW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `AddFontResourceW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `AlphaBlend` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `Arc` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `BeginPath` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `BitBlt` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `Chord` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `ClearRect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CloseEnhMetaFile` | 实现 | src/metafile.cpp |  |
-| `CloseFigure` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
+| `AbortPath` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `AddFontMemResourceEx` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 | 仅 CoreText 后端（src/gdi/apple/gdi.cpp）有定义：CGFont 从内存缓冲建出后经 CTFontManagerRegisterGraphicsFont 注册，*pNumFonts 返回 1，句柄是 FontMemResource*。**cairo 后端没有同名实现，Linux 上引用即链接失败** |
+| `AddFontResourceA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `AddFontResourceExA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `AddFontResourceExW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `AddFontResourceW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `AlphaBlend` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `Arc` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `BeginPath` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `BitBlt` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `Chord` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `ClearRect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CloseEnhMetaFile` | 实现 | src/gdi/canvas2d/gdi.cpp 等 2 处 |  |
+| `CloseFigure` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CombineRgn` | 实现 | src/region.cpp |  |
-| `CreateBitmap` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateCompatibleBitmap` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateCompatibleDC` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateDIBPatternBrush` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateDIBPatternBrushPt` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateDIBSection` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateDIBSectionEx` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateDIBitmap` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
+| `CreateBitmap` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateCompatibleBitmap` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateCompatibleDC` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateDIBPatternBrush` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateDIBPatternBrushPt` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateDIBSection` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateDIBSectionEx` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateDIBitmap` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreateEllipticRgn` | 实现 | src/region.cpp |  |
 | `CreateEllipticRgnIndirect` | 实现 | src/region.cpp |  |
-| `CreateEnhMetaFileA` | 实现 | src/metafile.cpp |  |
-| `CreateEnhMetaFileW` | 实现 | src/metafile.cpp |  |
-| `CreateFontA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateFontIndirectA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateFontIndirectW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateFontW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateGradientBrush` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateICA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreateICW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
+| `CreateEnhMetaFileA` | 实现 | src/gdi/canvas2d/gdi.cpp 等 2 处 |  |
+| `CreateEnhMetaFileW` | 实现 | src/gdi/canvas2d/gdi.cpp 等 2 处 |  |
+| `CreateFontA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateFontIndirectA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateFontIndirectW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateFontW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateGradientBrush` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateICA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreateICW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreateIconFromResource` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
 | `CreateIconFromResourceEx` | 实现 | src/platform/*/cursoricon.cpp |  |
-| `CreateIconIndirect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreatePatternBrush` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreatePatternBrush2` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreatePen` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `CreatePenIndirect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
+| `CreateIconIndirect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreatePatternBrush` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreatePatternBrush2` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreatePen` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `CreatePenIndirect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreatePolygonRgn` | 实现 | src/region.cpp |  |
 | `CreateRectRgn` | 实现 | src/region.cpp |  |
 | `CreateRectRgnIndirect` | 实现 | src/region.cpp |  |
 | `CreateRoundRectRgn` | 实现 | src/region.cpp |  |
-| `CreateSolidBrush` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `DPtoLP` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `DeleteEnhMetaFile` | 实现 | src/metafile.cpp |  |
-| `DeleteObject` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `DestroyIcon` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `DrawBitmap9Patch` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `DrawBitmapEx` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `DrawEdge` | 实现 | src/uitools.cpp |  |
-| `DrawFocusRect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `DrawFrameControl` | 实现 | src/uitools.cpp |  |
-| `DrawIcon` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `DrawIconEx` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `DrawTextA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `DrawTextW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `Ellipse` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `EndPath` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `EnumEnhMetaFile` | 实现 | src/metafile.cpp |  |
-| `EnumFontFamiliesExA` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
-| `EnumFontFamiliesExW` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
+| `CreateSolidBrush` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `DPtoLP` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `DeleteEnhMetaFile` | 实现 | src/gdi/canvas2d/gdi.cpp 等 2 处 |  |
+| `DeleteObject` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `DestroyIcon` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `DrawBitmap9Patch` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `DrawBitmapEx` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `DrawEdge` | 实现 | src/gdi/canvas2d/gdi.cpp 等 2 处 |  |
+| `DrawFocusRect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `DrawFrameControl` | 实现 | src/gdi/canvas2d/gdi.cpp 等 2 处 |  |
+| `DrawIcon` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `DrawIconEx` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `DrawTextA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `DrawTextW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `Ellipse` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `EnumEnhMetaFile` | 实现 | src/gdi/canvas2d/gdi.cpp 等 2 处 |  |
+| `EnumFontFamiliesExA` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
+| `EnumFontFamiliesExW` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
 | `EqualRgn` | 实现 | src/region.cpp |  |
-| `ExcludeClipRect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `ExtCreatePen` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
+| `ExcludeClipRect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `ExtCreatePen` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `ExtCreateRegion` | 实现 | src/region.cpp |  |
-| `ExtSelectClipRgn` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `ExtTextOutA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `ExtTextOutW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `FillPath` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `FillRect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `FillRgn` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `FrameRect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `FrameRgn` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetCharWidthA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetCharWidthI` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
-| `GetCharWidthW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetClipBox` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetClipRgn` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetCurrentObject` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetCurrentPositionEx` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetDIBits` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetDeviceCaps` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetFontData` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 | 只读 sfnt 表（非 sfnt 字体与 dwTable=0 的「整文件」请求返回 GDI_ERROR，因此 Type1 判定恒为 false）。GDI 的 dwTable 是 MAKEFOURCC 口径（首字符在最低字节），FreeType 的 FT_MAKE_TAG 相反，实现先按 Win32 口径翻转查一次、失败再用原值查一次，两种写法都接受 |
-| `GetFontUnicodeRanges` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
-| `GetGdiObjPtr` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 | GDI 句柄表内部辅助 |
-| `GetGlyphIndicesA` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
-| `GetGlyphIndicesW` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
-| `GetGlyphOutlineA` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
-| `GetGlyphOutlineW` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
-| `GetIconInfo` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetObjectA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetObjectType` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetObjectW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetOutlineTextMetricsA` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
-| `GetOutlineTextMetricsW` | 实现 | src/gdi/apple/fontapi.cpp 等 2 处 |  |
-| `GetPixel` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
+| `ExtSelectClipRgn` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `ExtTextOutA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `ExtTextOutW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `FillPath` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `FillRect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `FillRgn` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `FrameRect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `FrameRgn` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetCharWidthA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetCharWidthI` | 实现 | src/gdi/apple/fontapi.cpp 等 4 处 |  |
+| `GetCharWidthW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetClipBox` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetClipRgn` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetDIBits` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetFontData` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 | 只读 sfnt 表（非 sfnt 字体与 dwTable=0 的「整文件」请求返回 GDI_ERROR，因此 Type1 判定恒为 false）。GDI 的 dwTable 是 MAKEFOURCC 口径（首字符在最低字节），FreeType 的 FT_MAKE_TAG 相反，实现先按 Win32 口径翻转查一次、失败再用原值查一次，两种写法都接受 |
+| `GetFontUnicodeRanges` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
+| `GetGdiObjPtr` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 | GDI 句柄表内部辅助 |
+| `GetGlyphIndicesA` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
+| `GetGlyphIndicesW` | 实现 | src/gdi/apple/fontapi.cpp 等 4 处 |  |
+| `GetGlyphOutlineA` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
+| `GetGlyphOutlineW` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
+| `GetIconInfo` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetObjectA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetObjectType` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetObjectW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetOutlineTextMetricsA` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
+| `GetOutlineTextMetricsW` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
+| `GetPixel` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetRegionData` | 实现 | src/region.cpp |  |
 | `GetRgnBox` | 实现 | src/region.cpp |  |
-| `GetStockObject` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetSysColor` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetSysColorBrush` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetSysColorPen` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTabbedTextExtentA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTabbedTextExtentW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTextExtentExPointA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTextExtentExPointW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTextExtentPoint32A` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTextExtentPoint32W` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTextFaceA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTextFaceW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTextMetricsA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTextMetricsW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GradientFill` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `InitGdiObj` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `IntersectClipRect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `InvertRect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `InvertRgn` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `LPtoDP` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `LineTo` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
+| `GetStockObject` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetSysColor` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetSysColorBrush` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetSysColorPen` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTabbedTextExtentA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTabbedTextExtentW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTextExtentExPointA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTextExtentExPointW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTextExtentPoint32A` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTextExtentPoint32W` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTextFaceA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTextFaceW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTextMetricsA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTextMetricsW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GradientFill` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `InitGdiObj` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `IntersectClipRect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `InvertRect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `InvertRgn` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `LPtoDP` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `LineTo` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `LoadBitmapA` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
 | `LoadBitmapW` | 实现 | src/platform/*/cursoricon.cpp |  |
 | `LoadImageA` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
 | `LoadImageBuf` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
 | `LoadImageW` | 实现 | src/platform/*/cursoricon.cpp |  |
 | `LookupIconIdFromDirectoryEx` | 实现 | src/platform/*/cursoricon.cpp |  |
-| `MarkPixmapDirty` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `ModifyWorldTransform` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `MoveToEx` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
+| `MarkPixmapDirty` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `ModifyWorldTransform` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `MoveToEx` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `OffsetRgn` | 实现 | src/region.cpp |  |
-| `OffsetViewportOrgEx` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `PaintRgn` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `PatBlt` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `PathToRegion` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `Pie` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `PolyBezier` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `PolyBezierTo` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `PolyDraw` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `Polygon_Priv` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `Polyline` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
+| `OffsetViewportOrgEx` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `PaintRgn` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `PatBlt` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `PathToRegion` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `Pie` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `PolyBezier` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `PolyBezierTo` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `PolyDraw` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `Polygon_Priv` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `Polyline` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `PtInRegion` | 实现 | src/region.cpp |  |
 | `RectInRegion` | 实现 | src/region.cpp |  |
-| `Rectangle` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `RefGdiObj` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `RemoveFontMemResourceEx` | 实现 | src/gdi/apple/gdi.cpp | 仅 CoreText 后端有定义：CTFontManagerUnregisterGraphicsFont + CGFontRelease + delete，句柄为 AddFontMemResourceEx 的返回值 |
-| `RestoreDC` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `RoundRect` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SaveDC` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SelectClipPath` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SelectClipRgn` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SelectObject` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetAntialiasMode` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetGdiObjPtr` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 | GDI 句柄表内部辅助 |
-| `SetMiterLimit` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetPixel` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
+| `Rectangle` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `RefGdiObj` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `RemoveFontMemResourceEx` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 | 仅 CoreText 后端有定义：CTFontManagerUnregisterGraphicsFont + CGFontRelease + delete，句柄为 AddFontMemResourceEx 的返回值 |
+| `RestoreDC` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `RoundRect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SaveDC` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SelectClipPath` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SelectClipRgn` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SelectObject` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetAntialiasMode` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetGdiObjPtr` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 | GDI 句柄表内部辅助 |
+| `SetPixel` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `SetRectRgn` | 实现 | src/region.cpp |  |
-| `SetViewportOrgEx` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetWindowOrgEx` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetWorldTransform` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `StretchBlt` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `StretchDIBits` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `StrokeAndFillPath` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `StrokePath` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `TabbedTextOutA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `TabbedTextOutW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `TextOutA` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `TextOutW` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `TransparentBlt` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `UpdateDIBPixmap` | 实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `UpdateLayeredWindow` | 实现 | src/platform/*/sysbridge.cpp |  |
-| `DeleteDC` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GdiFlush` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 | 恒返回 TRUE：cairo/xcb 与 CoreGraphics 的绘制都是同步下发，没有待冲刷的 GDI 队列。WebKit 只把它当成功标志用 |
-| `GetAntialiasMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetBkColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetBkMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetBrushOrgEx` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetCharWidth32A` | 简单实现 | src/gdi/apple/fontapi.cpp 等 2 处 | 转发 GetCharWidthA：Win32 里 32 位版本与旧版语义相同，只是宽度按 32 位整数给出 |
-| `GetCharWidth32W` | 简单实现 | src/gdi/apple/fontapi.cpp 等 2 处 | 转发 GetCharWidthW |
-| `GetGraphicsMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 | 读取 DC 记录的 graphicsMode（纯状态存取，两种模式行为相同）；NULL HDC 返回 0 |
-| `GetMapMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 | 恒返回 MM_TEXT（唯一支持的映射模式），NULL HDC 返回 0 |
-| `GetMiterLimit` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetNearestColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 | 无调色板概念，原样返回请求颜色 |
-| `GetPath` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTextAlign` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetTextColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetViewportOrgEx` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetWorldTransform` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetBkColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetBkMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetBrushOrgEx` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetGraphicsMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 | 记录并返回旧的 graphicsMode，GM_ADVANCED / GM_COMPATIBLE 下绘制结果一致（world transform 始终直接合成进后端 CTM）。NULL HDC 必须按 Win32 语义置 ERROR_INVALID_HANDLE 并返回 0 而不解引用——WebKit 的 syncContext() 对 ImageBuffer 就是这么调的；也必须返回成功，否则 cairo 的 _get_global_font_dc() 认定 DC 不可用而丢弃它，留下悬空静态句柄 |
-| `SetMapMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 | 只接受 MM_TEXT 并返回它，其它模式返回 0 且不改变状态——逻辑单位 = 设备像素是本层所有绘制的前提 |
-| `SetPolyFillMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetROP2` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetTextAlign` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `SetTextColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 2 处 |  |
-| `GetCharacterPlacementA` | 部分实现 | src/gdi/apple/fontapi.cpp 等 2 处 | ANSI 入参按 UTF-8 转宽字符后复用 W 版实现 |
-| `GetCharacterPlacementW` | 部分实现 | src/gdi/apple/fontapi.cpp 等 2 处 | 逐字符 charmap + horiAdvance 累加：不做连字 / 字距 / bidi / kinsoku，dwFlags 全部忽略；按 nMaxExtent 截断并回填 nMaxFit，lpDx/lpGlyphs 缓冲不足时按 Win32 约定把 lpGlyphs 置 NULL 并回传所需数量；返回值按 Win32 打包——低 16 位是总宽度、高 16 位是拟合字数 |
-| `ExtEscape` | 空实现 | src/gdi/apple/gdi.cpp 等 2 处 | 恒返回 0（含 QUERYESCSUPPORT 探测）：本层没有打印机转义通道，如实报「不支持」比伪造成功安全 |
-| `RealizePalette` | 空实现 | src/gdi/apple/gdi.cpp 等 2 处 | 恒返回 0（无调色板概念） |
-| `SelectPalette` | 空实现 | src/gdi/apple/gdi.cpp 等 2 处 | 恒返回 NULL（无调色板概念） |
-| `SetStretchBltMode` | 空实现 | src/gdi/apple/gdi.cpp 等 2 处 | 两个后端都只返回 COLORONCOLOR：拉伸采样由 cairo / CoreGraphics 决定，没有可切换的拉伸算法；调用方设置的黑白/颜色模式不会被记住 |
-| `SetWindowExtEx` | 空实现 | src/gdi/apple/gdi.cpp 等 2 处 | 恒返回 FALSE，不支持窗口坐标 extents 变换 |
-| `WidenPath` | 空实现 | src/gdi/apple/gdi.cpp 等 2 处 | 恒返回 FALSE：路径转轮廓只在 Win32 打印路径上被用到，本层没有打印机 DC |
+| `SetViewportOrgEx` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetWindowOrgEx` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetWorldTransform` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `StretchBlt` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `StretchDIBits` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `StrokeAndFillPath` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `StrokePath` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `TabbedTextOutA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `TabbedTextOutW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `TextOutA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `TextOutW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `TransparentBlt` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `UpdateDIBPixmap` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `UpdateLayeredWindow` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 1 个平台分支） |  |
+| `DeleteDC` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `EndPath` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GdiFlush` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 | 恒返回 TRUE：cairo/xcb 与 CoreGraphics 的绘制都是同步下发，没有待冲刷的 GDI 队列。WebKit 只把它当成功标志用 |
+| `GetAntialiasMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetBkColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetBkMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetBrushOrgEx` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetCharWidth32A` | 简单实现 | src/gdi/apple/fontapi.cpp 等 3 处 | 转发 GetCharWidthA：Win32 里 32 位版本与旧版语义相同，只是宽度按 32 位整数给出 |
+| `GetCharWidth32W` | 简单实现 | src/gdi/apple/fontapi.cpp 等 3 处 | 转发 GetCharWidthW |
+| `GetCurrentObject` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetCurrentPositionEx` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetDeviceCaps` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetGraphicsMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 | 读取 DC 记录的 graphicsMode（纯状态存取，两种模式行为相同）；NULL HDC 返回 0 |
+| `GetMapMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 | 恒返回 MM_TEXT（唯一支持的映射模式），NULL HDC 返回 0 |
+| `GetMiterLimit` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetNearestColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 | 无调色板概念，原样返回请求颜色 |
+| `GetPath` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTextAlign` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetTextColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetViewportOrgEx` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetWorldTransform` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetBkColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetBkMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetBrushOrgEx` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetGraphicsMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 | 记录并返回旧的 graphicsMode，GM_ADVANCED / GM_COMPATIBLE 下绘制结果一致（world transform 始终直接合成进后端 CTM）。NULL HDC 必须按 Win32 语义置 ERROR_INVALID_HANDLE 并返回 0 而不解引用——WebKit 的 syncContext() 对 ImageBuffer 就是这么调的；也必须返回成功，否则 cairo 的 _get_global_font_dc() 认定 DC 不可用而丢弃它，留下悬空静态句柄 |
+| `SetMapMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 | 只接受 MM_TEXT 并返回它，其它模式返回 0 且不改变状态——逻辑单位 = 设备像素是本层所有绘制的前提 |
+| `SetMiterLimit` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetPolyFillMode` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetROP2` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetTextAlign` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `SetTextColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetCharacterPlacementA` | 部分实现 | src/gdi/apple/fontapi.cpp 等 3 处 | ANSI 入参按 UTF-8 转宽字符后复用 W 版实现 |
+| `GetCharacterPlacementW` | 部分实现 | src/gdi/apple/fontapi.cpp 等 3 处 | 逐字符 charmap + horiAdvance 累加：不做连字 / 字距 / bidi / kinsoku，dwFlags 全部忽略；按 nMaxExtent 截断并回填 nMaxFit，lpDx/lpGlyphs 缓冲不足时按 Win32 约定把 lpGlyphs 置 NULL 并回传所需数量；返回值按 Win32 打包——低 16 位是总宽度、高 16 位是拟合字数 |
+| `ExtEscape` | 空实现 | src/gdi/apple/gdi.cpp 等 3 处 | 恒返回 0（含 QUERYESCSUPPORT 探测）：本层没有打印机转义通道，如实报「不支持」比伪造成功安全 |
+| `RealizePalette` | 空实现 | src/gdi/apple/gdi.cpp 等 3 处 | 恒返回 0（无调色板概念） |
+| `SelectPalette` | 空实现 | src/gdi/apple/gdi.cpp 等 3 处 | 恒返回 NULL（无调色板概念） |
+| `SetStretchBltMode` | 空实现 | src/gdi/apple/gdi.cpp 等 3 处 | 两个后端都只返回 COLORONCOLOR：拉伸采样由 cairo / CoreGraphics 决定，没有可切换的拉伸算法；调用方设置的黑白/颜色模式不会被记住 |
+| `SetWindowExtEx` | 空实现 | src/gdi/apple/gdi.cpp 等 3 处 | 恒返回 FALSE，不支持窗口坐标 extents 变换 |
+| `WidenPath` | 空实现 | src/gdi/apple/gdi.cpp 等 3 处 | 恒返回 FALSE：路径转轮廓只在 Win32 打印路径上被用到，本层没有打印机 DC |
 
 ### 4.3 系统、文件、进程与线程（KERNEL32 等价）
 

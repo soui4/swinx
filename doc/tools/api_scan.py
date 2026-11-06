@@ -155,6 +155,10 @@ for dirpath, _, files in os.walk(SRC):
     for f in files:
         if f.endswith((".cpp", ".mm", ".c")):
             srcfiles.append(os.path.join(dirpath, f))
+# os.walk 给的是目录项顺序，同一份源码在两台机器上可能不同。不排序的话每次重新生成
+# api_scan.json 都会把 site_classes 的条目顺序整体打乱，990 行的 diff 里只有 13 处是
+# 真的实现变化，评审时看不出改了什么。
+srcfiles.sort()
 
 CALL_IGNORE = re.compile(
     r"^(SLOG|SLOGW|SLOGE|SLOGFMT|FIXME|TRACE|memset|memcpy|memmove|strcpy|strlen|"

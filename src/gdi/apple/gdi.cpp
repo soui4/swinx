@@ -1901,7 +1901,10 @@ int SelectClipRgn(HDC hdc, HRGN hrgn)
     // apply with the active CTM so the region is interpreted in the current
     // logical space (see the clip semantics note above calc_total)
     ApplyRegion(hdc->cgCtx, hrgn);
-    return GetRgnBox(hrgn, NULL);
+    /* hrgn == NULL 是 Win32 规定的「移除裁剪区」入参（ApplyRegion 已经支持），
+     * 不能拿它去问包围盒类型：GetRgnBox → GDI_GetObjPtr 会直接解引用空句柄。
+     * 移除后裁剪区就是整个绘制面，按 SIMPLEREGION 回报，与其余后端口径一致。 */
+    return hrgn ? GetRgnBox(hrgn, NULL) : SIMPLEREGION;
 }
 
 // 将区域作为交集应用到 CG context（不 reset clip，直接 CGContextClipToRects）。

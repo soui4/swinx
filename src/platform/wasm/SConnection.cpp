@@ -1417,6 +1417,10 @@ cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND, uint
     SwinxCanvasResize(surf->canvas, cx, cy);
     surf->width = cx;
     surf->height = cy;
+    /* 改尺寸会把 ctx 的状态连 JS save/restore 栈一起清空（和 ctx.reset() 同一套
+     * 语义），栈底那枚未裁剪的锚点已经不存在了 —— 不作废的话，下一次绑定会
+     * restore 回一个根本没有的快照，裁剪就再也撤不开（见 clipClearCanvas）。 */
+    surf->clipAnchor = FALSE;
     return surface;
 }
 #else
@@ -1796,6 +1800,9 @@ void SConnection::presentPending(HWND hWnd, const RECT &rcPending)
         return;
 
     // 上屏：把这块离屏画布的脏矩形**直接 drawImage 合成到显示画布**。
+    // 合成在这里与替换等价：窗口后备画布按 alpha:false 建（CreateWindowSurface →
+    // SwinxCanvasCreateSurfaceRaw(..., 0)），源永不透明；可能含透明的 memRT→窗口画布
+    // 那一跳才需要替换语义，见 canvas2d/gdi.cpp 的 blitRop。
     // fb（SwinxFbBits）在 canvas2d 下只作为"有新帧"的信令载体，不再承载像素；
     // JS 侧按 Module.fbFormat==='canvas' 跳过像素搬运（见 soui.html 的 presentDirtyRect）。
     SwxPresentSurface(surface->ctxId, sx, sy, w, h, fx, fy);

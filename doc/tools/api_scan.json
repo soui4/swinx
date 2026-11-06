@@ -3191,8 +3191,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -3275,8 +3275,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -3331,8 +3331,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -3359,8 +3359,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -4053,8 +4053,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -4081,8 +4081,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -4109,8 +4109,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -4137,8 +4137,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -4987,16 +4987,10 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/canvas2d/gdi.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -5009,17 +5003,11 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/canvas2d/gdi.cpp",
     "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/freertos/sysbridge.cpp",
      "stub",
@@ -5037,17 +5025,11 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/canvas2d/gdi.cpp",
     "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/freertos/sysbridge.cpp",
      "stub",
@@ -5111,8 +5093,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -5139,8 +5121,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -5149,16 +5131,10 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/canvas2d/gdi.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -5171,16 +5147,10 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/canvas2d/gdi.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -5548,7 +5518,7 @@
     [
      "gdi/canvas2d/gdi.cpp",
      "impl",
-     "简单getter/setter/拷贝"
+     ""
     ]
    ]
   },
@@ -5659,8 +5629,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -5687,8 +5657,8 @@
     ],
     [
      "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "impl",
+     ""
     ]
    ]
   },
@@ -5703,14 +5673,14 @@
    "agg": "impl",
    "site_classes": [
     [
-     "uitools.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/canvas2d/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "uitools.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -5893,12 +5863,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "uitools.cpp",
+     "gdi/canvas2d/gdi.cpp",
      "impl",
      ""
     ],
     [
-     "gdi/canvas2d/gdi.cpp",
+     "uitools.cpp",
      "impl",
      ""
     ]
@@ -6429,17 +6399,11 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/canvas2d/gdi.cpp",
     "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/freertos/sysbridge.cpp",
      "impl",
@@ -6457,17 +6421,11 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/canvas2d/gdi.cpp",
     "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/freertos/sysbridge.cpp",
      "impl",
@@ -6485,16 +6443,10 @@
     "gdi.h"
    ],
    "files": [
-    "gdi/canvas2d/gdi.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "gdi/canvas2d/gdi.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -6889,14 +6841,14 @@
    "agg": "impl",
    "site_classes": [
     [
-     "metafile.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/canvas2d/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "metafile.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6911,14 +6863,14 @@
    "agg": "impl",
    "site_classes": [
     [
-     "metafile.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/canvas2d/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "metafile.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6933,14 +6885,14 @@
    "agg": "impl",
    "site_classes": [
     [
-     "metafile.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/canvas2d/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "metafile.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6955,14 +6907,14 @@
    "agg": "impl",
    "site_classes": [
     [
-     "metafile.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/canvas2d/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "metafile.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -6977,14 +6929,14 @@
    "agg": "impl",
    "site_classes": [
     [
-     "metafile.cpp",
-     "impl",
-     ""
-    ],
-    [
      "gdi/canvas2d/gdi.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "metafile.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -21061,14 +21013,14 @@
    "agg": "impl",
    "site_classes": [
     [
-     "wnd.cpp",
-     "impl",
-     ""
-    ],
-    [
      "cmnctl32/menu.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "wnd.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -21207,12 +21159,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "wnd.cpp",
+     "platform/linux/SConnection.cpp",
      "impl",
      ""
     ],
     [
-     "platform/linux/SConnection.cpp",
+     "wnd.cpp",
      "impl",
      ""
     ]
@@ -21709,12 +21661,12 @@
    "agg": "impl",
    "site_classes": [
     [
-     "wnd.cpp",
+     "platform/cocoa/SConnection.mm",
      "impl",
      ""
     ],
     [
-     "platform/cocoa/SConnection.mm",
+     "wnd.cpp",
      "impl",
      ""
     ]

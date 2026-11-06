@@ -66,6 +66,24 @@ struct HDC__
      * 逻辑空间（等价真 GDI 的动态重表达，见 gdi_canvas2d.cpp 裁剪记账一节）。 */
     HRGN hClipRgn;
 
+    /* canvas 侧**真正裁上了**的区域（设备坐标；NULL=没裁）。与 hClipRgn 这份账分开
+     * 记，是因为 canvas 的 clip 只能累加：替换语义要放宽时必须先知道"现在到底裁到
+     * 哪儿"，才知道这次能不能靠求交达成、还是要清空重裁（见 canvas2d/gdi.cpp 的
+     * clipSetDeviceRgn）。 */
+    HRGN rgnApplied;
+
+    /* canvas 侧裁剪的「无裁剪基线」：在 SaveDC 栈为空时绑定绘制目标就压一枚
+     * ctx.save()，它不属于 SaveDC 栈，只给「替换裁剪」当回退点用（ctx 的 save
+     * 栈归 canvas，所以真正的标记记在 Canvas2DSurface 上，这里记本 DC 有没有用
+     * 得上）。canvas 没有既撤得开裁剪又不清内容的 API —— ctx.reset() 会把画布
+     * 清成透明黑 —— 没有这枚锚点就只能退回累加语义。 */
+    BOOL clipAnchor;
+
+    /* 每次清空画布上的裁剪递增。清空会把 JS 栈弹到锚点再按同样层数压回，栈里各
+     * 档快照的裁剪就不再是当时的样子；RestoreState 据此决定还能不能信 ctx.restore()，
+     * 还是必须按记账把裁剪重放一遍。 */
+    int clipGen;
+
     /* 见 js_glue.h 的 C2DStateCache（性能关键的状态缓存）。 */
     C2DStateCache c2d;
     /* 当前 ctx 在 JS 派发器注册表里的下标（见 js_glue.h 的 SwxOp）。

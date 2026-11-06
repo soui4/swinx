@@ -60,11 +60,28 @@ struct Canvas2DSurface
     int bitsPixel;          // DIB 位图：每像素位数（通常 32）
     int stride;             // DIB 位图：每行字节数
     uint8_t *bits;          // DIB 位图拥有的 ARGB32 缓冲（GetDIBits/UpdateDIBPixmap 用），可空
+    /* bits 与 canvas 谁新：canvas2d 的像素权威在 canvas 里，DIB 段额外有一份 CPU
+     * 缓冲，两边不可能共享内存（cairo 后端是零拷贝，同一块内存）。TRUE 表示
+     * 「CPU 侧写过 bits，canvas 还是旧的」——下一次用到 canvas 内容前必须先上传。
+     * 只有 CreateDIBSection 建出来的段初始为 TRUE；SelectObject 把它刷进 canvas
+     * 后置 FALSE，之后一切绘制都落在 canvas 上，读回时反向下载。 */
+    BOOL bitsFromCpu;
+    /* canvas 比 bits 新：这块位图曾经被选进 DC 当绘制目标（可能画过东西），
+     * 于是读 bits 前必须先从 canvas 下载。没被选中过就永远是 FALSE —— 此时
+     * bits 是唯一权威，绝不能下载：canvas 的像素要经过浏览器内部预乘存储，
+     * getImageData 再反预乘回来，半透明像素回一次就掉 1/255 的精度。 */
+    BOOL canvasDirty;
     BOOL alpha;             // context 是否带 alpha（窗口画布=false，位图=true）
     /* 本 surface 是否**拥有** ctxId（销毁时要归还给注册表）。
      * 0 尺寸的"占位位图"（CreateCompatibleBitmap(hdc,0,0)）共用全局的 scratch
      * 画布，不拥有下标，置 FALSE。 */
     BOOL ownsCtx;
+    /* ctx 的 JS save/restore 栈底是否已经压了一枚「当时未裁剪」的锚点快照
+     * （见 gdi.cpp 的 clipClearCanvas）。锚点属于 ctx 而不是 DC：同一块 canvas
+     * 被反复选中/换出时，栈底那一层 save 一直在，重新绑定只要 restore 回它再压
+     * 一枚新的。改变 canvas 尺寸会把整个 ctx 状态连栈一起清空，ResizeSurface 必须
+     * 把它作废。共享 scratch 画布（ownsCtx=FALSE）不压锚点。 */
+    BOOL clipAnchor;
     /* JS 侧 ctx 注册表下标。热路径上的绘制调用不走 embind（跨边界 3~10µs/次），
      * 而是经 SwxOp/SwxOpStr/SwxBlit 直接调进 JS 的派发器，用这个整数换 ctx
      * （JS 侧 Module.swxCtx[id]），既省掉 val 装箱，也省掉 method name 的字符串
@@ -140,7 +157,6 @@ struct C2DStateCache
     int textAlign;       /* 已应用的 TA_LEFT/TA_CENTER/TA_RIGHT，-1=未知 */
     int baseline;        /* 已应用的 textBaseline，见 TA_BASELINE 口径，-1=未知 */
     int smoothing;       /* imageSmoothingEnabled，-1=未知 */
-    int rop;             /* globalCompositeOperation 对应的 DWORD rop，-1=未知 */
     double alpha;        /* globalAlpha，<0=未知 */
     BOOL xfValid;        /* xf 是否可信 */
     double xf[6];        /* 已应用的变换 a,b,c,d,e,f */
@@ -149,7 +165,7 @@ struct C2DStateCache
 
     C2DStateCache()
         : fillStyle(0), strokeStyle(0), fontTag(0), textAlign(-1), baseline(-1),
-          smoothing(-1), rop(-1), alpha(-1.0), xfValid(FALSE), clipValid(FALSE)
+          smoothing(-1), alpha(-1.0), xfValid(FALSE), clipValid(FALSE)
     {
         xf[0] = 1; xf[1] = 0; xf[2] = 0; xf[3] = 1; xf[4] = 0; xf[5] = 0;
         clipRect.left = clipRect.top = clipRect.right = clipRect.bottom = 0;
@@ -186,6 +202,10 @@ struct DCState
      * 存的是**本状态私有副本**（区域在 save 之后可能继续被改），RestoreState 时
      * 所有权移交给 HDC（见 RestoreState 的移交注释）。NULL 表示 save 时还未设过裁剪。 */
     HRGN hClipRgn;
+    /* 快照所属的 clip 代（见 HDC__::clipGen）。restore 时代数相同说明 ctx.restore()
+     * 还原的裁剪就是这个快照当时的裁剪；代数不同（中间发生过 ctx.reset()）就必须
+     * 按 hClipRgn 重放一遍。 */
+    int clipGen;
     /* 同一时刻的 JS 侧状态缓存（save 存、restore 取）。ctx.restore() 还原的正是
      * save 时的整套 canvas 状态，所以缓存可以跟着还原，而不是整体作废 ——
      * 作废会让 restore 之后每一次 fillStyle/font/smoothing 设置都重设一遍，
@@ -229,7 +249,9 @@ enum SwxOpCode
     SWX_XFORM,       /* (a,b,c,d,e,f) */
     SWX_ALPHA,       /* (0..1) */
     SWX_SMOOTH,      /* (0/1) */
-    SWX_ROP,         /* (rop) */
+    SWX_ROP,         /* (index) —— 已停用：Blt 族的合成算子改成逐次下发（见 gdi.cpp
+                      * 的 blitRop），rop 不再是 DC 的持久状态。序号必须保留，
+                      * 它是 C++ 与 JS 派发器之间的线上约定。 */
     SWX_LINE_WIDTH,  /* (w) */
     SWX_DASH_NONE,
     SWX_ROUND_RECT,  /* (x,y,w,h,r) */

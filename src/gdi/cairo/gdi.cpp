@@ -1539,7 +1539,11 @@ int SelectClipRgn(HDC hdc, HRGN hrgn)
     // apply with the active CTM so the region is interpreted in the current
     // logical space (see the clip semantics note above ApplyRegion)
     ApplyRegion(hdc->cairo, hrgn);
-    return GetRgnBox(hrgn, NULL);
+    /* hrgn == NULL 是 Win32 规定的「移除裁剪区」入参（ApplyRegion 已经支持），
+     * 不能拿它去问包围盒类型：GetRgnBox → GDI_GetObjPtr 会直接解引用空句柄，
+     * 原生 fun_test 的 selectcliprgn_null_removes_clip 就是这么段错误崩的。
+     * 移除后 DC 的裁剪区就是整个绘制面，按 SIMPLEREGION 回报，与 canvas2d 后端一致。 */
+    return hrgn ? GetRgnBox(hrgn, NULL) : SIMPLEREGION;
 }
 
 int ExtSelectClipRgn(HDC hdc, HRGN hrgn, int mode)
@@ -5691,6 +5695,15 @@ int GetPath(HDC hdc, LPPOINT lpPoints, LPBYTE lpTypes, int nSize)
         switch (data->header.type)
         {
         case CAIRO_PATH_MOVE_TO:
+            /* cairo_get_path 会把上下文当前的“悬空”点补成路径末尾的一个 MOVE_TO：
+             * ExtTextOut 记完字形轮廓后用 cairo_move_to 还原旧当前点（GDI 语义要求
+             * 文本不推进当前点），于是这段还原的 move 也进了路径。Win32 的 GetPath
+             * 只报告成形的图元，末尾没接任何线段的 move 不算图元，必须丢掉，否则调用方
+             * 多看到一个 (0,0) 顶点（包围盒/回放都会错一位）。 */
+            if (i + data->header.length >= path->num_data)
+                break;
+            pointCount++;
+            break;
         case CAIRO_PATH_LINE_TO:
             pointCount++;
             break;
@@ -5719,6 +5732,8 @@ int GetPath(HDC hdc, LPPOINT lpPoints, LPBYTE lpTypes, int nSize)
         switch (data->header.type)
         {
         case CAIRO_PATH_MOVE_TO:
+            if (i + data->header.length >= path->num_data)
+                break; // 与计数循环同口径：末尾悬空的 move 不是图元
             if (pointIndex < nSize)
             {
                 lpPoints[pointIndex].x = (LONG)data[1].point.x;

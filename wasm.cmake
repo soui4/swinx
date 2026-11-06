@@ -59,7 +59,14 @@ add_definitions(-DSOUI_PLATFORM_WASM)
 # SConnection.cpp 里切分两条路径。
 # cairo：软件光栅化后端，文本/字体由 freetype + fontconfig 负责，必须把字体文件
 # 预载进 wasm 虚拟文件系统（见 games/cnchess/client/wasm 的字体打包）。
-option(SWINX_WASM_GDI_BACKEND "wasm GDI backend: canvas2d (browser canvas, no bundled fonts) or cairo (software raster, fonts bundled)" "canvas2d")
+# 必须是 set(... CACHE STRING)，不能用 option()：option() 建的是 BOOL 型缓存条目，
+# 而 "canvas2d"/"cairo" 都不是合法的布尔字面量 —— 全新配置时 CMake 会把默认值归一
+# 成 OFF（本地因为有历史缓存一直看不出来，CI 一跑就挂：
+# "必须是 'canvas2d' 或 'cairo'（当前为 'OFF'）"）。CACHE STRING 才原样保存字符串。
+if(NOT DEFINED SWINX_WASM_GDI_BACKEND)
+    set(SWINX_WASM_GDI_BACKEND "canvas2d" CACHE STRING
+        "wasm GDI backend: canvas2d (browser canvas, no bundled fonts) | cairo (software raster, fonts bundled)")
+endif()
 if(NOT SWINX_WASM_GDI_BACKEND STREQUAL "canvas2d" AND NOT SWINX_WASM_GDI_BACKEND STREQUAL "cairo")
     message(FATAL_ERROR "SWINX_WASM_GDI_BACKEND 必须是 'canvas2d' 或 'cairo'（当前为 '${SWINX_WASM_GDI_BACKEND}'）")
 endif()

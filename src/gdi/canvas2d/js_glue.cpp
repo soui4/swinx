@@ -410,7 +410,13 @@ void SwxXform(int ctxId, double a, double b, double c, double d, double e, doubl
 }
 
 /* 离屏窗口画布 → 显示画布 的直接合成。
- * __swxDisplay 由 soui.html 在创建显示画布 ctx 时挂到 window 上。 */
+ * __swxDisplay 由 soui.html 在创建显示画布 ctx 时挂到 window 上。
+ *
+ * 这里用默认的 source-over 就够，不需要像 BitBlt(SRCCOPY) 那样换成 copy：
+ * 窗口后备画布是 SwinxCanvasCreateSurfaceRaw(cx, cy, alpha=0) 建的，也就是
+ * getContext('2d', {alpha:false})，源像素的 alpha 恒为 255，合成与替换等价，
+ * 透明源让上一帧透出来的那条路径在这里不存在（可能含透明的 memRT → 窗口画布
+ * 那一跳由 gdi.cpp 的 blitRop 负责，见那里的说明与 §33/§34）。 */
 EM_JS(void, swx_present_surface, (int srcId, double sx, double sy, double w, double h, double dx, double dy),
 {
     var g = globalThis;
