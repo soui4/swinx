@@ -11,8 +11,8 @@
  *   对象，wasm 侧却按句柄解读，于是拿到 undefined）。实测症状：
  *     Uncaught TypeError: Cannot read properties of undefined (reading 'getContext')
  *   所以凡是「返回 canvas / 接收 canvas」的胶水一律用 val 的 C++ API 实现；批量像素
- *   搬运用 typed_memory_view 把 wasm 堆当成 JS 类型化数组的底层 buffer，一次
- *   set()/构造 ImageData 拷完，避免逐像素跨语言访问。
+ *   搬运用 typed_memory_view 读堆字节，一次 set() 拷进 JS 侧的定长缓冲（ImageData
+ *   和 TextDecoder 都不要直接吃堆视图，见 SwinxCanvasPutPixelsAt）。
  *
  * 唯一的例外是文件末尾的「热路径派发器」（swx_op / swx_op_str / swx_blit /
  * swx_xform）：它们的参数全是 int/double/指针、返回 void，正好是 EM_JS 能处理的
@@ -130,8 +130,7 @@ void SwinxCanvasReadPixels(emscripten::val canvas, int sx, int sy, int sw, int s
 }
 
 /* 把 WASM 堆里的位图（srcPtr，w×h 像素，RGBA 字节序）putImageData 到 canvas（DIB 回写）。
- * 用 typed_memory_view 拿到 wasm 堆的 ArrayBuffer，在其上切一个 Uint8ClampedArray
- * 直接构造 ImageData，避免额外拷贝。 */
+ * 字节先在 C++ 侧换好序，再一次整块拷进 JS 侧的定长缓冲，用它构造 ImageData。 */
 void SwinxCanvasPutPixelsAt(emscripten::val canvas, int srcPtr, int w, int h, int x, int y)
 {
     if (srcPtr <= 0 || w <= 0 || h <= 0)
@@ -153,9 +152,17 @@ void SwinxCanvasPutPixelsAt(emscripten::val canvas, int srcPtr, int w, int h, in
         s_buf[i + 3] = src[i + 3];
     }
     val u8{ typed_memory_view(len, s_buf.data()) };
-    val buf = u8["buffer"]; /* 整个 wasm 堆的 ArrayBuffer */
-    val clamped = val::global("Uint8ClampedArray").new_(buf, (int)(uintptr_t)s_buf.data(), len);
-    val img = val::global("ImageData").new_(clamped, w, h);
+    /* ImageData 的构造只接受**定长**缓冲：-pthread 产物的 wasm 内存是可增长的
+     * SharedArrayBuffer，直接在堆视图上切 Uint8ClampedArray 会抛
+     * "The provided Uint8ClampedArray value must not be resizable"（2026-11-04 Chrome
+     * 实测）。定长 JS 缓冲按需长大、反复复用，每次只剩一次整块 memcpy；putImageData
+     * 之后浏览器本来还要再复制一遍像素，所以这一步不改变上屏路径的量级。 */
+    static val s_clamped;
+    if (s_clamped.isUndefined() || s_clamped["byteLength"].as<double>() < (double)len)
+        s_clamped = val::global("Uint8ClampedArray").new_(len);
+    s_clamped.call<void>("set", u8);
+    val view = s_clamped.call<val>("subarray", 0, (int)len);
+    val img = val::global("ImageData").new_(view, w, h);
     val ctx = canvas.call<val>("getContext", std::string("2d"));
     ctx.call<void>("putImageData", img, (double)x, (double)y);
 }
@@ -177,14 +184,23 @@ double SwinxCanvasDpr(void)
 }
 
 /* UTF-8 字节 → JS 字符串。std::string 经 embind 直接传会按 Latin-1 解码（中文变
- * 乱码），所以统一走 TextDecoder。解码器只建一次（TextDecoder 构造成本不低）。 */
+ * 乱码），所以统一走 TextDecoder。解码器只建一次（TextDecoder 构造成本不低）。
+ *
+ * 字节先拷进 JS 侧的定长缓冲再解码：TextDecoder.decode 明确拒绝可增长 / 共享的
+ * ArrayBuffer，而 -pthread 产物的 wasm 内存正是可增长 SharedArrayBuffer（Chrome 报
+ * "The provided ArrayBuffer value must not be resizable"）。同一条约束见
+ * SwinxCanvasPutPixelsAt。一次短字符串的 memcpy 远小于随后的 measureText。 */
 emscripten::val SwinxJsText(const char *utf8, int len)
 {
     static val s_decoder = val::global("TextDecoder").new_(std::string("utf-8"));
     if (!utf8 || len <= 0)
         return s_decoder.call<val>("decode", val::global("Uint8Array").new_(0));
+    static val s_scratch;
+    if (s_scratch.isUndefined() || s_scratch["byteLength"].as<double>() < (double)len)
+        s_scratch = val::global("Uint8Array").new_(len);
     val u8{ typed_memory_view((size_t)len, (const uint8_t *)utf8) };
-    return s_decoder.call<val>("decode", u8);
+    s_scratch.call<void>("set", u8);
+    return s_decoder.call<val>("decode", s_scratch.call<val>("subarray", 0, len));
 }
 
 /* 浏览器实测字体度量 → [ascent, descent]（CSS px）。
@@ -246,6 +262,23 @@ static void swxEnsureJs(void)
         g.__swxColorTab = new Map();
         g.__swxEmptyDash = [];
         g.__swxDec = new TextDecoder('utf-8');
+        /* 堆字节 → JS 字符串。不能把 HEAPU8 的视图直接交给 decode：它拒绝可增长 /
+         * 共享的 ArrayBuffer，而 -pthread 产物的堆是可增长 SharedArrayBuffer（症状是
+         * 一开头画第一行文字就抛 "must not be resizable"）。定长缓冲按需长大、反复
+         * 复用，每次只有一次 memcpy；同一条约束见 SwinxJsText。
+         * 顶层不写 var a=1, b=2; —— EM_JS/EM_ASM 体是 C 预处理器实参，逗号会被切走。 */
+        g.__swxScratch = new Uint8Array(4096);
+        g.__swxDecode = function (p, n) {
+            if (!(n > 0))
+                return '';
+            var sc = g.__swxScratch;
+            if (sc.length < n) {
+                sc = new Uint8Array(n);
+                g.__swxScratch = sc;
+            }
+            sc.set(HEAPU8.subarray(p, p + n));
+            return g.__swxDec.decode(sc.subarray(0, n));
+        };
         g.__swxSetCtx = function (id, c) { g.__swxCtx[id] = c; };
         /* COLORREF → CSS 颜色串。字节序与 C++ 的 GetRValue/GetGValue/GetBValue/
          * GetAValue 一致：低字节是 R。alpha 为 0 视作不透明（GDI 的 COLORREF 没有
@@ -354,7 +387,7 @@ EM_JS(void, swx_op_str, (int id, int op, const char *p, int n, double a, double 
     var ctx = g.__swxCtx[id];
     if (ctx === undefined)
         return;
-    var s = (n > 0) ? g.__swxDec.decode(HEAPU8.subarray(p, p + n)) : '';
+    var s = (n > 0) ? g.__swxDecode(p, n) : '';
     switch (op)
     {
     case 26: ctx.fillText(s, a, b); break;

@@ -12,6 +12,7 @@
 #include <iostream>
 #include <fstream>
 #include <dbus/dbus.h>
+#include "SwinxUtils.h"
 #include <unistd.h>
 #include <sys/wait.h>
 #include <log.h>
@@ -1953,4 +1954,11 @@ BOOL WINAPI ChooseFontW(LPCHOOSEFONTW p) {
     }
 
     return result;
+}
+
+/* 异步文件选择：本地对话框本来就是阻塞的，直接把同步钩子的结果内联回调出去
+ * （契约与返回值见 src/SwinxUtils.h）。 */
+int swinx_pick_file_async(LPOPENFILENAMEA p, DlgMode mode, SWINXFILEPICKCALLBACK pfnDone, void *pCtx)
+{
+    return swinx_pick_file_deliver(SGetOpenFileNameA(p, mode) ? 1 : 0, p->lpstrFile, pfnDone, pCtx);
 }

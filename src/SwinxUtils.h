@@ -16,6 +16,7 @@
  */
 
 #include <windows.h>
+#include <commdlg.h>
 
 /* Windows MessageBeep 的平台实现，调用方见 src/sysapi.cpp。
  *
@@ -30,5 +31,46 @@
  * 返回 TRUE 表示提示音请求已交给系统，与 Win32"声音已入队即返回 TRUE"的语义一致。
  */
 int swinx_messageBeep(UINT uType);
+
+/* 文件选择的平台实现，调用方见 src/cmmmdlg.cpp 的 SwinxPickFileAsyncA。
+ *
+ * 各平台目录的 dlghelper.* 给出同名实现：wasm 是真异步（结果由页面在稍后回调重入口
+ * 送回，见 src/platform/wasm/dlghelper.cpp），其余平台的本地对话框本来就阻塞，直接把
+ * 同步钩子的结果内联回调出去。为什么浏览器不能同步：change 事件只在 JS 栈返回之后才
+ * 派发，阻塞在这一次调用里等就等于把整个标签页冻住。
+ *
+ * p 是 SwinxPickFileAsyncA 在堆上准备的私有副本：lpstrFile 指向它自有的缓冲（结果写到
+ * 那里），lpstrFileTitle / nMaxFileTitle 已被置空，其余字段指向调用方内存、只在本次调用
+ * 期间读用。返回 1 = 已受理（结果一律经 pfnDone 给出，可能就在本次调用内联给出），
+ * 0 = 未发起且已 SetLastError，此时 pfnDone 不会被调用。
+ *
+ * 返回类型用 int 而不是 BOOL（见本文件头）。 */
+int swinx_pick_file_async(LPOPENFILENAMEA p, DlgMode mode, SWINXFILEPICKCALLBACK pfnDone, void *pCtx);
+
+/* 非 wasm 平台的共用尾部：把同步钩子的结果按异步契约回调出去。同步钩子返回 BOOL，
+ * 这里收的是已经转成 int 的值 —— BOOL 跨 TU 不一致（见本文件头），不能让它在
+ * .cpp 与 .mm 之间裸传。 */
+inline int swinx_pick_file_deliver(int nSyncOk, LPCSTR lpszUtf8Path,
+                                   SWINXFILEPICKCALLBACK pfnDone, void *pCtx)
+{
+    int nResult;
+    if (nSyncOk)
+    {
+        nResult = 1;
+    }
+    else if (GetLastError() == ERROR_CALL_NOT_IMPLEMENTED)
+    {
+        /* 只有"本平台显式拒绝"的桩会置这个码（移动端/裸金属没有对话框能力）。 */
+        nResult = -1;
+    }
+    else
+    {
+        /* 同步钩子分不出"用户按了取消"和"取文件失败"（swinx 没有
+         * CommDlgExtendedError），所以这里保守地按取消报，不伪造第三种结果。 */
+        nResult = 0;
+    }
+    pfnDone(nResult, nResult == 1 ? lpszUtf8Path : NULL, pCtx);
+    return 1;
+}
 
 #endif // _SWINX_UTILS_H_

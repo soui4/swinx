@@ -250,6 +250,58 @@ typedef LPOPENFILENAMEA LPOPENFILENAME;
 #define ChooseFont ChooseFontA
 #endif // !UNICODE
 
+    //-------------------------------------------------------------------------
+    //
+    // 异步文件选择（swinx 私有扩展，Win32 没有同名 API）
+    //
+    // 为什么需要它：浏览器主线程不能在 JS→wasm 的这次调用里阻塞等 <input type=file>
+    // 的 change 事件 —— 该事件只在 JS 栈返回之后才派发。所以 wasm 给不出
+    // GetOpenFileName 的同步对话框契约；iOS 端是用 dispatch_semaphore + 嵌套
+    // CFRunLoop 把异步包装成同步（src/platform/ios/dlghelper.mm），浏览器没有可重入
+    // 的嵌套消息循环，只能把异步语义交给调用方。
+    //
+    // 契约：
+    //   返回 1 表示请求已受理，结果一律经 pfnDone 给出 —— 桌面/iOS 的本地对话框本来就是
+    //     阻塞的，回调在 SwinxPickFileAsyncA 返回之前内联执行（裸金属与移动端没有对话框
+    //     能力，走的也是这条内联路径，结果就是 nResult = -1）；wasm 的回调稍后在浏览器
+    //     主线程上执行。返回 0 表示请求根本没发起（参数不合法，或 wasm 上的 SAVE/FOLDER
+    //     与宿主没装钩子），原因见 GetLastError，pfnDone 不会被调用。
+    //   nResult：1=已选中，0=用户取消，-1=失败（含本平台显式拒绝该能力）。
+    //   lpszUtf8Path：UTF-8 路径，只在回调调用期间有效，要留存必须自己拷贝；
+    //     nResult != 1 时为 NULL。
+    //   与同步版 GetOpenFileNameA 的差别：结果不回写调用方的 p->lpstrFile（异步返回时
+    //     那个缓冲可能已经不存在），只经回调给出。p 与其字符串字段只在
+    //     SwinxPickFileAsyncA 调用期间被读用，返回后即可释放。
+    //   只支持单选：Flags 带 OFN_ALLOWMULTISELECT 时显式拒绝。
+    //   wasm 只支持 mode == OPEN，且必须在 UI 线程（= 浏览器主线程）上调用：SAVE 要写
+    //     磁盘、FOLDER 要枚举目录，都超出 <input type=file> 的能力，返回
+    //     0 + ERROR_CALL_NOT_IMPLEMENTED；worker 线程的 JS realm 里没有页面那份 Module，
+    //     取宿主钩子同样取不到。选中的文件按字节落到 wasm 文件系统里
+    //     （src/platform/wasm/dlghelper.cpp），回调给的路径可以直接 fopen。
+    //
+    typedef void(CALLBACK *SWINXFILEPICKCALLBACK)(int nResult, LPCSTR lpszUtf8Path, void *pCtx);
+
+    int WINAPI SwinxPickFileAsyncA(_In_ LPOPENFILENAMEA p, _In_ DlgMode mode,
+                                   _In_ SWINXFILEPICKCALLBACK pfnDone, _In_ void *pCtx);
+
+    //-------------------------------------------------------------------------
+    //
+    // lpstrFilter -> 浏览器 <input accept>
+    //
+    // 把 Win32 的筛选串（"描述\0*.png;*.jpg\0\0"，双空结尾、描述与模式交替）压成逗号
+    // 分隔的模式串（".png,.jpg"）：描述段丢弃，分号分隔的多个模式逐个收录，重复模式去掉。
+    // 单个模式的映射：以 "*. 开头的去掉星号（".png"）；"*" 与 "*.*" 表示接受全部，某组
+    // 的模式段为空串同样表示接受全部 —— accept 表达不了"其中一组接受全部"，此时整份结果
+    // 为空串（accept 留空即接受所有文件）；其余原样交给浏览器（MIME 型模式走这条）。模式串里的前后空格会被去掉。
+    //
+    // 返回值：写入的字符数（不含结尾 0），接受全部时为 0；
+    //   cchOut == 0 且不写任何字节，返回所需字节数（含结尾 0）—— 与
+    //   WideCharToMultiByte 的探长度用法一致，此时 lpszOut 可以为 NULL；
+    //   参数不合法（cchOut > 0 而 lpszOut 为 NULL，或缓冲不够）返回 -1 并
+    //   SetLastError(ERROR_INVALID_PARAMETER)。
+    //
+    int WINAPI SwinxFilterToAcceptA(_In_ LPCSTR lpszFilter, _Out_ LPSTR lpszOut, int cchOut);
+
 #ifdef __cplusplus
 }
 #endif //__cplusplus

@@ -263,7 +263,7 @@ for name, headers in decls.items():
         "headers": sorted(headers),
         "files": sorted({f for f, _, _ in sites}),
         "agg": agg,
-        "site_classes": [(f, c, m) for f, c, m in sites],
+        "site_classes": sorted((f, c, m) for f, c, m in sites),
     }
 
 out = {

@@ -10,6 +10,7 @@
  */
 #include <windows.h>
 #include <commdlg.h>
+#include "SwinxUtils.h"
 
 BOOL SGetOpenFileNameA(LPOPENFILENAMEA, DlgMode)
 {
@@ -42,4 +43,12 @@ BOOL ShellExecuteA(HWND hwnd, LPCSTR op, LPCSTR file, LPCSTR params, LPCSTR dir,
     (void)show;
     SetLastError(ERROR_CALL_NOT_IMPLEMENTED);
     return FALSE;
+}
+
+/* 异步文件选择：裸金属没有对话框，同步钩子本身就是显式拒绝，这里仍然按异步契约把
+ * 那个失败（nResult = -1）回调出去，而不是让 SwinxPickFileAsyncA 直接返回 0 ——
+ * 调用方只写一条回调路径就能覆盖所有平台（契约见 src/SwinxUtils.h）。 */
+int swinx_pick_file_async(LPOPENFILENAMEA p, DlgMode mode, SWINXFILEPICKCALLBACK pfnDone, void *pCtx)
+{
+    return swinx_pick_file_deliver(SGetOpenFileNameA(p, mode) ? 1 : 0, p->lpstrFile, pfnDone, pCtx);
 }

@@ -1,7 +1,7 @@
 {
  "_meta": {
-  "decl_total": 1270,
-  "defined_total": 1140,
+  "decl_total": 1272,
+  "defined_total": 1142,
   "no_def": [
    "ChangeClipboardChain",
    "CountClipboardFormats",
@@ -533,6 +533,38 @@
      "platform/wasm/dlghelper.cpp",
      "partial",
      "not-implemented"
+    ]
+   ]
+  },
+  "SwinxPickFileAsyncA": {
+   "headers": [
+    "commdlg.h"
+   ],
+   "files": [
+    "cmmmdlg.cpp"
+   ],
+   "agg": "partial",
+   "site_classes": [
+    [
+     "cmmmdlg.cpp",
+     "partial",
+     "not-implemented"
+    ]
+   ]
+  },
+  "SwinxFilterToAcceptA": {
+   "headers": [
+    "commdlg.h"
+   ],
+   "files": [
+    "cmmmdlg.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "cmmmdlg.cpp",
+     "impl",
+     ""
     ]
    ]
   },

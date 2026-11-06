@@ -7,6 +7,7 @@
 #import <Foundation/Foundation.h>
 #include <objc/objc.h>
 #include <commdlg.h>
+#include "SwinxUtils.h"
 #include "sysapi.h"
 #include "winuser.h"
 #include "wnd.h"
@@ -382,4 +383,12 @@ BOOL WINAPI ChooseFontW(LPCHOOSEFONTW p) {
     }
 
     return result;
+}
+
+// 异步文件选择：UIDocumentPicker 已经被 dispatch_semaphore + CFRunLoop 包装成同步
+// 对话框（见文件头），所以这里和桌面平台一样把结果内联回调出去（契约见
+// src/SwinxUtils.h）。
+int swinx_pick_file_async(LPOPENFILENAMEA p, DlgMode mode, SWINXFILEPICKCALLBACK pfnDone, void *pCtx)
+{
+    return swinx_pick_file_deliver(SGetOpenFileNameA(p, mode) ? 1 : 0, p->lpstrFile, pfnDone, pCtx);
 }

@@ -18,22 +18,22 @@
 
 | 分级 | 数量 |
 |---|---|
-| 实现 | 994 |
-| 简单实现 | 91 |
+| 实现 | 995 |
+| 简单实现 | 92 |
 | 部分实现 | 14 |
 | 空实现 / 语义桩 | 41 |
 | 未提供（仅声明） | 126 |
-| **合计（有定义）** | **1140** |
+| **合计（有定义）** | **1142** |
 
 ## 3. 模块分布
 
 | 模块 | 实现 | 简单实现 | 部分实现 | 空实现 |
 |---|---|---|---|---|
 | 窗口、消息与用户界面（USER32 等价） | 197 | 8 | 0 | 6 |
-| 图形设备接口（GDI32 等价） | 167 | 31 | 2 | 6 |
+| 图形设备接口（GDI32 等价） | 166 | 32 | 2 | 6 |
 | 系统、文件、进程与线程（KERNEL32 等价） | 302 | 17 | 7 | 2 |
 | COM / OLE（OLE32·OLEAUT32 等价） | 56 | 8 | 0 | 4 |
-| 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 77 | 18 | 4 | 2 |
+| 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 79 | 18 | 4 | 2 |
 | 多媒体、资源及其它（WINMM·杂项） | 195 | 9 | 1 | 21 |
 
 ## 4. 模块 API 明细
@@ -298,8 +298,8 @@
 | `CreateGradientBrush` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreateICA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreateICW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
-| `CreateIconFromResource` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
-| `CreateIconFromResourceEx` | 实现 | src/platform/*/cursoricon.cpp |  |
+| `CreateIconFromResource` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 2 个平台分支） |  |
+| `CreateIconFromResourceEx` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 1 个平台分支） |  |
 | `CreateIconIndirect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreatePatternBrush` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreatePatternBrush2` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
@@ -358,7 +358,6 @@
 | `GetObjectW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetOutlineTextMetricsA` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
 | `GetOutlineTextMetricsW` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
-| `GetPixel` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetRegionData` | 实现 | src/region.cpp |  |
 | `GetRgnBox` | 实现 | src/region.cpp |  |
 | `GetStockObject` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
@@ -382,12 +381,12 @@
 | `InvertRgn` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `LPtoDP` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `LineTo` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
-| `LoadBitmapA` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
-| `LoadBitmapW` | 实现 | src/platform/*/cursoricon.cpp |  |
-| `LoadImageA` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
-| `LoadImageBuf` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
-| `LoadImageW` | 实现 | src/platform/*/cursoricon.cpp |  |
-| `LookupIconIdFromDirectoryEx` | 实现 | src/platform/*/cursoricon.cpp |  |
+| `LoadBitmapA` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 2 个平台分支） |  |
+| `LoadBitmapW` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 1 个平台分支） |  |
+| `LoadImageA` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 2 个平台分支） |  |
+| `LoadImageBuf` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 2 个平台分支） |  |
+| `LoadImageW` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 1 个平台分支） |  |
+| `LookupIconIdFromDirectoryEx` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 1 个平台分支） |  |
 | `MarkPixmapDirty` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `ModifyWorldTransform` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `MoveToEx` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
@@ -448,6 +447,7 @@
 | `GetMiterLimit` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetNearestColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 | 无调色板概念，原样返回请求颜色 |
 | `GetPath` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `GetPixel` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetTextAlign` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetTextColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetViewportOrgEx` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
@@ -964,6 +964,8 @@
 | `ShellExecuteW` | 实现 | src/platform/*/shellapi.cpp |  |
 | `Shell_NotifyIconA` | 实现 | src/platform/*/shellapi.cpp |  |
 | `Shell_NotifyIconW` | 实现 | src/platform/*/shellapi.cpp |  |
+| `SwinxFilterToAcceptA` | 实现 | src/cmmmdlg.cpp | Win32 筛选表（"描述\0模式\0…\0\0"）→ 浏览器 <input accept> 的纯换算（Win32 无同名 API）：丢弃描述段、按 ';' 切分、"*.x" 去星留 ".x"、MIME 型模式原样交给浏览器、去重并 trim 空白；"*"、"*.*" 或空模式段表示这组接受全部，而 accept 表达不了"其中一组接受全部"，整份筛选退化成空串（不限制）。cchOut==0 是探长度形态：返回含结尾 0 的所需字节数且一个字节都不写；缓冲放不下返回 -1 + ERROR_INVALID_PARAMETER，绝不静默截断 |
+| `SwinxPickFileAsyncA` | 实现 | src/cmmmdlg.cpp | 异步文件选择（Win32 无同名 API，只有 A 版）：返回 1 表示请求已受理，结果一律经 pfnDone 给出 —— 桌面/iOS 的本地对话框本来就阻塞，回调在返回之前内联执行；wasm 的回调稍后在浏览器主线程上执行（浏览器不能在这次 JS→wasm 调用里阻塞等 change 事件）。返回 0 表示请求未发起，原因见 GetLastError，pfnDone 不会被调用。nResult 1=已选中 / 0=取消 / -1=失败（含本平台显式拒绝该能力，裸金属与移动端就是这一条内联拒绝路径）。路径只在回调期间有效且不回写调用方的 p->lpstrFile（异步返回时那块缓冲可能已经不在）。多选、wasm 上的 SAVE/FOLDER、以及宿主没装 Module.swinxPickFile 都是显式拒绝（ERROR_CALL_NOT_IMPLEMENTED），不是漏实现 |
 | `DragQueryPoint` | 简单实现 | src/platform/*/shellapi.cpp |  |
 | `ImmGetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
 | `ImmGetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |

@@ -1,6 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #include <objc/objc.h>
 #include <commdlg.h>
+#include "SwinxUtils.h"
 #include "SNsWindow.h"
 #include "sysapi.h"
 #include "winuser.h"
@@ -789,4 +790,11 @@ BOOL WINAPI ChooseFontW(LPCHOOSEFONTW p) {
     }
 
     return result;
+}
+
+// 异步文件选择：NSOpenPanel/NSSavePanel 本来就是阻塞的，直接把同步钩子的结果
+// 内联回调出去（契约与返回值见 src/SwinxUtils.h）。
+int swinx_pick_file_async(LPOPENFILENAMEA p, DlgMode mode, SWINXFILEPICKCALLBACK pfnDone, void *pCtx)
+{
+    return swinx_pick_file_deliver(SGetOpenFileNameA(p, mode) ? 1 : 0, p->lpstrFile, pfnDone, pCtx);
 }
