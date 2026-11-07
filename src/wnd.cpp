@@ -16,7 +16,7 @@
 #include "sharedmem.h"
 #include "tostring.h"
 #include "wndobj.h"
-#include "sfr_config.h"   /* SFR_PLATFORM：freertos 端口没有真实窗口系统，见 §2.1 */
+#include "sfr_config.h" /* SFR_PLATFORM：freertos 端口没有真实窗口系统，见 §2.1 */
 #include "debug.h"
 #if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
 #include "SDragdrop.h"
@@ -4021,13 +4021,15 @@ void *GetPropW(HWND hWnd, LPCWSTR lpString)
 {
     if (!lpString)
         return nullptr;
-    if(IS_INTRESOURCE(lpString))
+    if (IS_INTRESOURCE(lpString))
     {
-        return GetPropA(hWnd,(LPCSTR)lpString);
-    }else{
+        return GetPropA(hWnd, (LPCSTR)lpString);
+    }
+    else
+    {
         std::string str;
-        tostring(lpString,-1,str);
-        return GetPropA(hWnd,str.c_str());
+        tostring(lpString, -1, str);
+        return GetPropA(hWnd, str.c_str());
     }
 }
 
@@ -4045,13 +4047,15 @@ BOOL SetPropW(HWND hWnd, LPCWSTR lpString, HANDLE hData)
 {
     if (!lpString)
         return FALSE;
-    if(IS_INTRESOURCE(lpString))
+    if (IS_INTRESOURCE(lpString))
     {
-        return SetPropA(hWnd,(LPCSTR)lpString,hData);
-    }else{
+        return SetPropA(hWnd, (LPCSTR)lpString, hData);
+    }
+    else
+    {
         std::string str;
-        tostring(lpString,-1,str);
-        return SetPropA(hWnd,str.c_str(),hData);
+        tostring(lpString, -1, str);
+        return SetPropA(hWnd, str.c_str(), hData);
     }
 }
 
@@ -4062,20 +4066,22 @@ BOOL SetPropA(HWND hWnd, LPCSTR lpString, HANDLE hData)
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
     if (!wndObj)
         return FALSE;
-    return _setPropImpl(wndObj.data(),lpString, hData);
+    return _setPropImpl(wndObj.data(), lpString, hData);
 }
 
 HANDLE RemovePropW(HWND hWnd, LPCWSTR lpString)
 {
     if (!lpString)
         return nullptr;
-    if(IS_INTRESOURCE(lpString))
+    if (IS_INTRESOURCE(lpString))
     {
-        return RemovePropA(hWnd,(LPCSTR)lpString);
-    }else{
+        return RemovePropA(hWnd, (LPCSTR)lpString);
+    }
+    else
+    {
         std::string str;
-        tostring(lpString,-1,str);
-        return RemovePropA(hWnd,str.c_str());
+        tostring(lpString, -1, str);
+        return RemovePropA(hWnd, str.c_str());
     }
 }
 

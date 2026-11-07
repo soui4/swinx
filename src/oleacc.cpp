@@ -43,7 +43,7 @@
 #include <mutex>
 #include <utility>
 #include <vector>
-#include "sfr_config.h"   /* SFR_PLATFORM，见 src/wnd.cpp 同名注释 */
+#include "sfr_config.h" /* SFR_PLATFORM，见 src/wnd.cpp 同名注释 */
 
 #if defined(__linux__) && !defined(__ANDROID__) && !defined(__OHOS__) && !defined(OHOS) && !SFR_PLATFORM
 /* Linux/桌面 的 AT-SPI 桥接入口（swinx/src/platform/linux/SAtSpi.cpp）。

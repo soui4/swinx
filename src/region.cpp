@@ -2702,7 +2702,6 @@ HRGN create_polypolygon_region(const POINT *Pts, const INT *Count, INT nbpolygon
     return hrgn;
 }
 
-
 HRGN WINAPI CreatePolygonRgn(CONST POINT *lppt, // array of points
                              int cPoints,       // number of points in array
                              int fnPolyFillMode // polygon-filling mode

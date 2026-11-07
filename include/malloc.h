@@ -25,7 +25,7 @@
 #include_next <malloc.h>
 #endif
 
-#include <string.h>//for memcpy
+#include <string.h> //for memcpy
 
 #ifdef __cplusplus
 extern "C"

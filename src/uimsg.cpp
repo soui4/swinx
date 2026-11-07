@@ -1,7 +1,7 @@
 #include <windows.h>
 #include <atomic>
 #include "uimsg.h"
-#include "sfr_config.h"   /* SFR_PLATFORM，见 src/wnd.cpp 同名注释 */
+#include "sfr_config.h" /* SFR_PLATFORM，见 src/wnd.cpp 同名注释 */
 #if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
 #include "SDragdrop.h"
 #endif // defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM

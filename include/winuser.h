@@ -2334,7 +2334,6 @@ extern "C"
 #define GA_ROOT      2 // GetAncestor (top level window)
 #define GA_ROOTOWNER 3 // root owner window (top level window)
 
-
     HANDLE WINAPI GetPropA(HWND hWnd, LPCSTR lpString);
     HANDLE WINAPI GetPropW(HWND hWnd, LPCWSTR lpString);
     BOOL WINAPI SetPropA(HWND hWnd, LPCSTR lpString, HANDLE hData);

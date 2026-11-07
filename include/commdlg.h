@@ -281,8 +281,7 @@ typedef LPOPENFILENAMEA LPOPENFILENAME;
     //
     typedef void(CALLBACK *SWINXFILEPICKCALLBACK)(int nResult, LPCSTR lpszUtf8Path, void *pCtx);
 
-    int WINAPI SwinxPickFileAsyncA(_In_ LPOPENFILENAMEA p, _In_ DlgMode mode,
-                                   _In_ SWINXFILEPICKCALLBACK pfnDone, _In_ void *pCtx);
+    int WINAPI SwinxPickFileAsyncA(_In_ LPOPENFILENAMEA p, _In_ DlgMode mode, _In_ SWINXFILEPICKCALLBACK pfnDone, _In_ void *pCtx);
 
     //-------------------------------------------------------------------------
     //

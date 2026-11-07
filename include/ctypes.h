@@ -290,7 +290,6 @@ struct HICON__
     WORD cursorId;
 };
 
-
 typedef struct HICON__ *HICON;
 
 // sdef.h (SOUI) defines tid_t as `unsigned int` under _WIN32; keep both
