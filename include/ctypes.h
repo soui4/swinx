@@ -152,8 +152,8 @@ typedef int BOOL;
 #endif // OBJC_BOOL_DEFINED
 #endif
 
-#define FALSE 0
-#define TRUE  1
+#define FALSE (BOOL)0
+#define TRUE  (BOOL)1
 typedef float FLOAT;
 typedef FLOAT *PFLOAT;
 typedef double DOUBLE;

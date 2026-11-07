@@ -2328,7 +2328,7 @@ HANDLE OpenFileMappingW(DWORD dwDesiredAccess, BOOL bInheritHandle, LPCWSTR lpNa
 {
     char szPath[MAX_PATH];
     if (0 == WideCharToMultiByte(CP_UTF8, 0, lpName, -1, szPath, MAX_PATH, nullptr, nullptr))
-        return FALSE;
+        return NULL;
     return OpenFileMappingA(dwDesiredAccess, bInheritHandle, szPath);
 }
 
@@ -2400,7 +2400,7 @@ HANDLE WINAPI CreateFileMappingW(HANDLE hFile, LPSECURITY_ATTRIBUTES lpAttribute
     }
     char szPath[MAX_PATH];
     if (0 == WideCharToMultiByte(CP_UTF8, 0, lpName, -1, szPath, MAX_PATH, nullptr, nullptr))
-        return FALSE;
+        return NULL;
     return CreateFileMappingA(hFile, lpAttributes, flProtect, dwMaximumSizeHigh, dwMaximumSizeLow, szPath);
 }
 

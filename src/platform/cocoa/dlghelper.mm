@@ -7,6 +7,7 @@
 #include "winuser.h"
 #include "wnd.h"
 #include "log.h"
+#undef interface   // 防止 basetyps.h 中 #define interface struct 与 ObjC @interface 冲突
 #define kLogTag "dlghelper"
 
 // 为了支持进程激活，需要包含ApplicationServices

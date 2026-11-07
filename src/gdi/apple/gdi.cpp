@@ -6286,7 +6286,33 @@ struct AppleGetPathData {
     LPBYTE lpTypes;
     int nSize;
     int pointIndex;
+    bool hasPendingMove;
+    POINT pendingMove;
 };
+
+// 输出挂起的 MOVE_TO 顶点。MOVE_TO 先挂起、等后续元素接上再输出：CGPathApply
+// 里末尾悬空的 move（后面没有线段/曲线）在 Win32 GetPath 里不算图元。
+// TextOutA 记完字形轮廓后会 move 回旧当前点（路径原本为空时移到 (0,0)），
+// 这段还原 move 就落在路径末尾，若不丢弃，调用方会多看到一个原点顶点。
+// cairo 后端 GetPath 已在计数/填充两处做同样的末尾悬空 move 过滤，这里对齐。
+static void apple_flush_pending_move(AppleGetPathData *d) {
+    if (!d || !d->hasPendingMove) return;
+    if (d->lpPoints && d->lpTypes && d->pointIndex < d->nSize) {
+        d->lpPoints[d->pointIndex] = d->pendingMove;
+        d->lpTypes[d->pointIndex] = PT_MOVETO;
+    }
+    d->pointIndex++;
+    d->hasPendingMove = false;
+}
+
+static void apple_emit_point(AppleGetPathData *d, CGPoint pt, BYTE type) {
+    if (d->lpPoints && d->lpTypes && d->pointIndex < d->nSize) {
+        d->lpPoints[d->pointIndex].x = (LONG)pt.x;
+        d->lpPoints[d->pointIndex].y = (LONG)pt.y;
+        d->lpTypes[d->pointIndex] = type;
+    }
+    d->pointIndex++;
+}
 
 static void apple_get_path_applier(void *info, const CGPathElement *element) {
     AppleGetPathData *d = (AppleGetPathData*)info;
@@ -6294,53 +6320,33 @@ static void apple_get_path_applier(void *info, const CGPathElement *element) {
     
     switch(element->type) {
         case kCGPathElementMoveToPoint:
-            if (d->lpPoints) {
-                d->lpPoints[d->pointIndex].x = (LONG)element->points[0].x;
-                d->lpPoints[d->pointIndex].y = (LONG)element->points[0].y;
-                d->lpTypes[d->pointIndex] = PT_MOVETO;
-            }
-            d->pointIndex++;
+            // 新的 move 到来说明上一个挂起 move 后面还有元素，不是悬空的，
+            // 先把它输出，再把当前 move 挂起。
+            apple_flush_pending_move(d);
+            d->pendingMove.x = (LONG)element->points[0].x;
+            d->pendingMove.y = (LONG)element->points[0].y;
+            d->hasPendingMove = true;
             break;
         case kCGPathElementAddLineToPoint:
-            if (d->lpPoints) {
-                d->lpPoints[d->pointIndex].x = (LONG)element->points[0].x;
-                d->lpPoints[d->pointIndex].y = (LONG)element->points[0].y;
-                d->lpTypes[d->pointIndex] = PT_LINETO;
-            }
-            d->pointIndex++;
+            apple_flush_pending_move(d);
+            apple_emit_point(d, element->points[0], PT_LINETO);
             break;
         case kCGPathElementAddQuadCurveToPoint:
-            if (d->lpPoints) {
-                d->lpPoints[d->pointIndex].x = (LONG)element->points[0].x;
-                d->lpPoints[d->pointIndex].y = (LONG)element->points[0].y;
-                d->lpTypes[d->pointIndex] = PT_BEZIERTO;
-            }
-            d->pointIndex++;
-            if (d->lpPoints && d->pointIndex < d->nSize) {
-                d->lpPoints[d->pointIndex].x = (LONG)element->points[1].x;
-                d->lpPoints[d->pointIndex].y = (LONG)element->points[1].y;
-                d->lpTypes[d->pointIndex] = PT_BEZIERTO;
-            }
-            d->pointIndex++;
-            if (d->lpPoints && d->pointIndex < d->nSize) {
-                d->lpPoints[d->pointIndex].x = (LONG)element->points[1].x;
-                d->lpPoints[d->pointIndex].y = (LONG)element->points[1].y;
-                d->lpTypes[d->pointIndex] = PT_BEZIERTO;
-            }
-            d->pointIndex++;
+            apple_flush_pending_move(d);
+            apple_emit_point(d, element->points[0], PT_BEZIERTO);
+            apple_emit_point(d, element->points[1], PT_BEZIERTO);
+            apple_emit_point(d, element->points[1], PT_BEZIERTO);
             break;
         case kCGPathElementAddCurveToPoint:
-            for (int j = 0; j < 3; j++) {
-                if (d->lpPoints && d->pointIndex < d->nSize) {
-                    d->lpPoints[d->pointIndex].x = (LONG)element->points[j].x;
-                    d->lpPoints[d->pointIndex].y = (LONG)element->points[j].y;
-                    d->lpTypes[d->pointIndex] = PT_BEZIERTO;
-                }
-                d->pointIndex++;
-            }
+            apple_flush_pending_move(d);
+            apple_emit_point(d, element->points[0], PT_BEZIERTO);
+            apple_emit_point(d, element->points[1], PT_BEZIERTO);
+            apple_emit_point(d, element->points[2], PT_BEZIERTO);
             break;
         case kCGPathElementCloseSubpath:
-            if (d->lpPoints && d->pointIndex > 0)
+            // close 也意味着前一个挂起 move 不是末尾悬空的图元。
+            apple_flush_pending_move(d);
+            if (d->lpTypes && d->pointIndex > 0)
                 d->lpTypes[d->pointIndex - 1] |= PT_CLOSEFIGURE;
             break;
     }
@@ -6407,6 +6413,9 @@ int GetPath(HDC hdc, LPPOINT lpPoints, LPBYTE lpTypes, int nSize)
     d.lpTypes = nullptr;
     d.nSize = 0;
     d.pointIndex = 0;
+    d.hasPendingMove = false;
+    d.pendingMove.x = 0;
+    d.pendingMove.y = 0;
     CGPathApply(hdc->recordedPath, &d, apple_get_path_applier);
     int total = d.pointIndex;
     if (!lpPoints || !lpTypes || nSize == 0)
@@ -6417,6 +6426,7 @@ int GetPath(HDC hdc, LPPOINT lpPoints, LPBYTE lpTypes, int nSize)
     d.lpTypes = lpTypes;
     d.nSize = nSize;
     d.pointIndex = 0;
+    d.hasPendingMove = false;
     CGPathApply(hdc->recordedPath, &d, apple_get_path_applier);
     return d.pointIndex;
 }

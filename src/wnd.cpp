@@ -374,7 +374,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     ATOM clsAtom = GetClassInfoExA(module, className, &clsInfo);
     if (!clsAtom)
     {
-        return FALSE;
+        return NULL;
     }
     tid_t tid = (tid_t)pthread_self();
     SConnection *conn = SConnMgr::instance()->getConnection(tid);
@@ -1133,8 +1133,12 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
                 }
                 if (htCode == HTCLIENT && oldHtCode != HTCLIENT)
                 {
+                    /* 从非客户区进入客户区：Win32 先发 WM_NCMOUSELEAVE，随后仍把这条
+                     * WM_MOUSEMOVE 派发给客户区。不能在这里吞掉它——SOUI 的 SHostWnd
+                     * 在 OnMouseMove 里缓存最近一次客户区坐标，首条被吞会让缓存一直停在
+                     * 初始化时的旧值；随后到达的 WM_MOUSEWHEEL 用这个旧坐标做命中测试，
+                     * 就会落到错误的窗口上（wasm 首次滚轮不生效即此）。 */
                     CallWindowObjProc(wndObj, proc, hWnd, WM_NCMOUSELEAVE, htCode, MAKELPARAM(pt.x, pt.y));
-                    bSkipMsg = TRUE;
                 }
             }
             else if (htCode != HTCLIENT)

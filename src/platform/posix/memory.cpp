@@ -158,7 +158,7 @@ LPVOID WINAPI HeapReAlloc(HANDLE hHeap, DWORD dwFlags, LPVOID lpMem, SIZE_T dwBy
     std::lock_guard<std::recursive_mutex> lock(heap->mutex);
     HeapInfo *info = (HeapInfo *)heap->ptr;
     if (!info)
-        return FALSE;
+        return NULL;
     for (auto it = info->lstMem.begin(); it != info->lstMem.end(); it++)
     {
         if (it->ptr == lpMem)
