@@ -990,24 +990,25 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
 
 #if (WINVER >= 0x0500)
 
-    WINUSERAPI
-    DWORD
-    WINAPI
-    GetClipboardSequenceNumber(VOID);
+    // SWINX-NODEF-NOTE: 以下带 SWINX-NODEF 标记的声明在 swinx 中尚无实现，暂时注释；补齐实现后删除本行并去掉标记即可恢复原声明。
+    // SWINX-NODEF: WINUSERAPI
+    // SWINX-NODEF: DWORD
+    // SWINX-NODEF: WINAPI
+    // SWINX-NODEF: GetClipboardSequenceNumber(VOID);
 
 #endif /* WINVER >= 0x0500 */
 
     WINUSERAPI
     HWND WINAPI GetClipboardOwner(VOID);
 
-    WINUSERAPI
-    HWND WINAPI SetClipboardViewer(_In_ HWND hWndNewViewer);
+    // SWINX-NODEF: WINUSERAPI
+    // SWINX-NODEF: HWND WINAPI SetClipboardViewer(_In_ HWND hWndNewViewer);
 
-    WINUSERAPI
-    HWND WINAPI GetClipboardViewer(VOID);
+    // SWINX-NODEF: WINUSERAPI
+    // SWINX-NODEF: HWND WINAPI GetClipboardViewer(VOID);
 
-    WINUSERAPI
-    BOOL WINAPI ChangeClipboardChain(_In_ HWND hWndRemove, _In_ HWND hWndNewNext);
+    // SWINX-NODEF: WINUSERAPI
+    // SWINX-NODEF: BOOL WINAPI ChangeClipboardChain(_In_ HWND hWndRemove, _In_ HWND hWndNewNext);
 
     WINUSERAPI
     HANDLE
@@ -1029,16 +1030,16 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
 #define RegisterClipboardFormat RegisterClipboardFormatA
 #endif // !UNICODE
 
-    WINUSERAPI
-    int WINAPI CountClipboardFormats(VOID);
+    // SWINX-NODEF: WINUSERAPI
+    // SWINX-NODEF: int WINAPI CountClipboardFormats(VOID);
 
-    WINUSERAPI
-    UINT WINAPI EnumClipboardFormats(_In_ UINT format);
+    // SWINX-NODEF: WINUSERAPI
+    // SWINX-NODEF: UINT WINAPI EnumClipboardFormats(_In_ UINT format);
 
-    WINUSERAPI
-    int WINAPI GetClipboardFormatNameA(_In_ UINT format, _Out_writes_(cchMaxCount) LPSTR lpszFormatName, _In_ int cchMaxCount);
-    WINUSERAPI
-    int WINAPI GetClipboardFormatNameW(_In_ UINT format, _Out_writes_(cchMaxCount) LPWSTR lpszFormatName, _In_ int cchMaxCount);
+    // SWINX-NODEF: WINUSERAPI
+    // SWINX-NODEF: int WINAPI GetClipboardFormatNameA(_In_ UINT format, _Out_writes_(cchMaxCount) LPSTR lpszFormatName, _In_ int cchMaxCount);
+    // SWINX-NODEF: WINUSERAPI
+    // SWINX-NODEF: int WINAPI GetClipboardFormatNameW(_In_ UINT format, _Out_writes_(cchMaxCount) LPWSTR lpszFormatName, _In_ int cchMaxCount);
 #ifdef UNICODE
 #define GetClipboardFormatName GetClipboardFormatNameW
 #else
@@ -1051,11 +1052,11 @@ typedef LPOSVERSIONINFOEXA LPOSVERSIONINFOEX;
     WINUSERAPI
     BOOL WINAPI IsClipboardFormatAvailable(_In_ UINT format);
 
-    WINUSERAPI
-    int WINAPI GetPriorityClipboardFormat(_In_reads_(cFormats) UINT *paFormatPriorityList, _In_ int cFormats);
+    // SWINX-NODEF: WINUSERAPI
+    // SWINX-NODEF: int WINAPI GetPriorityClipboardFormat(_In_reads_(cFormats) UINT *paFormatPriorityList, _In_ int cFormats);
 
-    WINUSERAPI
-    HWND WINAPI GetOpenClipboardWindow(VOID);
+    // SWINX-NODEF: WINUSERAPI
+    // SWINX-NODEF: HWND WINAPI GetOpenClipboardWindow(VOID);
 
 #endif /* !NOCLIPBOARD */
 

@@ -23,6 +23,26 @@
 #define Y_MIDFLAG  L"-1000px"
 #define Y_IMIDFLAG (-1000)
 
+#define MENU_CHECK_BASE_SIZE   16 // 96 DPI 下复选标记的默认宽高
+#define MENU_CHECK_TO_TEXT_GAP 10 // 标记槽右侧到文字的留白
+#define MENU_TRAILING_PAD      20 // 菜单项右侧总留白（文字右边距 + 箭头/富余）
+
+static SIZE GetMenuCheckMarkSize()
+{
+    LONG dim = ::GetMenuCheckMarkDimensions();
+    SIZE size = { (LONG)LOWORD(dim), (LONG)HIWORD(dim) };
+    if (size.cx <= 0 || size.cy <= 0)
+    {
+        size.cx = size.cy = MENU_CHECK_BASE_SIZE;
+    }
+    return size;
+}
+
+static int GetMenuCheckAreaWidth()
+{
+    return GetMenuCheckMarkSize().cx + MENU_CHECK_TO_TEXT_GAP;
+}
+
 class CMenu;
 
 class SMenuItem {
@@ -374,7 +394,7 @@ SIZE SMenuItem::GetItemSize(HDC hdc)
     {
         SIZE szSize;
         ::GetTextExtentPoint32A(hdc, m_strTitle.c_str(), m_strTitle.size(), &szSize);
-        m_size.cx = szSize.cx + 46;
+        m_size.cx = szSize.cx + GetMenuCheckAreaWidth() + MENU_TRAILING_PAD;
     }
     return m_size;
 }
@@ -510,6 +530,8 @@ int CMenu::GetNextMenuItem(int iItem, BOOL bForword)
 
 void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
 {
+    const SIZE checkSize = GetMenuCheckMarkSize();
+    const int checkArea = checkSize.cx + MENU_CHECK_TO_TEXT_GAP;
     HPEN Pen = CreatePen(PS_SOLID, 2, RGB_MENU_CHECKBOX);
     HBRUSH Brush = CreateSolidBrush(RGB_MENU_POPUP);
     SetBkMode(memdc, TRANSPARENT);
@@ -564,10 +586,14 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
             if (bChecked)
             {
                 int itemHeigth = rc.bottom - rc.top;
+                int x0 = rc.left + MulDiv(7, checkSize.cx, MENU_CHECK_BASE_SIZE);
+                int x1 = rc.left + MulDiv(10, checkSize.cx, MENU_CHECK_BASE_SIZE);
+                int dy1 = MulDiv(3, checkSize.cy, MENU_CHECK_BASE_SIZE);
+                int dy2 = MulDiv(4, checkSize.cy, MENU_CHECK_BASE_SIZE);
                 POINT ptCheckOk[3] = {
-                    { rc.left + 7, rc.top + itemHeigth / 2 },
-                    { rc.left + 10, rc.top + itemHeigth / 2 + 3 },
-                    { rc.left + 16, rc.top + itemHeigth / 2 - 4 },
+                    { x0, rc.top + itemHeigth / 2 },
+                    { x1, rc.top + itemHeigth / 2 + dy1 },
+                    { rc.left + checkSize.cx, rc.top + itemHeigth / 2 - dy2 },
                 };
                 for (int i = 0; i < 2; i++)
                 {
@@ -578,9 +604,9 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
             else if (bRadio)
             {
                 // R1外圆半径R2 内圆半径
-                int R1 = 6, R2 = 3;
+                int R1 = MulDiv(6, checkSize.cy, MENU_CHECK_BASE_SIZE), R2 = MulDiv(3, checkSize.cy, MENU_CHECK_BASE_SIZE);
                 // 圆心
-                POINT centerPoint = { rc.left + 6 + R1, rc.top + (rc.bottom - rc.top) / 2 };
+                POINT centerPoint = { rc.left + MulDiv(6, checkSize.cx, MENU_CHECK_BASE_SIZE) + R1, rc.top + (rc.bottom - rc.top) / 2 };
                 HGDIOBJ BackUpBrush = SelectObject(memdc, GetStockObject(NULL_BRUSH));
                 Ellipse(memdc, centerPoint.x - R2, centerPoint.y - R2, centerPoint.x + R2, centerPoint.y + R2);
 
@@ -598,7 +624,7 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
                     SelectObject(memdc, BackUpPen);
                 }
             }
-            RECT rcText = { rc.left + 26, rc.top, rc.right - 10, rc.bottom };
+            RECT rcText = { rc.left + checkArea, rc.top, rc.right - 10, rc.bottom };
             DrawTextA(memdc, txt, -1, &rcText, DT_SINGLELINE | DT_VCENTER);
 
             if (oldBrush)
@@ -1633,6 +1659,21 @@ DWORD WINAPI CheckMenuItem(HMENU hMenu, UINT uIDCheckItem, UINT uCheck)
         return FALSE;
     CMenu *pMenu = (CMenu *)GetWindowLongPtr(hMenu, GWL_OPAQUE);
     return pMenu->CheckMenuItem(uIDCheckItem, uCheck);
+}
+
+//-------------------------------------------------------------------------------
+// Win32 语义：低字 = 默认复选标记位图宽，高字 = 高（像素）。该 API 只为兼容 16 位
+// Windows 保留，MSDN 建议改用 GetSystemMetrics(SM_CXMENUCHECK/SM_CYMENUCHECK)——
+// swinx 已按 SDK 编号 71/72 补上这两个度量，这里直接转发，不再自己换算 DPI。
+// CMenu 的非 owner-draw 路径会自绘勾/单选圆点，owner-draw 路径则把 MF_CHECKED 转成
+// ODS_CHECKED 交给上层 UI 库；SetMenuItemBitmaps 恒返回 FALSE，两条路径都没有真实
+// 位图。该返回值是 CMenu 左侧复选标记槽宽度与勾/圆点尺寸的基准（见文件头的
+// GetMenuCheckMarkSize / GetMenuCheckAreaWidth 与 DrawItemLoop）。
+LONG WINAPI GetMenuCheckMarkDimensions(VOID)
+{
+    int cx = ::GetSystemMetrics(SM_CXMENUCHECK);
+    int cy = ::GetSystemMetrics(SM_CYMENUCHECK);
+    return MAKELONG(cx, cy);
 }
 
 BOOL WINAPI EnableMenuItem(HMENU hMenu, UINT uIDEnableItem, UINT uEnable)

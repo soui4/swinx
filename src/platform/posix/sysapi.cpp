@@ -2036,6 +2036,10 @@ int GetSystemMetrics(int nIndex)
     case SM_CXHTHUMB:
         ret = 16;
         break;
+    case SM_CXMENUCHECK:
+    case SM_CYMENUCHECK:
+        ret = 16;
+        break;
     case SM_CXDRAG:
     case SM_CYDRAG:
         ret = 4;

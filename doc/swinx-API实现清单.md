@@ -18,19 +18,19 @@
 
 | 分级 | 数量 |
 |---|---|
-| 实现 | 995 |
-| 简单实现 | 92 |
+| 实现 | 997 |
+| 简单实现 | 91 |
 | 部分实现 | 14 |
 | 空实现 / 语义桩 | 41 |
-| 未提供（仅声明） | 126 |
-| **合计（有定义）** | **1142** |
+| 未提供（仅声明） | 2 |
+| **合计（有定义）** | **1143** |
 
 ## 3. 模块分布
 
 | 模块 | 实现 | 简单实现 | 部分实现 | 空实现 |
 |---|---|---|---|---|
-| 窗口、消息与用户界面（USER32 等价） | 197 | 8 | 0 | 6 |
-| 图形设备接口（GDI32 等价） | 166 | 32 | 2 | 6 |
+| 窗口、消息与用户界面（USER32 等价） | 198 | 8 | 0 | 6 |
+| 图形设备接口（GDI32 等价） | 167 | 31 | 2 | 6 |
 | 系统、文件、进程与线程（KERNEL32 等价） | 302 | 17 | 7 | 2 |
 | COM / OLE（OLE32·OLEAUT32 等价） | 56 | 8 | 0 | 4 |
 | 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 79 | 18 | 4 | 2 |
@@ -108,6 +108,7 @@
 | `GetFocus` | 实现 | src/wnd.cpp（另有 1 个平台分支） |  |
 | `GetForegroundWindow` | 实现 | src/wnd.cpp |  |
 | `GetGuiResources` | 实现 | src/handle.cpp | GR_GDIOBJECTS 返回 swinx 自己登记的 GDI 句柄计数（供 WebCore 的 GDIObjectCounter 做 Debug 泄漏观察）；GR_USEROBJECTS 未统计，恒返回 0。hProcess 只可能来自 GetCurrentProcess()，不校验 |
+| `GetMenuCheckMarkDimensions` | 实现 | src/cmnctl32/menu.cpp | 低字宽、高字高，直接转发 GetSystemMetrics(SM_CXMENUCHECK/SM_CYMENUCHECK)；CMenu 用低字作为左侧复选标记槽宽度基准并据此缩放自绘勾/单选圆点（owner-draw 路径则把 MF_CHECKED 转成 ODS_CHECKED 交给上层），SetMenuItemBitmaps 恒返回 FALSE 故没有真实位图 |
 | `GetMenuContextHelpId` | 实现 | src/cmnctl32/menu.cpp |  |
 | `GetMenuInfo` | 实现 | src/cmnctl32/menu.cpp |  |
 | `GetMenuItemCount` | 实现 | src/cmnctl32/menu.cpp |  |
@@ -298,8 +299,8 @@
 | `CreateGradientBrush` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreateICA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreateICW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
-| `CreateIconFromResource` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 2 个平台分支） |  |
-| `CreateIconFromResourceEx` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 1 个平台分支） |  |
+| `CreateIconFromResource` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
+| `CreateIconFromResourceEx` | 实现 | src/platform/*/cursoricon.cpp |  |
 | `CreateIconIndirect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreatePatternBrush` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreatePatternBrush2` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
@@ -358,6 +359,7 @@
 | `GetObjectW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetOutlineTextMetricsA` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
 | `GetOutlineTextMetricsW` | 实现 | src/gdi/apple/fontapi.cpp 等 3 处 |  |
+| `GetPixel` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetRegionData` | 实现 | src/region.cpp |  |
 | `GetRgnBox` | 实现 | src/region.cpp |  |
 | `GetStockObject` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
@@ -381,12 +383,12 @@
 | `InvertRgn` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `LPtoDP` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `LineTo` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
-| `LoadBitmapA` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 2 个平台分支） |  |
-| `LoadBitmapW` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 1 个平台分支） |  |
-| `LoadImageA` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 2 个平台分支） |  |
-| `LoadImageBuf` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 2 个平台分支） |  |
-| `LoadImageW` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 1 个平台分支） |  |
-| `LookupIconIdFromDirectoryEx` | 实现 | src/gdi/canvas2d/gdi.cpp（另有 1 个平台分支） |  |
+| `LoadBitmapA` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
+| `LoadBitmapW` | 实现 | src/platform/*/cursoricon.cpp |  |
+| `LoadImageA` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
+| `LoadImageBuf` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
+| `LoadImageW` | 实现 | src/platform/*/cursoricon.cpp |  |
+| `LookupIconIdFromDirectoryEx` | 实现 | src/platform/*/cursoricon.cpp |  |
 | `MarkPixmapDirty` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `ModifyWorldTransform` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `MoveToEx` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
@@ -447,7 +449,6 @@
 | `GetMiterLimit` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetNearestColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 | 无调色板概念，原样返回请求颜色 |
 | `GetPath` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
-| `GetPixel` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetTextAlign` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetTextColor` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `GetViewportOrgEx` | 简单实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
@@ -607,7 +608,7 @@
 | `GetSystemDirectoryA` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetSystemDirectoryW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetSystemInfo` | 实现 | src/platform/*/sysapi.cpp |  |
-| `GetSystemMetrics` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `GetSystemMetrics` | 实现 | src/platform/*/sysapi.cpp 等 2 处 | posix/freertos 两份实现按 SDK 编号给出 SM_CXMENUCHECK(71)/SM_CYMENUCHECK(72)=96 DPI 下 16px；ret 分支在返回前统一乘 GetSystemScale()/100，SM_CXSCREEN 等提前 return 的分支不缩放 |
 | `GetSystemScale` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `GetSystemTime` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `GetTempFileNameA` | 实现 | src/platform/*/sysapi.cpp |  |
@@ -1304,43 +1305,12 @@
 | `AccessibleObjectFromEvent` | 与 Win32 同路径：经 AccessibleObjectFromWindow（SendMessage WM_GETOBJECT）解析 (hwnd, idObject) 处对象，pvarChild 回带事件携带的 child id |
 | `OBJID_*` 常量 | 数值与 WinSDK 一致，但定义写法不同：WinSDK 的 `0xFFFFFFFCL` 在 LP64（Linux/macOS）上是 64 位正数，swinx 用 `((LONG)0xFFFFFFFC)` 显式收窄，保证 `(LONG)lParam == OBJID_CLIENT` 这类服务端判断在所有平台成立；`AccessibleObjectFromWindow` 发 WM_GETOBJECT 时按真实客户端行为对 OBJID 做符号扩展 |
 
-## 6. 仅声明、未提供实现的 API（126 个）
+## 6. 仅声明、未提供实现的 API（2 个）
 
-以下 API 为维持 Windows 头文件（主要是 `commctrl.h` 的 DPA/DSA、ImageList、FlatSB、TaskDialog 系列）兼容而声明，swinx **没有符号定义**。SOUI 当前源码未引用它们；若第三方代码引用将产生链接错误。
+以下 API 在 `include/*.h` 中有声明，但 swinx **没有符号定义**。SOUI 当前源码未引用它们；若第三方代码引用将产生链接错误。
 
 ```
-ChangeClipboardChain              CountClipboardFormats             CreateMappedBitmap                CreateStatusWindowA             
-CreateStatusWindowW               CreateTextServices                CreateToolbarEx                   CreateUpDownControl             
-DPA_Clone                         DPA_Create                        DPA_CreateEx                      DPA_DeleteAllPtrs               
-DPA_DeletePtr                     DPA_Destroy                       DPA_DestroyCallback               DPA_EnumCallback                
-DPA_GetPtr                        DPA_GetPtrIndex                   DPA_GetSize                       DPA_Grow                        
-DPA_InsertPtr                     DPA_LoadStream                    DPA_Merge                         DPA_SaveStream                  
-DPA_Search                        DPA_SetPtr                        DPA_Sort                          DSA_Clone                       
-DSA_Create                        DSA_DeleteAllItems                DSA_DeleteItem                    DSA_Destroy                     
-DSA_DestroyCallback               DSA_EnumCallback                  DSA_GetItem                       DSA_GetItemPtr                  
-DSA_GetSize                       DSA_InsertItem                    DSA_SetItem                       DSA_Sort                        
-DefSubclassProc                   DrawInsert                        DrawShadowText                    DrawStatusTextA                 
-DrawStatusTextW                   EnumClipboardFormats              FlatSB_EnableScrollBar            FlatSB_GetScrollInfo            
-FlatSB_GetScrollPos               FlatSB_GetScrollProp              FlatSB_GetScrollPropPtr           FlatSB_GetScrollRange           
-FlatSB_SetScrollInfo              FlatSB_SetScrollPos               FlatSB_SetScrollProp              FlatSB_SetScrollRange           
-FlatSB_ShowScrollBar              GetClipboardFormatNameA           GetClipboardFormatNameW           GetClipboardSequenceNumber      
-GetClipboardViewer                GetEffectiveClientRect            GetMUILanguage                    GetMenuCheckMarkDimensions      
-GetOpenClipboardWindow            GetPriorityClipboardFormat        GetWindowSubclass                 HIMAGELIST_QueryInterface       
-HyphenateProc                     ImageList_Add                     ImageList_AddMasked               ImageList_BeginDrag             
-ImageList_Copy                    ImageList_Create                  ImageList_Destroy                 ImageList_DragEnter             
-ImageList_DragLeave               ImageList_DragMove                ImageList_DragShowNolock          ImageList_Draw                  
-ImageList_DrawEx                  ImageList_DrawIndirect            ImageList_Duplicate               ImageList_EndDrag               
-ImageList_GetBkColor              ImageList_GetDragImage            ImageList_GetIcon                 ImageList_GetIconSize           
-ImageList_GetImageCount           ImageList_GetImageInfo            ImageList_LoadImageA              ImageList_LoadImageW            
-ImageList_Merge                   ImageList_Read                    ImageList_ReadEx                  ImageList_Remove                
-ImageList_Replace                 ImageList_ReplaceIcon             ImageList_SetBkColor              ImageList_SetDragCursorImage    
-ImageList_SetIconSize             ImageList_SetImageCount           ImageList_SetOverlayImage         ImageList_Write                 
-ImageList_WriteEx                 InitCommonControls                InitCommonControlsEx              InitMUILanguage                 
-InitializeFlatSB                  LBItemFromPt                      LoadIconMetric                    LoadIconWithScaleDown           
-MakeDragList                      MenuHelp                          RemoveWindowSubclass              SetClipboardViewer              
-SetWindowSubclass                 ShowHideMenuCtl                   Str_SetPtrW                       TaskDialog                      
-TaskDialogIndirect                UninitializeFlatSB                _TrackMouseEvent                  _aligned_free                   
-free                              memcpy                          
+CreateTextServices                HyphenateProc                   
 ```
 
 ## 7. 平台注入接口（platform_api.h）

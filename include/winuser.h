@@ -756,6 +756,9 @@ extern "C"
 #define SM_CXDRAG 68
 #define SM_CYDRAG 69
 
+#define SM_CXMENUCHECK 71
+#define SM_CYMENUCHECK 72
+
 #define DT_TOP                  0x00000000
 #define DT_LEFT                 0x00000000
 #define DT_CENTER               0x00000001

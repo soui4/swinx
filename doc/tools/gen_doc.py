@@ -73,11 +73,14 @@ OVERRIDES = {
     "SendNotifyMessageW":      ("stub", "恒返回 FALSE，不投递消息"),
     "SetGraphicsMode":         ("simple", "记录并返回旧的 graphicsMode，GM_ADVANCED / GM_COMPATIBLE 下绘制结果一致（world transform 始终直接合成进后端 CTM）。NULL HDC 必须按 Win32 语义置 ERROR_INVALID_HANDLE 并返回 0 而不解引用——WebKit 的 syncContext() 对 ImageBuffer 就是这么调的；也必须返回成功，否则 cairo 的 _get_global_font_dc() 认定 DC 不可用而丢弃它，留下悬空静态句柄"),
     "GetGraphicsMode":         ("simple", "读取 DC 记录的 graphicsMode（纯状态存取，两种模式行为相同）；NULL HDC 返回 0"),
+    # 2026-11：原「仅声明无实现」批次里补上实现的 API，取舍见 src/cmnctl32/menu.cpp 函数注释
+    "GetMenuCheckMarkDimensions": ("impl", "低字宽、高字高，直接转发 GetSystemMetrics(SM_CXMENUCHECK/SM_CYMENUCHECK)；CMenu 用低字作为左侧复选标记槽宽度基准并据此缩放自绘勾/单选圆点（owner-draw 路径则把 MF_CHECKED 转成 ODS_CHECKED 交给上层），SetMenuItemBitmaps 恒返回 FALSE 故没有真实位图"),
     "SetMenuItemBitmaps":      ("stub", "恒返回 FALSE，不支持菜单项位图"),
     "SetStretchBltMode":       ("stub", "两个后端都只返回 COLORONCOLOR：拉伸采样由 cairo / CoreGraphics 决定，没有可切换的拉伸算法；调用方设置的黑白/颜色模式不会被记住"),
     "SetWindowExtEx":          ("stub", "恒返回 FALSE，不支持窗口坐标 extents 变换"),
     "TerminateThread":         ("stub", "恒返回 0，不强制终止线程（Win32 本身也强烈不建议使用）"),
     # ---- 备注补充（级别不变） ----
+    "GetSystemMetrics": ("impl", "posix/freertos 两份实现按 SDK 编号给出 SM_CXMENUCHECK(71)/SM_CYMENUCHECK(72)=96 DPI 下 16px；ret 分支在返回前统一乘 GetSystemScale()/100，SM_CXSCREEN 等提前 return 的分支不缩放"),
     "CopyRect":        ("simple", "memcpy 结构拷贝"),
     "EqualRect":       ("simple", "逐成员比较"),
     "IsRectEmpty":     ("simple", "逐成员比较"),
@@ -149,8 +152,13 @@ def module_of(headers):
                 best, best_rank = mod, rank
     return best
 
-# no_def 中排除的宏 / 头内 inline
-MACROS = {"LOWORD", "HIWORD", "DEFINE_GUID", "IsEqualGUID", "SNDMSG", "wcstok"}
+# no_def 中排除的非原型项（api_scan.py 会把宏展开与头内 inline 调用也收进 decls）：
+#   宏展开：LOWORD / HIWORD / DEFINE_GUID / IsEqualGUID / SNDMSG / wcstok
+#   CRT / 头内 inline 调用：free / memcpy / _aligned_free（后者在 malloc.h 里本就有 inline 定义）
+#   条件别名：FlatSB_GetScrollPropPtr 仅在 _WIN64 分支有原型，其余平台是 #define 别名，
+#             不按普通函数原型处理，本轮注释清理也保留它
+MACROS = {"LOWORD", "HIWORD", "DEFINE_GUID", "IsEqualGUID", "SNDMSG", "wcstok",
+          "free", "memcpy", "_aligned_free", "FlatSB_GetScrollPropPtr"}
 
 # ---------------- 分级 ----------------
 def level_of(name, v):
@@ -321,12 +329,17 @@ A("")
 # ---- 未提供 ----
 A("## 6. 仅声明、未提供实现的 API（%d 个）" % len(no_def_list))
 A("")
-A("以下 API 为维持 Windows 头文件（主要是 `commctrl.h` 的 DPA/DSA、ImageList、FlatSB、TaskDialog 系列）兼容而声明，swinx **没有符号定义**。SOUI 当前源码未引用它们；若第三方代码引用将产生链接错误。")
-A("")
-A("```")
-for i in range(0, len(no_def_list), 4):
-    A("  ".join("%-32s" % n for n in no_def_list[i:i + 4]))
-A("```")
+if no_def_list:
+    A("以下 API 在 `include/*.h` 中有声明，但 swinx **没有符号定义**。SOUI 当前源码未引用它们；若第三方代码引用将产生链接错误。")
+    A("")
+    A("```")
+    for i in range(0, len(no_def_list), 4):
+        A("  ".join("%-32s" % n for n in no_def_list[i:i + 4]))
+    A("```")
+else:
+    A("当前没有「仅声明、未提供实现」的 API。`api_scan.py` 的 `no_def` 里剩下的名字都是宏展开、CRT / 头内 inline 调用等扫描器误报，已由 `gen_doc.py` 的排除表扣除。")
+    A("")
+    A("此前清单中未提供实现的原型（主要是 `commctrl.h` 的 DPA/DSA、ImageList、FlatSB、TaskDialog 与剪贴板族）已在 `include/*.h` 中以 `// SWINX-NODEF:` 标记暂时注释；补齐实现后去掉标记即可恢复原声明。")
 A("")
 
 # ---- 平台注入接口 ----
