@@ -7790,19 +7790,19 @@ extern "C"
     // SWINX-NODEF: WINCOMMCTRLAPI BOOL WINAPI DSA_Destroy(__in HDSA hdsa);
     // SWINX-NODEF: WINCOMMCTRLAPI void WINAPI DSA_DestroyCallback(__in HDSA hdsa, __in PFNDAENUMCALLBACK pfnCB, __in_opt void *pData);
 #ifdef __cplusplus
-    extern "C++" __inline void DSA_DestroyCallback(__in HDSA hdsa, __in PFNDAENUMCALLBACKCONST pfnCB, __in_opt void *pData)
-    {
-        // SWINX-NODEF: DSA_DestroyCallback(hdsa, (PFNDAENUMCALLBACK)pfnCB, pData);
-    }
+    // extern "C++" __inline void DSA_DestroyCallback(__in HDSA hdsa, __in PFNDAENUMCALLBACKCONST pfnCB, __in_opt void *pData)
+    // {
+    //    DSA_DestroyCallback(hdsa, (PFNDAENUMCALLBACK)pfnCB, pData);
+    // }
 #endif
     // SWINX-NODEF: WINCOMMCTRLAPI BOOL WINAPI DSA_DeleteItem(__in HDSA hdsa, __in int i);
     // SWINX-NODEF: WINCOMMCTRLAPI BOOL WINAPI DSA_DeleteAllItems(__in HDSA hdsa);
     // SWINX-NODEF: WINCOMMCTRLAPI void WINAPI DSA_EnumCallback(__in HDSA hdsa, __in PFNDAENUMCALLBACK pfnCB, __in_opt void *pData);
 #ifdef __cplusplus
-    extern "C++" __inline void DSA_EnumCallback(__in HDSA hdsa, __in PFNDAENUMCALLBACKCONST pfnCB, __in_opt void *pData)
-    {
-        // SWINX-NODEF: DSA_EnumCallback(hdsa, (PFNDAENUMCALLBACK)pfnCB, pData);
-    }
+    // extern "C++" __inline void DSA_EnumCallback(__in HDSA hdsa, __in PFNDAENUMCALLBACKCONST pfnCB, __in_opt void *pData)
+    // {
+    //     DSA_EnumCallback(hdsa, (PFNDAENUMCALLBACK)pfnCB, pData);
+    // }
 #endif
     // SWINX-NODEF: WINCOMMCTRLAPI int WINAPI DSA_InsertItem(__in HDSA hdsa, __in int i, __in const void *pitem);
     // SWINX-NODEF: WINCOMMCTRLAPI PVOID WINAPI DSA_GetItemPtr(__in HDSA hdsa, __in int i);
@@ -7816,10 +7816,10 @@ extern "C"
     // SWINX-NODEF: WINCOMMCTRLAPI ULONGLONG WINAPI DSA_GetSize(__in HDSA hdsa);
     // SWINX-NODEF: WINCOMMCTRLAPI BOOL WINAPI DSA_Sort(__in HDSA pdsa, __in PFNDACOMPARE pfnCompare, __in LPARAM lParam);
 #ifdef __cplusplus
-    extern "C++" __inline BOOL DSA_Sort(__in HDSA hdsa, __in PFNDACOMPARECONST pfnCompare, __in LPARAM lParam)
-    {
-        // SWINX-NODEF: return DSA_Sort(hdsa, (PFNDACOMPARE)(pfnCompare), lParam);
-    }
+    // extern "C++" __inline BOOL DSA_Sort(__in HDSA hdsa, __in PFNDACOMPARECONST pfnCompare, __in LPARAM lParam)
+    // {
+    //     return DSA_Sort(hdsa, (PFNDACOMPARE)(pfnCompare), lParam);
+    // }
 #endif
 #endif // NTDDI_LONGHORN
 
@@ -7841,19 +7841,19 @@ extern "C"
     // SWINX-NODEF: WINCOMMCTRLAPI BOOL WINAPI DPA_Destroy(__in HDPA hdpa);
     // SWINX-NODEF: WINCOMMCTRLAPI void WINAPI DPA_DestroyCallback(__in HDPA hdpa, __in PFNDAENUMCALLBACK pfnCB, __in_opt void *pData);
 #ifdef __cplusplus
-    extern "C++" __inline void DPA_DestroyCallback(__in HDPA hdpa, __in PFNDAENUMCALLBACKCONST pfnCB, __in_opt void *pData)
-    {
-        // SWINX-NODEF: DPA_DestroyCallback(hdpa, (PFNDAENUMCALLBACK)pfnCB, pData);
-    }
+    // extern "C++" __inline void DPA_DestroyCallback(__in HDPA hdpa, __in PFNDAENUMCALLBACKCONST pfnCB, __in_opt void *pData)
+    // {
+    //     DPA_DestroyCallback(hdpa, (PFNDAENUMCALLBACK)pfnCB, pData);
+    // }
 #endif
     // SWINX-NODEF: WINCOMMCTRLAPI PVOID WINAPI DPA_DeletePtr(__in HDPA hdpa, __in int i);
     // SWINX-NODEF: WINCOMMCTRLAPI BOOL WINAPI DPA_DeleteAllPtrs(__in HDPA hdpa);
     // SWINX-NODEF: WINCOMMCTRLAPI void WINAPI DPA_EnumCallback(__in HDPA hdpa, __in PFNDAENUMCALLBACK pfnCB, __in_opt void *pData);
 #ifdef __cplusplus
-    extern "C++" __inline void DPA_EnumCallback(__in HDPA hdpa, __in PFNDAENUMCALLBACKCONST pfnCB, __in_opt void *pData)
-    {
-        // SWINX-NODEF: DPA_EnumCallback(hdpa, (PFNDAENUMCALLBACK)pfnCB, pData);
-    }
+    // extern "C++" __inline void DPA_EnumCallback(__in HDPA hdpa, __in PFNDAENUMCALLBACKCONST pfnCB, __in_opt void *pData)
+    // {
+    //     DPA_EnumCallback(hdpa, (PFNDAENUMCALLBACK)pfnCB, pData);
+    // }
 #endif
     // SWINX-NODEF: WINCOMMCTRLAPI BOOL WINAPI DPA_Grow(__in HDPA pdpa, __in int cp);
     // SWINX-NODEF: WINCOMMCTRLAPI int WINAPI DPA_InsertPtr(__in HDPA hdpa, __in int i, __in_opt void *p);
@@ -7873,10 +7873,10 @@ extern "C"
 
     // SWINX-NODEF: WINCOMMCTRLAPI BOOL WINAPI DPA_Sort(__in HDPA hdpa, __in PFNDACOMPARE pfnCompare, __in LPARAM lParam);
 #ifdef __cplusplus
-    extern "C++" __inline BOOL DPA_Sort(__in HDPA hdpa, __in PFNDACOMPARECONST pfnCompare, __in LPARAM lParam)
-    {
-        // SWINX-NODEF: return DPA_Sort(hdpa, (PFNDACOMPARE)(pfnCompare), lParam);
-    }
+    // extern "C++" __inline BOOL DPA_Sort(__in HDPA hdpa, __in PFNDACOMPARECONST pfnCompare, __in LPARAM lParam)
+    // {
+    //     return DPA_Sort(hdpa, (PFNDACOMPARE)(pfnCompare), lParam);
+    // }
 #endif
 
     //
@@ -7946,10 +7946,10 @@ extern "C"
 
     // SWINX-NODEF: WINCOMMCTRLAPI BOOL WINAPI DPA_Merge(__in HDPA hdpaDest, __in HDPA hdpaSrc, __in DWORD dwFlags, __in PFNDACOMPARE pfnCompare, __in PFNDPAMERGE pfnMerge, __in LPARAM lParam);
 #ifdef __cplusplus
-    extern "C++" __inline BOOL DPA_Merge(__in HDPA hdpaDest, __in HDPA hdpaSrc, __in DWORD dwFlags, __in PFNDACOMPARECONST pfnCompare, __in PFNDPAMERGECONST pfnMerge, __in LPARAM lParam)
-    {
-        // SWINX-NODEF: return DPA_Merge(hdpaDest, hdpaSrc, dwFlags, (PFNDACOMPARE)pfnCompare, (PFNDPAMERGE)pfnMerge, lParam);
-    }
+    // extern "C++" __inline BOOL DPA_Merge(__in HDPA hdpaDest, __in HDPA hdpaSrc, __in DWORD dwFlags, __in PFNDACOMPARECONST pfnCompare, __in PFNDPAMERGECONST pfnMerge, __in LPARAM lParam)
+    // {
+    //     return DPA_Merge(hdpaDest, hdpaSrc, dwFlags, (PFNDACOMPARE)pfnCompare, (PFNDPAMERGE)pfnMerge, lParam);
+    // }
 #endif
 
 //
@@ -7972,10 +7972,10 @@ extern "C"
 
     // SWINX-NODEF: WINCOMMCTRLAPI int WINAPI DPA_Search(__in HDPA hdpa, __in_opt void *pFind, __in int iStart, __in PFNDACOMPARE pfnCompare, __in LPARAM lParam, __in UINT options);
 #ifdef __cplusplus
-    extern "C++" __inline int DPA_Search(__in HDPA hdpa, __in_opt const void *pFind, __in int iStart, __in PFNDACOMPARECONST pfnCompare, __in LPARAM lParam, __in UINT options)
-    {
-        // SWINX-NODEF: return DPA_Search(hdpa, const_cast<void *>(pFind), iStart, (PFNDACOMPARE)pfnCompare, lParam, options);
-    }
+    // extern "C++" __inline int DPA_Search(__in HDPA hdpa, __in_opt const void *pFind, __in int iStart, __in PFNDACOMPARECONST pfnCompare, __in LPARAM lParam, __in UINT options)
+    // {
+    //     return DPA_Search(hdpa, const_cast<void *>(pFind), iStart, (PFNDACOMPARE)pfnCompare, lParam, options);
+    // }
 #endif
 
 #define DPA_SortedInsertPtr(hdpa, pFind, iStart, pfnCompare, lParam, options, pitem) DPA_InsertPtr(hdpa, DPA_Search(hdpa, pFind, iStart, pfnCompare, lParam, (DPAS_SORTED | (options))), (pitem))
