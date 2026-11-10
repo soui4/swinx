@@ -1194,11 +1194,37 @@ __time64_t _mktime64(const struct tm *tm)
 }
 #endif
 
+// UTC -> Unix epoch seconds (timegm / _mkgmtime equivalent), implemented
+// without libc so the bare-metal newlib target and the hosted simulator share
+// one implementation.  This is the platform layer's contract, not something
+// SOUI works around: the old stub returned -1, and STime::GetCurrentTimeMs()
+// casts it straight to uint64_t, giving a "clock" of 2^64-1000+ms that wraps
+// backwards once per second and freezes every value animator.  Hence this
+// implementation must NEVER return -1 on any path.
 time_t _mkgmtime(struct tm *tm)
 {
-    /* newlib has no timegm; UTC == the fixed epoch we run on */
-    (void)tm;
-    return (time_t)-1;
+    if (!tm)
+        return (time_t)0; // a valid epoch value, not the error sentinel
+    // days_from_civil (Howard Hinnant), proleptic Gregorian calendar.
+    int64_t y = (int64_t)tm->tm_year + 1900;
+    const unsigned m = (unsigned)(tm->tm_mon + 1); // [1, 12]
+    const unsigned d = (unsigned)tm->tm_mday;      // [1, 31]
+    y -= (m <= 2);
+    const int64_t era = (y >= 0 ? y : y - 399) / 400;
+    const unsigned yoe = (unsigned)(y - era * 400);                // [0, 399]
+    const unsigned mp = (m > 2) ? (m - 3) : (m + 9);               // [0, 11]
+    const unsigned doy = (153u * mp + 2u) / 5u + d - 1u;           // [0, 365]
+    const unsigned doe = yoe * 365u + yoe / 4u - yoe / 100u + doy; // [0, 146096]
+    const int64_t days = era * 146097 + (int64_t)doe - 719468;
+    const int64_t secs = days * 86400
+                       + (int64_t)tm->tm_hour * 3600
+                       + (int64_t)tm->tm_min * 60
+                       + (int64_t)tm->tm_sec;
+    // -1 is also a legal instant (1969-12-31 23:59:59 UTC) but doubles as
+    // the mktime error sentinel; clamp it so it can never reach the caller.
+    if (secs == (time_t)-1)
+        return (time_t)0;
+    return (time_t)secs;
 }
 
 // ---- file enumeration / attributes (Linux: fileapi.cpp) --------------------

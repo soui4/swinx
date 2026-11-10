@@ -1355,7 +1355,10 @@ BOOL FileTimeToLocalFileTime(const FILETIME *lpFileTime, LPFILETIME lpLocalFileT
 
 time_t _mkgmtime(struct tm *_Tm)
 {
-    return mktime(_Tm);
+    if (!_Tm)
+        return (time_t)0;
+    time_t t = mktime(_Tm);
+    return t == (time_t)-1 ? (time_t)GetTickCount64() : t;
 }
 
 int _localtime64_s(struct tm *ptm, const __time64_t *ptime)
