@@ -96,13 +96,13 @@ endif()
 # compiler builtin per TU: 4 on Emscripten (same as the POSIX targets).
 add_definitions(-DWCHAR_SIZE=__SIZEOF_WCHAR_T__)
 
-# Screen geometry for src/platform/wasm/framebuffer.h.  The framebuffer is a
-# static array in the wasm linear-memory .bss, so the size is baked into
-# libswinx.a: a demo or host page that indexes SwinxFbBits() with a different
-# width would write past the array.  Declaring it as a CACHE STRING here (rather
-# than leaving the #ifndef defaults in the header) keeps the library and every
-# consumer configured from one place; consumers still read the actual value at
-# runtime through SwinxFbWidth()/SwinxFbHeight()/SwinxFbStride().
+# Screen geometry for src/platform/wasm/framebuffer.h.  These are LOGICAL pixels;
+# framebuffer.cpp allocates the backing store on the heap in SwinxSetCanvasScale()
+# (physical = logical * canvas scale), so it is not a static .bss array baked into
+# libswinx.a.  CACHE STRINGs here keep the library and every consumer configured
+# from one place instead of relying on the #ifndef defaults in the header.  The
+# JS host re-reads Module._SwinxFbBits() on every present; consumers must query
+# SwinxFbWidth()/Height()/Stride() at runtime for the physical dimensions.
 set(SWINX_FB_WIDTH  "800" CACHE STRING "wasm framebuffer width in pixels (ARGB32)")
 set(SWINX_FB_HEIGHT "600" CACHE STRING "wasm framebuffer height in pixels (ARGB32)")
 if(SWINX_FB_WIDTH LESS 1 OR SWINX_FB_HEIGHT LESS 1)

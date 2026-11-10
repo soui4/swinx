@@ -286,9 +286,9 @@ void SwinxCanvasResize(emscripten::val canvas, int w, int h);
 void SwinxCanvasReadPixels(emscripten::val canvas, int sx, int sy, int sw, int sh,
                            uint32_t *dst, int dstStride);
 /* 同上，但**不做 RGBA→ARGB 重排**：getImageData 的 RGBA 字节原样落进 dst
- * （dst 按字节寻址，dstStride 以字节为单位）。上屏路径用它 —— 帧缓冲从此按
- * 浏览器原生的 RGBA 字节序存储，省掉 C++ 侧每帧一次全屏逐像素换序，JS 侧也能
- * 直接用同一块内存构造 ImageData 零拷贝 putImageData。 */
+ * （dst 按字节寻址，dstStrideBytes 是每行字节数）。上屏已改为 SwxPresentSurface
+ * 直接 drawImage，不再经过帧缓冲，因此当前没有调用者；保留为 RGBA 原序回读的
+ * 备用接口（需要把离屏 canvas 原样拷进 WASM 堆时用）。DIB 回写走 PutPixels。 */
 void SwinxCanvasReadPixelsRaw(emscripten::val canvas, int sx, int sy, int sw, int sh,
                               uint8_t *dst, int dstStrideBytes);
 /* 把 WASM 堆里的 ARGB32 位图（srcPtr，w×h 像素）putImageData 到 canvas（DIB 回写）。 */

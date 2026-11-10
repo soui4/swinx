@@ -13,7 +13,6 @@
  *     browser tab has no thread to spare: the JS host pumps from
  *     requestAnimationFrame, so that pump must use a finite timeout (or
  *     peekMsg) -- blocking the main thread would stop rAF and freeze the page
- *     (see the pump design in doc/soui-wasm-port-plan.md);
  *   - rendering: window canvases are cairo image surfaces (software), and
  *     commitCanvas() blits dirty regions into the framebuffer
  *     (framebuffer.h), whose present callback hands pixels to JS.

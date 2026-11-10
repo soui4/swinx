@@ -67,8 +67,8 @@ void SwinxCanvasResize(emscripten::val canvas, int w, int h)
 }
 
 /* 把 canvas 的 (sx,sy,sw,sh) 矩形按浏览器原生 RGBA 字节序原样写进 dst（字节寻址，
- * dstStrideBytes 是每行字节数）。整行宽（sw*4 == dstStrideBytes）时一次 set 拷完，
- * 否则逐行 set —— 无论哪种都**不做逐像素换序**，这是上屏路径的主体开销。 */
+ * dstStrideBytes 是每行字节数）。整行宽时一次 set 拷完，否则逐行 set，均不做换序。
+ * 上屏已改走 SwxPresentSurface 的 drawImage，本函数无调用者，保留作备用接口。 */
 void SwinxCanvasReadPixelsRaw(emscripten::val canvas, int sx, int sy, int sw, int sh,
                               uint8_t *dst, int dstStrideBytes)
 {
