@@ -449,7 +449,7 @@ void SwxXform(int ctxId, double a, double b, double c, double d, double e, doubl
  * 窗口后备画布是 SwinxCanvasCreateSurfaceRaw(cx, cy, alpha=0) 建的，也就是
  * getContext('2d', {alpha:false})，源像素的 alpha 恒为 255，合成与替换等价，
  * 透明源让上一帧透出来的那条路径在这里不存在（可能含透明的 memRT → 窗口画布
- * 那一跳由 gdi.cpp 的 blitRop 负责，见那里的说明与 §33/§34）。 */
+ * 那一跳由 gdi.cpp 的 blitRop 负责，见那里的说明）。 */
 EM_JS(void, swx_present_surface, (int srcId, double sx, double sy, double w, double h, double dx, double dy),
 {
     var g = globalThis;

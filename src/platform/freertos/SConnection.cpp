@@ -215,6 +215,18 @@ void SConnection::SetKeyDown(UINT vk, bool down)
         m_keyboardState[vk] &= (BYTE)~0x80;
 }
 
+// flip the toggle (low) bit of a lock key; the 0x80 transition bit belongs to
+// SetKeyDown, so the two never fight over the same byte.  GetKeyState returns
+// that bit as its low bit, which is what the WM_CHAR translator reads to decide
+// the case of a letter.
+void SConnection::ToggleKeyState(UINT vk)
+{
+    if (vk >= 256)
+        return;
+    std::unique_lock<CountMutex> lock(m_mutex);
+    m_keyboardState[vk] ^= 0x01;
+}
+
 void SConnection::SetCursorPos(int x, int y)
 {
     // bare metal: the input driver is the single writer; 32-bit aligned
@@ -439,20 +451,91 @@ int SConnection::waitMutliObjectAndMsg(const HANDLE *handles, int nCount, DWORD 
     (void)dwWaitMask;
 }
 
+// VK -> the character TranslateMessage should hand out as WM_CHAR, for a US
+// layout (this port has no keyboard layout table: HKL is stored, never used).
+// Mirrors platform/wasm/SConnection.cpp; without it the port posted the raw VK
+// as the character, which breaks every non-trivial key:
+//   * VK_A..VK_Z carry the *upper-case* code, so typing always produced capitals
+//     and SHIFT did nothing (wm's own name lookups got worse, not better);
+//   * VK_BACK/VK_RETURN/VK_TAB produced no WM_CHAR at all, so an edit control
+//     could not delete or start a new line;
+//   * VK_UP/DOWN (0x26/0x28) fell into the "printable" window 0x20..0x7e and
+//     were posted as '&'/'(' characters.
+static WORD vkToChar(UINT vk, bool bShift, bool bCapsLock)
+{
+    switch (vk)
+    {
+    case VK_BACK:     return 0x08;
+    case VK_TAB:      return 0x09;
+    case VK_RETURN:   return 0x0D;
+    case VK_ESCAPE:   return 0x1B;
+    case VK_SPACE:    return ' ';
+    case VK_MULTIPLY: return '*';
+    case VK_ADD:      return '+';
+    case VK_SUBTRACT: return '-';
+    case VK_DECIMAL:  return '.';
+    case VK_DIVIDE:   return '/';
+    default: break;
+    }
+
+    // VK_A..VK_Z share the ASCII values of 'A'..'Z'
+    if (vk >= 'A' && vk <= 'Z')
+        return (WORD)((bShift != bCapsLock) ? vk : vk - ('A' - 'a'));
+
+    // VK_0..VK_9 likewise; Shift gives the US-layout upper row
+    if (vk >= '0' && vk <= '9')
+    {
+        static const char s_shiftDigits[] = ")!@#$%^&*(";
+        return (WORD)(bShift ? s_shiftDigits[vk - '0'] : vk);
+    }
+    if (vk >= VK_NUMPAD0 && vk <= VK_NUMPAD9)
+        return (WORD)('0' + (vk - VK_NUMPAD0));
+
+    // US layout symbol keys: { vk, plain, shifted }
+    struct SymPair { UINT vk; char plain; char shifted; };
+    static const SymPair s_pairs[] = {
+        { VK_OEM_1,     ';', ':'  },
+        { VK_OEM_PLUS,  '=', '+'  },
+        { VK_OEM_COMMA, ',', '<'  },
+        { VK_OEM_MINUS, '-', '_'  },
+        { VK_OEM_PERIOD,'.', '>'  },
+        { VK_OEM_2,     '/', '?'  },
+        { VK_OEM_3,     '`', '~'  },
+        { VK_OEM_4,     '[', '{'  },
+        { VK_OEM_5,     '\\', '|' },
+        { VK_OEM_6,     ']', '}'  },
+        { VK_OEM_7,     '\'', '"' },
+    };
+    for (unsigned i = 0; i < sizeof(s_pairs) / sizeof(s_pairs[0]); ++i)
+    {
+        if (vk == s_pairs[i].vk)
+            return (WORD)(bShift ? s_pairs[i].shifted : s_pairs[i].plain);
+    }
+    return 0;
+}
+
 BOOL SConnection::TranslateMessage(const MSG *pMsg)
 {
-    // FreeRTOS port: no IME; key-down -> WM_CHAR passthrough for ASCII.
+    // FreeRTOS port: no IME, no dead keys -- one VK becomes at most one char.
     if (pMsg && (pMsg->message == WM_KEYDOWN || pMsg->message == WM_SYSKEYDOWN))
     {
-        UINT vk = (UINT)pMsg->wParam;
-        if (vk >= 0x20 && vk <= 0x7e)
+        bool bShift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        bool bCapsLock = (GetKeyState(VK_CAPITAL) & 0x0001) != 0;
+        bool bCtrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+        bool bAlt = (GetKeyState(VK_MENU) & 0x8000) != 0;
+        WORD ch = vkToChar((UINT)pMsg->wParam, bShift, bCapsLock);
+        if (ch)
         {
-            MSG charMsg;
-            charMsg.hwnd = pMsg->hwnd;
-            charMsg.message = WM_CHAR;
-            charMsg.wParam = vk;
-            charMsg.lParam = pMsg->lParam;
-            postMsg(charMsg.hwnd, WM_CHAR, vk, pMsg->lParam);
+            if (bCtrl && !bAlt && ch >= ' ')
+            {
+                // Win32 turns Ctrl+<printable> into the matching control code
+                // (vk & 0x1F) instead of the literal character, which is what
+                // lets Ctrl+A/C/V reach the edit control's accelerators
+                // instead of inserting 'a'/'c'/'v'.
+                ch = (WORD)((UINT)pMsg->wParam & 0x1F);
+            }
+            // Alt produces WM_SYSCHAR, not WM_CHAR
+            postMsg(pMsg->hwnd, bAlt ? WM_SYSCHAR : WM_CHAR, ch, pMsg->lParam);
             return TRUE;
         }
     }
@@ -797,13 +880,20 @@ BOOL SConnection::IsWindow(HWND hWnd) const
     return wndObj ? !wndObj->bDestroyed : FALSE;
 }
 
-void SConnection::SetWindowPos(HWND, int, int) const
+void SConnection::SetWindowPos(HWND hWnd, int, int) const
 {
-    // virtual windows live in _Window state; nothing OS-side to move (TODO fb)
+    // 核心在这里之后才写 _Window::rc（WM_MOVE 里 OffsetRect），所以此刻 hWnd
+    // 的 rc 还是旧矩形。旧矩形上的像素现在归下面的窗口：跳过 hWnd 重排一遍，
+    // 把这块还回去，且不要把它的旧内容按旧位置又贴上来。它的新位置由随后的
+    // WM_SIZE/InvalidateRect 触发的重绘负责。
+    composeScreen(hWnd);
 }
 
 void SConnection::SetWindowSize(HWND, int, int) const
 {
+    // 同 SetWindowPos：rc 的 right/bottom 要等 WM_SIZE 才更新（画布也是那时才
+    // resize），这里按旧矩形把右侧/下侧让出去。
+    composeScreen();
 }
 
 BOOL SConnection::MoveWindow(HWND, int, int, int, int) const
@@ -1039,8 +1129,33 @@ uint32_t SConnection::GetCmap() const
     return 0;
 }
 
-void SConnection::SetZOrder(HWND, _Window *, HWND)
+void SConnection::SetZOrder(HWND hWnd, _Window *, HWND hWndInsertAfter)
 {
+    // m_zTop 是唯一记录"谁盖着谁"的地方（合成顺序），所以 z 序操作必须同步
+    // 到这里。这个端口只有创建序，没有真正的窗口栈：HWND_TOP/HWND_TOPMOST 挪到
+    // 末尾，HWND_BOTTOM 挪到开头，指定窗口则插到它后面。
+    std::vector<HWND>::iterator it = std::find(m_zTop.begin(), m_zTop.end(), hWnd);
+    if (it == m_zTop.end())
+        return;
+    m_zTop.erase(it);
+    if (hWndInsertAfter == HWND_BOTTOM)
+    {
+        m_zTop.insert(m_zTop.begin(), hWnd);
+    }
+    else if (hWndInsertAfter == HWND_TOP || hWndInsertAfter == HWND_TOPMOST || hWndInsertAfter == NULL)
+    {
+        m_zTop.push_back(hWnd);
+    }
+    else
+    {
+        std::vector<HWND>::iterator pos = std::find(m_zTop.begin(), m_zTop.end(), hWndInsertAfter);
+        if (pos == m_zTop.end())
+            m_zTop.push_back(hWnd);
+        else
+            m_zTop.insert(pos + 1, hWnd);
+    }
+    // 遮挡关系变了：屏幕上已有的像素按旧 z 序叠的，重排一次
+    composeScreen();
 }
 
 void SConnection::OnStyleChanged(HWND, _Window *, DWORD, DWORD)
@@ -1104,7 +1219,7 @@ void SConnection::SendSysCommand(HWND, int)
 {
 }
 
-BOOL SConnection::IsWindowVisible(HWND hWnd)
+BOOL SConnection::IsWindowVisible(HWND hWnd) const
 {
     // Win32 semantics: WS_VISIBLE on the window AND on every ancestor.
     // (This port used to answer TRUE unconditionally, which silently disabled
@@ -1249,18 +1364,19 @@ void SConnection::updateWindow(HWND hWnd, const RECT &)
     SendMessageA(hWnd, WM_PAINT, 0, 0);
 }
 
-void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
+bool SConnection::blitCanvas(HWND hWnd, const RECT &rcLocal) const
 {
-    // blit the window canvas region (rc is window-local) into the software
+    // blit the window canvas region (rcLocal is window-local) into the software
     // framebuffer at the window's screen position, then notify the presenter.
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj)
-        return;
+    if (!wndObj || wndObj->bDestroyed)
+        return false;
+
     cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(wndObj->bmp);
     if (!surface || cairo_surface_get_type(surface) != CAIRO_SURFACE_TYPE_IMAGE)
-        return;
+        return false;
     if (cairo_surface_status(surface) != CAIRO_STATUS_SUCCESS)
-        return;
+        return false;
     cairo_surface_flush(surface);
 
     int sw = cairo_image_surface_get_width(surface);
@@ -1268,10 +1384,10 @@ void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
     int stride = cairo_image_surface_get_stride(surface) / 4;
     uint32_t *srcBase = (uint32_t *)cairo_image_surface_get_data(surface);
     if (!srcBase)
-        return;
+        return false;
 
     // clip rc to the window canvas
-    RECT rcSrc = rc;
+    RECT rcSrc = rcLocal;
     if (rcSrc.left < 0)
         rcSrc.left = 0;
     if (rcSrc.top < 0)
@@ -1281,7 +1397,7 @@ void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
     if (rcSrc.bottom > sh)
         rcSrc.bottom = sh;
     if (rcSrc.left >= rcSrc.right || rcSrc.top >= rcSrc.bottom)
-        return;
+        return false;
 
     // screen-space dirty rect, clipped to the framebuffer
     int ox = wndObj->rc.left, oy = wndObj->rc.top;
@@ -1301,7 +1417,7 @@ void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
     if (rcFb.bottom > SWINX_FB_HEIGHT)
         rcFb.bottom = SWINX_FB_HEIGHT;
     if (rcFb.left >= rcFb.right || rcFb.top >= rcFb.bottom)
-        return;
+        return false;
 
     int w = rcFb.right - rcFb.left;
     for (int y = 0; y < rcFb.bottom - rcFb.top; ++y)
@@ -1312,6 +1428,84 @@ void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
     }
     RECT dirty = rcFb;
     swinxFbPresent(&dirty);
+    return true;
+}
+
+void SConnection::composeAbove(HWND hWnd, const RECT &rcScreen) const
+{
+    // framebuffer 没有合成器：谁最后 blit 谁的地盘就归谁。于是"下层窗口重绘"
+    // 会把上层窗口（下拉列表这类独立窗口）的像素擦掉，必须在同一帧里按 z 序
+    // 把上层重新 blit 回来——注意源是上层窗口自己的画布，它保留着最近一帧，
+    // 不需要（也不能）给它发 WM_PAINT。
+    std::vector<HWND>::const_iterator it = std::find(m_zTop.begin(), m_zTop.end(), hWnd);
+    if (it == m_zTop.end())
+        return; // 不在 z 序里：没有它盖着谁的问题
+    for (++it; it != m_zTop.end(); ++it)
+    {
+        if (!IsWindowVisible(*it))
+            continue;
+        if (m_committed.find(*it) == m_committed.end())
+            continue;
+        WndObj above = WndMgr::fromHwnd(*it);
+        if (!above || above->bDestroyed)
+            continue;
+        RECT rcInter = { 0, 0, 0, 0 };
+        if (!IntersectRect(&rcInter, &rcScreen, &above->rc))
+            continue;
+        RECT rcLocal = { rcInter.left - above->rc.left, rcInter.top - above->rc.top,
+                         rcInter.right - above->rc.left, rcInter.bottom - above->rc.top };
+        blitCanvas(*it, rcLocal);
+    }
+}
+
+void SConnection::composeScreen(HWND hSkip) const
+{
+    // 自底向顶把每个窗口的画布整幅 blit 一遍。上面某个窗口（弹出列表）被销毁/
+    // 隐藏/挪走之后，它原来的位置属于下面那些窗口，而它们既没有收到 WM_PAINT、
+    // 也不需要重画——画布里就是它最后的内容。
+    RECT rcFull = { 0, 0, 0x7FFFFFFF, 0x7FFFFFFF };
+    for (size_t i = 0; i < m_zTop.size(); ++i)
+    {
+        if (hSkip && m_zTop[i] == hSkip)
+            continue;
+        if (!IsWindowVisible(m_zTop[i]))
+            continue;
+        if (m_committed.find(m_zTop[i]) == m_committed.end())
+            continue;
+        blitCanvas(m_zTop[i], rcFull);
+    }
+}
+
+void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
+{
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return;
+
+    // `rc` comes from the DC's clip box (ReleaseDC -> GetClipBox), and that box
+    // is *not* the dirty rect: SOUI's paint path saves/restores DC state, so
+    // ReleaseDC's RestoreDC(-1) has already reset the clip to the whole
+    // surface by the time the box is read.  The accumulated invalid region is
+    // the authoritative dirty rect -- pushing the whole canvas instead would
+    // repaint every overlapping window with stale pixels (composeAbove() has to
+    // undo that one window at a time below).
+    RECT rcDirty = rc;
+    if (wndObj->invalid.hRgn)
+    {
+        RECT rb;
+        RECT rcClip;
+        if (GetRgnBox(wndObj->invalid.hRgn, &rb) != NULLREGION && IntersectRect(&rcClip, &rc, &rb))
+            rcDirty = rcClip;
+    }
+
+    if (!blitCanvas(hWnd, rcDirty))
+        return;
+    // 从这一帧起该窗口的画布可信，可以参与整屏合成
+    m_committed.insert(hWnd);
+
+    RECT rcScreen = { wndObj->rc.left + rcDirty.left, wndObj->rc.top + rcDirty.top,
+                      wndObj->rc.left + rcDirty.right, wndObj->rc.top + rcDirty.bottom };
+    composeAbove(hWnd, rcScreen);
 }
 
 void SConnection::EnableWindow(HWND, BOOL)
@@ -1496,11 +1690,26 @@ HWND SConnection::OnWindowCreate(_Window *wnd, CREATESTRUCT *cs, int depth)
     // connection only tracks it.  See mobile's ENABLE_VIRTUAL_HWND path.
     (void)cs;
     (void)depth;
+    // z 序 = 创建序：宿主窗先建在底，弹出窗（SDropDownWnd 等）后建在顶。
+    // 画布还没建、没画过，所以此刻不进 m_committed（见 composeScreen）。
+    if (wnd)
+        m_zTop.push_back((HWND)wnd);
     return (HWND)wnd;
 }
 
-void SConnection::OnWindowDestroy(HWND, _Window *)
+void SConnection::OnWindowDestroy(HWND hWnd, _Window *)
 {
+    // Win32 语义：销毁 capture 窗口时自动释放 capture，否则鼠标路由永远指向
+    // 已死的窗口（下拉窗是 capture 持有者，必须先清掉）。
+    if (m_hWndCapture == hWnd)
+        ReleaseCapture();
+    std::vector<HWND>::iterator it = std::find(m_zTop.begin(), m_zTop.end(), hWnd);
+    if (it != m_zTop.end())
+        m_zTop.erase(it);
+    m_committed.erase(hWnd);
+    // 弹出窗销毁会曝露它盖住的那块区域：下面的窗口收不到 WM_PAINT（它们的
+    // 内容没变），只能按各自的画布整屏重排一遍，把这块补回来。
+    composeScreen();
 }
 
 void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, int)
@@ -1521,12 +1730,16 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
         // A window that just became visible needs one full repaint: it was
         // skipped by SendExposeEvent() while hidden.
         InvalidateRect(hWnd, NULL, TRUE);
+        // 显示这一侧不需要重排：它的画布还没被画过（m_committed 里没有），
+        // 重排也只会跳过它；等它自己的首帧 WM_PAINT 上屏即可。
     }
     else
     {
         if ((wndObj->dwStyle & WS_VISIBLE) == 0)
             return; // already hidden
         wndObj->dwStyle &= ~WS_VISIBLE;
+        // 隐藏等价于"从画面上拿走一层"：它盖住的区域同样没有 WM_PAINT 的机会
+        composeScreen();
     }
 }
 

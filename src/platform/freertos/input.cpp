@@ -69,13 +69,41 @@ void SwinxInjectMouse(HWND hWnd, UINT message, int x, int y, WPARAM fwKeys)
 
     SyncMouseButtonState(conn, message);
 
-    // screen -> client (client origin == window origin on this port)
-    if (wndObj)
+    // Win32 路由语义（与 platform/wasm/input.cpp 一致）：鼠标消息不是"投给注入者
+    // 指定的窗口"，而是
+    //   1) 有窗口持有 capture（下拉窗 SetCapture 打开期间）→ 全部投给 capture 窗，
+    //      坐标按该窗换算（可以是负值/超出客户区，Win32 就是这样，SDropDownWnd
+    //      靠它实现"点外面关闭"）；
+    //   2) 否则才投给参数指定的窗口 —— 本端口还没有 z 序命中
+    //      （SConnection::WindowFromPoint 是返回 NULL 的桩）。
+    // 只做 capture 这一支就够覆盖下拉列表：没有它，SComboBox 的列表窗收不到点击，
+    // 下拉一开就再也关不掉。
+    HWND hTarget = hWnd;
+    HWND hCapture = conn->GetCapture();
+    if (hCapture)
     {
-        x -= wndObj->rc.left;
-        y -= wndObj->rc.top;
+        WndObj capObj = WndMgr::fromHwnd(hCapture);
+        if (capObj && !capObj->bDestroyed)
+            hTarget = hCapture;
+        else
+            conn->ReleaseCapture(); // capture 窗已销毁：清掉悬空的 capture
     }
-    conn->postMsg(hWnd, message, fwKeys, MAKELPARAM(x, y));
+    if (hTarget == hWnd)
+    {
+        POINT pt = { x, y };
+        HWND hUnder = conn->WindowFromPoint(pt);
+        if (hUnder)
+            hTarget = hUnder;
+    }
+
+    WndObj tgtObj = WndMgr::fromHwnd(hTarget);
+    if (!tgtObj || tgtObj->bDestroyed)
+        return;
+
+    // screen -> client (client origin == window origin on this port)
+    x -= tgtObj->rc.left;
+    y -= tgtObj->rc.top;
+    conn->postMsg(hTarget, message, fwKeys, MAKELPARAM(x, y));
 }
 
 void SwinxInjectKey(HWND hWnd, UINT message, UINT vk, UINT scanCode)
@@ -90,6 +118,11 @@ void SwinxInjectKey(HWND hWnd, UINT message, UINT vk, UINT scanCode)
 
     bool down = (message == WM_KEYDOWN || message == WM_SYSKEYDOWN);
     conn->SetKeyDown((UINT)(vk & 0xff), down);
+    // Lock keys: Win32 keeps a toggle bit (the low bit of GetKeyState) that
+    // flips on each key-DOWN, independent of the up/down transition bit.
+    // TranslateMessage needs it to decide the case of a letter.
+    if (down && (vk == VK_CAPITAL || vk == VK_NUMLOCK || vk == VK_SCROLL))
+        conn->ToggleKeyState((UINT)(vk & 0xff));
 
     // Win32 key message lParam: repeat count | scan code << 16, with the
     // transition (bit 30) and previous-state (bit 31) flags set on key-up

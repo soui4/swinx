@@ -3,7 +3,7 @@
 日期：2026-11-06
 影响面：`swinx` 的 wasm **canvas2d** GDI 后端（`swinx/src/gdi/canvas2d/gdi.cpp`）
 基线：同一份 SOUI 代码 + 同一份 demo 资源，在 wasm **cairo** 后端、Windows 真 GDI、macOS apple 后端上均无此现象
-过程记录：`doc/swinx-wasm-port-plan.md` §31–§36；本文是结案说明，回答**为什么这次修复有效**
+设计背景见 `doc/swinx-wasm-design.md` §5.3；本文是结案说明，回答**为什么这次修复有效**
 
 ---
 
@@ -120,7 +120,7 @@ Win32 的 `DrawText` 始终把字形裁进格式化矩形，只有 `DT_NOCLIP` �
 
 ## 6. 代价与边界
 
-- **性能**：每次 `SRCCOPY`/`ClearRect` 多一组 `save/clip/restore` 跨语言调用，同机 A/B 记录的帧间隔代价在 +1% 量级（`doc/swinx-wasm-port-plan.md` §34）；这是保守裁剪换来的必要开销，不做"能省则省"的优化。
+- **性能**：每次 `SRCCOPY`/`ClearRect` 多一组 `save/clip/restore` 跨语言调用，同机 A/B 记录的帧间隔代价在 +1% 量级（`doc/swinx-wasm-design.md` §5.3）；这是保守裁剪换来的必要开销，不做"能省则省"的优化。
 - **`DT_NOCLIP` 仍是放开裁剪的口子**：全仓库只有 `swinx/src/uitools.cpp:1266` 显式使用；SOUI 的文字调用面没有一处传它，所以应用层默认全部受裁剪保护。
 - **裁剪只影响"画到控件矩形外"的字**：如果某个控件的窗口矩形本来就小于字形覆盖框，Windows 上同样会缺边 —— 那是 SOUI 侧的布局问题，应该按布局问题处理，**不要把这条裁剪再关掉来掩盖**。
 - **后端对称性要求**：canvas2d 与 cairo 必须实现同一 API 面与同一语义；`python swinx/doc/tools/api_scan.py --check` 是本轮的最后一道闸（只动实现，未动声明，清单无需刷新）。
@@ -136,9 +136,9 @@ Win32 的 `DrawText` 始终把字形裁进格式化矩形，只有 `DT_NOCLIP` �
 | `games.lua` 的 `TETRIS_FLY_IMG` 开关与图片分支 | 文字/图片差分已完成使命，结论落在文字链 | 删除；`tetris_fly_text` 恢复原始签名，文件与诊断前的版本逐字节一致 |
 | 特效台页（`page_game.xml` 第 4 页 + `games.lua` 的 `flybench_*` 段） | 静态页在修复前后两个构建上都不复现本 bug，长期维护一个"取键盘焦点 + 舞台"的诊断页没有价值 | 删除；`page_game.xml` 与 `games.lua` 回到只有三个游戏的状态 |
 | `demos/wasm-demo/tools/diag/{prescmp,tetris_frames,tetris_play,cliptrace}.cjs` 及 README 对应章节 | 本轮残影专用取证脚本，判据已并入用例与本文 | 删除；`tools/diag/` 回到 11-03 的状态，其余长期验收脚本（`snap_tabs`/`shot_dpr`/`bench_repaint` 等）保留 |
-| `demos/fun_test/out.canvas2d.red/`、`/tmp/wasm-demo-red/` | A/B 数据已取完，红构建只是修复前 swinx 的重编产物 | 删除；需要复跑 A/B 时按 §36.4 记录的命令重建（`.gitignore` 已排除 `/out.*/`） |
+| `demos/fun_test/out.canvas2d.red/`、`/tmp/wasm-demo-red/` | A/B 数据已取完，红构建只是修复前 swinx 的重编产物 | 删除；需要复跑 A/B 时按当时的 `git show HEAD:` 重编方式重建（`.gitignore` 已排除 `/out.*/`） |
 
-**刻意保留**的东西：`demos/fun_test/test_dc.cpp` 的 8 条相关用例（其中 5 条就是这三条缺陷的回归网，删掉就等于把修复退回"没有证据"）、wasm `fun_test` 的构建链与 node/浏览器两条运行载体、`bug.png`/`bug2.png` 作为现象证据、`doc/swinx-wasm-port-plan.md` §31–§36 的过程记录，以及本文。
+**刻意保留**的东西：`demos/fun_test/test_dc.cpp` 的 8 条相关用例（其中 5 条就是这三条缺陷的回归网，删掉就等于把修复退回"没有证据"）、wasm `fun_test` 的构建链与 node/浏览器两条运行载体、`bug.png`/`bug2.png` 作为现象证据，以及本文。
 
 清理后复跑（2026-11-06，全部实测）：`luac -p games.lua` 通过；`page_game.xml` 的 `<page>` 回到 3；demo 重链后 `.data` 从 813253 缩到 **801375** 字节，按字符串核对已不含 `TETRIS_FLY_IMG` / `flybench` / `wnd_flybench` / `特效台`；浏览器里 demo 正常启动，控制台依次 `XXL init done` → `tetris: init done` → `tank: init done`，没有 `flybench` 相关行也没有 lua 报错；原生 `ctest -L '^soui-headless$'` 注册 570、实跑 **569 全绿**；`node wasm/run-node.js out.cairo/fun_test-wasm.js` **88/88**、`... out.canvas2d/fun_test-wasm.js` **85/88**（3 条为 node 桩件下像素不可判定的既有登记项）；`python3 swinx/doc/tools/api_scan.py --check` 通过。
 
@@ -148,4 +148,4 @@ Win32 的 `DrawText` 始终把字形裁进格式化矩形，只有 `DT_NOCLIP` �
 
 - **Windows / macOS 腿需要人工复跑**：`SwinxDcTest.*clip*` / `*drawtext*` / `*bitblt*` / `*stretchdibits*` 与两条飘字用例。本修复没动这两条链的实现，预期全绿，但按仓库约定这类"平台专属"通过证据只能来自那两个平台本身，不能拿 Linux 的绿色代替。
 - **归因粒度**：`bug.png` 那串抛物线最终归到哪一条缺陷，没有做逐条单独的回归实验（三条在同一段周期里依次补齐，且每条都有各自的红→绿用例）。可确定的是：三条补齐后这条链上不存在"擦不回来"的路径，且三条在用例腿上修复前都红过。
-- **提交状态**：见 `doc/swinx-wasm-port-plan.md` §36.6 与 §37.4 —— 其中记录了主仓库历史里两个本地/远端都不可解析的 swinx 指针（`da85cbe1`、`56b70c82`），检出那两个提交时 `git submodule update` 会失败；要复现修复前的红构建，用能取到的 `swinx 31179e6a`，不要照搬 §36.4 里当时的 `git show HEAD:`。
+- **提交状态**：主仓库历史里有两个本地/远端都不可解析的 swinx 指针（`da85cbe1`、`56b70c82`），检出那两个提交时 `git submodule update` 会失败；要复现修复前的红构建，用能取到的 `swinx 31179e6a`。

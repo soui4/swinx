@@ -93,7 +93,7 @@ swinx 是非 Windows 平台上的 **Win32 兼容层**：向 SOUI 4 与 WKE 浏�
 - **`PlaySound` 谁去读文件、谁去发声**（`include/mmsystem.h`）：共同骨架是"只支持 `SND_FILENAME`（`SND_MEMORY`/`SND_RESOURCE`/`SND_ALIAS` 显式 FALSE）、一律异步（`SND_SYNC` 按 `SND_ASYNC`）"，通道分三种：
   - `linux` / `cocoa` / `ios`：`src/platform/posix/mmsystem.cpp` 的播放线程（ALSA；没编 ALSA 时 fork `aplay`）。
   - `mobile`（Android/OHOS）：转发 `g_platformAPI.audio.playSound`。
-  - `wasm`：`src/platform/wasm/audio.cpp`（**不是** posix 那份）——从 wasm 文件系统读出 wav，把字节交给页面实现的 `Module.swinxAudioPlay`，解码与播放由 WebAudio 完成；宿主没装钩子时返回 FALSE（与未适配前一致）。`wasm.cmake` 同时 glob `posix/` 与 `wasm/`，所以 posix 的 `PlaySound` 用 `#if !defined(__EMSCRIPTEN__)` 让位。**这道守卫要留着**：去掉它不会报重复定义——`mmsystem.o` 的桩先满足引用、`audio.o` 根本不会被拉进链接，结果是静默退回"不出声"；同名符号并存时，"链接器悄悄选错后端"比重复符号更难查（实测见 `doc/swinx-wasm-port-plan.md` §24.4）。
+  - `wasm`：`src/platform/wasm/audio.cpp`（**不是** posix 那份）——从 wasm 文件系统读出 wav，把字节交给页面实现的 `Module.swinxAudioPlay`，解码与播放由 WebAudio 完成；宿主没装钩子时返回 FALSE（与未适配前一致）。`wasm.cmake` 同时 glob `posix/` 与 `wasm/`，所以 posix 的 `PlaySound` 用 `#if !defined(__EMSCRIPTEN__)` 让位。**这道守卫要留着**：去掉它不会报重复定义——`mmsystem.o` 的桩先满足引用、`audio.o` 根本不会被拉进链接，结果是静默退回"不出声"；同名符号并存时，"链接器悄悄选错后端"比重复符号更难查。
   - `freertos`：不编译本 API（`posix/` 与 `wasm/` 都不入构建），引用即链接错误。
 
 ## 9. 测试

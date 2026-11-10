@@ -23,6 +23,7 @@
 #include <windows.h>
 #include <hkl.h> // HKL 取值编码约定（swinx 内部头）
 #include <map>
+#include <set>
 #include <list>
 #include <mutex>
 #include <atomic>
@@ -69,6 +70,7 @@ public:
     // input injection support (see input.h): driver/test level state setters
     // that keep GetKeyState / GetCursorPos consistent with injected events
     void SetKeyDown(UINT vk, bool down);
+    void ToggleKeyState(UINT vk);
     void SetCursorPos(int x, int y);
 
     UINT GetDoubleClickTime() const;
@@ -161,7 +163,7 @@ public:
     HWND WindowFromPoint(POINT pt);
     BOOL GetClientRect(HWND hWnd, RECT *pRc);
     void SendSysCommand(HWND hWnd, int nCmd);
-    BOOL IsWindowVisible(HWND hWnd);
+    BOOL IsWindowVisible(HWND hWnd) const;
     HWND GetWindow(HWND hWnd, _Window *wndObj, UINT uCmd);
     UINT RegisterMessage(LPCSTR lpString);
     UINT RegisterClipboardFormatA(LPCSTR pszName);
@@ -169,6 +171,17 @@ public:
     HMONITOR GetScreen(DWORD dwFlags) const;
     void updateWindow(HWND hWnd, const RECT &rc);
     void commitCanvas(HWND hWnd, const RECT &rc);
+    // ---- framebuffer 合成（无合成器，多个窗口共用同一块 framebuffer）----
+    // 把 hWnd 画布的一块（窗口局部坐标）blit 到 framebuffer；返回真的有像素上屏
+    bool blitCanvas(HWND hWnd, const RECT &rcLocal) const;
+    // 按 z 序自底向顶整屏重排：每个窗口 blit 自己画布的全幅。
+    // 用于"上层窗口消失/挪走"之后曝露出来的区域——那些窗口没有收到 WM_PAINT
+    // 的机会，但它们的画布还保留着最近一帧，重新 blit 就能恢复遮挡关系。
+    // hSkip：跳过某个窗口（它正要离开自己的旧矩形，别把旧内容又贴回去）。
+    void composeScreen(HWND hSkip = NULL) const;
+    // 把 z 序在 hWnd 之上、与 rcScreen（屏幕坐标）相交的窗口重新 blit 回去，
+    // 保住遮挡：下层窗口的重绘不能烧穿上层弹出窗。
+    void composeAbove(HWND hWnd, const RECT &rcScreen) const;
     void EnableWindow(HWND hWnd, BOOL bEnable);
     BOOL IsIconic(HWND hWnd) const;
     BOOL IsZoomed(HWND hWnd) const;
@@ -264,6 +277,12 @@ private:
     CaretInfo m_caretInfo;
     UINT m_caretBlinkTime;
     SClipboard *m_clipboard;
+    // z 序 = 创建序（底→顶）。这个端口没有窗口管理器，弹出窗（SDropDownWnd 等）
+    // 是后建的普通 _Window，只有创建顺序能表达"谁盖着谁"。
+    std::vector<HWND> m_zTop;
+    // 至少成功上过一次屏的窗口：没画过的窗口画布是全 0（新建/刚 resize 过），
+    // 参与合成前必须跳过，否则会在屏幕上刷出一块黑的。
+    std::set<HWND> m_committed;
 };
 
 class SConnMgr {
