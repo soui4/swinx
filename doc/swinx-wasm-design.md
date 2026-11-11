@@ -45,7 +45,7 @@
 | 同步对话框不存在 | `GetOpenFileNameA` 无法本次调用内返回 | 保留同步版显式拒绝，新增 `SwinxPickFileAsyncA`（`swinx/include/commdlg.h:253-284`） |
 | 无本地 IME / 音频设备 / 系统剪贴板 | `Imm*` 全部无源、`PlaySound` 无声 | IME 桩显式失败，组合输入由 DOM 事件注入；音频走宿主 WebAudio 钩子；剪贴板走 `clipboardData` / `navigator.clipboard`（§7.4） |
 | wasm32 线性内存从 0 开始 | `IS_INTRESOURCE` 判据 `(ptr>>16)==0` 会把低 64 KB 的字符串字面量当成整数原子号 | 链接钉 `-Wl,--stack-first`，并加启动自检 `lowmem.cpp`（§9） |
-| 跨源与线程隔离 | `-pthread` 产物含 `SharedArrayBuffer` | 只有 worker 腿需要 COOP/COEP 响应头，由 `serve-isolated.py` 提供；默认泵腿任意静态服务即可 |
+| 跨源与线程隔离 | `-pthread` 产物含 `SharedArrayBuffer` | 只有 worker 腿需要 COOP/COEP 响应头，由 `tools/wasm/serve-isolated.py` 提供；默认泵腿任意静态服务即可 |
 | 没有可重入的嵌套消息循环 | iOS 那种 `dispatch_semaphore` + 嵌套 runloop 的「异步包同步」不可用 | 结论：只做真异步 API，不用 `-sASYNCIFY` 把代价摊给整个模块 |
 
 ---
@@ -80,7 +80,7 @@ graph TD
 | swinx 兼容面 | `swinx/src/*.cpp`、`swinx/src/cmnctl32/`、`swinx/src/platform/posix/` | Win32 窗口/GDI/内核对象语义；posix 层与 Linux/macOS/iOS/移动端共用 |
 | wasm 平台层 | `swinx/src/platform/wasm/` | 消息队列、定时器、窗口 z 序、帧缓冲、输入注入、剪贴板、文件选择、音频 |
 | GDI 后端 | `swinx/src/gdi/canvas2d/` 或 `swinx/src/gdi/cairo/` | DC/位图/文本/路径绘制与上屏 |
-| 宿主壳 | `demos/wasm-demo/soui-host.js`、`soui.html`、`serve-isolated.py` | canvas、事件注入、IME 代理、WebAudio、加载进度、隔离响应头与网络反代 |
+| 宿主壳 | `demos/wasm-demo/soui-host.js`、`soui.html`、`tools/wasm/serve-isolated.py` | canvas、事件注入、IME 代理、WebAudio、加载进度、隔离响应头与 WS 隧道；需要同源 HTTP 转发的 app 另有自己的服务入口（如 `demos/fundholdings/wasm/serve-fundholdings.py`） |
 
 两条绘制路径的差别集中在「谁光栅化」：
 
@@ -214,7 +214,7 @@ node demos/fun_test/wasm/run-node.js
 
 - **WASMFS**：默认 JS 文件系统下 worker 的每次 stdio 都要主线程在 futex 忙等里代跑，而本端口主线程从不阻塞，实测 worker 的 `fopen` 永不返回。
 - **INITIAL_MEMORY > STACK_SIZE**：硬性要求（32 MB 栈 → 64 MB 初始内存）；worker 自己的栈另按 4 MB 从堆里分配。
-- **代价**：产物含 `SharedArrayBuffer`，页面必须 `crossOriginIsolated`。`demos/wasm-demo/serve-isolated.py:248-254` 发 `Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp`；普通 `python3 -m http.server` 跑不了 worker 腿。
+- **代价**：产物含 `SharedArrayBuffer`，页面必须 `crossOriginIsolated`。`tools/wasm/serve-isolated.py` 的 `end_headers()` 发 `Cross-Origin-Opener-Policy: same-origin` 与 `Cross-Origin-Embedder-Policy: require-corp`；普通 `python3 -m http.server` 跑不了 worker 腿。
 
 因此该开关**默认 OFF**，默认产物、壳页与门禁都不变。
 
@@ -437,7 +437,7 @@ sequenceDiagram
 - **剪贴板写出**：`Module.souixClipboardWrite`（`:447-452`）→ `navigator.clipboard`（需用户手势/权限）。
 - **加载进度**：`soui-host.js` 用 `fetch` 流式读 `.wasm`/`.data`（`:356-384`）、`WebAssembly.compile` + `instantiateWasm`（`:1049-1087`）；`soui.html` 只是 `--shell-file` 的排版骨架与启动调用（`:137-142`）。
 - **上屏**：`presentDirtyRect`（`:633-691`）按 `Module.fbFormat` 分 canvas / rgba / argb 三条路径；canvas2d 走 drawImage，cairo 走 ImageData。
-- **服务**：`serve-isolated.py` 提供 `.wasm` MIME、COOP/COEP、`--ws-proxy`、`--http-proxy`（见 §8.3），默认端口 8080。
+- **服务**：`tools/wasm/serve-isolated.py` 提供 `.wasm` MIME、COOP/COEP、`--ws-proxy`（见 §8.3），默认端口 8080；`--http-proxy` 端点属于 fundholdings，见 `demos/fundholdings/wasm/serve-fundholdings.py`。
 
 ### 7.5 资源
 
@@ -472,7 +472,7 @@ sequenceDiagram
 |---|---|---|
 | WebSocket | `components/ws/src/wasm/WsClientWasm.cpp`：Emscripten WebSocket API（`emscripten_websocket_new`，`:288-331`），`createOnMainThread=true` | 只提供客户端，`CreateWsServer` 返回 NULL；`onmessage` 的 `e->data` 回调返回即失效，必须当场拷贝成 `std::vector`；收包交付经 `ITaskLoop` 投递队列（`CWsWasmMailbox`），锁内拷贝 + 锁内调监听器 |
 | HTTP | `components/httpclient/wasm/HttpClient.cpp`：同步 XHR（`xhr.open(..., false)`，`:35-38`），前缀 `/__soui_http?url=` | 禁止头改名成 `X-Soui-*`，Cookie 走 `X-Soui-Cookie`；主线程上的同步 XHR 会抛 `InvalidAccessError`，所以必须跑在 TaskLoop worker |
-| 反代 | `serve-isolated.py`：`--ws-proxy`（`:173-221`，只隧道带 `Upgrade: websocket` 的 GET，原样转发请求行与全部头，101 之后 `select` 双向搬）；`--http-proxy`（`:105-171`） | 隧道必须用 `ThreadingTCPServer`，一条活着的 WebSocket 会占住 handler 线程 |
+| 反代 | `tools/wasm/serve-isolated.py` 的 `--ws-proxy`（`tunnel_websocket()`，只隧道带 `Upgrade: websocket` 的 GET，原样转发请求行与全部头，101 之后 `select` 双向搬）；`demos/fundholdings/wasm/serve-fundholdings.py` 的 `--http-proxy`（`forward_http()`） | 隧道必须用 `ThreadingTCPServer`，一条活着的 WebSocket 会占住 handler 线程 |
 
 `SOUI_BUILD_WS` / `SOUI_BUILD_HTTPCLIENT` 在库侧默认 OFF；cnchess 脚本开 WS + RES_ZIP，fundholdings 脚本开 HTTPCLIENT。
 
@@ -544,7 +544,7 @@ sequenceDiagram
 
 ### 11.2 运行验证
 
-- 起服务：`python3 demos/wasm-demo/serve-isolated.py`（worker 腿必须用它或等价的 COOP/COEP 头；泵腿任意静态服务）。
+- 起服务：`python3 tools/wasm/serve-isolated.py demos/wasm-demo`（worker 腿必须用它或等价的 COOP/COEP 头；泵腿任意静态服务；无参时服务当前工作目录）。
 - 无头烟测：`node demos/wasm-demo/smoke.js`，断言导出面、绘制/上屏计数、TaskLoop 后端标记；CI 两腿分别校验 `pt=0` / `pt=1`。
 - GDI 后端 A/B：`demos/fun_test/wasm` 分别用 `canvas2d` / `cairo` 配置，产物落 `demos/fun_test/out.<backend>/`，`node demos/fun_test/wasm/run-node.js`（假 DOM/canvas 桩）或浏览器打开 `browser-runner.html`（真 canvas）。
 
