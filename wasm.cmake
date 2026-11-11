@@ -84,6 +84,10 @@ if(SWINX_WASM_GDI_BACKEND STREQUAL "canvas2d")
     add_compile_options(-Wno-unused-variable)
 else()
     # cairo 后端：需要 thirdparty 静态库（cairo/fontconfig/freetype/pixman-1）。
+    # -msimd128：开启 wasm SIMD，让 presentPending 里移植自 soui-android-lib 的
+    # BGRA→RGBA 换序走 wasm_v8x16_swizzle（pshufb 等效），而不是逐字节标量。
+    # 现代浏览器（Chrome/Edge/Firefox/Safari，2021 起）均已基线支持 wasm SIMD。
+    add_compile_options(-msimd128)
     if(NOT TARGET cairo)
         message(FATAL_ERROR "cairo target not found -- build thirdparty as static libs (-DSOUI_ENABLE_CORE_LIB=ON).")
     endif()

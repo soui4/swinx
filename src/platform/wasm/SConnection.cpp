@@ -32,6 +32,9 @@
 #include <functional>
 #include <sched.h> // sched_yield(): replaces the fork's FreeRTOS taskYIELD() in the wait-poll loop
 #include <emscripten.h> // EM_ASM：PushTextToBrowser 把剪贴板文本推给页面
+#if defined(__wasm_simd128__)
+#include <wasm_simd128.h> // wasm_v8x16_swizzle：wasm 版 pshufb，移植 soui-android-lib 的 BGRA→RGBA 换序
+#endif
 
 #define kLogTag "SConnection"
 
@@ -428,10 +431,18 @@ SConnection::SConnection(int screenNum)
     m_hQueueEvt = CreateEventA(nullptr, FALSE /*auto reset*/, FALSE, nullptr);
 #ifdef SWINX_WASM_CANVAS2D
     /* 告诉 JS 上屏链路：canvas2d 后端不用帧缓冲承载像素，脏矩形由 C++ 侧直接
-     * drawImage 合成到显示画布（见 presentPending）。soui.html 见到这个标记就
-     * 只做耗时统计、不再读 HEAPU8 搬像素。cairo 后端不设它，走原来的 fb 路径。
+     * drawImage 合成到显示画布（见 presentPending）。soui.host.js 见到这个标记就
+     * 只做耗时统计、不再读 HEAPU8 搬像素。cairo 后端走下面的 'rgba' 零拷贝路径。
      * 用 run_script 而不是 val::module_property：后者返回右值，无法赋值。 */
     emscripten_run_script("Module.fbFormat = 'canvas';");
+#else
+    /* cairo 后端：presentPending 在把 cairo ARGB32 脏区拷贝进帧缓冲时已经用
+     * SwinxBgraToRgba 就地换成 RGBA（SIMD 版移植自 soui-android-lib），所以帧
+     * 缓冲里就是浏览器需要的 RGBA。这里把 fbFormat 设成 'rgba'，让 soui-host.js
+     * 走零拷贝快路径（presentDirtyRect 直接 putImageData），不再在 JS 里每帧逐像素
+     * 换序（原 fallback 路径 ~3.7ms/帧）。颜色正确、且是正式可用的优化路径。
+     * 用 run_script 而不是 val::module_property：后者返回右值，无法赋值。 */
+    emscripten_run_script("Module.fbFormat = 'rgba';");
 #endif
     SLOG_FMTI("SConnection created for thread %d", m_tid);
 }
@@ -1734,6 +1745,40 @@ void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
     m_pendingCommits.insert(std::make_pair(hWnd, pcNew));
 }
 
+#ifndef SWINX_WASM_CANVAS2D
+// BGRA→RGBA：cairo CAIRO_FORMAT_ARGB32 在小端内存里布局为 BGRA，浏览器 ImageData /
+// Canvas2D 需要 RGBA。把 soui-android-lib/SouiSurfaceProxy.cpp 的 SSSE3
+// _mm_shuffle_epi8 通道交换原样移植到 wasm：wasm_v8x16_swizzle 就是 pshufb 的等效
+// 指令，控制向量 [2,1,0,3,...] 与 Android 端完全一致。逐行把 cairo 脏区拷贝进帧
+// 缓冲并就地换序，于是 JS 侧 Module.fbFormat='rgba' 零拷贝快路径上传的就是正确的
+// RGBA，不再需要在 JS 里每帧逐像素换序（旧兜底路径 ~3.7ms/帧）。未开 -msimd128
+// 时退回逐字节标量交换（逻辑一致、仅慢一点）。
+static inline void SwinxBgraToRgba(uint8_t *dst, const uint8_t *src, int pixels)
+{
+    int x = 0;
+#if defined(__wasm_simd128__)
+    alignas(16) static const uint8_t kBGRA2RGBA[16] = {
+        2, 1, 0, 3,  6, 5, 4, 7,  10, 9, 8, 11,  14, 13, 12, 15
+    };
+    const v128_t vPerm = wasm_v128_load(kBGRA2RGBA);
+    const int wSimd = pixels & ~3;
+    for (; x < wSimd; x += 4)
+    {
+        v128_t v = wasm_v128_load(src + (size_t)x * 4);
+        v128_t o = wasm_v8x16_swizzle(v, vPerm);
+        wasm_v128_store(dst + (size_t)x * 4, o);
+    }
+#endif
+    for (; x < pixels; ++x)
+    {
+        const uint8_t *q = src + (size_t)x * 4;
+        uint8_t *p = dst + (size_t)x * 4;
+        uint8_t t = q[0]; p[0] = q[2]; p[2] = t;   // 交换 B / R
+        p[1] = q[1]; p[3] = q[3];                  // G、A 原样保留
+    }
+}
+#endif
+
 void SConnection::presentPending(HWND hWnd, const RECT &rcPending)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
@@ -1854,11 +1899,15 @@ void SConnection::presentPending(HWND hWnd, const RECT &rcPending)
         return;
 
     int w = rcFb.right - rcFb.left;
+    uint8_t *fbBits = (uint8_t *)SwinxFbBits();
+    const uint8_t *srcBits = (const uint8_t *)srcBase;
     for (int y = 0; y < rcFb.bottom - rcFb.top; ++y)
     {
-        memcpy(SwinxFbBits() + (size_t)(rcFb.top + y) * SwinxFbStride() + rcFb.left,
-               srcBase + (size_t)(rcSrc.top + y) * stride + rcSrc.left,
-               w * sizeof(uint32_t));
+        // cairo ARGB32 在小端内存里是 BGRA；拷贝进帧缓冲的同时换成 RGBA，
+        // 这样 JS 零拷贝快路径上传的就是浏览器需要的 RGBA（见 SwinxBgraToRgba）。
+        uint8_t *dst = fbBits + ((size_t)(rcFb.top + y) * SwinxFbStride() + rcFb.left) * 4;
+        const uint8_t *src = srcBits + ((size_t)(rcSrc.top + y) * stride + rcSrc.left) * 4;
+        SwinxBgraToRgba(dst, src, w);
     }
     RECT dirty = rcFb;
 #endif
