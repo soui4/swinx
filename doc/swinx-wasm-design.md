@@ -18,7 +18,7 @@
 | 链接形态 | 全静态。浏览器无 `dlopen`，组件必须编进同一个 wasm 模块（`SOUI_ENABLE_CORE_LIB/COM_LIB=ON`） |
 | 主循环 | 浏览器主线程**不可阻塞**。`emscripten_set_main_loop(..., 0, 1)` 跟随 rAF，单次泵有帧预算；消息型/回调型定时器由端口层投递 |
 | 构建 | 根 `CMakeLists.txt` 不感知 wasm；每个 app 自己是顶层工程，`include(__cmake/wasm-lib-config.cmake)` 后 `add_subdirectory(<soui4>)` **仅编库** |
-| 现有四条腿 | `demos/wasm-demo`（演示）、`games/cnchess/client/wasm`（联网对战）、`demos/fundholdings/wasm`（移动端竖屏 + HTTP）、`demos/fun_test/wasm`（GDI 单测 A/B） |
+| 现有四条腿 | `demos/wasm-demo`（演示）、`games/cnchess/client/wasm`（联网对战）、`demos/fundholdings/wasm`（桌面版 UI + HTTP）、`demos/fun_test/wasm`（GDI 单测 A/B） |
 | 线程 | 默认单线程（泵后端）；`SOUI_WASM_PTHREADS=ON` 切真 worker，代价是站点必须 `crossOriginIsolated` |
 | 资源 | `--preload-file` 打进 `.data`（MEMFS/WASMFS）；canvas2d 后端**不预载字体**，cairo 后端必须预载 |
 
@@ -155,7 +155,7 @@ flowchart LR
 |---|---|---|---|---|---|
 | `demos/wasm-demo` | `wasm-demo`（`CMakeLists.txt:29`） | `../..` | `soui-wasm-demo`（`:188`） | `out/`（`:38-39`） | 全功能演示；11 页控件、Lua 游戏、SVG 皮肤 |
 | `games/cnchess/client/wasm` | `cnchess-wasm`（`:2`） | `../../../../` | `cnchess-wasm`（`:123`） | `out_pt/`（`-pthread`）/ `out/`（`:42-48`） | 浏览器原生 WebSocket；另加 `games/cnchess/algorithm` |
-| `demos/fundholdings/wasm` | `fundholdings-wasm`（`:2`） | `../../..` | `fundholdings-wasm`（`:81`） | `out_pt/` / `out/`（`:28-34`） | 390×844 竖屏资源、`-DSOUI_BUILD_HTTPCLIENT=ON` |
+| `demos/fundholdings/wasm` | `fundholdings-wasm`（`:2`） | `../../..` | `fundholdings-wasm`（`:81`） | `out_pt/` / `out/`（`:28-34`） | 1440×860 桌面版资源、`-DSOUI_BUILD_HTTPCLIENT=ON` |
 | `demos/fun_test/wasm` | `fun_test-wasm`（`:16`） | `../../..` | `fun_test`（`:62`） | `../out.<backend>/`（`:41`） | 只编 4 个纯 GDI 用例；`SOUI_BUILD_WASM_FUN_TEST ON CACHE INTERNAL`（`:25-26`）把 gtest 拉进最小图 |
 
 `out/` 与 `out_pt/` 必须分开：`.js/.wasm/.data` 三件套混放会出现「新 wasm 配旧胶水」的 `LinkError`（`games/cnchess/client/wasm/CMakeLists.txt:30-36`）。`wasm-demo` 自身不按后端分目录，CI 因此让两条腿各占一台 runner。
