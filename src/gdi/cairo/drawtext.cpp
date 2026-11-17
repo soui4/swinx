@@ -19,6 +19,24 @@ void cairo_draw_text(cairo_t *ctx, const char *text, int len, RECT *box, UINT uF
 //////////////////////////////////////////////////////////////////////////
 void TextLayoutEx::init(cairo_t *ctx, const char *text, size_t length, const RECT &rc, UINT uFormat)
 {
+    // 展开 '\t'：Win32 GDI 的 DrawText 会把制表符推进到下一个制表位，但
+    // cairo/fontconfig 下 U+0009 没有字形，会画成 .notdef 方块（SOUI 菜单
+    // 的 "标题\t快捷键" 就中招）。这里统一换成等宽空格，测量与绘制走同一
+    // 条路径，宽度保持一致。
+    std::vector<char> expandedTab;
+    if (text && memchr(text, '\t', length))
+    {
+        expandedTab.reserve(length + 16);
+        for (size_t i = 0; i < length; i++)
+        {
+            if (text[i] == '\t')
+                expandedTab.insert(expandedTab.end(), 4, ' ');
+            else
+                expandedTab.push_back(text[i]);
+        }
+        text = expandedTab.data();
+        length = expandedTab.size();
+    }
     if (uFormat & DT_NOPREFIX)
     {
         m_text.resize(length);
