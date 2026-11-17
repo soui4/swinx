@@ -1164,22 +1164,19 @@ BOOL WINAPI AddRectToRegion(HRGN hrgn, const RECT *rect)
     {
         RECT *cur = &obj->rects[0];
 
-        if (cur->left <= rc.left && cur->top <= rc.top &&
-            cur->right >= rc.right && cur->bottom >= rc.bottom)
+        if (cur->left <= rc.left && cur->top <= rc.top && cur->right >= rc.right && cur->bottom >= rc.bottom)
         { // already invalidated: the queue coalesces WM_PAINT anyway
             GDI_ReleaseObj(hrgn);
             return TRUE;
         }
-        if (rc.left <= cur->left && rc.top <= cur->top &&
-            rc.right >= cur->right && rc.bottom >= cur->bottom)
+        if (rc.left <= cur->left && rc.top <= cur->top && rc.right >= cur->right && rc.bottom >= cur->bottom)
         { // the new rect swallows the old one
             *cur = rc;
             obj->extents = rc;
             GDI_ReleaseObj(hrgn);
             return TRUE;
         }
-        if (cur->top == rc.top && cur->bottom == rc.bottom &&
-            cur->left <= rc.right && rc.left <= cur->right)
+        if (cur->top == rc.top && cur->bottom == rc.bottom && cur->left <= rc.right && rc.left <= cur->right)
         { // horizontal sweep (the animated-box case): exact rectangle union
             cur->left = smin(cur->left, rc.left);
             cur->right = smax(cur->right, rc.right);
@@ -1187,8 +1184,7 @@ BOOL WINAPI AddRectToRegion(HRGN hrgn, const RECT *rect)
             GDI_ReleaseObj(hrgn);
             return TRUE;
         }
-        if (cur->left == rc.left && cur->right == rc.right &&
-            cur->top <= rc.bottom && rc.top <= cur->bottom)
+        if (cur->left == rc.left && cur->right == rc.right && cur->top <= rc.bottom && rc.top <= cur->bottom)
         { // vertical sweep: exact rectangle union
             cur->top = smin(cur->top, rc.top);
             cur->bottom = smax(cur->bottom, rc.bottom);
