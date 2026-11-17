@@ -625,7 +625,23 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
                 }
             }
             RECT rcText = { rc.left + checkArea, rc.top, rc.right - 10, rc.bottom };
-            DrawTextA(memdc, txt, -1, &rcText, DT_SINGLELINE | DT_VCENTER);
+            // 菜单文本约定 "标题\t快捷键"。原生 Win32 的 DrawText 会把 '\t'
+            // 当制表位，但 cairo/fontconfig 下 U+0009 没有字形，会被画成
+            // .notdef 方块，且两段挤在一起。这里按 '\t' 拆成左右两列手动绘制。
+            const char *pTab = strchr(txt, '\t');
+            if (pTab)
+            {
+                std::string strLeft(txt, (size_t)(pTab - txt));
+                const char *pszRight = pTab + 1;
+                DrawTextA(memdc, strLeft.c_str(), -1, &rcText,
+                          DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_END_ELLIPSIS);
+                DrawTextA(memdc, pszRight, -1, &rcText,
+                          DT_SINGLELINE | DT_VCENTER | DT_RIGHT | DT_END_ELLIPSIS);
+            }
+            else
+            {
+                DrawTextA(memdc, txt, -1, &rcText, DT_SINGLELINE | DT_VCENTER);
+            }
 
             if (oldBrush)
             {
@@ -731,6 +747,22 @@ BOOL CMenu::SetMenuItemInfo(UINT item, BOOL fByPosition, LPCMENUITEMINFOA lpmi)
         if (lpmi->fMask & MIIM_DATA)
         {
             pItem->m_data = (LPCSTR)lpmi->dwItemData;
+        }
+        // 原实现漏了 MIIM_FTYPE / MIIM_STATE：SOUI 的菜单项是 owner-draw 的，
+        // 一旦走 SetMenuItemInfo 设置 fType=MF_OWNERDRAW 而这里丢掉，
+        // IsOwnerDraw() 就为 false，菜单会退回默认绘制——'\t' 分隔的快捷键
+        // 于是被当成普通字符画成 .notdef 方块，且左右两列不再对齐。
+        if (lpmi->fMask & (MIIM_FTYPE | MIIM_TYPE))
+        {
+            pItem->ModifyMenuFlag(lpmi->fType);
+        }
+        if (lpmi->fMask & MIIM_STATE)
+        {
+            pItem->ModifyMenuFlag(lpmi->fState);
+        }
+        if (lpmi->fMask & MIIM_ID)
+        {
+            pItem->m_id = lpmi->wID;
         }
         return TRUE;
     }
