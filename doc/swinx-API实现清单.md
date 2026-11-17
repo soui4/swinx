@@ -30,11 +30,11 @@
 | 模块 | 实现 | 简单实现 | 部分实现 | 空实现 |
 |---|---|---|---|---|
 | 窗口、消息与用户界面（USER32 等价） | 198 | 8 | 0 | 6 |
-| 图形设备接口（GDI32 等价） | 167 | 31 | 2 | 6 |
+| 图形设备接口（GDI32 等价） | 168 | 31 | 2 | 6 |
 | 系统、文件、进程与线程（KERNEL32 等价） | 301 | 18 | 7 | 2 |
 | COM / OLE（OLE32·OLEAUT32 等价） | 56 | 8 | 0 | 4 |
 | 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 79 | 18 | 4 | 2 |
-| 多媒体、资源及其它（WINMM·杂项） | 195 | 9 | 1 | 21 |
+| 多媒体、资源及其它（WINMM·杂项） | 194 | 9 | 1 | 21 |
 
 ## 4. 模块 API 明细
 
@@ -271,6 +271,7 @@
 | `AddFontResourceExA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `AddFontResourceExW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `AddFontResourceW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
+| `AddRectToRegion` | 实现 | src/region.cpp |  |
 | `AlphaBlend` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `Arc` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `BeginPath` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
@@ -1072,7 +1073,6 @@
 | `OemToCharW` | 实现 | src/strapi.cpp |  |
 | `PlatformAPI_Deinit` | 实现 | src/platform_api.cpp | 平台注入接口内部辅助 |
 | `PlaySound` | 实现 | src/platform/*/audio.cpp 等 2 处 | 只支持文件播放（SND_MEMORY / SND_RESOURCE / SND_ALIAS 显式返回 FALSE），且一律异步：SND_SYNC 按 SND_ASYNC 处理。各后端的通道不同——linux/macOS/iOS 用播放线程（ALSA 或 aplay），Android/OHOS 转发 g_platformAPI.audio.playSound，wasm 从 wasm 文件系统读出 wav 交给页面实现的 Module.swinxAudioPlay（WebAudio；宿主未安装该钩子时返回 FALSE）；freertos 不编译本 API，引用即链接失败 |
-| `QueryInterface` | 实现 | src/malloc_impl.cpp（另有 1 个平台分支） | COM 方法而非 Win32 导出 API：这里统计的是 IMalloc（src/malloc_impl.cpp，CoGetMalloc 的可替换分配器）与 macOS 可访问性对象的实现 |
 | `RegCloseKey` | 实现 | src/platform/*/registry.cpp |  |
 | `RegCreateKeyExA` | 实现 | src/platform/*/registry.cpp |  |
 | `RegCreateKeyExW` | 实现 | src/platform/*/registry.cpp |  |
@@ -1310,7 +1310,7 @@
 以下 API 在 `include/*.h` 中有声明，但 swinx **没有符号定义**。SOUI 当前源码未引用它们；若第三方代码引用将产生链接错误。
 
 ```
-CreateTextServices                HyphenateProc                   
+CreateTextServices                FlatSB_GetScrollPropPtr         
 ```
 
 ## 7. 平台注入接口（platform_api.h）

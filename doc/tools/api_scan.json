@@ -1,18 +1,10 @@
 {
  "_meta": {
-  "decl_total": 1153,
+  "decl_total": 1145,
   "defined_total": 1143,
   "no_def": [
    "CreateTextServices",
-   "DEFINE_GUID",
-   "FlatSB_GetScrollPropPtr",
-   "HIWORD",
-   "HyphenateProc",
-   "LOWORD",
-   "SNDMSG",
-   "_aligned_free",
-   "free",
-   "memcpy"
+   "FlatSB_GetScrollPropPtr"
   ]
  },
  "funcs": {
@@ -8830,33 +8822,6 @@
     ]
    ]
   },
-  "QueryInterface": {
-   "headers": [
-    "mlang.h"
-   ],
-   "files": [
-    "malloc_impl.cpp",
-    "platform/cocoa/SNsAccessibility.mm"
-   ],
-   "agg": "impl",
-   "site_classes": [
-    [
-     "malloc_impl.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SNsAccessibility.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/cocoa/SNsAccessibility.mm",
-     "impl",
-     ""
-    ]
-   ]
-  },
   "timeGetTime": {
    "headers": [
     "mmsystem.h"
@@ -10652,6 +10617,22 @@
    "site_classes": [
     [
      "process.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "AddRectToRegion": {
+   "headers": [
+    "region.h"
+   ],
+   "files": [
+    "region.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "region.cpp",
      "impl",
      ""
     ]

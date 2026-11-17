@@ -152,13 +152,14 @@ def module_of(headers):
                 best, best_rank = mod, rank
     return best
 
-# no_def 中排除的非原型项（api_scan.py 会把宏展开与头内 inline 调用也收进 decls）：
-#   宏展开：LOWORD / HIWORD / DEFINE_GUID / IsEqualGUID / SNDMSG / wcstok
-#   CRT / 头内 inline 调用：free / memcpy / _aligned_free（后者在 malloc.h 里本就有 inline 定义）
-#   条件别名：FlatSB_GetScrollPropPtr 仅在 _WIN64 分支有原型，其余平台是 #define 别名，
-#             不按普通函数原型处理，本轮注释清理也保留它
+# no_def 的兜底排除（api_scan.py 现已结构性过滤：预处理指令连自带续行整体删除、
+# 头内 inline 函数体排除、函数式宏调用按 #define 名单跳过），正常不会再出现
+# 宏展开（LOWORD / HIWORD / DEFINE_GUID / SNDMSG）或 CRT 名字（free / memcpy /
+# _aligned_free）误入声明清单；本表保留作兜底。
+# FlatSB_GetScrollPropPtr 是真实未实现（_WIN64 分支才有原型，其余平台 #define
+# 别名），不再从 no_def 里排除。
 MACROS = {"LOWORD", "HIWORD", "DEFINE_GUID", "IsEqualGUID", "SNDMSG", "wcstok",
-          "free", "memcpy", "_aligned_free", "FlatSB_GetScrollPropPtr"}
+          "free", "memcpy", "_aligned_free"}
 
 # ---------------- 分级 ----------------
 def level_of(name, v):

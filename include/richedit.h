@@ -1264,7 +1264,9 @@ typedef struct _paraformat2
         WCHAR chHyph; // Depending on hyphenation type, character added, changed, etc.
     } HYPHRESULT;
 
-    void WINAPI HyphenateProc(WCHAR *pszWord, LANGID langid, long ichExceed, HYPHRESULT *phyphresult);
+    /* Hyphenation callback: the application provides it (MS richedit.h declares
+     * it as a callback TYPE, not an API prototype -- swinx never implements it). */
+    typedef void(WINAPI *HyphenateProc)(WCHAR *pszWord, LANGID langid, long ichExceed, HYPHRESULT *phyphresult);
     typedef struct tagHyphenateInfo
     {
         SHORT cbSize;          // Size of HYPHENATEINFO structure

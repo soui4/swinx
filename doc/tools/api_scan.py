@@ -28,20 +28,68 @@ INC = os.path.join(ROOT, "include")
 SRC = os.path.join(ROOT, "src")
 
 # ---------- 1. 从头文件收集声明 ----------
+# 函数式宏名（#define NAME( ... )）：头文件里的宏调用 DEFINE_GUID(name, ...) 、
+# LOWORD(l) 一类长得与函数声明完全一样，但它们有宏定义、不需要（也没有）源码定义。
+FUNCLIKE_MACROS = set()
+for h in sorted(os.listdir(INC)):
+    if not h.endswith(".h"):
+        continue
+    raw = open(os.path.join(INC, h), encoding="utf-8", errors="replace").read()
+    FUNCLIKE_MACROS.update(re.findall(r"(?m)^\s*#\s*define\s+([A-Za-z_]\w*)\s*\(", raw))
+
+def scope_mask(text):
+    """按字符标注 1 = 位于函数体/初始化列表内部，0 = 声明作用域。
+
+    头文件里大量 static inline 函数（malloc.h 的 _aligned_free 一族），
+    函数体内的 `free(ptr);`、`memcpy(p, ...);` 语句与声明 `name(...);` 形状
+    完全一致；跟踪花括号——`{` 前面紧跟 `)`（或 const/noexcept）即为函数体——
+    就能把它们排除，而 `extern "C" {` / `struct x {` 不受影响。
+    在剥注释与字符串之后的同一份文本上计算，保证与声明匹配位置对齐。
+    """
+    mask = bytearray(len(text))
+    stack = [False]
+    for i, c in enumerate(text):
+        if c == "{":
+            j = i - 1
+            while j >= 0 and text[j] in " \t\r\n":
+                j -= 1
+            k = j
+            word = ""
+            while k >= 0 and (text[k].isalnum() or text[k] == "_"):
+                word = text[k].lower() + word
+                k -= 1
+            if text[j] == ")" or word in ("const", "override", "noexcept"):
+                stack.append(True)  # 函数体
+            else:
+                stack.append(False)  # extern "C" / struct / enum / namespace
+        elif c == "}":
+            if len(stack) > 1:
+                stack.pop()
+        mask[i] = 1 if stack[-1] else 0
+    return mask
+
 decls = {}  # name -> set(header)
 for h in sorted(os.listdir(INC)):
     if not h.endswith(".h"):
         continue
     text = open(os.path.join(INC, h), encoding="utf-8", errors="replace").read()
+    # 预处理指令（含反斜杠续行）整体删除。多行宏的续行不以 # 开头，
+    # 逐行过滤漏得掉它们——SNDMSG / LOWORD / HIWORD 的“声明”全部来自
+    # winuser.h:290、commctrl.h:1541 这类宏续行。注意不能用 `[^\n]*\\\s*\n`
+    # 的写法：贪婪的 `[^\n]*` 会把行尾续行符 `\` 一并吃掉，续行组就永远
+    # 匹配不到；改用逐字符交替「非换行非反斜杠 | 反斜杠+换行」。
+    text = re.sub(r"(?m)^[ \t]*#(?:\\[ \t]*\n|[^\n\\])*", "", text)
     text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
     text = re.sub(r"//[^\n]*", " ", text)
-    # 去掉 typedef 行与预处理行
-    lines = [l for l in text.split("\n") if not l.strip().startswith("#")]
-    text = "\n".join(lines)
+    # 字符串字面量内容清空，避免里面的 { } 破坏 scope_mask 的括号配平
+    text = re.sub(r'"(?:\\.|[^"\\])*"', '""', text)
+    mask = scope_mask(text)
     # 函数声明：类型 名称(参数); —— 非多行括号内的情况用贪心匹配。
     # 尾部的 `__attribute__((weak))` 之类也算声明的一部分（htons 一族就这么写的）。
     for m in re.finditer(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(((?:[^()]|\([^()]*\))*)\)\s*(?:CONST|const)?\s*(?:__attribute__\s*\(\([^)]*\)\)\s*)?;", text):
         name = m.group(1)
+        if name in FUNCLIKE_MACROS:
+            continue  # 宏调用，不是函数声明（DEFINE_GUID 一族）
         before = text[max(0, m.start() - 60):m.start()]
         if re.search(r"typedef\s*$", before):
             continue
@@ -52,6 +100,8 @@ for h in sorted(os.listdir(INC)):
             continue
         if name in ("WINAPI", "CALLBACK", "CDECL", "APIENTRY", "if", "for", "while", "switch", "return", "sizeof"):
             continue
+        if mask[m.start()]:
+            continue  # 位于某个函数体内部：是调用语句，不是声明
         decls.setdefault(name, set()).add(h)
 
 # ---------- 2. 在源码中定位定义并抽取函数体 ----------
