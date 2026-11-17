@@ -19,6 +19,15 @@
  */
 #include "freertos_sync.h"
 
+// swinx_fr:: (the RTOS primitive wrapper) normally arrives through the STL
+// shims: <mutex> here is src/platform/freertos/stl/mutex, which includes
+// swinx_freertos_api.h.  A build that uses the real libstdc++ headers (the
+// ESP-IDF port does: -std=gnu++17 + IDF's own <mutex>) resolves <mutex> to
+// the standard one, so swinx_fr is never declared and every SRWLOCK below
+// fails with "'swinx_fr' has not been declared".  Pull it in explicitly --
+// harmless (header has #pragma once) where the shims do provide it.
+#include "swinx_freertos_api.h"
+
 #include <mutex>
 #include <thread>
 #include <cstring>

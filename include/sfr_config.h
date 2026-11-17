@@ -14,6 +14,8 @@
  *                                               SFR_HOSTED   = 1
  *  SOUI_FREERTOS_REAL                           SFR_KERNEL_REAL = 1
  *  SOUI_FREERTOS_HOST_EMU                       SFR_KERNEL_EMU  = 1
+ *  SOUI_PLATFORM_ESPIDF / ESP_PLATFORM          SFR_ESPIDF       = 1
+ *  __XTENSA__ (compiler builtin)                SFR_ARCH_XTENSA  = 1
  *
  * The switches answer two independent questions, which is why they are
  * spelled out separately instead of being re-derived at every call site:
@@ -34,12 +36,41 @@
  *   SFR_KERNEL_EMU    the same primitives emulated with POSIX calls (used by
  *                     test builds that do not link the kernel).
  *
+ *   SFR_ESPIDF        ESP-IDF is the RTOS/CRT provider.  It is a THIRD runtime
+ *                     shape: a full newlib + libstdc++ + VFS + pthread CRT, but
+ *                     no host window system.  SFR_HOSTED cannot express it --
+ *                     HOSTED=1 means "the Win32 API comes from a host OS",
+ *                     HOSTED=0 means "swinx must supply the CRT surface".
+ *                     The esp32s3 skeleton therefore builds with
+ *                     SFR_PLATFORM=1 / SFR_HOSTED=0 / SFR_KERNEL_REAL=1 and
+ *                     SFR_ESPIDF=1; the ~25 SFR_HOSTED call sites (strapi.h,
+ *                     sysapi.h, ctypes.h, fileapi.h, synhandle.h,
+ *                     sysbridge.cpp, ...) still need per-site calibration
+ *                     against IDF's newlib.  This switch is the hook for that
+ *                     work and deliberately changes NO existing decision yet.
+ *
+ *   SFR_ARCH_XTENSA   derived from the compiler builtin, never from a build
+ *                     flag.  It selects the ESP32-S3 critical-section form in
+ *                     winobjs.cpp instead of the Cortex-M3 PRIMASK assembly.
+ *
  * SFR_KERNEL_REAL and SFR_KERNEL_EMU are mutually exclusive and both 0 is a
  * legal configuration (nothing in the port needs kernel primitives yet).
  *
  * Every switch is defined in both states, on every platform, so #if works
  * without #ifdef and "not defined" can never be mistaken for "0".
  */
+
+#if defined(SOUI_PLATFORM_ESPIDF) || defined(ESP_PLATFORM)
+#define SFR_ESPIDF 1
+#else
+#define SFR_ESPIDF 0
+#endif
+
+#if defined(__XTENSA__)
+#define SFR_ARCH_XTENSA 1
+#else
+#define SFR_ARCH_XTENSA 0
+#endif
 
 #if defined(FREERTOS_HOST)
 #define SFR_PLATFORM 1

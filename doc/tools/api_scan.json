@@ -469,10 +469,16 @@
     "fileapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/fileapi.cpp",
      "impl",
@@ -565,10 +571,16 @@
     "fileapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/fileapi.cpp",
      "impl",
@@ -581,10 +593,16 @@
     "fileapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/fileapi.cpp",
      "impl",
@@ -597,10 +615,16 @@
     "fileapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/fileapi.cpp",
      "impl",
@@ -677,13 +701,13 @@
     "fileapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/fileapi.cpp",
     "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/fileapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -747,10 +771,16 @@
     "fileapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -955,10 +985,16 @@
     "fileapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/profile.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/profile.cpp",
      "impl",
@@ -1227,13 +1263,13 @@
     "fileapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/fileapi.cpp",
     "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/fileapi.cpp",
      "impl",
      ""
     ],
@@ -1265,13 +1301,13 @@
     "fileapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/fileapi.cpp",
     "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/fileapi.cpp",
      "impl",
      ""
     ],
@@ -1335,13 +1371,13 @@
     "fileapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/fileapi.cpp",
     "platform/posix/fileapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/fileapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -3814,7 +3850,7 @@
    ],
    "files": [
     "gdi/canvas2d/gdi.cpp",
-    "platform/freertos/sysbridge.cpp"
+    "platform/freertos/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -3824,7 +3860,7 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      ""
     ]
@@ -4915,16 +4951,10 @@
     "gdi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -4937,16 +4967,10 @@
     "gdi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -6311,16 +6335,10 @@
     "gdi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -6333,16 +6351,10 @@
     "gdi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
     "platform/posix/cursoricon.cpp"
    ],
    "agg": "impl",
    "site_classes": [
-    [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
     [
      "platform/posix/cursoricon.cpp",
      "impl",
@@ -6970,7 +6982,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -6984,7 +6996,7 @@
      ""
     ],
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7016,7 +7028,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7030,7 +7042,7 @@
      ""
     ],
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7062,7 +7074,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7076,7 +7088,7 @@
      ""
     ],
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7108,6 +7120,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7117,6 +7130,11 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7148,6 +7166,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7157,6 +7176,11 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7290,6 +7314,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7301,6 +7326,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/imm.mm",
@@ -7330,6 +7360,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7341,6 +7372,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/imm.mm",
@@ -7370,6 +7406,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7381,6 +7418,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/imm.mm",
@@ -7410,6 +7452,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7419,6 +7462,11 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7450,6 +7498,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7459,6 +7508,11 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7524,6 +7578,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7533,6 +7588,11 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7638,6 +7698,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7647,6 +7708,11 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7678,6 +7744,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7687,6 +7754,11 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7718,6 +7790,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7729,6 +7802,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/imm.mm",
@@ -7758,6 +7836,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7769,6 +7848,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/imm.mm",
@@ -7832,7 +7916,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7846,7 +7930,7 @@
      ""
     ],
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7878,7 +7962,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7892,7 +7976,7 @@
      ""
     ],
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7924,6 +8008,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7933,6 +8018,11 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7964,6 +8054,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -7975,6 +8066,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/imm.mm",
@@ -8004,6 +8100,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -8015,6 +8112,11 @@
      "platform/cocoa/imm.mm",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
     ],
     [
      "platform/ios/imm.mm",
@@ -8044,6 +8146,7 @@
    ],
    "files": [
     "platform/cocoa/imm.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
     "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
@@ -8053,6 +8156,11 @@
    "site_classes": [
     [
      "platform/cocoa/imm.mm",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -9295,6 +9403,7 @@
    ],
    "files": [
     "platform/cocoa/ole2.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
     "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
@@ -9306,6 +9415,11 @@
      "platform/cocoa/ole2.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/ole2.mm",
@@ -9381,6 +9495,7 @@
    ],
    "files": [
     "platform/cocoa/ole2.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
     "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
@@ -9390,6 +9505,11 @@
    "site_classes": [
     [
      "platform/cocoa/ole2.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
      "impl",
      ""
     ],
@@ -9421,6 +9541,7 @@
    ],
    "files": [
     "platform/cocoa/ole2.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
     "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
@@ -9432,6 +9553,11 @@
      "platform/cocoa/ole2.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/ole2.mm",
@@ -9461,6 +9587,7 @@
    ],
    "files": [
     "platform/cocoa/ole2.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
     "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
@@ -9472,6 +9599,11 @@
      "platform/cocoa/ole2.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/ole2.mm",
@@ -9501,6 +9633,7 @@
    ],
    "files": [
     "platform/cocoa/ole2.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
     "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
@@ -9512,6 +9645,11 @@
      "platform/cocoa/ole2.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/ole2.mm",
@@ -9541,6 +9679,7 @@
    ],
    "files": [
     "platform/cocoa/ole2.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
     "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
@@ -9550,6 +9689,11 @@
    "site_classes": [
     [
      "platform/cocoa/ole2.mm",
+     "impl",
+     ""
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
      "impl",
      ""
     ],
@@ -9581,6 +9725,7 @@
    ],
    "files": [
     "platform/cocoa/ole2.mm",
+    "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
     "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
@@ -9592,6 +9737,11 @@
      "platform/cocoa/ole2.mm",
      "impl",
      ""
+    ],
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ],
     [
      "platform/ios/ole2.mm",
@@ -11504,13 +11654,13 @@
     "shellapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/fileapi.cpp",
     "platform/posix/shellapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/fileapi.cpp",
      "impl",
      ""
     ],
@@ -13202,18 +13352,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/winobjs.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/interlocked.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/interlocked.cpp",
      "impl",
      ""
     ]
@@ -13224,18 +13368,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/winobjs.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/interlocked.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/interlocked.cpp",
      "impl",
      ""
     ]
@@ -13246,18 +13384,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/winobjs.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/interlocked.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/interlocked.cpp",
      "impl",
      ""
     ]
@@ -13268,12 +13400,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/posix/sysapi.cpp"
+    "platform/common/interlocked.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/posix/sysapi.cpp",
+     "platform/common/interlocked.cpp",
      "impl",
      ""
     ]
@@ -13284,18 +13416,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/winobjs.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/interlocked.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/winobjs.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/interlocked.cpp",
      "impl",
      ""
     ]
@@ -13382,13 +13508,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      ""
     ],
@@ -13420,18 +13546,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -13442,18 +13562,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -13496,18 +13610,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13556,18 +13664,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/codepage.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/codepage.cpp",
      "impl",
      ""
     ]
@@ -13578,18 +13680,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/codepage.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/codepage.cpp",
      "impl",
      ""
     ]
@@ -13600,12 +13696,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13616,18 +13712,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13638,12 +13728,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13654,18 +13744,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -13772,13 +13856,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -13848,13 +13932,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      ""
     ],
@@ -13902,15 +13986,15 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "platform/freertos/sysapi.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ],
     [
      "platform/posix/sysapi.cpp",
@@ -13940,13 +14024,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      ""
     ],
@@ -13978,18 +14062,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -14000,18 +14078,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -14022,18 +14094,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -14076,12 +14142,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -14092,12 +14158,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -14108,18 +14174,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14130,18 +14190,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14152,13 +14206,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      ""
     ],
@@ -14190,18 +14244,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -14212,18 +14260,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -14234,13 +14276,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      ""
     ],
@@ -14256,13 +14298,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      ""
     ],
@@ -14278,18 +14320,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14300,18 +14336,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14322,13 +14352,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -14344,13 +14374,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ],
@@ -14366,10 +14396,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -14414,18 +14450,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -14436,13 +14466,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -14458,13 +14488,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -14480,13 +14510,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -14534,13 +14564,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -14556,13 +14586,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -14578,13 +14608,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -14600,13 +14630,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -14622,13 +14652,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -14916,13 +14946,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -14938,10 +14968,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/memory.cpp",
      "impl",
@@ -14954,13 +14990,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -14976,10 +15012,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/memory.cpp",
      "impl",
@@ -14992,10 +15034,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/memory.cpp",
      "impl",
@@ -15008,13 +15056,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -15030,13 +15078,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -15052,10 +15100,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/memory.cpp",
      "impl",
@@ -15084,13 +15138,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -15106,13 +15160,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -15128,13 +15182,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "impl",
      ""
     ],
@@ -15150,13 +15204,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -15172,13 +15226,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/memory.cpp",
     "platform/posix/memory.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/memory.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -15248,10 +15302,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -15350,10 +15410,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -15961,18 +16027,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -16021,13 +16081,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      ""
     ],
@@ -16043,10 +16103,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -16283,18 +16349,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -16305,18 +16365,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -16327,18 +16381,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -16349,18 +16397,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/msgpump.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "impl",
-     ""
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/msgpump.cpp",
      "impl",
      ""
     ]
@@ -16387,13 +16429,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      ""
     ],
@@ -16409,13 +16451,13 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      ""
     ],
@@ -16495,12 +16537,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/posix/sysapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/posix/sysapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -16511,12 +16553,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/posix/sysapi.cpp"
+    "platform/common/perfclock.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/posix/sysapi.cpp",
+     "platform/common/perfclock.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -16527,12 +16569,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/posix/sysapi.cpp"
+    "platform/common/perfclock.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/posix/sysapi.cpp",
+     "platform/common/perfclock.cpp",
      "impl",
      ""
     ]
@@ -16543,10 +16585,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -16559,10 +16607,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -16575,10 +16629,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -16591,10 +16651,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -16607,10 +16673,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -16623,10 +16695,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -16655,10 +16733,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -16671,10 +16755,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -16751,12 +16841,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/posix/sysapi.cpp"
+    "platform/common/codepage.cpp"
    ],
    "agg": "stub",
    "site_classes": [
     [
-     "platform/posix/sysapi.cpp",
+     "platform/common/codepage.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -16767,10 +16857,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "impl",
+     ""
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -16783,10 +16879,16 @@
     "sysapi.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -16799,14 +16901,14 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/posix/sysapi.cpp"
+    "platform/common/codepage.cpp"
    ],
-   "agg": "stub",
+   "agg": "impl",
    "site_classes": [
     [
-     "platform/posix/sysapi.cpp",
-     "stub",
-     "仅返回常量/无操作"
+     "platform/common/codepage.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -16815,18 +16917,12 @@
     "sysapi.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
-    "platform/posix/sysapi.cpp"
+    "platform/common/codepage.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/posix/sysapi.cpp",
+     "platform/common/codepage.cpp",
      "impl",
      ""
     ]
@@ -19735,10 +19831,16 @@
     "winuser.h"
    ],
    "files": [
+    "platform/freertos/win32_rich.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
+    [
+     "platform/freertos/win32_rich.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
     [
      "platform/posix/sysapi.cpp",
      "impl",
@@ -21027,13 +21129,13 @@
     "wnd.h"
    ],
    "files": [
-    "platform/freertos/sysbridge.cpp",
+    "platform/freertos/sysapi.cpp",
     "platform/posix/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/freertos/sysbridge.cpp",
+     "platform/freertos/sysapi.cpp",
      "impl",
      ""
     ],

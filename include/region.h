@@ -21,6 +21,10 @@ extern "C"
 #define RGN_MIN  RGN_AND
 #define RGN_MAX  RGN_COPY
 
+    BOOL WINAPI AddRectToRegion(HRGN hrgn,       // handle to a region
+                                CONST RECT *lprc // rectangle to accumulate (RGN_OR)
+    );
+
 #define ERROR         0
 #define NULLREGION    1
 #define SIMPLEREGION  2

@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include "class.h"
 #include "SConnection.h"
@@ -25,6 +28,13 @@
 #include "cmnctl32/builtin_classname.h"
 #include "wndclip.h"
 #define kLogTag "wnd"
+
+// In this port ReleaseDC() has one extra responsibility beyond Win32: the
+// outermost GetDC/ReleaseDC pair commits the window's offscreen canvas to the
+// framebuffer.  A few framework-internal DC uses only prepare state (clip,
+// erase background) and must NOT present an intermediate canvas.  They call
+// this variant with bCommit = FALSE.
+static int ReleaseDCInternal(HWND hWnd, HDC hdc, BOOL bCommit);
 
 using namespace swinx;
 
@@ -342,9 +352,13 @@ BOOL InvalidateRect(HWND hWnd, const RECT *lpRect, BOOL bErase)
     }
     if (IsRectEmpty(lpRect))
         return FALSE;
-    HRGN rgn = CreateRectRgnIndirect(lpRect);
-    CombineRgn(wndObj->invalid.hRgn, wndObj->invalid.hRgn, rgn, RGN_OR);
-    DeleteObject(rgn);
+    // AddRectToRegion (region.h) accumulates the rect into the dirty region;
+    // its exact fast cases (empty dest / single-rect / sweep) avoid a temp
+    // region union, and the generic fallback is bit-identical to
+    // CombineRgn(RGN_OR).  The pre-11.8 sequence below cost 0.75ms per call
+    // on the ESP32-S3 -- a GDI handle alloc + free plus a band merge, for
+    // what is usually a single rectangle.
+    AddRectToRegion(wndObj->invalid.hRgn, lpRect);
     wndObj->invalid.bErase = wndObj->invalid.bErase || bErase;
     wndObj->mConnection->SendExposeEvent(hWnd, lpRect);
     return TRUE;
@@ -376,7 +390,20 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     {
         return NULL;
     }
+    // The FreeRTOS port identifies the owning thread by its task handle --
+    // SConnection's constructor uses GetCurrentThreadId() (SConnection.cpp:149),
+    // so the window's tid has to come from the same source.
+    //  * bare metal: swinx's own pthread_self() shim (winobjs.cpp) wraps
+    //    GetCurrentThreadId(), so either call would do;
+    //  * ESP-IDF: libpthread's pthread_self() returns an esp_pthread_t* and
+    //    assert()s for tasks that were not created by pthread_create(), which
+    //    is exactly the UI task here -- it must not be called.
+    // Using GetCurrentThreadId() directly is correct on both.
+#if SFR_PLATFORM
+    tid_t tid = (tid_t)GetCurrentThreadId();
+#else
     tid_t tid = (tid_t)pthread_self();
+#endif
     SConnection *conn = SConnMgr::instance()->getConnection(tid);
 
     _Window *pWnd = new _Window(clsInfo.cbWndExtra);
@@ -1252,7 +1279,14 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             CallWindowObjProc(wndObj, proc, hWnd, WM_ERASEBKGND, (WPARAM)hdc, 0);
             wndObj->invalid.bErase = FALSE;
         }
-        ReleaseDC(hWnd, hdc);
+        // State-only release: this block runs BEFORE the window procedure gets
+        // WM_PAINT, so BeginPaint/OnPrint have not drawn a single pixel of the
+        // new frame yet.  A normal ReleaseDC() would commit the *previous*
+        // frame's canvas here (an extra ~2ms blit + a stale image on the panel),
+        // then EndPaint would commit the real frame -- two presents per frame.
+        // Keep the erase result on the offscreen canvas and let EndPaint do the
+        // one and only commit.
+        ReleaseDCInternal(hWnd, hdc, FALSE);
         break;
     }
     case UM_SETTINGS:
@@ -2422,6 +2456,19 @@ HDC BeginPaint(HWND hWnd, PAINTSTRUCT *ps)
         return 0;
     wndObj->AddRef();
     ps->hdc = GetDC(hWnd);
+    // Win32: the DC returned by BeginPaint is clipped to the update region, so
+    // a paint routine can draw unconditionally and GetClipBox()/rcPaint report
+    // the dirty rect.  This port used to skip that step, which made
+    // GetClipBox() report the whole client area -- SOUI's SHostWnd::OnPrint()
+    // ORs that box into rcInvalid, so every present became a full 320x240
+    // BitBlt (measured 15.7ms/frame) even though the real invalid region was
+    // only ~6k pixels.  ReleaseDC() -> RestoreDC(-1) undoes this clip.
+    if (ps->hdc && wndObj->invalid.hRgn)
+    {
+        RECT rcInvalid;
+        if (GetRgnBox(wndObj->invalid.hRgn, &rcInvalid) != NULLREGION)
+            ExtSelectClipRgn(ps->hdc, wndObj->invalid.hRgn, RGN_AND);
+    }
     GetClipBox(ps->hdc, &ps->rcPaint);
     return ps->hdc;
 }
@@ -3509,7 +3556,7 @@ HDC GetWindowDC(HWND hWnd)
     return GetDCEx(hWnd, 0, DCX_WINDOW);
 }
 
-int ReleaseDC(HWND hWnd, HDC hdc)
+static int ReleaseDCInternal(HWND hWnd, HDC hdc, BOOL bCommit)
 {
     if (!hWnd)
     {
@@ -3520,6 +3567,8 @@ int ReleaseDC(HWND hWnd, HDC hdc)
     if (!wndObj)
         return 0;
     RestoreDC(hdc, -1);
+    // Still inside a nested GetDC/ReleaseDC pair: only the outermost one
+    // owns the canvas commit.
     if (hdc->nSave > 0)
         return 1;
     RECT rc;
@@ -3537,8 +3586,18 @@ int ReleaseDC(HWND hWnd, HDC hdc)
 #else
     GetClipBox(hdc, &rc);
 #endif
+    // Framework-internal state-only release (WM_PAINT erase phase).  All DC
+    // bookkeeping above is still undone, but the drawing stays on the offscreen
+    // canvas; EndPaint -> ReleaseDC() does the one and only present.
+    if (!bCommit)
+        return 1;
     wndObj->mConnection->commitCanvas(hWnd, rc);
     return 1;
+}
+
+int ReleaseDC(HWND hWnd, HDC hdc)
+{
+    return ReleaseDCInternal(hWnd, hdc, TRUE);
 }
 
 int MapWindowPoints(HWND hWndFrom, HWND hWndTo, LPPOINT lpPoint, UINT nCount)

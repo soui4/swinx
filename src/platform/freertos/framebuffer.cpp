@@ -1,33 +1,69 @@
 /*
  * framebuffer.cpp -- FreeRTOS software framebuffer backing store.
  *
- * Static allocation (no heap): 320x240 ARGB32 == 300KB by default, lives
- * in .bss.  Multi-window composition is first-come blit (commitCanvas is
- * called from the UI thread only), so no lock is taken here.
+ * Without SwinxFbInit() a static buffer of SWINX_FB_WIDTH x SWINX_FB_HEIGHT
+ * (320x240 ARGB32 == 300KB) is used, living in .bss.  SwinxFbInit()
+ * reconfigures it at runtime for another panel size, either into a buffer
+ * the caller provides or into a heap block allocated here.
+ *
+ * Multi-window composition is first-come blit (commitCanvas is called from
+ * the UI thread only), so no lock is taken here.
  */
 #include "framebuffer.h"
 
-static uint32_t s_fbBits[SWINX_FB_WIDTH * SWINX_FB_HEIGHT];
-static SwinxFbPresentCb s_presentCb = 0;
+#include <stdlib.h>
+#include <string.h>
 
-uint32_t *SwinxFbBits(void)
+static FBPIXEL s_defaultBits[SWINX_FB_WIDTH * SWINX_FB_HEIGHT];
+static FBPIXEL *s_fbBits = s_defaultBits;
+static SwinxFbPresentCb s_presentCb = 0;
+static int s_w = SWINX_FB_WIDTH;
+static int s_h = SWINX_FB_HEIGHT;
+static bool s_heapOwned = false;
+
+FBPIXEL *SwinxFbBits(void)
 {
     return s_fbBits;
 }
 
 int SwinxFbWidth(void)
 {
-    return SWINX_FB_WIDTH;
+    return s_w;
 }
 
 int SwinxFbHeight(void)
 {
-    return SWINX_FB_HEIGHT;
+    return s_h;
 }
 
 int SwinxFbStride(void)
 {
-    return SWINX_FB_WIDTH;
+    return s_w;
+}
+
+int SwinxFbInit(int width, int height, FBPIXEL *bits)
+{
+    if (width <= 0 || height <= 0)
+        return -1;
+
+    FBPIXEL *p = bits;
+    bool heap = false;
+    if (!p)
+    {
+        p = (FBPIXEL *)malloc((size_t)width * height * sizeof(FBPIXEL));
+        if (!p)
+            return -1;
+        heap = true;
+    }
+
+    if (s_heapOwned)
+        free(s_fbBits);
+    s_fbBits = p;
+    s_w = width;
+    s_h = height;
+    s_heapOwned = heap;
+    memset(s_fbBits, 0, (size_t)width * height * sizeof(FBPIXEL));
+    return 0;
 }
 
 void SwinxSetFbPresentCb(SwinxFbPresentCb cb)
@@ -37,7 +73,7 @@ void SwinxSetFbPresentCb(SwinxFbPresentCb cb)
 
 void SwinxFbClear(uint32_t argb)
 {
-    const int n = SWINX_FB_WIDTH * SWINX_FB_HEIGHT;
+    const int n = s_w * s_h;
     for (int i = 0; i < n; ++i)
         s_fbBits[i] = argb;
 }

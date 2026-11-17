@@ -191,6 +191,26 @@ public:
     };
     void flushPendingCommits();
     void presentPending(HWND hWnd, const RECT &rcPending);
+    /* ---- 合成器（多顶层窗口 + 子窗口）------------------------------------
+     * 这个端口没有窗口系统：屏幕上有什么，完全由"谁最后 blit 谁说了算"。
+     * 所以"z 序"必须由 SConnection 自己维护，并且每一次上屏都得按同一张
+     * 顺序表来贴，否则下层窗口的重绘会把上层像素烧穿一个洞。三条不变量：
+     *
+     *   1. m_zTop 只存**顶层**窗口（不含 WS_CHILD），底→顶 = 创建序；
+     *      SetZOrder 只重排这张表。
+     *   2. WS_CHILD 的子窗口按"父内创建序"存在 m_children 里，合成时紧跟
+     *      在父窗口之后——整组随父移动，提升父窗口不会让它盖住自己的子窗口。
+     *   3. 子窗口的 rc 是**父客户区坐标**，顶层/WS_POPUP 的 rc 已是屏幕坐标
+     *      （SDropDownWnd 用 CalcPopupRect 先算好屏幕矩形）。取屏幕矩形一律
+     *      走 screenRect()，不要直接读 rc。 */
+    BOOL screenRect(HWND hWnd, RECT *prc) const;
+    void buildComposeOrder(std::vector<HWND> &order) const;
+    void composeList(const std::vector<HWND> &order, size_t iFrom, const RECT &rcScreen);
+    void composeRegion(const RECT &rcScreen);
+    void composeAbove(HWND hWnd, const RECT &rcScreen);
+    /* 贴一块窗口局部矩形，并把压在它上面的窗口按交集贴回来。单窗口路径与
+     * commitCanvas 的"先上屏再重新记账"分支都必须走它，不能直接 presentPending。 */
+    void presentScreenRect(HWND hWnd, const RECT &rcLocal);
     void EnableWindow(HWND hWnd, BOOL bEnable);
     BOOL IsIconic(HWND hWnd) const;
     BOOL IsZoomed(HWND hWnd) const;
@@ -240,10 +260,10 @@ public:
     void OnWindowDestroy(HWND hWnd, _Window *wnd);
     /* 多顶层窗口（弹出窗）支持。z 序 = 创建序（底→顶）：弹出窗（SDropDownWnd
      * 等）总是后建，天然在主窗之上；销毁时从表中摘除。m_bScreenDirty 置位后，
-     * 下一次 flushPendingCommits() 把所有可见且画过的顶层窗按 z 序整幅重合成
+     * 下一次 flushPendingCommits() 把所有可见且画过的窗口按 z 序整幅重合成
      * ——这同时解决了"弹出窗盖住主窗"与"弹出窗关闭后主窗的曝露区"两件事，
      * 不需要平台再去为底层窗口补 WM_PAINT（每个窗口的画布保留着最近一帧，
-     * 重新 blit 就是正确画面）。 */
+     * 重新 blit 就是正确画面）。子窗口不进这张表，见 m_children。 */
     std::vector<HWND> shellZOrder() const { return m_zTop; }
     bool screenDirty() const { return m_bScreenDirty; }
     void markScreenDirty() { m_bScreenDirty = true; }
@@ -298,6 +318,9 @@ private:
     // 多顶层窗口（弹出窗）合成：z 序表 + 至少上屏过一帧的窗口集合（未画过的
     // 窗口画布是全 0，整幅合成时跳过它，避免弹出窗首帧前闪黑块）
     std::vector<HWND> m_zTop;
+    // WS_CHILD 子窗口：parent -> 父内创建序。不并进 m_zTop——SetZOrder 提升
+    // 顶层窗口时若把父挪到自己子窗口后面，父窗口就会盖住它自己的子控件。
+    std::map<HWND, std::vector<HWND>> m_children;
     std::set<HWND> m_committed;
     // SetWindowPos/SetWindowSize 钩子是 const 的，脏标记只能挂 mutable
     mutable bool m_bScreenDirty;

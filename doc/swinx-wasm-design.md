@@ -393,7 +393,35 @@ sequenceDiagram
 3. **裁剪必须在请求期解析**：更新区域在 `WM_PAINT` 派发末尾才被清空，放到上屏期再问永远是空区域，脏矩形收益归零。
 4. **上屏挂在消息派发的最外层**：`BeforeProcMsg/AfterProcMsg` 只在递归计数归零时 flush（`:458-471`）；`SendMessage(WM_ERASEBKGND/WM_NCPAINT)` 会递归回同一对钩子，逐层上屏等于没合并。`peekMsg`/`getMsg` 开头与轮询循环各有一次兜底。
 
-多窗口：`m_zTop` 记录 z 序，`m_bScreenDirty` 为真时整幅重组（`:1869-1953`），否则按 z 序补画被覆盖的窗口。canvas2d 因为「绘制本身就是往离屏 canvas 画」，上屏只是把脏区的 `drawImage` 合到显示画布；cairo 才需要把像素 memcpy 进共享帧缓冲。
+多窗口：这个端口没有合成器，屏幕上有什么完全由"谁最后写进显示面谁说了算"，所以 **z 序只能是 `SConnection` 自己维护的一张表，而且每一次上屏都得按同一张表贴**。三条不变量（`SConnection.h` 的 `m_zTop` / `m_children` / `screenRect()`）：
+
+| 不变量 | 为什么 |
+|---|---|
+| `m_zTop` **只存顶层窗口**（不含 `WS_CHILD`），底→顶 = 创建序，`SetZOrder` 只重排它 | 子窗口的 rc 是父客户区坐标；若把父窗口挪到自己子窗口后面，父窗口会盖住自己的子控件 |
+| `WS_CHILD` 子窗口按"父内创建序"存在 `m_children`，合成时**紧跟父窗口**（`buildComposeOrder()` 深度优先展平） | 整组随父移动：提升父窗口时子控件一起上来，父窗口被盖住时子控件也不许穿透 |
+| 屏幕矩形一律走 `screenRect()`，不许直接读 `_Window::rc` | 只有 `WS_CHILD` 需要累加祖先原点；`WS_POPUP`（`SDropDownWnd` 用 `CalcPopupRect` 算好屏幕矩形再建窗）的 rc 已经是屏幕坐标，加偏移会把它推出屏幕 |
+
+上屏只有两种时机，都收敛到合成器的三个入口：`composeRegion(rc)`（底→顶整幅重排）、`composeAbove(hWnd, rc)`（只补压在某人上面的）、`presentScreenRect(hWnd, rcLocal)`（贴自己 + 补上面）。`m_bScreenDirty` 为真走第一种（z 序/位置/显隐真的变了），否则按 `pending` 逐块走第三种。**`commitCanvas()` 的"先上屏再重新记账"分支也必须走第三种** —— 那里直接 `presentPending()` 会在下拉列表上烧出一个洞，因为补上层的逻辑只在合成器里。
+
+canvas2d 因为「绘制本身就是往离屏 canvas 画」，上屏只是把脏区的 `drawImage` 合到显示画布；cairo 才需要把像素 memcpy 进共享帧缓冲。合成逻辑两个后端共用，只有"写进哪"不同。
+
+这条路径在单窗口演示里走不到（只有弹出窗/子窗口才触发），所以单独有一个像素级自测：`demos/wasm-demo/zorder-selftest.sh`（cairo 帧缓冲可读回，覆盖叠放/烧穿/曝露/提升/子窗口偏移 13 项）。
+
+**别把"应用里的对话框"当成第二个顶层窗口**——wasm 上没有可重入的嵌套消息循环（见 §2），所以应用层的模态一律用 `SModalRoot`/`SModalView` 做成**主窗窗口树内**的层：`games/cnchess/client/MainDlg.cpp:110`（登录）、`demos/wasm-demo/soui_main.cpp:1112`（表单页）都是这个写法，桌面版的 `SHostDialog::DoModal()` 被留在 `#else` 分支里。这类模态对合成器完全透明：屏幕上始终只有一个顶层窗口。
+
+真正会产生第二个顶层窗口的是 SOUI 里这一族，它们各自 `CreateEx` 出独立 HWND：
+
+| 来源 | 触发场景 | 上屏时是否真的改 z 序 |
+|---|---|---|
+| `SDropDownWnd`（`SDropDown.cpp:72`） | combobox 下拉、`SDateTimePicker`、`SSearchDropdownList` | 否——`SetWindowPos(HWND_TOP, … SWP_NOZORDER)`（`SDropDown.cpp:91-93`、`SDateTimePicker.cpp:713`） |
+| `SMenu` / `SMenuEx` | 菜单、右键菜单 | 是——`SMenuEx.cpp:942` 的 `HWND_TOPMOST` 不带 `SWP_NOZORDER` |
+| `SToolTip` | tooltip 弹出 | 是——`SToolTip.cpp:251` |
+| `SSearchDropdownList` | 搜索框联想列表 | 是——`SSearchDropdownList.cpp:109` |
+| `SDragWnd`、`SDockFloatWnd`、`SRealWnd` | 拖动反馈、浮动停靠窗、真实子窗口 | 是（`SDragWnd.cpp:91`）/ 子窗口走 `m_children` |
+
+所以 cnchess 的 wasm 版里唯一会出现第二个顶层窗口的时刻，不是"打开登录窗"，而是登录弹层里点《性别》下拉：`games/cnchess/client/uires/xml/dlg_login_modal.xml:29` 的 `cbx_sex` → `SDropDownWnd_ComboBox`。它带 `SWP_NOZORDER`，位置靠创建序就对了，但主窗在那期间重绘同样会烧穿它——这正是 `commitCanvas()` 那条分支必须走合成器的原因。
+
+**已知边界**：合成只重贴窗口，没有"桌面背景刷"——没有任何窗口覆盖的屏幕区域会保留上一帧的像素（与 FreeRTOS 端口一致）。SOUI 应用的主窗占满整屏，正常路径（下拉框、对话框、菜单）都落在主窗范围内，不触发；真要支持"小窗口浮在桌面上"，补法是在 `composeRegion()` 开头把 `rcScreen` 按背景色铺一遍，再走底→顶重贴。
 
 > 曾经否掉「复用 OHOS 的 `hdc->hasDirty/dirtyRect`」：`markDcDirty()` 只在 `__OHOS__` 下定义，cairo GDI 里只有两处调用，搬到 wasm 会把没被标记的绘制静默丢掉。
 
@@ -503,6 +531,7 @@ sequenceDiagram
 | 回调型 `WM_TIMER` 必须在 `peekMsg` 内直接调 proc | `SConnection.cpp:874-893` | 脚本计时器全静默，动画却正常 |
 | `clip` 不能按逻辑矩形跳过；贴图必须 per-blit `save/clip/restore` | `canvas2d/gdi.cpp:2216-2245` | 残影、金色窄条、整幅画布被擦掉 |
 | `RestoreState` 清 `hClipRgn` 时同步复位 `rcClip`；ResizeSurface 作废 clipAnchor | `gdi.cpp:950-975`、`SConnection.cpp:1420-1423` | 擦不掉旧动画位置 |
+| 上屏必须走合成器（`composeRegion` / `presentScreenRect`）；屏幕矩形必须走 `screenRect()`；合成顺序必须父在子前 | `SConnection.cpp` 的合成器、`buildComposeOrder()` | 下层窗口重绘烧穿下拉列表；子窗口画到父窗口外面；提升父窗口时盖住自己的子控件 |
 | ctxId 槽位必须回收 | `js_glue.h:263-267` | 玩得越久越卡 |
 | `measureText` 缓存键用 `cssFont`，不用 HFONT | `gdi.cpp:475-508` | GdiFont 地址复用后串味 |
 | DPI 档位向上贴、只设一次；canvas CSS 宽 = 逻辑宽 | `soui_main.cpp:1695-1731`、`framebuffer.h:36-39` | 110%/120% 被打回 100%、整页发虚 |
@@ -523,7 +552,7 @@ sequenceDiagram
 | WebSocket 客户端、HTTP 客户端（经同源反代） | 可用 | 需显式开组件开关 |
 | 系统级 IME、`ImmGetCompositionString`、OLE 拖放、WebSocket 服务端、`GetOpenFileNameA` 同步版、`FOLDER/SAVE` 文件选择、系统剪贴板写入 | **显式不支持** | `NULL/FALSE/E_NOTIMPL/ERROR_CALL_NOT_IMPLEMENTED`，不静默降级 |
 | 真机触摸 / 移动端浏览器输入法 | 未系统验证 | 宿主壳只接了 pointer 与 composition 事件 |
-| 多窗口 z-order 合成 | 已实现但未充分演练 | `m_zTop` + `m_bScreenDirty` 重组 |
+| 多窗口 z-order 合成 | 可用 | 合成器：`m_zTop`（顶层）+ `m_children`（子窗口）+ `screenRect()`；像素自测见 `demos/wasm-demo/zorder-selftest.sh` |
 | `controls.extend` 的其余控件 | 未逐一演练 | 演示页只覆盖部分 |
 
 体积与发布档（2026-10 的实测，针对当时的产物，仅作量级参考）：`RelWithDebInfo`（`-O2 -g`）的 `.wasm` 约 54.5 MB，其中约 **87.5% 是调试信息**，代码段不足 10%；因此发布应切 `MinSizeRel`/`-O2` 不带 `-g`，而不是逐库裁剪。`-fno-exceptions` / `-fno-rtti` 不能用（`components`/`controls.extend`/`richedit41` 有实际 `throw`/`catch`/`dynamic_cast` 使用面）；`-flto`、`wasm-opt`、`--closure` 在该实测里收益不划算。canvas2d 后端已不预载字体，`.data` 的主要构成与 cairo 时代不同，需要重新量一次才有结论。

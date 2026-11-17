@@ -38,6 +38,11 @@ BOOL IntersectRect(LPRECT lprcDst, const RECT *lprcSrc1, const RECT *lprcSrc2)
     lprcDst->top = std::max(lprcSrc1->top, lprcSrc2->top);
     lprcDst->right = std::min(lprcSrc1->right, lprcSrc2->right);
     lprcDst->bottom = std::min(lprcSrc1->bottom, lprcSrc2->bottom);
+    if (lprcDst->left >= lprcDst->right || lprcDst->top >= lprcDst->bottom)
+    {
+        SetRectEmpty(lprcDst);
+        return FALSE;
+    }
     return TRUE;
 }
 
@@ -91,7 +96,7 @@ BOOL OffsetRect(LPRECT prc, int dx, int dy)
 
 BOOL IsRectEmpty(const RECT *prc)
 {
-    return prc->left == prc->right || prc->top == prc->bottom;
+    return prc->left >= prc->right || prc->top >= prc->bottom;
 }
 
 BOOL EqualRect(const RECT *lprc1, const RECT *lprc2)

@@ -56,6 +56,11 @@
 #include <pthread.h>
 
 #include "swinx_freertos_api.h"
+#include "SwinxUtils.h" // swinx_perf_ticks_100ns() 的契约声明
+
+#if defined(ESP_PLATFORM)
+#include <esp_timer.h> /* swinx_perf_ticks_100ns(): monotonic microseconds */
+#endif
 
 namespace
 {
@@ -198,9 +203,15 @@ inline uint32_t ms_to_ticks(DWORD ms)
     return ms;
 }
 
-// Cortex-M3 has no 64-bit atomic instructions and libatomic is not linked in
-// this bare-metal build: implement the 64-bit interlocked ops with an IRQ
-// critical section instead (single core, so PRIMASK alone is a full barrier).
+// The 64-bit interlocked ops below cannot use a single atomic instruction on
+// 32-bit targets (Xtensa ESP32-S3 and Cortex-M3 both need libatomic, which is
+// not linked in the bare-metal builds).  Guard them with a critical section
+// instead.  The primitive differs per backend:
+//   * SFR_HOSTED        MSVC-MingW port: taskENTER_CRITICAL() (no argument)
+//   * SFR_KERNEL_EMU    POSIX host emulation: a process-wide pthread mutex
+//   * SFR_ARCH_XTENSA   ESP-IDF Xtensa SMP: taskENTER_CRITICAL(&mux), where
+//                       portMUX_TYPE* is MANDATORY in IDF 5.4's portmacro.h
+//   * default           Cortex-M3 bare metal: PRIMASK IRQ masking
 #if SFR_HOSTED
 // Windows-host simulator (MSVC-MingW port): no CPU interrupt masking; use the
 // port's critical section instead (nesting is counted per task, so the
@@ -238,7 +249,38 @@ inline void irq_restore(uint32_t pr)
     (void)pr;
     pthread_mutex_unlock(&irq_mutex());
 }
+#elif SFR_ARCH_XTENSA
+// ESP-IDF / Xtensa (ESP32-S3, dual-core SMP FreeRTOS).
+//
+// IDF 5.4's portmacro.h defines
+//   #define portENTER_CRITICAL(mux) vPortEnterCritical(mux)
+//   #define portEXIT_CRITICAL(mux)  vPortExitCritical(mux)
+// and task.h forwards taskENTER_CRITICAL(x) -> portENTER_CRITICAL(x), so the
+// spinlock argument is REQUIRED (unlike the zero-argument MSVC-MingW form
+// above).  A single static portMUX_TYPE serialises the two Interlocked64
+// helpers across both cores; IDF critical sections are nestable, so the
+// save/restore shape is preserved even though there is no PRIMASK to save.
+//
+// portMUX_TYPE / portMUX_INITIALIZER_UNLOCKED reach this TU through
+// swinx_freertos_api.h, which includes FreeRTOS.h + task.h + semphr.h when
+// SFR_KERNEL_REAL is set (the esp32s3 CMake component defines
+// SOUI_FREERTOS_REAL).  Do NOT include those headers here: this code sits
+// inside an anonymous namespace.
+static portMUX_TYPE s_interlockMux = portMUX_INITIALIZER_UNLOCKED;
+
+inline uint32_t irq_save(void)
+{
+    taskENTER_CRITICAL(&s_interlockMux);
+    return 0;
+}
+
+inline void irq_restore(uint32_t pr)
+{
+    (void)pr;
+    taskEXIT_CRITICAL(&s_interlockMux);
+}
 #else
+// Cortex-M3 bare metal: single core, PRIMASK alone is a full barrier.
 inline uint32_t irq_save(void)
 {
     uint32_t pr;
@@ -252,7 +294,7 @@ inline void irq_restore(uint32_t pr)
     if (!pr)
         __asm volatile("cpsie i" ::: "memory");
 }
-#endif // SFR_HOSTED / SFR_KERNEL_EMU / bare-metal Cortex-M
+#endif // SFR_HOSTED / SFR_KERNEL_EMU / SFR_ARCH_XTENSA / bare-metal Cortex-M
 
 // ---- thread trampoline ----------------------------------------------------
 void thread_trampoline(void *p)
@@ -671,28 +713,10 @@ VOID WINAPI GetLocalTime(SYSTEMTIME *pSysTime)
 // ===========================================================================
 // Interlocked
 // ===========================================================================
-LONG WINAPI InterlockedIncrement(LONG volatile *v)
-{
-    return __atomic_fetch_add(v, 1, __ATOMIC_SEQ_CST) + 1;
-}
-
-LONG WINAPI InterlockedDecrement(LONG volatile *v)
-{
-    return __atomic_fetch_sub(v, 1, __ATOMIC_SEQ_CST) - 1;
-}
-
-LONG WINAPI InterlockedCompareExchange(LONG volatile *v, LONG Exchange, LONG Comparand)
-{
-    // Win32 semantics: return the ORIGINAL value of *v.
-    __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-    return Comparand;
-}
-
-LONG WINAPI InterlockedExchangeAdd(LONG volatile *v, LONG Increment)
-{
-    return __atomic_fetch_add(v, Increment, __ATOMIC_SEQ_CST);
-}
-
+// 32 位那一族（Increment/Decrement/Exchange/ExchangeAdd/CompareExchange）已下沉到
+// src/platform/common/interlocked.cpp —— 一条 LDREX/STREX 就能编出来，与平台无关，
+// 而且合并时抓到 posix 那份 ExchangeAdd 返回值是错的（返回加完之后的值）。
+// 这里只留 64 位：32 位核上 8 字节原子要么调 libatomic、要么关中断，实现按平台走。
 int64_t WINAPI InterlockedIncrement64(int64_t volatile *v)
 {
     uint32_t pr = irq_save();
@@ -726,9 +750,46 @@ int64_t WINAPI InterlockedDecrement64(int64_t volatile *v)
 // ---------------------------------------------------------------------------
 #include <pthread.h>
 
-#if !SFR_KERNEL_EMU
+// SFR_ESPIDF: ESP-IDF ships libpthread, which already provides pthread_self().
+// Keeping this definition would be a duplicate symbol at link time -- and
+// letting libpthread's version win would be worse than useless (it returns an
+// esp_pthread_t* and assert()s when the caller is not a pthread).  Nothing in
+// this port calls pthread_self() anyway: wnd.cpp uses GetCurrentThreadId()
+// under SFR_PLATFORM, see wnd.cpp:379.
+#if !SFR_KERNEL_EMU && !SFR_ESPIDF
 pthread_t pthread_self(void)
 {
     return (pthread_t)GetCurrentThreadId();
 }
 #endif
+
+// ---------------------------------------------------------------------------
+// QueryPerformanceCounter() 的 tick 源（平台助手契约，见 src/SwinxUtils.h）
+//
+// QPF/QPC 本身只有一份，在 src/platform/common/perfclock.cpp（频率 10MHz，
+// 与 posix 端口同刻度）：那是 Win32 语义，与「时间从哪来」无关。这里只回答
+// 「现在多少 tick」。
+//
+// 放在 extern "C" 块之外是有意的：SwinxUtils.h 里这批平台助手用 C++ linkage
+// 声明（同 swinx_messageBeep），定义跟着走，否则链接期会因为两套名字修饰而
+// 报 "conflicting declaration with C linkage" —— 注意 windows.h 里的 Win32
+// 符号不受影响，它们由头文件自己给出的 extern "C" 决定。
+//
+// 时间源：
+//   * ESP-IDF: esp_timer_get_time() 已经是单调微秒，x10 换到 100ns 刻度；
+//     纪元是开机时刻而不是 1601 —— QPC 只用来算区间，不影响任何调用方。
+//   * 其它（host 模拟 / 无 esp_timer 的裸机）: 内核 tick 是毫秒，x10000 换算。
+//     精度只有 1ms，但保持"同一频率、单调"的契约，剖析代码不必分平台。
+//
+// 历史：这个端口一度完全没有 QPF/QPC，剖析器只好自造一个导出的
+// SwinxProfNowUs()，每个想取时间戳的 TU 都带一份 weak 声明；现在统一回到
+// Win32 已经声明的这两个 API 上。
+// ---------------------------------------------------------------------------
+long long swinx_perf_ticks_100ns(void)
+{
+#if defined(ESP_PLATFORM)
+    return (long long)esp_timer_get_time() * 10;
+#else
+    return (long long)swinx_fr::ticks_now() * 10000;
+#endif
+}

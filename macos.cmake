@@ -17,6 +17,7 @@ file(GLOB SRCS
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
     src/platform/posix/*.cpp
+    src/platform/common/*.cpp   # 与 freertos 共用的中立层（消息泵 / 性能计数器 / 码表转换）
     src/platform/cocoa/*.mm
     src/gdi/apple/*.cpp
     )

@@ -18,8 +18,8 @@
 
 | 分级 | 数量 |
 |---|---|
-| 实现 | 997 |
-| 简单实现 | 91 |
+| 实现 | 996 |
+| 简单实现 | 92 |
 | 部分实现 | 14 |
 | 空实现 / 语义桩 | 41 |
 | 未提供（仅声明） | 2 |
@@ -31,7 +31,7 @@
 |---|---|---|---|---|
 | 窗口、消息与用户界面（USER32 等价） | 198 | 8 | 0 | 6 |
 | 图形设备接口（GDI32 等价） | 167 | 31 | 2 | 6 |
-| 系统、文件、进程与线程（KERNEL32 等价） | 302 | 17 | 7 | 2 |
+| 系统、文件、进程与线程（KERNEL32 等价） | 301 | 18 | 7 | 2 |
 | COM / OLE（OLE32·OLEAUT32 等价） | 56 | 8 | 0 | 4 |
 | 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 79 | 18 | 4 | 2 |
 | 多媒体、资源及其它（WINMM·杂项） | 195 | 9 | 1 | 21 |
@@ -165,7 +165,7 @@
 | `IsZoomed` | 实现 | src/wnd.cpp |  |
 | `KillTimer` | 实现 | src/wnd.cpp |  |
 | `MapWindowPoints` | 实现 | src/wnd.cpp |  |
-| `MessageBeep` | 实现 | src/platform/*/sysapi.cpp | 转发平台实现 swinx_messageBeep：Linux 走 X11 Bell 请求、macOS 走 NSBeep()、iOS 走 AudioServicesPlayAlertSound，Android / OHOS 经 g_platformAPI.audio.messageBeep 交宿主应用发声（契约见 src/SwinxUtils.h） |
+| `MessageBeep` | 实现 | src/platform/*/sysapi.cpp 等 2 处 | 转发平台实现 swinx_messageBeep：Linux 走 X11 Bell 请求、macOS 走 NSBeep()、iOS 走 AudioServicesPlayAlertSound，Android / OHOS 经 g_platformAPI.audio.messageBeep 交宿主应用发声（契约见 src/SwinxUtils.h） |
 | `MessageBoxA` | 实现 | src/cmnctl32/msgbox.cpp |  |
 | `MessageBoxW` | 实现 | src/cmnctl32/msgbox.cpp |  |
 | `ModifyMenuA` | 实现 | src/cmnctl32/menu.cpp |  |
@@ -299,7 +299,7 @@
 | `CreateGradientBrush` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreateICA` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreateICW` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
-| `CreateIconFromResource` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
+| `CreateIconFromResource` | 实现 | src/platform/*/cursoricon.cpp |  |
 | `CreateIconFromResourceEx` | 实现 | src/platform/*/cursoricon.cpp |  |
 | `CreateIconIndirect` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `CreatePatternBrush` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
@@ -383,10 +383,10 @@
 | `InvertRgn` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `LPtoDP` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
 | `LineTo` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
-| `LoadBitmapA` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
+| `LoadBitmapA` | 实现 | src/platform/*/cursoricon.cpp |  |
 | `LoadBitmapW` | 实现 | src/platform/*/cursoricon.cpp |  |
-| `LoadImageA` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
-| `LoadImageBuf` | 实现 | src/platform/*/cursoricon.cpp 等 2 处 |  |
+| `LoadImageA` | 实现 | src/platform/*/cursoricon.cpp |  |
+| `LoadImageBuf` | 实现 | src/platform/*/cursoricon.cpp |  |
 | `LoadImageW` | 实现 | src/platform/*/cursoricon.cpp |  |
 | `LookupIconIdFromDirectoryEx` | 实现 | src/platform/*/cursoricon.cpp |  |
 | `MarkPixmapDirty` | 实现 | src/gdi/apple/gdi.cpp 等 3 处 |  |
@@ -480,11 +480,11 @@
 |---|---|---|---|
 | `AcquireSRWLockExclusive` | 实现 | src/platform/*/syncapi.cpp 等 2 处 |  |
 | `AcquireSRWLockShared` | 实现 | src/platform/*/syncapi.cpp 等 2 处 |  |
-| `ActivateKeyboardLayout` | 实现 | src/platform/*/sysapi.cpp | 经 HKL 抽象暴露各平台键盘布局：Linux 走 XKB group、macOS 走 TIS、iOS/移动端只有唯一布局（OS 不允许 App 切换）。句柄 = 布局索引 + SWINX_HKL_BASE，与魔法值 HKL_PREV(0)/HKL_NEXT(1) 隔离 |
-| `CallMsgFilter` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `ActivateKeyboardLayout` | 实现 | src/platform/*/sysapi.cpp 等 2 处 | 经 HKL 抽象暴露各平台键盘布局：Linux 走 XKB group、macOS 走 TIS、iOS/移动端只有唯一布局（OS 不允许 App 切换）。句柄 = 布局索引 + SWINX_HKL_BASE，与魔法值 HKL_PREV(0)/HKL_NEXT(1) 隔离 |
+| `CallMsgFilter` | 实现 | src/platform/*/msgpump.cpp |  |
 | `CancelWaitableTimer` | 实现 | src/platform/*/sysobjs.cpp |  |
 | `ChangeTimerQueueTimer` | 实现 | src/platform/*/sysobjs.cpp |  |
-| `CloseClipboard` | 实现 | src/platform/*/sysapi.cpp |  |
+| `CloseClipboard` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `CloseHandle` | 实现 | src/handle.cpp |  |
 | `CompareStringA` | 实现 | src/winnsl.cpp |  |
 | `CompareStringW` | 实现 | src/winnsl.cpp |  |
@@ -499,7 +499,7 @@
 | `CreateFileA` | 实现 | src/platform/*/fileapi.cpp |  |
 | `CreateFileMappingA` | 实现 | src/platform/*/sysobjs.cpp |  |
 | `CreateFileMappingW` | 实现 | src/platform/*/sysobjs.cpp |  |
-| `CreateFileW` | 实现 | src/platform/*/fileapi.cpp |  |
+| `CreateFileW` | 实现 | src/platform/*/fileapi.cpp 等 2 处 |  |
 | `CreateMutexA` | 实现 | src/platform/*/sysobjs.cpp 等 2 处 |  |
 | `CreateMutexW` | 实现 | src/platform/*/sysobjs.cpp |  |
 | `CreateProcessA` | 实现 | src/platform/*/sysapi.cpp |  |
@@ -524,7 +524,7 @@
 | `DestroyCursor` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `DispatchMessage` | 实现 | src/wnd.cpp |  |
 | `DosDateTimeToFileTime` | 实现 | src/platform/*/fileapi.cpp |  |
-| `EmptyClipboard` | 实现 | src/platform/*/sysapi.cpp |  |
+| `EmptyClipboard` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `EnterCriticalSection` | 实现 | src/platform/*/syncapi.cpp 等 2 处 |  |
 | `ExpandEnvironmentStringsA` | 实现 | src/platform/*/sysapi.cpp |  |
 | `ExpandEnvironmentStringsW` | 实现 | src/platform/*/sysapi.cpp |  |
@@ -542,9 +542,9 @@
 | `FlushInstructionCache` | 实现 | src/platform/*/memory.cpp |  |
 | `FreeLibrary` | 实现 | src/platform/*/dlfreertos.cpp 等 2 处 |  |
 | `GetAppleBundlePath` | 实现 | src/platform/*/SConnection.mm 等 2 处 |  |
-| `GetAsyncKeyState` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `GetClipboardData` | 实现 | src/platform/*/sysapi.cpp |  |
-| `GetClipboardOwner` | 实现 | src/platform/*/sysapi.cpp |  |
+| `GetAsyncKeyState` | 实现 | src/platform/*/msgpump.cpp |  |
+| `GetClipboardData` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `GetClipboardOwner` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `GetCommandLineA` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetCommandLineW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetComputerNameA` | 实现 | src/platform/*/sysapi.cpp |  |
@@ -568,17 +568,17 @@
 | `GetFileSizeEx` | 实现 | src/platform/*/fileapi.cpp |  |
 | `GetFileTime` | 实现 | src/platform/*/fileapi.cpp |  |
 | `GetHandleName` | 实现 | src/platform/*/sysobjs.cpp |  |
-| `GetKeyState` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `GetKeyState` | 实现 | src/platform/*/msgpump.cpp |  |
 | `GetKeyboardLayout` | 实现 | src/winnsl.cpp | 返回当前 HKL；尚未同步时按平台当前布局惰性初始化 |
-| `GetKeyboardLayoutList` | 实现 | src/platform/*/sysapi.cpp | 枚举各平台键盘布局列表，返回 HKL 数组 |
-| `GetKeyboardState` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `GetLastInputInfo` | 实现 | src/platform/*/sysapi.cpp |  |
+| `GetKeyboardLayoutList` | 实现 | src/platform/*/sysapi.cpp 等 2 处 | 枚举各平台键盘布局列表，返回 HKL 数组 |
+| `GetKeyboardState` | 实现 | src/platform/*/msgpump.cpp |  |
+| `GetLastInputInfo` | 实现 | src/platform/*/msgpump.cpp |  |
 | `GetLocalTime` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `GetLocaleInfoA` | 实现 | src/winnsl.cpp |  |
 | `GetLocaleInfoW` | 实现 | src/winnsl.cpp |  |
-| `GetMessage` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `GetMessage` | 实现 | src/platform/*/msgpump.cpp |  |
 | `GetModuleFileNameA` | 实现 | src/platform/*/dlfreertos.cpp 等 2 处 |  |
-| `GetModuleFileNameW` | 实现 | src/platform/*/sysapi.cpp |  |
+| `GetModuleFileNameW` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `GetModuleHandleExA` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetModuleHandleExW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetModuleHandleW` | 实现 | src/platform/*/sysapi.cpp |  |
@@ -595,21 +595,21 @@
 | `GetProcAddress` | 实现 | src/platform/*/dlfreertos.cpp 等 2 处 |  |
 | `GetProcessHeap` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
 | `GetProcessId` | 实现 | src/platform/*/sysapi.cpp |  |
-| `GetProfileIntA` | 实现 | src/platform/*/profile.cpp |  |
+| `GetProfileIntA` | 实现 | src/platform/*/profile.cpp 等 2 处 |  |
 | `GetProfileIntW` | 实现 | src/platform/*/profile.cpp |  |
 | `GetProfileSectionA` | 实现 | src/platform/*/profile.cpp |  |
-| `GetProfileSectionW` | 实现 | src/platform/*/profile.cpp |  |
+| `GetProfileSectionW` | 实现 | src/platform/*/profile.cpp 等 2 处 |  |
 | `GetProfileStringA` | 实现 | src/platform/*/profile.cpp |  |
 | `GetProfileStringW` | 实现 | src/platform/*/profile.cpp |  |
-| `GetQueueStatus` | 实现 | src/platform/*/sysapi.cpp |  |
+| `GetQueueStatus` | 实现 | src/platform/*/msgpump.cpp |  |
 | `GetStdHandle` | 实现 | src/platform/*/fileapi.cpp |  |
 | `GetSystemDefaultLCID` | 实现 | src/winnsl.cpp |  |
 | `GetSystemDefaultLangID` | 实现 | src/winnsl.cpp |  |
 | `GetSystemDirectoryA` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetSystemDirectoryW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetSystemInfo` | 实现 | src/platform/*/sysapi.cpp |  |
-| `GetSystemMetrics` | 实现 | src/platform/*/sysapi.cpp 等 2 处 | posix/freertos 两份实现按 SDK 编号给出 SM_CXMENUCHECK(71)/SM_CYMENUCHECK(72)=96 DPI 下 16px；ret 分支在返回前统一乘 GetSystemScale()/100，SM_CXSCREEN 等提前 return 的分支不缩放 |
-| `GetSystemScale` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `GetSystemMetrics` | 实现 | src/platform/*/sysapi.cpp | posix/freertos 两份实现按 SDK 编号给出 SM_CXMENUCHECK(71)/SM_CYMENUCHECK(72)=96 DPI 下 16px；ret 分支在返回前统一乘 GetSystemScale()/100，SM_CXSCREEN 等提前 return 的分支不缩放 |
+| `GetSystemScale` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetSystemTime` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `GetTempFileNameA` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetTempFileNameW` | 实现 | src/platform/*/sysapi.cpp |  |
@@ -623,12 +623,12 @@
 | `GetUserNameW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GetVersionExW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `GlobalAlloc` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
-| `GlobalFlags` | 实现 | src/platform/*/memory.cpp |  |
+| `GlobalFlags` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
 | `GlobalFree` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
-| `GlobalHandle` | 实现 | src/platform/*/memory.cpp |  |
+| `GlobalHandle` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
 | `GlobalLock` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
-| `GlobalReAlloc` | 实现 | src/platform/*/memory.cpp |  |
-| `GlobalSize` | 实现 | src/platform/*/memory.cpp |  |
+| `GlobalReAlloc` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
+| `GlobalSize` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
 | `GlobalUnlock` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
 | `HeapAlloc` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
 | `HeapCreate` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
@@ -645,27 +645,27 @@
 | `InitOnceExecuteOnce` | 实现 | src/platform/*/syncapi.cpp 等 2 处 |  |
 | `InitializeCriticalSection` | 实现 | src/platform/*/syncapi.cpp 等 2 处 | 内部为 std::recursive_mutex（swinx 的 CRITICAL_SECTION 支持递归语义） |
 | `InitializeSRWLock` | 实现 | src/platform/*/syncapi.cpp 等 2 处 |  |
-| `InterlockedCompareExchange` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `InterlockedCompareExchange` | 实现 | src/platform/*/interlocked.cpp |  |
 | `InterlockedCompareExchange64` | 实现 | src/platform/*/sysapi.cpp |  |
-| `InterlockedDecrement` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `InterlockedDecrement` | 实现 | src/platform/*/interlocked.cpp |  |
 | `InterlockedDecrement64` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `InterlockedExchange` | 实现 | src/platform/*/sysapi.cpp |  |
-| `InterlockedExchangeAdd` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `InterlockedExchange` | 实现 | src/platform/*/interlocked.cpp |  |
+| `InterlockedExchangeAdd` | 实现 | src/platform/*/interlocked.cpp |  |
 | `InterlockedExchangeAdd64` | 实现 | src/platform/*/sysapi.cpp |  |
-| `InterlockedIncrement` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `InterlockedIncrement` | 实现 | src/platform/*/interlocked.cpp |  |
 | `InterlockedIncrement64` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `IsBadStringPtrA` | 实现 | src/platform/*/sysapi.cpp |  |
 | `IsBadStringPtrW` | 实现 | src/platform/*/sysapi.cpp |  |
-| `IsBadWritePtr` | 实现 | src/platform/*/sysapi.cpp |  |
-| `IsClipboardFormatAvailable` | 实现 | src/platform/*/sysapi.cpp |  |
-| `IsDBCSLeadByte` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `IsBadWritePtr` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `IsClipboardFormatAvailable` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `IsDBCSLeadByte` | 实现 | src/platform/*/codepage.cpp |  |
 | `IsDebuggerPresent` | 实现 | src/platform/*/sysapi.cpp |  |
 | `LeaveCriticalSection` | 实现 | src/platform/*/syncapi.cpp 等 2 处 |  |
-| `LoadCursorA` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `LoadCursorW` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `LoadCursorA` | 实现 | src/platform/*/sysapi.cpp |  |
+| `LoadCursorW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `LoadLibraryA` | 实现 | src/platform/*/dlfreertos.cpp 等 2 处 |  |
 | `LoadLibraryExW` | 实现 | src/platform/*/sysapi.cpp |  |
-| `LoadLibraryW` | 实现 | src/platform/*/sysapi.cpp |  |
+| `LoadLibraryW` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `LocalAlloc` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
 | `LocalFileTimeToFileTime` | 实现 | src/platform/*/sysapi.cpp |  |
 | `LocalFlags` | 实现 | src/platform/*/memory.cpp |  |
@@ -676,15 +676,15 @@
 | `LocalSize` | 实现 | src/platform/*/memory.cpp |  |
 | `LocalUnlock` | 实现 | src/platform/*/memory.cpp 等 2 处 |  |
 | `MapViewOfFile` | 实现 | src/platform/*/sysobjs.cpp |  |
-| `MapVirtualKey` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `MapVirtualKeyEx` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `MapVirtualKey` | 实现 | src/platform/*/msgpump.cpp |  |
+| `MapVirtualKeyEx` | 实现 | src/platform/*/msgpump.cpp |  |
 | `MoveFileA` | 实现 | src/platform/*/fileapi.cpp |  |
 | `MoveFileExW` | 实现 | src/platform/*/fileapi.cpp |  |
 | `MoveFileW` | 实现 | src/platform/*/fileapi.cpp |  |
-| `MsgWaitForMultipleObjects` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `MulDiv` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `MultiByteToWideChar` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `OpenClipboard` | 实现 | src/platform/*/sysapi.cpp |  |
+| `MsgWaitForMultipleObjects` | 实现 | src/platform/*/msgpump.cpp |  |
+| `MulDiv` | 实现 | src/platform/*/sysapi.cpp |  |
+| `MultiByteToWideChar` | 实现 | src/platform/*/codepage.cpp |  |
+| `OpenClipboard` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `OpenEventA` | 实现 | src/platform/*/sysobjs.cpp 等 2 处 |  |
 | `OpenEventW` | 实现 | src/platform/*/sysobjs.cpp |  |
 | `OpenFileMappingA` | 实现 | src/platform/*/sysobjs.cpp |  |
@@ -696,14 +696,14 @@
 | `OpenWaitableTimerA` | 实现 | src/platform/*/sysobjs.cpp |  |
 | `OpenWaitableTimerW` | 实现 | src/platform/*/sysobjs.cpp |  |
 | `OutputDebugStringA` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `OutputDebugStringW` | 实现 | src/platform/*/sysapi.cpp |  |
-| `PeekMessage` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `OutputDebugStringW` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `PeekMessage` | 实现 | src/platform/*/msgpump.cpp |  |
 | `PostThreadMessageA` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `PostThreadMessageW` | 实现 | src/platform/*/sysapi.cpp |  |
-| `QueryPerformanceCounter` | 实现 | src/platform/*/sysapi.cpp |  |
+| `QueryPerformanceCounter` | 实现 | src/platform/*/perfclock.cpp |  |
 | `RaiseException` | 实现 | src/platform/*/sysapi.cpp |  |
-| `ReadFile` | 实现 | src/platform/*/fileapi.cpp |  |
-| `RegisterClipboardFormatA` | 实现 | src/platform/*/sysapi.cpp |  |
+| `ReadFile` | 实现 | src/platform/*/fileapi.cpp 等 2 处 |  |
+| `RegisterClipboardFormatA` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `RegisterClipboardFormatW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `RegisterWaitForSingleObject` | 实现 | src/platform/*/sysobjs.cpp |  |
 | `ReleaseMutex` | 实现 | src/platform/*/sysobjs.cpp 等 2 处 |  |
@@ -714,7 +714,7 @@
 | `RemoveDirectoryW` | 实现 | src/platform/*/fileapi.cpp |  |
 | `ResetEvent` | 实现 | src/platform/*/sysobjs.cpp 等 2 处 |  |
 | `ResumeThread` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `SetClipboardData` | 实现 | src/platform/*/sysapi.cpp |  |
+| `SetClipboardData` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `SetCurrentDirectoryA` | 实现 | src/platform/*/fileapi.cpp |  |
 | `SetCurrentDirectoryW` | 实现 | src/platform/*/fileapi.cpp |  |
 | `SetCursor` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
@@ -726,15 +726,15 @@
 | `SetEvent` | 实现 | src/platform/*/sysobjs.cpp 等 2 处 |  |
 | `SetFileAttributesA` | 实现 | src/platform/*/fileapi.cpp |  |
 | `SetFileAttributesW` | 实现 | src/platform/*/fileapi.cpp |  |
-| `SetFilePointer` | 实现 | src/platform/*/fileapi.cpp |  |
+| `SetFilePointer` | 实现 | src/platform/*/fileapi.cpp 等 2 处 |  |
 | `SetFilePointerEx` | 实现 | src/platform/*/fileapi.cpp |  |
 | `SetFileTime` | 实现 | src/platform/*/fileapi.cpp |  |
 | `SetWaitableTimer` | 实现 | src/platform/*/sysobjs.cpp |  |
 | `Sleep` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `StrToInt64ExA` | 实现 | src/platform/*/sysapi.cpp |  |
 | `StrToInt64ExW` | 实现 | src/platform/*/sysapi.cpp |  |
-| `StrToIntExA` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `StrToIntExW` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `StrToIntExA` | 实现 | src/platform/*/sysapi.cpp |  |
+| `StrToIntExW` | 实现 | src/platform/*/sysapi.cpp |  |
 | `SuspendThread` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `SystemParametersInfoW` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `TlsAlloc` | 实现 | src/platform/*/sysapi.cpp |  |
@@ -756,9 +756,9 @@
 | `WaitForMultipleObjects` | 实现 | src/platform/*/sysobjs.cpp 等 2 处 |  |
 | `WaitForSingleObject` | 实现 | src/platform/*/sysobjs.cpp 等 2 处 |  |
 | `WaitForSingleObjectEx` | 实现 | src/platform/*/sysobjs.cpp |  |
-| `WaitMessage` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `WideCharToMultiByte` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `WriteFile` | 实现 | src/platform/*/fileapi.cpp |  |
+| `WaitMessage` | 实现 | src/platform/*/msgpump.cpp |  |
+| `WideCharToMultiByte` | 实现 | src/platform/*/codepage.cpp |  |
+| `WriteFile` | 实现 | src/platform/*/fileapi.cpp 等 2 处 |  |
 | `WritePrivateProfileSectionA` | 实现 | src/platform/*/profile.cpp |  |
 | `WritePrivateProfileSectionW` | 实现 | src/platform/*/profile.cpp |  |
 | `WritePrivateProfileStringA` | 实现 | src/platform/*/profile.cpp |  |
@@ -773,29 +773,29 @@
 | `_endthreadex` | 实现 | src/process.cpp |  |
 | `_get_osfhandle` | 实现 | src/platform/*/sysapi.cpp |  |
 | `_localtime64_s` | 实现 | src/platform/*/sysapi.cpp |  |
-| `_mkgmtime` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `_mktime64` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `_open_osfhandle` | 实现 | src/platform/*/fileapi.cpp |  |
 | `_time64` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `_wfopen` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `_wfopen` | 实现 | src/platform/*/sysapi.cpp |  |
 | `get_process_uid` | 实现 | src/platform/*/sysapi.cpp |  |
 | `qsort_s` | 实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `CompareFileTime` | 简单实现 | src/platform/*/sysapi.cpp |  |
 | `DbgBreakPoint` | 简单实现 | src/platform/*/sysapi.cpp | 实现为 assert(0) 调试断言 |
 | `DeleteCriticalSection` | 简单实现 | src/platform/*/syncapi.cpp 等 2 处 |  |
 | `ExitThread` | 简单实现 | src/platform/*/sysapi.cpp | 记录线程退出码供 GetExitCodeThread 查询；不支持在任意位置强制终止线程 |
-| `GetACP` | 简单实现 | src/platform/*/sysapi.cpp | 恒返回 CP_UTF8，swinx 全线采用 UTF-8 口径 |
-| `GetLastError` | 简单实现 | src/platform/*/sysapi.cpp 等 2 处 | 以线程局部 errno 模拟 last-error，错误码语义与 Win32 不完全一致 |
+| `GetACP` | 简单实现 | src/platform/*/codepage.cpp | 恒返回 CP_UTF8，swinx 全线采用 UTF-8 口径 |
+| `GetLastError` | 简单实现 | src/platform/*/sysapi.cpp | 以线程局部 errno 模拟 last-error，错误码语义与 Win32 不完全一致 |
 | `GetModuleHandleA` | 简单实现 | src/platform/*/dlfreertos.cpp 等 2 处 |  |
 | `GetVersionExA` | 简单实现 | src/platform/*/sysapi.cpp |  |
 | `InitOnceInitialize` | 简单实现 | src/platform/*/syncapi.cpp 等 2 处 |  |
 | `IsBadReadPtr` | 简单实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
-| `IsValidCodePage` | 简单实现 | src/platform/*/sysapi.cpp | 恒返回 TRUE（配合 UTF-8 口径） |
+| `IsValidCodePage` | 简单实现 | src/platform/*/codepage.cpp | 恒返回 TRUE（配合 UTF-8 口径） |
 | `LCMapStringA` | 简单实现 | src/winnsl.cpp |  |
 | `LCMapStringW` | 简单实现 | src/winnsl.cpp |  |
-| `QueryPerformanceFrequency` | 简单实现 | src/platform/*/sysapi.cpp |  |
-| `SetLastError` | 简单实现 | src/platform/*/sysapi.cpp 等 2 处 | 以线程局部 errno 模拟 last-error，错误码语义与 Win32 不完全一致 |
+| `QueryPerformanceFrequency` | 简单实现 | src/platform/*/perfclock.cpp |  |
+| `SetLastError` | 简单实现 | src/platform/*/sysapi.cpp | 以线程局部 errno 模拟 last-error，错误码语义与 Win32 不完全一致 |
 | `SystemParametersInfoA` | 简单实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
+| `_mkgmtime` | 简单实现 | src/platform/*/sysapi.cpp 等 2 处 |  |
 | `set_error` | 简单实现 | src/platform/*/sysapi.cpp |  |
 | `FindFirstChangeNotificationA` | 部分实现 | src/platform/*/sysapi.cpp | Linux 用 inotify、macOS 用 kqueue 真实监控目录；既无 inotify 也无 kqueue 的平台（wasm —— Emscripten 的 musl 没有 <sys/inotify.h>，也没有事件队列）恒返回 INVALID_HANDLE_VALUE 并 SetLastError(ERROR_CALL_NOT_IMPLEMENTED) |
 | `FindNextChangeNotification` | 部分实现 | src/platform/*/sysapi.cpp | 同上：Linux/macOS 读各自的 inotify/kqueue 事件，其余平台恒返回 FALSE 并 SetLastError(ERROR_CALL_NOT_IMPLEMENTED)。FindFirstChangeNotificationW 在平台守卫之外，转发 A 版 |
@@ -821,15 +821,15 @@
 | `CoTaskMemAlloc` | 实现 | src/malloc_impl.cpp |  |
 | `CoTaskMemFree` | 实现 | src/malloc_impl.cpp |  |
 | `CoTaskMemRealloc` | 实现 | src/malloc_impl.cpp |  |
-| `DoDragDrop` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
+| `DoDragDrop` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
 | `OleDuplicateData` | 实现 | src/platform/*/ole2.cpp 等 3 处 |  |
-| `OleFlushClipboard` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
-| `OleGetClipboard` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
-| `OleIsCurrentClipboard` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
-| `OleSetClipboard` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
+| `OleFlushClipboard` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
+| `OleGetClipboard` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
+| `OleIsCurrentClipboard` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
+| `OleSetClipboard` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
 | `RegisterDragDrop` | 实现 | src/platform/*/dlghelper.cpp 等 6 处 |  |
-| `ReleaseStgMedium` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
-| `RevokeDragDrop` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
+| `ReleaseStgMedium` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
+| `RevokeDragDrop` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
 | `SHCreateDirectoryExA` | 实现 | src/platform/*/shellobj.cpp |  |
 | `SHCreateDirectoryExW` | 实现 | src/platform/*/shellobj.cpp |  |
 | `SHCreateStdEnumFmtEtc` | 实现 | src/platform/*/shellobj.cpp |  |
@@ -896,7 +896,7 @@
 | `DragFinish` | 实现 | src/platform/*/shellapi.cpp | 释放 WM_DROPFILES 交付给宿主的拖放数据；宿主未调用时由 CDropFileTarget::Drop 兜底释放，重复调用幂等 |
 | `DragQueryFileA` | 实现 | src/platform/*/shellapi.cpp |  |
 | `DragQueryFileW` | 实现 | src/platform/*/shellapi.cpp |  |
-| `GetFullPathNameA` | 实现 | src/platform/*/shellapi.cpp 等 2 处 |  |
+| `GetFullPathNameA` | 实现 | src/platform/*/fileapi.cpp 等 2 处 |  |
 | `GetFullPathNameW` | 实现 | src/platform/*/shellapi.cpp |  |
 | `GetOpenFileNameA` | 实现 | src/cmmmdlg.cpp |  |
 | `GetOpenFileNameW` | 实现 | src/cmmmdlg.cpp |  |
@@ -906,20 +906,20 @@
 | `ImmCreateContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
 | `ImmDestroyContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
 | `ImmEscapeA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmEscapeW` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmGetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmGetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmEscapeW` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmGetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmGetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
 | `ImmGetContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmGetDefaultIMEWnd` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmGetProperty` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmGetDefaultIMEWnd` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmGetProperty` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
 | `ImmGetVirtualKey` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmIsIME` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmNotifyIME` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmIsIME` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmNotifyIME` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
 | `ImmReleaseContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmSetCompositionFontA` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmSetCompositionFontA` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
 | `ImmSetCompositionFontW` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
 | `ImmSetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmSetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
 | `PathAppendA` | 实现 | src/shlwapi.cpp |  |
 | `PathAppendW` | 实现 | src/shlwapi.cpp |  |
 | `PathCanonicalizeA` | 实现 | src/platform/*/shellapi.cpp |  |
@@ -968,15 +968,15 @@
 | `SwinxFilterToAcceptA` | 实现 | src/cmmmdlg.cpp | Win32 筛选表（"描述\0模式\0…\0\0"）→ 浏览器 <input accept> 的纯换算（Win32 无同名 API）：丢弃描述段、按 ';' 切分、"*.x" 去星留 ".x"、MIME 型模式原样交给浏览器、去重并 trim 空白；"*"、"*.*" 或空模式段表示这组接受全部，而 accept 表达不了"其中一组接受全部"，整份筛选退化成空串（不限制）。cchOut==0 是探长度形态：返回含结尾 0 的所需字节数且一个字节都不写；缓冲放不下返回 -1 + ERROR_INVALID_PARAMETER，绝不静默截断 |
 | `SwinxPickFileAsyncA` | 实现 | src/cmmmdlg.cpp | 异步文件选择（Win32 无同名 API，只有 A 版）：返回 1 表示请求已受理，结果一律经 pfnDone 给出 —— 桌面/iOS 的本地对话框本来就阻塞，回调在返回之前内联执行；wasm 的回调稍后在浏览器主线程上执行（浏览器不能在这次 JS→wasm 调用里阻塞等 change 事件）。返回 0 表示请求未发起，原因见 GetLastError，pfnDone 不会被调用。nResult 1=已选中 / 0=取消 / -1=失败（含本平台显式拒绝该能力，裸金属与移动端就是这一条内联拒绝路径）。路径只在回调期间有效且不回写调用方的 p->lpstrFile（异步返回时那块缓冲可能已经不在）。多选、wasm 上的 SAVE/FOLDER、以及宿主没装 Module.swinxPickFile 都是显式拒绝（ERROR_CALL_NOT_IMPLEMENTED），不是漏实现 |
 | `DragQueryPoint` | 简单实现 | src/platform/*/shellapi.cpp |  |
-| `ImmGetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmGetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
 | `ImmGetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmGetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmGetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmGetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
 | `ImmGetStatusWindowPos` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmSetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmSetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmSetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmSetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmSetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmSetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmSetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
 | `ImmSetStatusWindowPos` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
 | `PathFindExtensionW` | 简单实现 | src/platform/*/shellapi.cpp |  |
 | `PathFindFileNameW` | 简单实现 | src/platform/*/shellapi.cpp |  |

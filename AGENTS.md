@@ -12,11 +12,16 @@ swinx 是非 Windows 平台上的 **Win32 兼容层**：向 SOUI 4 与 WKE 浏�
 |---|---|---|
 | 声明面 | `include/*.h`（57 个头，`windows.h` 是聚合入口） | 镜像 Win32 SDK 的类型、原型、宏。**不放实现** |
 | 语义核 | `src/*.cpp`（35 个顶层文件）+ `src/cmnctl32/` | 与平台无关的 Win32 语义（句柄表、窗口/消息、区域、资源读取等） |
-| OS 维度 | `src/platform/{posix,linux,cocoa,ios,mobile,freertos}` | 线程、进程、窗口系统、剪贴板、输入法、无障碍桥 |
+| OS 维度 | `src/platform/{posix,linux,cocoa,ios,mobile,freertos,wasm}` | 线程、进程、窗口系统、剪贴板、输入法、无障碍桥。`posix` 是共享实现（linux/macOS/iOS/Android/OHOS/wasm 都编它），`wasm` 是 `freertos` 的 fork 但只保留窗口/输入/渲染差异 |
+| 中立层 | `src/platform/common` | 与窗口系统无关、所有平台共用的 Win32 表面：消息泵（`GetMessage`/`PeekMessage`/输入查询/WinEvent 派发）、`QueryPerformanceCounter` 一族、码表转换（`MultiByteToWideChar`/`WideCharToMultiByte`，iconv 优先 + 内置 CP936/125x/UTF-16 表兜底）、零散 Win32 语义（`GetLastError`/`MulDiv`/`StrToIntEx`/`GetSystemMetrics`/`GetDoubleClickTime`/`LoadCursor`/`_wfopen`）、32 位 `Interlocked` 家族、代码页查询（`GetACP`/`IsValidCodePage`/`IsDBCSLeadByte`）。平台差异只剩 `SConnection`、三个契约（tick 源 / 度量缩放 / ANSI 码页）和 iconv 桩 |
 | 绘图维度 | `src/gdi/{cairo,apple}`（+ `src/gdi/freertos/`） | DC、位图、文本、路径、图像编解码 |
 | 依赖 | `thirdparty/`（cairo、pixman、fontconfig、freetype、libpng、zlib、brotli、expat、libxcb、xcb-util 家族、xcb-imdkit、xkbcommon、dbus、sysinclude） | 全部 vendor 化、内置构建的第三方栈，**不在其中做功能开发** |
 
-按平台选目录的机制是 `file(GLOB)`：见 `linux.cmake` / `macos.cmake` / `ios.cmake` / `mobile.cmake` / `freeRTOS.cmake` / `wasm.cmake`，由 `CMakeLists.txt` 按 `CMAKE_SYSTEM_NAME` 或 `SOUI_PLATFORM` 分派。**新增源文件必须落在某个 GLOB 覆盖的目录里**，否则不会被编译（新目录要同时改所有相关 `.cmake`）。
+`common/` 由所有平台一起编（`file(GLOB .../platform/common/*.cpp)`），所以它对 `SConnection` 的**契约**必须由每个平台的 `SConnection.h` 满足 —— 加平台时少一个方法，`msgpump.cpp` 立刻编译失败（这是有意为之：错在编译期而不是运行期）。泵只用到 9 个方法：`getMsg` / `peekMsg` / `waitMsg` / `waitMutliObjectAndMsg` / `GetQueueStatus` / `GetKeyboardState` / `GetKeyState` / `GetAsyncKeyState` / `MapVirtualKey`（注意 `waitMutliObjectAndMsg` 的历史拼写）；`sysapi.cpp` 另需 `GetScreen` / `GetScreenWidth` / `GetScreenHeight` / `GetDoubleClickTime`。
+
+`common/` 还依赖三个**自由函数**契约（声明都在 `src/SwinxUtils.h`，本头是 C++ linkage）：`swinx_perf_ticks_100ns()`（tick 源）、`swinx_system_metric_scale(int)`（度量要不要按 DPI 放大，macOS 的光标尺寸返回 100）、`swinx_ansi_codepage()`（ANSI 码页：posix 家族 `CP_UTF8`、裸机 `1252`）。这三者**不能**放进 `extern "C"` 块里定义 —— 声明与定义的 linkage 混了会报错（踩过）。契约必须落在"每个 target 都会编译"的文件里：`freertos/win32_rich.cpp` 只在 ESP32 目标参与构建，把 `GetACP` 放那里曾让 `soui_fr` / `swinx_test` 链接失败。
+
+按平台选目录的机制是 `file(GLOB)`：见 `linux.cmake` / `macos.cmake` / `ios.cmake` / `mobile.cmake` / `freeRTOS.cmake` / `wasm.cmake`，由 `CMakeLists.txt` 按 `CMAKE_SYSTEM_NAME` 或 `SOUI_PLATFORM` 分派。**新增源文件必须落在某个 GLOB 覆盖的目录里**，否则不会被编译（新目录要同时改所有相关 `.cmake`）。唯一例外是 `soui-freertos/swinx_test/CMakeLists.txt`：它整份都是显式文件清单（freertos 侧同目录），往 `common/` 加文件时要手工补一行，否则只有那条 host 单测链会在链接期报未定义符号。
 
 一个 API 的完整链路，缺一即视为未完成：
 
@@ -34,7 +39,7 @@ swinx 是非 Windows 平台上的 **Win32 兼容层**：向 SOUI 4 与 WKE 浏�
 
 按优先级选其中一种，不要新造第五种，也不要退回散落的 `#ifdef __APPLE__`。
 
-1. **实现下沉**：平台相关实现放 `src/platform/<平台>/`，`src/*.cpp` 只写 Win32 语义、不含平台分支。这是首选形态。
+1. **实现下沉**：平台相关实现放 `src/platform/<平台>/`，`src/*.cpp` 只写 Win32 语义、不含平台分支。这是首选形态。若一段实现与平台**完全**无关、只是恰好被写进了某个平台目录（典型是消息泵、`QueryPerformanceCounter`、码表转换、`MulDiv`/`StrToIntEx`/`GetSystemMetrics`/32 位 `Interlocked` 这类零散 Win32 语义），放 `src/platform/common/` 由所有平台一起编 —— 不要"每个平台目录抄一份、用注释约定保持同步"，两份实现漂移是历史缺陷来源（旧 `freertos/sysbridge.cpp` 的 `KEEP IN SYNC` 标记即是；2026-11-16 的第二批下沉就是在做这件事时抓到 3 个已经分叉的行为）。
 2. **同一符号、分目录实现、链接期解析**：公共助手契约集中在 `src/SwinxUtils.h`（当前是 `swinx_messageBeep` 等），各平台目录给出**同名同签名**实现，`file(GLOB)` 只把当前平台的源文件放进构建，由链接器决定哪份进二进制 —— 调用方零 `#ifdef`。暂不实现的平台也要**保留占位定义**（如 `platform/mobile/utils.cpp` 返回 `FALSE`），维持这一形态而不是退回条件编译。移动端需要宿主能力时转发 `g_platformAPI`（`include/platform_api.h`，现 v4）。跨 TU 边界的返回类型用 `int` 而不是 `BOOL` —— swinx 的 `BOOL` 在 Apple Objective-C++ 单元里是 `bool`/`signed char`（clang 预定义 `__OBJC_BOOL_IS_BOOL`，`include/ctypes.h` 只在 `__APPLE__` 下镜像它），在别的 `.cpp` 里是 `int`，两边不一致。
 3. **把「平台能力的差异」抽象成句柄族**：顶层入口保持 Win32 的句柄语义，差异压到各平台 `SConnection` 的同名方法里，句柄取值约定收在一个内部头供四平台共用。范例 `src/hkl.h`：`HKL = 布局索引 + SWINX_HKL_BASE`，必须避开 Win32 魔法值 `HKL_PREV(0)` / `HKL_NEXT(1)`，且 0 另作「尚未与真实布局同步」用（历史上 cocoa 用过 4、其余用裸索引，分叉本身就是缺陷来源）。
 4. **能力门控 + 延迟创建**（OpenGL 专用）：依赖不能落地时不引入链接期依赖，改运行期解析并让缺库如实失败。范例 `src/platform/posix/wgl.cpp`：公共层对平台只要求 8 个入口 —— 7 个 `swinxGL*`（Create / Destroy / MakeCurrent / ClearCurrent / Swap / GetProcAddress / SetSwapInterval，macOS 侧由 `cocoa/SGLBridge.mm` 以 `extern "C"` 给出，Linux 侧在同文件内联 GLX 实现）加每分支一个 `static PlatformSupportsContextAttribs()`；两个 `#ifdef __APPLE__` 分支只出现在文件首尾，Linux 全量走 `dlopen` + `dlsym`，缺 libGL 时 GL 入口返回失败而不影响其它功能；上下文延迟到首次 `wglMakeCurrent` 才真正创建，这样 `wglShareLists` 才能在「创建之后、绑定之前」生效（GLX/NSOpenGL 都只允许创建时指定 share group）。
@@ -63,7 +68,7 @@ swinx 是非 Windows 平台上的 **Win32 兼容层**：向 SOUI 4 与 WKE 浏�
 ## 6. 语义口径（三条硬约定）
 
 - **A/W 与编码**：`char*`（A 版）一律按 **UTF-8** 处理，不再走 ANSI/GBK 双轨；`wchar_t`（W 版）的宽度由构建注入 `-DWCHAR_SIZE=__SIZEOF_WCHAR_T__`（MinGW/Windows 为 2，POSIX/ARM 为 4），转换实现只读这个宏（`src/uniconv.h:6-14`、`include/tchar.h:6-17`）。**代码里不要假设 `sizeof(wchar_t)`**，也不要把 `WCHAR` 当 `uint16_t` 用。
-- **错误码**：`SetLastError` / `GetLastError` 是线程 `errno` 代理（`src/platform/posix/sysapi.cpp:592-601`），与 Win32 错误码表**不等价**。依赖具体 `ERROR_*` 数值的代码要在注释里说明，或改判成功/失败。
+- **错误码**：`SetLastError` / `GetLastError` 是线程 `errno` 代理（`src/platform/posix/sysapi.cpp` 与 `src/platform/freertos/sysapi.cpp` 各一份），与 Win32 错误码表**不等价**。依赖具体 `ERROR_*` 数值的代码要在注释里说明，或改判成功/失败。
 - **显式拒绝优于静默降级**：能力不存在就返回失败并 `SetLastError(ERROR_CALL_NOT_IMPLEMENTED)`（资源更新族 `BeginUpdateResource*` / `UpdateResource*` / `EndUpdateResource*`），或按 Win32 语义给出固定失败值；**吞掉请求、假装成功、或返回伪造值都比失败更糟** —— `GetThreadContext` 在非 x86_64 架构直接返回 FALSE 而不给伪造的 `Rsp`，正是因为 WebCore 的 `MachineStackMarker` 会拿这个指针开始扫栈。
 - **与 Win32 的偏差就地写清**：注释要说明「为什么这样取舍」以及「哪个调用方依赖它」（WKE/SOUI 的具体路径），例：`SetGraphicsMode` 必须对 NULL HDC 返回 0 并置 `ERROR_INVALID_HANDLE`（WebKit `syncContext()` 对 ImageBuffer 就是这么调的），同时又必须对有效 HDC 返回成功，否则 cairo 的 `_get_global_font_dc()` 会丢弃 DC 并留下悬空静态句柄。
 - 所有空实现/语义桩都要在 `doc/swinx-API实现清单.md` 第 5 节可见（由 `OVERRIDES` 生成），不能只留在代码注释里。
@@ -88,7 +93,7 @@ swinx 是非 Windows 平台上的 **Win32 兼容层**：向 SOUI 4 与 WKE 浏�
   - **`GetMessage` 与 `PeekMessage` 的差别是"等"**，别把它压平：能睡的后端（`linux`、`freertos`）`getMsg` 必须是 `peekMsg` 拿不到就进 `waitMsg`（`freertos/SConnection.cpp:547`，等待上界每轮按"下一个计时器到期"重算，见同文件 `waitMsg`；`WM_QUIT` 返回 `FALSE` 而不是派发）；不能睡的后端（`wasm`：阻塞浏览器主线程会停掉 `requestAnimationFrame`，整个页面冻住）才允许 `return peekMsg(..., PM_REMOVE)` 一步走（`wasm/SConnection.cpp:625`）。
   - 转发宿主桥的后端（`mobile`＝Android/OHOS）：`g_platformAPI.window.setTimer` 记下 `proc`，到期由宿主直接回调（`soui-android-lib/.../AndroidPlatformAPI.cpp:551`，`proc == NULL` 才 `SendMessage(hWnd, WM_TIMER, …)`），队列不承担回调职责。
   - 裸金属后端（`freertos`）不要用递归重扫实现这条分支：任务栈只有几 KB，栈深会随"同一拍到期的计时器个数"增长，用外层循环把栈框钉死在一层。
-- **`freertos` 消息循环的已知缺口（未补齐，读代码得出，2026-10-30）**：`PostThreadMessageA` 在 `src/platform/freertos/sysbridge.cpp:1318` 是空桩，所以 `PostQuitMessage` 永远不落地；`PostMessageA(NULL, …)` 走 `src/wnd.cpp:1747` 的「无 WndObj → IPC」分支后返回 `FALSE`，也进不了队列 —— 两者叠加使 `src/cmnctl32/msgbox.cpp:217` 的 `while (GetMessage(...))` 没有退出路径。模态对话框在该端口上会卡死，不是「等待」而是「永不返回」。要在该端口用模态/退出流程，先把这两条打通，不要靠给 `GetMessage` 加超时绕过。
+- **`freertos` 消息循环的已知缺口（未补齐，读代码得出，2026-10-30）**：`PostThreadMessageA` 在 `src/platform/freertos/sysapi.cpp` 是空桩，所以 `PostQuitMessage` 永远不落地；`PostMessageA(NULL, …)` 走 `src/wnd.cpp:1747` 的「无 WndObj → IPC」分支后返回 `FALSE`，也进不了队列 —— 两者叠加使 `src/cmnctl32/msgbox.cpp:217` 的 `while (GetMessage(...))` 没有退出路径。模态对话框在该端口上会卡死，不是「等待」而是「永不返回」。要在该端口用模态/退出流程，先把这两条打通，不要靠给 `GetMessage` 加超时绕过。
 - 同端口另一处：`src/gdi/cairo/fontapi.cpp` 依赖 `std::once_flag`，而 `src/platform/freertos/stl/mutex` 未提供 → 该 TU 在 freertos 上编不过（`freeRTOS.cmake` 因此尚未把 cairo GDI 后端接入）。补 `stl/` 时要一并补这一原语。
 - **`PlaySound` 谁去读文件、谁去发声**（`include/mmsystem.h`）：共同骨架是"只支持 `SND_FILENAME`（`SND_MEMORY`/`SND_RESOURCE`/`SND_ALIAS` 显式 FALSE）、一律异步（`SND_SYNC` 按 `SND_ASYNC`）"，通道分三种：
   - `linux` / `cocoa` / `ios`：`src/platform/posix/mmsystem.cpp` 的播放线程（ALSA；没编 ALSA 时 fork `aplay`）。
@@ -98,7 +103,8 @@ swinx 是非 Windows 平台上的 **Win32 兼容层**：向 SOUI 4 与 WKE 浏�
 
 ## 9. 测试
 
-- 用例落在 soui4 的 `demos/fun_test/`，按**文件名约定**自动分层注册：`test_*.cpp` → `soui-unit`、`test_integration_*` → 集成、`test_e2e_*` → 无窗口 E2E（三层都带门禁标签 `soui-headless`，注册 507 条＝496 单元 + 1 集成 + 10 E2E，实跑 506 条，`test_misc.cpp:191` 的 `DISABLED_is_dbcs_lead_byte_codepage_dependent` 跳过），`test_gui_*` → `soui-gui`，`test_gdi.cpp` / `test_soui.cpp` → `soui-interactive`（默认不注册、不进门禁）。
+- 用例落在 soui4 的 `demos/fun_test/`，按**文件名约定**自动分层注册：`test_*.cpp` → `soui-unit`、`test_integration_*` → 集成、`test_e2e_*` → 无窗口 E2E（三层都带门禁标签 `soui-headless`，当前注册 534 条＝479 单元 + 1 集成 + 13 E2E + 41 无头 UITest，`test_misc.cpp` 的 `DISABLED_is_dbcs_lead_byte_codepage_dependent` 跳过；同一套汇编的 post-build 单进程跑 `--gtest_filter=-window.*`，当前 580 条全绿），`test_gui_*` → `soui-gui`，`test_gdi.cpp` / `test_soui.cpp` → `soui-interactive`（默认不注册、不进门禁）。
+- **下沉/合并一个 API 时，两边都要补用例**：`demos/fun_test`（桌面，对着真 Win32 校准语义）+ `soui-freertos/swinx_test`（arm-none-eabi + REAL FreeRTOS + QEMU，真正执行 `platform/common/*.cpp`）。后者是 `common/` 唯一在裸机侧被执行的路径（`main_sysapi.cpp`），也是"`posix` 家族改了、裸机没人测"这类分叉的唯一拦网。断言写法两边一致：都在 `#ifndef _WIN32` 之外只保留真机也成立的部分，平台差异用条件编译标出并写清理由。
 - 面向 WKE 的 swinx API 用例（`test_swinx_wke_*.cpp`）**不得使用 C++11 语法，要能在 VS2008 编译**，Linux / Windows / macOS 都得跑：用 `memset` + 逐字段赋值代替聚合初始化，`NULL` 代替 `nullptr`，不用 range-for / `auto` / lambda。
 - 平台专属断言用 `#ifndef _WIN32` 包住。注意 `gtest_add_tests` 扫的是**源码文本**而非预处理结果：被排除的分支仍会注册成条目，`--gtest_filter` 匹配 0 条时返回 0、CTest 报 Passed —— 这类用例的通过证据只能来自它真正编译到的平台。注释掉的 `//TEST(...)` 同样会被注册，删除用例要整行删。
 - **新增的空实现/语义桩不补用例**（断言「返回固定值」没有回归价值），但必须在清单里登记。要写的是「行为在回归时会失败」的用例，例如标准光标无条件销毁后仍存活、调用方自有的图标确实可销毁。

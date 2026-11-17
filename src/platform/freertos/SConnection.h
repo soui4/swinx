@@ -174,11 +174,21 @@ public:
     // ---- framebuffer 合成（无合成器，多个窗口共用同一块 framebuffer）----
     // 把 hWnd 画布的一块（窗口局部坐标）blit 到 framebuffer；返回真的有像素上屏
     bool blitCanvas(HWND hWnd, const RECT &rcLocal) const;
-    // 按 z 序自底向顶整屏重排：每个窗口 blit 自己画布的全幅。
-    // 用于"上层窗口消失/挪走"之后曝露出来的区域——那些窗口没有收到 WM_PAINT
-    // 的机会，但它们的画布还保留着最近一帧，重新 blit 就能恢复遮挡关系。
+    // 按 z 序自底向顶重排一块屏幕区域（rcScreen 为屏幕坐标）：对每个与该区域
+    // 相交的窗口，blit 它画布中对应的那一块。用于"上层窗口消失/挪走"之后曝露
+    // 出来的区域——那些窗口没有收到 WM_PAINT 的机会，但它们的画布还保留着最近
+    // 一帧，重新 blit 就能恢复遮挡关系。
+    // 只重排需要的这块，是因为每次 blit 都要走一次 SPI 上屏：320x240 全屏约
+    // 21ms，屏幕上能看出自上而下扫一遍（关弹窗时"闪一下"）；一个 292x64 的
+    // 弹窗区域约 6ms，且不跨越整个屏幕，肉眼无感。
     // hSkip：跳过某个窗口（它正要离开自己的旧矩形，别把旧内容又贴回去）。
+    void composeRegion(const RECT &rcScreen, HWND hSkip = NULL) const;
+    // 整屏重排：z 序真的被打乱时（SetZOrder）才需要。
     void composeScreen(HWND hSkip = NULL) const;
+    // 把 rcScreen 交给最上面那个与它相交的下层窗口去重绘（异步，合并进它下一次
+    // WM_PAINT）。用于"上层窗口消失"：既不能贴旧画布（会先闪旧画面、再被新画面
+    // 盖掉，看起来就是关弹窗闪两下），也不能什么都不做（残影会留到下一帧）。
+    void invalidateBelow(const RECT &rcScreen) const;
     // 把 z 序在 hWnd 之上、与 rcScreen（屏幕坐标）相交的窗口重新 blit 回去，
     // 保住遮挡：下层窗口的重绘不能烧穿上层弹出窗。
     void composeAbove(HWND hWnd, const RECT &rcScreen) const;

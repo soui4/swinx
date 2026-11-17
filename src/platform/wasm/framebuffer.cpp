@@ -5,8 +5,9 @@
  * (SwinxSetCanvasScale, called once from main() before anything reads fb
  * geometry), so a static .bss array no longer works.  The JS host re-reads
  * Module._SwinxFbBits() on every present (ALLOW_MEMORY_GROWTH may move the
- * heap), so a heap buffer is safe.  Multi-window composition is first-come
- * blit (commitCanvas is called from the UI thread only), so no lock is taken.
+ * heap), so a heap buffer is safe.  Multi-window composition is a z-ordered
+ * blit driven from the UI thread only (SConnection's composer), so no lock is
+ * taken.
  *
  * SWINX_FB_WIDTH/HEIGHT stay LOGICAL (the app's 800x600 coordinate system);
  * the physical framebuffer is logical x scale (devicePixelRatio) so text and

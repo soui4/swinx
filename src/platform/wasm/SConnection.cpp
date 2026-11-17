@@ -1377,8 +1377,52 @@ uint32_t SConnection::GetCmap() const
     return 0;
 }
 
-void SConnection::SetZOrder(HWND, _Window *, HWND)
+void SConnection::SetZOrder(HWND hWnd, _Window *, HWND hWndInsertAfter)
 {
+    // m_zTop 是唯一记录"谁盖着谁"的地方（合成器按它底→顶展平），所以 z 序
+    // 操作必须同步到这里。这个端口没有窗口管理器，默认序就是创建序：
+    // HWND_TOP / HWND_TOPMOST（以及 NULL，等价于 HWND_TOP）挪到末尾，HWND_BOTTOM
+    // 挪到开头，指定窗口则插到它后面。
+    //
+    // 只动顶层窗口：WS_CHILD 的子窗口不在 m_zTop 里（见 m_children），合成时
+    // 永远紧跟在父窗口之后，所以提升一个窗口会连着它自己的子控件一起上来
+    // ——这正是 Win32 的语义：子窗口的 z 序相对父客户区独立，不可能被父窗口盖住。
+    std::vector<HWND>::iterator it = std::find(m_zTop.begin(), m_zTop.end(), hWnd);
+    if (it == m_zTop.end())
+        return;
+    // HWND_NOTOPMOST：本端口没有 topmost 带，所有窗口同属一带，"取消置顶"就没
+    // 有可落脚的位置 —— 按 no-op 处理。不能落到下面的"指定窗口"分支，那会把
+    // (HWND)-2 当成句柄去查，查不到就 push_back，反而把窗口提到了最上面。
+    if (hWndInsertAfter == HWND_NOTOPMOST)
+        return;
+    // 已经在最顶层且目标也是最顶层：不必重排，省一次整屏重贴
+    if (it + 1 == m_zTop.end()
+        && (hWndInsertAfter == HWND_TOP || hWndInsertAfter == HWND_TOPMOST || hWndInsertAfter == NULL))
+        return;
+
+    m_zTop.erase(it);
+    if (hWndInsertAfter == HWND_BOTTOM)
+    {
+        m_zTop.insert(m_zTop.begin(), hWnd);
+    }
+    else if (hWndInsertAfter == HWND_TOP || hWndInsertAfter == HWND_TOPMOST || hWndInsertAfter == NULL)
+    {
+        m_zTop.push_back(hWnd);
+    }
+    else
+    {
+        std::vector<HWND>::iterator pos = std::find(m_zTop.begin(), m_zTop.end(), hWndInsertAfter);
+        if (pos == m_zTop.end())
+            m_zTop.push_back(hWnd);
+        else
+            m_zTop.insert(pos + 1, hWnd);
+    }
+
+    // 遮挡关系变了：屏幕上已有的像素是按旧 z 序叠出来的，必须按新顺序重贴。
+    // 影响面不止 hWnd 自己的矩形（提升一个窗口会同时盖住一片、降低一个窗口会
+    // 曝露一片），而浏览器里整屏重贴只是同一帧内的内存拷贝，不付 SPI 的代价，
+    // 所以这里直接置整屏脏，交给下一次 flush 统一按新 z 序合成。
+    m_bScreenDirty = true;
 }
 
 void SConnection::OnStyleChanged(HWND, _Window *, DWORD, DWORD)
@@ -1463,6 +1507,8 @@ HWND SConnection::WindowFromPoint(POINT pt)
     // 顶层窗口命中测试，z 序从顶到底取第一个命中的可见窗口。弹出窗
     // （SDropDownWnd，WS_POPUP，parent=宿主窗）比主窗后建、在 m_zTop 末尾，
     // 所以盖住主窗的部分先命中弹出窗——Win32 同名 API 的语义。
+    // 命中深度只到顶层：SOUI 的控件树在窗口内部，由它自己的 SwndFromPoint 走。
+    // 矩形用 screenRect() 取（顶层窗口的 rc 本来就是屏幕坐标，这里只是统一口径）。
     for (int i = (int)m_zTop.size() - 1; i >= 0; --i)
     {
         WndObj wndObj = WndMgr::fromHwnd(m_zTop[i]);
@@ -1470,7 +1516,9 @@ HWND SConnection::WindowFromPoint(POINT pt)
             continue;
         if ((wndObj->dwStyle & WS_VISIBLE) == 0)
             continue;
-        const RECT &rc = wndObj->rc;
+        RECT rc;
+        if (!screenRect(m_zTop[i], &rc))
+            continue;
         if (pt.x >= rc.left && pt.x < rc.right && pt.y >= rc.top && pt.y < rc.bottom)
             return m_zTop[i];
     }
@@ -1528,8 +1576,9 @@ BOOL SConnection::IsWindowVisible(HWND hWnd)
  * (GetDlgItem(), the WM_PRINT children walk): it must return 0 at the end of
  * the list instead of repeating the last window forever.
  *
- * Sibling order is by HWND value.  There is no z-order on this port (windows
- * are virtual), and the callers that matter only need "iterate all of them
+ * Sibling order is by HWND value, not by z-order: this port's z-order
+ * (m_zTop / m_children) exists only for compositing, and the callers that
+ * matter here only need "iterate all of them
  * exactly once, then stop".
  */
 HWND SConnection::GetWindow(HWND hWnd, _Window *wndObj, UINT uCmd)
@@ -1739,7 +1788,10 @@ void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
     }
     RECT rcOld = it->second.rcSrc;
     m_pendingCommits.erase(it);
-    presentPending(hWnd, rcOld);
+    // 不能直接 presentPending：这块矩形可能正被上层窗口（下拉列表）压着，
+    // 裸贴会把它在上面烧出一个洞，而"补贴上层"的逻辑只在合成器里。走
+    // presentScreenRect = 贴自己 + 把上面的窗口按交集贴回来。
+    presentScreenRect(hWnd, rcOld);
     PendingCommit pcNew;
     pcNew.rcSrc = rcSrc;
     m_pendingCommits.insert(std::make_pair(hWnd, pcNew));
@@ -1779,6 +1831,133 @@ static inline void SwinxBgraToRgba(uint8_t *dst, const uint8_t *src, int pixels)
 }
 #endif
 
+/* ===========================================================================
+ *  合成器（多顶层窗口 + 子窗口）
+ * ===========================================================================
+ * 这个端口没有合成器：谁最后把像素写进显示面，那块就归谁。于是"z 序"只能是
+ * SConnection 自己维护的一张表，而且**每一次上屏都得按同一张表贴**。三条规则：
+ *
+ *   - m_zTop 只存顶层窗口，底→顶 = 创建序（SetZOrder 重排的就是它）；
+ *   - m_children 存 WS_CHILD 子窗口，合成时紧跟在父窗口之后——整组随父移动；
+ *   - 屏幕矩形一律走 screenRect()，子窗口的 rc 只是父客户区坐标。
+ *
+ * 上屏只有两种时机：整屏重组（z 序/位置/显隐真的变了）与单窗补贴（某个窗口
+ * 自己重画了）。后者必须先贴它自己、再把压在它上面的窗口按交集贴回来，否则
+ * 下层窗口的一次 WM_PAINT 就会在下拉列表上烧出一个洞。
+ */
+
+BOOL SConnection::screenRect(HWND hWnd, RECT *prc) const
+{
+    if (!prc)
+        return FALSE;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return FALSE;
+    RECT rc = wndObj->rc;
+    // 只有 WS_CHILD 的 rc 是父客户区坐标，要一层层加祖先原点；WS_POPUP
+    // （SDropDownWnd 用 CalcPopupRect 算好屏幕矩形再建窗）和普通顶层窗口的 rc
+    // 已经是屏幕坐标，再加偏移就把它们推出屏幕。深度上限只为防环。
+    HWND hCur = hWnd;
+    for (int depth = 0; depth < 64; ++depth)
+    {
+        WndObj cur = WndMgr::fromHwnd(hCur);
+        if (!cur || (cur->dwStyle & WS_CHILD) == 0)
+            break;
+        HWND hParent = cur->parent;
+        if (!hParent || hParent == hCur)
+            break;
+        WndObj parent = WndMgr::fromHwnd(hParent);
+        if (!parent)
+            break;
+        OffsetRect(&rc, parent->rc.left, parent->rc.top);
+        hCur = hParent;
+    }
+    *prc = rc;
+    return TRUE;
+}
+
+void SConnection::buildComposeOrder(std::vector<HWND> &order) const
+{
+    order.clear();
+    // 深度优先展平：父在前、子在后（= Win32 "子窗口盖在父客户区上"），兄弟按
+    // 创建序。显式栈而不是递归，窗口链再深也不会把消息线程的栈压穿。
+    std::vector<HWND> stack;
+    stack.reserve(m_zTop.size() * 2);
+    for (size_t i = m_zTop.size(); i-- > 0;)
+        stack.push_back(m_zTop[i]);
+    while (!stack.empty())
+    {
+        HWND h = stack.back();
+        stack.pop_back();
+        order.push_back(h);
+        std::map<HWND, std::vector<HWND>>::const_iterator it = m_children.find(h);
+        if (it == m_children.end())
+            continue;
+        for (size_t i = it->second.size(); i-- > 0;)
+            stack.push_back(it->second[i]);
+    }
+}
+
+void SConnection::composeList(const std::vector<HWND> &order, size_t iFrom, const RECT &rcScreen)
+{
+    RECT rcFb = { 0, 0, SwinxFbWidth(), SwinxFbHeight() };
+    RECT rcArea;
+    if (!IntersectRect(&rcArea, &rcScreen, &rcFb) || IsRectEmpty(&rcArea))
+        return;
+    for (size_t i = iFrom; i < order.size(); ++i)
+    {
+        HWND h = order[i];
+        // 没画过第一帧的窗口画布是全 0，整幅贴出来是一块黑 —— 跳过，等它自己
+        // 的 WM_PAINT 提交（commitCanvas 会把首帧置成整屏重组）。
+        if (m_committed.find(h) == m_committed.end())
+            continue;
+        // IsWindowVisible 会连祖先一起判：父窗口藏了，子窗口就不该再贴。
+        if (!IsWindowVisible(h))
+            continue;
+        RECT rcWin;
+        if (!screenRect(h, &rcWin))
+            continue;
+        RECT rcInter;
+        if (!IntersectRect(&rcInter, &rcArea, &rcWin) || IsRectEmpty(&rcInter))
+            continue;
+        RECT rcLocal = { rcInter.left - rcWin.left, rcInter.top - rcWin.top,
+                         rcInter.right - rcWin.left, rcInter.bottom - rcWin.top };
+        presentPending(h, rcLocal);
+    }
+}
+
+void SConnection::composeRegion(const RECT &rcScreen)
+{
+    std::vector<HWND> order;
+    buildComposeOrder(order);
+    composeList(order, 0, rcScreen);
+}
+
+void SConnection::composeAbove(HWND hWnd, const RECT &rcScreen)
+{
+    std::vector<HWND> order;
+    buildComposeOrder(order);
+    size_t i = 0;
+    while (i < order.size() && order[i] != hWnd)
+        ++i;
+    if (i >= order.size())
+        return;  // 不在合成表里：它压不住任何人，也没什么要贴回来的
+    composeList(order, i + 1, rcScreen);
+}
+
+void SConnection::presentScreenRect(HWND hWnd, const RECT &rcLocal)
+{
+    presentPending(hWnd, rcLocal);
+    RECT rcWin;
+    if (!screenRect(hWnd, &rcWin))
+        return;
+    // presentPending 内部会把 rcLocal 裁到画布，这里按未裁的算屏幕矩形：
+    // composeList 还会和每个窗口的矩形、帧缓冲各求一次交，多出来无害。
+    RECT rcScreen = { rcWin.left + rcLocal.left, rcWin.top + rcLocal.top,
+                      rcWin.left + rcLocal.right, rcWin.top + rcLocal.bottom };
+    composeAbove(hWnd, rcScreen);
+}
+
 void SConnection::presentPending(HWND hWnd, const RECT &rcPending)
 {
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
@@ -1806,8 +1985,13 @@ void SConnection::presentPending(HWND hWnd, const RECT &rcPending)
 
     // screen-space dirty rect, clipped to the framebuffer
     // （坐标 1:1：SOUI 已按 DPI 档位在布局层缩放，应用坐标 == 物理像素）
-    int winBaseX = wndObj->rc.left;
-    int winBaseY = wndObj->rc.top;
+    // 原点必须查 screenRect：顶层/WS_POPUP 的 rc 就是屏幕坐标，WS_CHILD 的 rc
+    // 是父客户区坐标，差着一层（多一层就多累加一次）祖先偏移。
+    RECT rcWin;
+    if (!screenRect(hWnd, &rcWin))
+        return;
+    int winBaseX = rcWin.left;
+    int winBaseY = rcWin.top;
     int sx = rcSrc.left;
     int sy = rcSrc.top;
     int ex = rcSrc.right;
@@ -1873,7 +2057,11 @@ void SConnection::presentPending(HWND hWnd, const RECT &rcPending)
         return;
 
     // screen-space dirty rect, clipped to the framebuffer
-    int ox = wndObj->rc.left, oy = wndObj->rc.top;
+    // 同 canvas2d 分支：屏幕原点走 screenRect()，子窗口的 rc 不是屏幕坐标。
+    RECT rcWinScreen;
+    if (!screenRect(hWnd, &rcWinScreen))
+        return;
+    int ox = rcWinScreen.left, oy = rcWinScreen.top;
     RECT rcFb = { ox + rcSrc.left, oy + rcSrc.top, ox + rcSrc.right, oy + rcSrc.bottom };
     if (rcFb.left < 0)
     {
@@ -1926,76 +2114,41 @@ void SConnection::flushPendingCommits()
     bool screenDirty = m_bScreenDirty;
     m_bScreenDirty = false;
 
-    // 多顶层窗口合成：按 z 序（创建序，底→顶）逐窗上屏。普通 flush 只上各窗
-    // 自己的脏区；screenDirty（弹出窗显隐/移动/销毁）时每个可见窗口整幅重画
-    // ——每窗的画布保留着最近一帧，底→顶重新 blit 就同时恢复了 z 序遮挡与
-    // 弹出窗关闭后的曝露区，不需要为底层窗口补 WM_PAINT。
-    std::vector<HWND> z;
+    // 多窗口合成：每个窗口的画布都保留着它最近一帧，所以"重贴画布"就等于
+    // "重放上一次绘制结果"——曝露区不需要平台再补一次 WM_PAINT。
     if (screenDirty)
-        z = m_zTop;
-    for (size_t i = 0; i < z.size(); ++i)
     {
-        WndObj wndObj = WndMgr::fromHwnd(z[i]);
-        if (!wndObj || wndObj->bDestroyed || (wndObj->dwStyle & WS_VISIBLE) == 0)
-            continue;
-        // 没画过的窗口（弹出窗首帧之前）画布是全 0，跳过，下一帧它的
-        // WM_PAINT 提交后自然出现
-        if (m_committed.find(z[i]) == m_committed.end())
-            continue;
-        RECT rcFull = {0, 0, 0x7FFFFFFF, 0x7FFFFFFF};
-        presentPending(z[i], rcFull);
-        pending.erase(z[i]);
-    }
-    if (screenDirty)
+        // z 序/位置/显隐/生死真的变了：屏幕上已有的像素是按旧顺序叠出来的，
+        // 只能底→顶整屏重排一次。pending 在这里直接作废：每个画布都已经是最
+        // 新的一帧，整屏重排比逐块补贴更省（不用再算并集）也不会漏。
         pending.clear();
-    // 非 screenDirty：只上各窗自己的脏区。但底层窗口的脏矩形可能与上层已上屏
-    // 窗口（弹出窗）重叠——直接 memcpy 会把上层像素擦掉（浏览器里 rAF 交错的
-    // 泵时序下必然发生：弹窗打开后主窗任何一次重绘都会烧穿弹层）。按 z 序
-    // 底→顶处理 pending，每上屏一块矩形就把位于其上、已画过、可见的窗口按
-    // 交集重新 blit，维持 z 序遮挡。
-    for (size_t i = 0; i < m_zTop.size(); ++i)
+        RECT rcFull = { 0, 0, SwinxFbWidth(), SwinxFbHeight() };
+        composeRegion(rcFull);
+        return;
+    }
+
+    // 只有若干窗口自己重画了：按 z 序底→顶逐块补贴，每贴完一块就把压在它
+    // 上面的窗口按交集贴回来（源是它们自己的画布，保留着最近一帧）。
+    std::vector<HWND> order;
+    buildComposeOrder(order);
+    for (size_t i = 0; i < order.size(); ++i)
     {
-        std::map<HWND, PendingCommit>::iterator it = pending.find(m_zTop[i]);
+        std::map<HWND, PendingCommit>::iterator it = pending.find(order[i]);
         if (it == pending.end())
             continue;
-        presentPending(it->first, it->second.rcSrc);
-        WndObj wndSelf = WndMgr::fromHwnd(m_zTop[i]);
-        if (wndSelf)
-        {
-            RECT rcSelf = it->second.rcSrc;
-            RECT rcScreen = { wndSelf->rc.left + rcSelf.left, wndSelf->rc.top + rcSelf.top,
-                              wndSelf->rc.left + rcSelf.right, wndSelf->rc.top + rcSelf.bottom };
-            if (rcScreen.left < 0)
-                rcScreen.left = 0;
-            if (rcScreen.top < 0)
-                rcScreen.top = 0;
-            if (rcScreen.right > SwinxFbWidth())
-                rcScreen.right = SwinxFbWidth();
-            if (rcScreen.bottom > SwinxFbHeight())
-                rcScreen.bottom = SwinxFbHeight();
-            if (rcScreen.left < rcScreen.right && rcScreen.top < rcScreen.bottom)
-            {
-                for (size_t j = i + 1; j < m_zTop.size(); ++j)
-                {
-                    if (m_committed.find(m_zTop[j]) == m_committed.end())
-                        continue;
-                    WndObj wndAbove = WndMgr::fromHwnd(m_zTop[j]);
-                    if (!wndAbove || wndAbove->bDestroyed || (wndAbove->dwStyle & WS_VISIBLE) == 0)
-                        continue;
-                    RECT rcInter = { std::max(rcScreen.left, wndAbove->rc.left),
-                                     std::max(rcScreen.top, wndAbove->rc.top),
-                                     std::min(rcScreen.right, wndAbove->rc.right),
-                                     std::min(rcScreen.bottom, wndAbove->rc.bottom) };
-                    if (rcInter.left >= rcInter.right || rcInter.top >= rcInter.bottom)
-                        continue;
-                    RECT rcLocal = { rcInter.left - wndAbove->rc.left, rcInter.top - wndAbove->rc.top,
-                                     rcInter.right - wndAbove->rc.left, rcInter.bottom - wndAbove->rc.top };
-                    presentPending(m_zTop[j], rcLocal);
-                }
-            }
-        }
+        RECT rcLocal = it->second.rcSrc;
         pending.erase(it);
+        presentPending(order[i], rcLocal);
+        RECT rcWin;
+        if (!screenRect(order[i], &rcWin))
+            continue;
+        RECT rcScreen = { rcWin.left + rcLocal.left, rcWin.top + rcLocal.top,
+                          rcWin.left + rcLocal.right, rcWin.top + rcLocal.bottom };
+        composeList(order, i + 1, rcScreen);
     }
+
+    // 兜底：不属于合成表的窗口（父窗口已经销毁、自己还没被回收）。没有 z 序
+    // 信息可用，只能直接贴，与改造前的行为一致。
     for (std::map<HWND, PendingCommit>::iterator it = pending.begin(); it != pending.end(); ++it)
         presentPending(it->first, it->second.rcSrc);
 }
@@ -2182,9 +2335,18 @@ HWND SConnection::OnWindowCreate(_Window *wnd, CREATESTRUCT *cs, int depth)
     // connection only tracks it.  See mobile's ENABLE_VIRTUAL_HWND path.
     (void)cs;
     (void)depth;
-    // z 序 = 创建序：主窗先建在底，弹出窗（SDropDownWnd 等）后建在顶。
+    if (!wnd)
+        return NULL;
+    // 合成顺序 = 创建序：主窗先建在底，弹出窗（SDropDownWnd 等）后建在顶。
+    // WS_CHILD 子窗口不进 m_zTop —— 它的 rc 是父客户区坐标，而且提升父窗口
+    // （ShowWindow → SetWindowPos(HWND_TOP)）时若把父挪到它自己子窗口后面，
+    // 父窗口就会盖住自己的子控件。子窗口单独按父内创建序存，合成时紧跟父窗口。
+    // 没有父窗口的 WS_CHILD（畸形输入）退回顶层表，否则它会被存进一个永远走不到
+    // 的 m_children[0] 里、既不显示也不释放。
     // 同一线程的连接只会有一个 UI 线程在跑，这里不需要额外加锁。
-    if (wnd)
+    if ((wnd->dwStyle & WS_CHILD) && wnd->parent)
+        m_children[wnd->parent].push_back((HWND)wnd);
+    else
         m_zTop.push_back((HWND)wnd);
     return (HWND)wnd;
 }
@@ -2199,6 +2361,14 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *)
     std::vector<HWND>::iterator it = std::find(m_zTop.begin(), m_zTop.end(), hWnd);
     if (it != m_zTop.end())
         m_zTop.erase(it);
+    // 子窗口：从父窗口的子表里摘掉；它自己名下的子表也一并丢弃（父先死时，
+    // 子窗口随后各自还会走到这里，重复擦除无害）。
+    for (std::map<HWND, std::vector<HWND>>::iterator kids = m_children.begin(); kids != m_children.end(); ++kids)
+    {
+        std::vector<HWND> &v = kids->second;
+        v.erase(std::remove(v.begin(), v.end(), hWnd), v.end());
+    }
+    m_children.erase(hWnd);
     m_committed.erase(hWnd);
     m_pendingCommits.erase(hWnd);
     // 弹出窗销毁会曝露主窗上被盖住的区域：要求整屏重新合成
@@ -2341,7 +2511,8 @@ HANDLE SConnMgr::getProcessHeap()
 {
     /* 这里不能调全局 ::GetProcessHeap()：wasm 编译的是 src/platform/posix/memory.cpp，
      * 它把 GetProcessHeap 实现成 SConnMgr::instance()->getProcessHeap()，两边互调就是
-     * 无限递归。freertos 那份照抄没问题，因为它的 sysbridge.cpp 自己实现了一个静态
-     * 进程堆。wasm 走 posix 的 HeapCreate/HeapAlloc，所以进程堆由这里持有。 */
+     * 无限递归。freertos 那份照抄没问题，因为它的 memory.cpp 自己实现了一个静态
+     * 进程堆（GetProcessHeap 返回 leak-on-purpose 的 HeapInfoFr）。wasm 走 posix 的
+     * HeapCreate/HeapAlloc，所以进程堆由这里持有。 */
     return m_hHeap ? m_hHeap : (m_hHeap = HeapCreate(0, 0, 0));
 }

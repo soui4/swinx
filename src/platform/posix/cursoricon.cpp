@@ -26,9 +26,11 @@
 
 #include <windows.h>
 #include <stdio.h>
+#ifndef SWINX_NO_MMAP /* FreeRTOS: no mmap and no path-based resources, see map_file() */
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#endif
 #ifndef SWINX_NO_LIBPNG /* route C（wasm canvas2d）不链接 libpng：PNG 光标/图标解码不可用，其余 .ico/.cur/.ani 路径不受影响 */
 #include <png.h>
 #endif
@@ -171,6 +173,14 @@ typedef struct MapFileInfo
 
 static int map_file(LPCSTR name, MapFileInfo *ret)
 {
+#ifdef SWINX_NO_MMAP
+    /* FreeRTOS builds have neither mmap nor a path to a .ico/.cur file: icons
+     * and cursors come from the resource blob via FindResource /
+     * LoadImageBuf, so only the LR_LOADFROMFILE entry points are lost. */
+    (void)name;
+    (void)ret;
+    return 0;
+#else
     int fd = open(name, O_RDONLY); // 以只读方式打开文件
     if (fd == -1)
     {
@@ -197,14 +207,20 @@ static int map_file(LPCSTR name, MapFileInfo *ret)
     ret->fileSize = sb.st_size;
     ret->ptr = mapped_file;
     return 1;
+#endif
 }
 
 static void map_close(MapFileInfo *info)
 {
     if (!info->ptr)
         return;
+#ifdef SWINX_NO_MMAP
+    /* unreachable: map_file() never succeeds without mmap */
+    info->ptr = NULL;
+#else
     munmap(info->ptr, info->fileSize);
     close(info->fd);
+#endif
 }
 
 /***********************************************************************
@@ -1833,7 +1849,15 @@ HANDLE WINAPI LoadImageBuf(const void *buf, UINT length, UINT type, INT desiredx
 }
 
 /* StretchBlt from src to dest; helper for CopyImage(). */
-#ifndef _WIN32
+
+/* The loaders below (CreateIcon, LookupIconId..., LoadIcon/LoadImage/LoadBitmap)
+ * must not shadow user32 on a *native* Windows build.  But a Windows-host build
+ * of the FreeRTOS simulator is also _WIN32 while still running the swinx shim:
+ * its resources live in an embedded COFF blob that user32 knows nothing about,
+ * so the imported LoadImageA answers NULL for every name.  Those builds define
+ * SWINX_OWN_USER32 and get the implementations here (the linker then prefers
+ * this archive member over the user32 import). */
+#if !defined(_WIN32) || defined(SWINX_OWN_USER32)
 
 /***********************************************************************
  *		CreateCursor (USER32.@)

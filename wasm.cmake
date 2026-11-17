@@ -4,14 +4,16 @@
 # Shape follows mobile.cmake, not freeRTOS.cmake: Emscripten ships a musl-based
 # libc with pthreads, real <mutex>/<thread>/<chrono>, dirent and dlfcn, so the
 # bare-metal scaffolding of src/platform/freertos/ (stl/ shims, sys/mman.h,
-# uuid/uuid.h, dlfcn.h, winobjs.cpp, syncapi.cpp, sysbridge.cpp) is not needed
-# and would collide with the POSIX implementations.  Therefore this target
-# compiles:
+# uuid/uuid.h, dlfcn.h, winobjs.cpp, syncapi.cpp, memory.cpp, fileapi.cpp,
+# sysapi.cpp) is not needed and would collide with the POSIX implementations.
+# The codepage converter is shared (src/platform/common/codepage.cpp).
+# Therefore this target compiles:
 #
 #   src/*.cpp                 swinx core (Win32 compat surface)
 #   src/cmnctl32/*            common controls
 #   src/platform/posix/*.cpp  POSIX system-API implementations, same set the
 #                             linux/macos/ios/mobile builds use
+#   src/platform/common/*.cpp 平台中立层（消息泵 / QPF-QPC / 码表转换），与 freertos 共用
 #   src/platform/wasm/*.cpp   the wasm SConnection + framebuffer + input
 #                             injection (fork of src/platform/freertos/)
 #   src/gdi/<backend>/*.cpp   the GDI backend -- 由 SWINX_WASM_GDI_BACKEND 选择：
@@ -125,6 +127,7 @@ file(GLOB SRCS
     src/cmnctl32/*.cpp
     src/cmnctl32/*.c
     src/platform/posix/*.cpp
+    src/platform/common/*.cpp   # 与 freertos 共用的中立层（消息泵 / 性能计数器 / 码表转换）
     src/platform/wasm/*.cpp
 )
 

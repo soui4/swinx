@@ -754,22 +754,101 @@ static BOOL ApplyFont(HDC hdc)
     return TRUE;
 }
 
+/* Region -> cairo path, without the heap round trip.
+ *
+ * Both ApplyRegion() and ApplyRegionAnd() used to ask GetRegionData() for the
+ * size, malloc it, ask again, then free.  A paint installs clips per window
+ * (PushClipRect / PushClipRegion in render-gdi, ExtSelectClipRgn in BeginPaint),
+ * so that was 3-4 malloc/free pairs per window per frame -- for a region that
+ * holds one rectangle in the overwhelming majority of cases.  Try a stack
+ * buffer first and only fall back to the heap for a pathological region. */
+#define SWINX_STACK_RGN_RECTS 24
+struct SStackRgnData
+{
+    RGNDATAHEADER hdr;
+    RECT rc[SWINX_STACK_RGN_RECTS];
+};
+
+/* Returns the rect array of hRgn.  *ppFree is NULL when pStack was used, else
+ * it is the block the caller must free(). */
+static const RECT *GetRegionRectsFast(HRGN hRgn, SStackRgnData *pStack, RGNDATA **ppFree, int *pnCount)
+{
+    *ppFree = NULL;
+    *pnCount = 0;
+    if (!hRgn)
+        return NULL;
+    const DWORD dwStack = FIELD_OFFSET(RGNDATA, Buffer) + sizeof(pStack->rc);
+    if (GetRegionData(hRgn, dwStack, (RGNDATA *)pStack))
+    {
+        *pnCount = (int)pStack->hdr.nCount;
+        return (const RECT *)pStack->rc;
+    }
+    const DWORD dwNeed = GetRegionData(hRgn, 0, NULL);
+    if (!dwNeed)
+        return NULL;
+    RGNDATA *pData = (RGNDATA *)malloc(dwNeed);
+    if (!pData)
+        return NULL;
+    if (!GetRegionData(hRgn, dwNeed, pData))
+    {
+        free(pData);
+        return NULL;
+    }
+    *ppFree = pData;
+    *pnCount = (int)pData->rdh.nCount;
+    return (const RECT *)pData->Buffer;
+}
+
 static void ApplyRegion(cairo_t *ctx, HRGN hRgn)
 {
     cairo_reset_clip(ctx);
     if (!hRgn)
         return; // NULL region: remove clipping entirely (SelectClipRgn(hdc,NULL))
-    DWORD dwCount = GetRegionData(hRgn, 0, nullptr);
-    RGNDATA *pData = (RGNDATA *)malloc(dwCount);
-    GetRegionData(hRgn, dwCount, pData);
-    RECT *pRc = (RECT *)pData->Buffer;
-    for (int i = 0; i < (int)pData->rdh.nCount; i++)
+    SStackRgnData stackData;
+    RGNDATA *pFree = NULL;
+    int nCount = 0;
+    const RECT *pRc = GetRegionRectsFast(hRgn, &stackData, &pFree, &nCount);
+    if (!pRc)
+        return;
+    for (int i = 0; i < nCount; i++)
     {
         cairo_rectangle(ctx, pRc->left, pRc->top, pRc->right - pRc->left, pRc->bottom - pRc->top);
         pRc++;
     }
-    free(pData);
+    free(pFree);
     cairo_clip(ctx);
+}
+
+/* RGN_AND 的快捷路径：cairo_clip() 本身就是"把当前路径与现有裁剪求交"，与
+ * Win32 的 ExtSelectClipRgn(RGN_AND) 语义相同，因此不需要先把现有裁剪导出
+ * 成矩形数组再算布尔运算。
+ *
+ * 注意 cairo_new_path()：cairo_clip() 不消耗当前路径，如果直接把新矩形追加
+ * 到上一批裁剪矩形后面，路径会越积越长（而且并集语义会让裁剪越裁越松）。
+ * GDI 的裁剪与"当前路径"无关（BeginPath/EndPath 之外），所以这里清路径是
+ * 安全的，也是 ApplyRegion() 同样需要的前提。 */
+static int ApplyRegionAnd(cairo_t *ctx, HRGN hRgn)
+{
+    if (!hRgn)
+        return SIMPLEREGION; // 与"未设置裁剪"求交 = 保持原状（Win32 同）
+    SStackRgnData stackData;
+    RGNDATA *pFree = NULL;
+    int nCount = 0;
+    const RECT *pRc = GetRegionRectsFast(hRgn, &stackData, &pFree, &nCount);
+    if (!pRc)
+        return RGN_ERROR;
+    const RECT *pScan = pRc;
+    cairo_new_path(ctx);
+    for (int i = 0; i < nCount; i++)
+    {
+        cairo_rectangle(ctx, pScan->left, pScan->top, pScan->right - pScan->left, pScan->bottom - pScan->top);
+        pScan++;
+    }
+    free(pFree);
+    cairo_clip(ctx);
+    // The rect array is gone by now -- asking hRgn (not a freed copy) also gives
+    // the right Win32 return value: NULLREGION / SIMPLEREGION / COMPLEXREGION.
+    return GetRgnBox(hRgn, NULL);
 }
 
 // Clip coordinate-space contract of this backend (why the clip functions
@@ -1551,33 +1630,19 @@ int ExtSelectClipRgn(HDC hdc, HRGN hrgn, int mode)
     if (mode == RGN_COPY)
     {
         ApplyRegion(hdc->cairo, hrgn);
-        return 0;
+        return hrgn ? GetRgnBox(hrgn, NULL) : SIMPLEREGION;
     }
-    // combine in the current logical space: GetClipRgn exports the clip in
-    // user coordinates and ApplyRegion maps it back through the CTM (see the
-    // clip semantics note above ApplyRegion)
-    HRGN rgnNow = CreateRectRgn(0, 0, 0, 0);
-    // probe the raw clip state first: CLIP_NOT_REPRESENTABLE means "no clip
-    // set" (unbounded), while a bounded-but-empty clip must stay empty after
-    // the combine; GetClipRgn maps both to 0 and must be told apart here
-    cairo_rectangle_list_t *rcList = cairo_copy_clip_rectangle_list(hdc->cairo);
-    BOOL bNoClip = (rcList->status == CAIRO_STATUS_CLIP_NOT_REPRESENTABLE);
-    cairo_rectangle_list_destroy(rcList);
-    GetClipRgn(hdc, rgnNow);
-    int ret;
-    if (bNoClip && mode == RGN_AND)
-    { // no current clip: intersecting with it is a no-op, so the result is
-      // just hrgn itself (matches Win32)
-        ret = GetRgnBox(hrgn,NULL);
-        ApplyRegion(hdc->cairo, hrgn);
-    }
-    else
+    else if (mode == RGN_AND)
     {
-        ret = CombineRgn(rgnNow, rgnNow, hrgn, mode);
+        return ApplyRegionAnd(hdc->cairo, hrgn);
+    }else{
+        HRGN rgnNow = CreateRectRgn(0, 0, 0, 0);
+        GetClipRgn(hdc, rgnNow);
+        int ret = CombineRgn(rgnNow, rgnNow, hrgn, mode);
         ApplyRegion(hdc->cairo, rgnNow);
+        DeleteObject(rgnNow);
+        return ret;
     }
-    DeleteObject(rgnNow);
-    return ret;
 }
 
 int ExcludeClipRect(HDC hdc, int left, int top, int right, int bottom)
@@ -3317,7 +3382,11 @@ BOOL GetTextExtentPoint32A(HDC hdc, LPCSTR lpString, int c, LPSIZE psizl)
     cairo_font_extents_t font_ext;
     cairo_font_extents(hdc->cairo, &font_ext);
     cairo_text_extents2(hdc->cairo, lpString, c, &ext);
-    psizl->cx = ext.x_advance;
+    // 四舍五入，不是截断：SOUI 的文本排版是"逐词/逐字累加宽度"（SCmnCtrl.cpp:187、
+    // :223），每个 run 单独调用本函数。截断会让每个 run 系统性少算 0..1px，行越
+    // 长累计越偏，最后画出来的行比排出来的行宽 —— FreeRTOS 上 "行末被截断" 的
+    // 症状就是这么来的（该端的 toy font 是分数 advance）。GDI 也是取整。
+    psizl->cx = (LONG)floor(ext.x_advance + 0.5);
     psizl->cy = font_ext.ascent + font_ext.descent;
     cairo_restore(hdc->cairo);
     return TRUE;

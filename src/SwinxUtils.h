@@ -32,6 +32,54 @@
  */
 int swinx_messageBeep(UINT uType);
 
+/* 单调计数原语，单位 100ns（10MHz）。唯一调用方是
+ * src/platform/common/perfclock.cpp 里的 QueryPerformanceCounter()。
+ *
+ * 为什么把它做成跨平台契约：QueryPerformanceFrequency/Counter 是 Win32 语义
+ * （刻度 + 单调读数），与「时间从哪来」无关。把时间源压成这一个函数之后，
+ * QPF/QPC 就只有 src/platform/common/perfclock.cpp 一份实现，各平台只答"现在
+ * 多少 tick"：
+ *
+ *     posix（linux / macOS / iOS / Android / OHOS / wasm）
+ *         gettimeofday()，纪元 1601-01-01，见 src/platform/posix/sysapi.cpp
+ *     freertos
+ *         esp_timer_get_time()（IDF）或内核 tick，纪元为开机时刻，见
+ *         src/platform/freertos/winobjs.cpp
+ *
+ * 只要求单调递增 —— QPC 用来算区间，不读挂钟（挂钟是 GetSystemTime /
+ * GetLocalTime 的职责），所以两个平台纪元不同不影响任何调用方。
+ *
+ * 返回类型写 long long 而不是 LONGLONG：本头会被 Objective-C++ 单元包含，
+ * long long 在所有前端都是同一个类型（理由同本文件头关于 BOOL 的说明）。 */
+long long swinx_perf_ticks_100ns(void);
+
+/* GetSystemMetrics 的缩放百分比，调用方见 src/platform/common/sysapi.cpp。
+ *
+ * 取值表（sm_cxicon=32、sm_cxminTrack=6、非客户区厚度=0……）是 Win32 语义，全平台
+ * 只有一份；各平台唯一可能不同的是「这个度量值要不要按 DPI 放大」：
+ *
+ *     多数平台     return GetSystemScale()        （100 = 不缩放）
+ *     macOS        SM_CXCURSOR / SM_CYCURSOR 返回 100 —— CoreGraphics 的 cursor
+ *                  尺寸本身就是 point，再乘 DPI 会翻倍（其余度量仍按 DPI 放大）
+ *
+ * 之所以把它抽成契约而不是在 common 里写 #ifdef __APPLE__：common 层不许有平台
+ * 分支（见 AGENTS.md §2）。返回类型用 int 不用 BOOL，理由同上面的
+ * swinx_perf_ticks_100ns：本头会被 Objective-C++ 单元包含，BOOL 在 Apple 前端
+ * 与 .cpp 里宽度不一致。 */
+int swinx_system_metric_scale(int nIndex);
+
+/* ANSI 代码页（GetACP 的返回值），调用方见 src/platform/common/codepage.cpp。
+ *
+ * 「ANSI 串在这平台上是什么编码」是平台约定，不是 Win32 语义，所以值留在平台
+ * 目录，API 本体和「由它派生的判断」（IsDBCSLeadByte）合并在 common 一份：
+ *
+ *     posix 家族   CP_UTF8（65001）—— swinx 内部统一以 UTF-8 表示多字节串
+ *     freertos    1252（Windows-1252，单字节，因此没有 lead byte）
+ *
+ * 两个值各自内部自洽，别只改一个：IsDBCSLeadByte 由 GetACP() 派生，注入别的
+ * 代码页时它会跟着变。返回 int 而不是 UINT，理由同上面的 BOOL 说明。 */
+int swinx_ansi_codepage(void);
+
 /* 文件选择的平台实现，调用方见 src/cmmmdlg.cpp 的 SwinxPickFileAsyncA。
  *
  * 各平台目录的 dlghelper.* 给出同名实现：wasm 是真异步（结果由页面在稍后回调重入口

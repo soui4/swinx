@@ -13,17 +13,55 @@
 #                                        interlocked + pthread_self()
 #   src/platform/freertos/SConnection.*  message queue / timers / keyboard /
 #                                        caret (mobile-shaped, FreeRTOS waits)
+#   src/platform/freertos/memory.cpp     process heap / Global* / Local* /
+#                                        single-process SharedMemory fallback
+#   src/platform/freertos/fileapi.cpp    Find*, GetFileAttributes, CRT _open/_stat
+#   src/platform/freertos/sysapi.cpp     GetSystemMetrics / cursor / time / CRT /
+#                                        IMM / last-error -- the symbols
+#                                        posix/sysapi.cpp and friends supply on
+#                                        the POSIX platforms.  Also the iconv
+#                                        shims newlib declares but never
+#                                        implements; the converter itself is in
+#                                        common/codepage.cpp.
 #   src/platform/freertos/atoms.cpp      atom registry (port of mobile's)
 #   src/platform/freertos/dlfcn.h        <dlfcn.h> declarations (no dynamic
 #                                        loader on bare metal)
 #   src/platform/freertos/cairo-features.h  stub: cairo built without backends
 #   src/platform/freertos/uuid/uuid.h    <uuid/uuid.h> on the FreeRTOS tick
 #
+# Shared, platform-neutral layer (globbed here AND by every POSIX-family
+# platform; see the layer table in AGENTS.md section 1):
+#   src/platform/common/perfclock.cpp  QueryPerformanceFrequency/Counter --
+#                                      one implementation, each platform only
+#                                      answers "how many 100ns ticks now"
+#                                      (posix: gettimeofday, freertos: esp_timer)
+#   src/platform/common/msgpump.cpp    GetMessage/PeekMessage + input queries +
+#                                      WinEvent draining.  The Win32 pump
+#                                      semantics live here once; the platform
+#                                      difference is only SConnection::getMsg.
+#   src/platform/common/codepage.cpp   MultiByteToWideChar/WideCharToMultiByte
+#                                      and the builtin CP936/125x/UTF-16 tables.
+#                                      iconv is tried first and the builtin
+#                                      tables take over when it is unavailable
+#                                      (bionic/musl, and bare-metal newlib --
+#                                      whose iconv_open stub lives in
+#                                      freertos/sysapi.cpp).
+#
 # Files NOT built on this platform (their Win32-compat symbols are provided
 # by src/platform/freertos/winobjs.cpp + syncapi.cpp instead):
 #   src/platform/posix/*.cpp      POSIX system-API implementations; compiled by
 #                                 every other platform (linux/macos/ios/mobile),
-#                                 excluded here by simply not globbing it.
+#                                 excluded here by simply not globbing it.  The
+#                                 pieces the core window path needs are NOT
+#                                 copies in freertos/ any more: the pump, the
+#                                 clock and the codepage converter are in
+#                                 common/, the rest is the split
+#                                 freertos/{memory,fileapi,sysapi}.cpp.
+
+# Native dialogs / accessibility / drag&drop / clipboard are not compiled here
+# either: src/platform/linux/{dlghelper,SAtSpi,SDragdrop,SClipboard}.cpp need
+# the X11 + DBus stack.  freertos/dlghelper.cpp + SClipboard.h are the
+# stand-ins.
 #
 # Not built on this platform (X11/DBus/ALSA stack):
 #   thirdparty/{libxcb,xcb-util*,xkbcommon,xcb-imdkit,dbus-1.14.10}; dbus is
@@ -78,15 +116,21 @@ file(GLOB SWINX_CMNCTL_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cmnctl32/*.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/cmnctl32/*.c)
 file(GLOB SWINX_FREERTOS_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/freertos/*.cpp)
+# The platform-neutral layer shared with the POSIX-family ports (msgpump,
+# perfclock, codepage).  Without it the pump/clock/conversion symbols would be
+# missing: they are no longer defined in posix/sysapi.cpp or in a freertos-only
+# copy.
+file(GLOB SWINX_COMMON_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/common/*.cpp)
 
 source_group("Header Files" FILES ${HEADERS})
-source_group("Source Files" FILES ${SWINX_CORE_SRCS} ${SWINX_CMNCTL_SRCS} ${SWINX_FREERTOS_SRCS})
+source_group("Source Files" FILES ${SWINX_CORE_SRCS} ${SWINX_CMNCTL_SRCS} ${SWINX_FREERTOS_SRCS} ${SWINX_COMMON_SRCS})
 
 # bare-metal: static archive only
 add_library(swinx STATIC
     ${SWINX_CORE_SRCS}
     ${SWINX_CMNCTL_SRCS}
     ${SWINX_FREERTOS_SRCS}
+    ${SWINX_COMMON_SRCS}
     ${HEADERS})
     
 # Force-include the swinx_stl preamble into every swinx C++ TU: it pulls in

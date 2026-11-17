@@ -85,527 +85,11 @@ extern void UnloadModuleResources(HMODULE hModule);
 #endif // WCHAR_SIZE
 
 using namespace swinx;
-/*
-ANSI_X3.4-1968 ANSI_X3.4-1986 ASCII CP367 IBM367 ISO-IR-6 ISO646-US ISO_646.IRV:1991 US US-ASCII CSASCII
-UTF-8 UTF8
-UTF-8-MAC UTF8-MAC
-ISO-10646-UCS-2 UCS-2 CSUNICODE
-UCS-2BE UNICODE-1-1 UNICODEBIG CSUNICODE11
-UCS-2LE UNICODELITTLE
-ISO-10646-UCS-4 UCS-4 CSUCS4
-UCS-4BE
-UCS-4LE
-UTF-16
-UTF-16BE
-UTF-16LE
-UTF-32
-UTF-32BE
-UTF-32LE
-UNICODE-1-1-UTF-7 UTF-7 CSUNICODE11UTF7
-UCS-2-INTERNAL
-UCS-2-SWAPPED
-UCS-4-INTERNAL
-UCS-4-SWAPPED
-C99
-JAVA
-CP819 IBM819 ISO-8859-1 ISO-IR-100 ISO8859-1 ISO_8859-1 ISO_8859-1:1987 L1 LATIN1 CSISOLATIN1
-ISO-8859-2 ISO-IR-101 ISO8859-2 ISO_8859-2 ISO_8859-2:1987 L2 LATIN2 CSISOLATIN2
-ISO-8859-3 ISO-IR-109 ISO8859-3 ISO_8859-3 ISO_8859-3:1988 L3 LATIN3 CSISOLATIN3
-ISO-8859-4 ISO-IR-110 ISO8859-4 ISO_8859-4 ISO_8859-4:1988 L4 LATIN4 CSISOLATIN4
-CYRILLIC ISO-8859-5 ISO-IR-144 ISO8859-5 ISO_8859-5 ISO_8859-5:1988 CSISOLATINCYRILLIC
-ARABIC ASMO-708 ECMA-114 ISO-8859-6 ISO-IR-127 ISO8859-6 ISO_8859-6 ISO_8859-6:1987 CSISOLATINARABIC
-ECMA-118 ELOT_928 GREEK GREEK8 ISO-8859-7 ISO-IR-126 ISO8859-7 ISO_8859-7 ISO_8859-7:1987 ISO_8859-7:2003 CSISOLATINGREEK
-HEBREW ISO-8859-8 ISO-IR-138 ISO8859-8 ISO_8859-8 ISO_8859-8:1988 CSISOLATINHEBREW
-ISO-8859-9 ISO-IR-148 ISO8859-9 ISO_8859-9 ISO_8859-9:1989 L5 LATIN5 CSISOLATIN5
-ISO-8859-10 ISO-IR-157 ISO8859-10 ISO_8859-10 ISO_8859-10:1992 L6 LATIN6 CSISOLATIN6
-ISO-8859-11 ISO8859-11 ISO_8859-11
-ISO-8859-13 ISO-IR-179 ISO8859-13 ISO_8859-13 L7 LATIN7
-ISO-8859-14 ISO-CELTIC ISO-IR-199 ISO8859-14 ISO_8859-14 ISO_8859-14:1998 L8 LATIN8
-ISO-8859-15 ISO-IR-203 ISO8859-15 ISO_8859-15 ISO_8859-15:1998 LATIN-9
-ISO-8859-16 ISO-IR-226 ISO8859-16 ISO_8859-16 ISO_8859-16:2001 L10 LATIN10
-KOI8-R CSKOI8R
-KOI8-U
-KOI8-RU
-CP1250 MS-EE WINDOWS-1250
-CP1251 MS-CYRL WINDOWS-1251
-CP1252 MS-ANSI WINDOWS-1252
-CP1253 MS-GREEK WINDOWS-1253
-CP1254 MS-TURK WINDOWS-1254
-CP1255 MS-HEBR WINDOWS-1255
-CP1256 MS-ARAB WINDOWS-1256
-CP1257 WINBALTRIM WINDOWS-1257
-CP1258 WINDOWS-1258
-850 CP850 IBM850 CSPC850MULTILINGUAL
-862 CP862 IBM862 CSPC862LATINHEBREW
-866 CP866 IBM866 CSIBM866
-MAC MACINTOSH MACROMAN CSMACINTOSH
-MACCENTRALEUROPE
-MACICELAND
-MACCROATIAN
-MACROMANIA
-MACCYRILLIC
-MACUKRAINE
-MACGREEK
-MACTURKISH
-MACHEBREW
-MACARABIC
-MACTHAI
-HP-ROMAN8 R8 ROMAN8 CSHPROMAN8
-NEXTSTEP
-ARMSCII-8
-GEORGIAN-ACADEMY
-GEORGIAN-PS
-KOI8-T
-CP154 CYRILLIC-ASIAN PT154 PTCP154 CSPTCP154
-MULELAO-1
-CP1133 IBM-CP1133
-ISO-IR-166 TIS-620 TIS620 TIS620-0 TIS620.2529-1 TIS620.2533-0 TIS620.2533-1
-CP874 WINDOWS-874
-VISCII VISCII1.1-1 CSVISCII
-TCVN TCVN-5712 TCVN5712-1 TCVN5712-1:1993
-ISO-IR-14 ISO646-JP JIS_C6220-1969-RO JP CSISO14JISC6220RO
-JISX0201-1976 JIS_X0201 X0201 CSHALFWIDTHKATAKANA
-ISO-IR-87 JIS0208 JIS_C6226-1983 JIS_X0208 JIS_X0208-1983 JIS_X0208-1990 X0208 CSISO87JISX0208
-ISO-IR-159 JIS_X0212 JIS_X0212-1990 JIS_X0212.1990-0 X0212 CSISO159JISX02121990
-CN GB_1988-80 ISO-IR-57 ISO646-CN CSISO57GB1988
-CHINESE GB_2312-80 ISO-IR-58 CSISO58GB231280
-CN-GB-ISOIR165 ISO-IR-165
-ISO-IR-149 KOREAN KSC_5601 KS_C_5601-1987 KS_C_5601-1989 CSKSC56011987
-EUC-JP EUCJP EXTENDED_UNIX_CODE_PACKED_FORMAT_FOR_JAPANESE CSEUCPKDFMTJAPANESE
-MS_KANJI SHIFT-JIS SHIFT_JIS SJIS CSSHIFTJIS
-CP932
-ISO-2022-JP CSISO2022JP
-ISO-2022-JP-1
-ISO-2022-JP-2 CSISO2022JP2
-CN-GB EUC-CN EUCCN GB2312 CSGB2312
-GBK
-CP936 MS936 WINDOWS-936
-GB18030
-ISO-2022-CN CSISO2022CN
-ISO-2022-CN-EXT
-HZ HZ-GB-2312
-EUC-TW EUCTW CSEUCTW
-BIG-5 BIG-FIVE BIG5 BIGFIVE CN-BIG5 CSBIG5
-CP950
-BIG5-HKSCS:1999
-BIG5-HKSCS:2001
-BIG5-HKSCS BIG5-HKSCS:2004 BIG5HKSCS
-EUC-KR EUCKR CSEUCKR
-CP949 UHC
-CP1361 JOHAB
-ISO-2022-KR CSISO2022KR
-CP856
-CP922
-CP943
-CP1046
-CP1124
-CP1129
-CP1161 IBM-1161 IBM1161 CSIBM1161
-CP1162 IBM-1162 IBM1162 CSIBM1162
-CP1163 IBM-1163 IBM1163 CSIBM1163
-DEC-KANJI
-DEC-HANYU
-437 CP437 IBM437 CSPC8CODEPAGE437
-CP737
-CP775 IBM775 CSPC775BALTIC
-852 CP852 IBM852 CSPCP852
-CP853
-855 CP855 IBM855 CSIBM855
-857 CP857 IBM857 CSIBM857
-CP858
-860 CP860 IBM860 CSIBM860
-861 CP-IS CP861 IBM861 CSIBM861
-863 CP863 IBM863 CSIBM863
-CP864 IBM864 CSIBM864
-865 CP865 IBM865 CSIBM865
-869 CP-GR CP869 IBM869 CSIBM869
-CP1125
-EUC-JISX0213
-SHIFT_JISX0213
-ISO-2022-JP-3
-BIG5-2003
-ISO-IR-230 TDS565
-ATARI ATARIST
-RISCOS-LATIN1
-*/
-#ifdef __APPLE__
-#define ICONV_UTF32LE "UTF-32LE"
-#define ICONV_UTF16LE "UTF-16LE"
-#define ICONV_UTF16BE "UTF-16BE"
-#else
-#define ICONV_UTF32LE "UTF32LE"
-#define ICONV_UTF16LE "UTF16LE"
-#define ICONV_UTF16BE "UTF16BE"
-#endif //__APPLE__
-#define ICONV_WINDOWS_936  "WINDOWS-936"
-#define ICONV_WINDOWS_1250 "WINDOWS-1250"
-#define ICONV_WINDOWS_1251 "WINDOWS-1251"
-#define ICONV_WINDOWS_1252 "WINDOWS-1252"
-#define ICONV_WINDOWS_1253 "WINDOWS-1253"
-#define ICONV_WINDOWS_1254 "WINDOWS-1254"
-#define ICONV_WINDOWS_1255 "WINDOWS-1255"
-#define ICONV_WINDOWS_1256 "WINDOWS-1256"
-#define ICONV_WINDOWS_1257 "WINDOWS-1257"
-#define ICONV_WINDOWS_1258 "WINDOWS-1258"
+/* ANSI/UTF 代码页转换（MultiByteToWideChar / WideCharToMultiByte、Cp2IConvCode、
+ * 内置码表兜底）已下沉到 src/platform/common/codepage.cpp —— 它与窗口系统无关，
+ * 所有平台共用一份。这里原先那份与 platform/freertos/codepage.cpp 是逐字拷贝，
+ * 两份的 UTF-16 兜底已经漂移（只有 freertos 那份认 UTF-16 源串），故合并。 */
 
-static const char *Cp2IConvCode(int codePage)
-{
-    switch (codePage)
-    {
-    case CP_UTF16_LE:
-        return ICONV_UTF16LE;
-    case CP_UTF16_BE:
-        return ICONV_UTF16BE;
-    case 936:
-        return ICONV_WINDOWS_936;
-    case 1250:
-        return ICONV_WINDOWS_1250;
-    case 1251:
-        return ICONV_WINDOWS_1251;
-    case 1252:
-        return ICONV_WINDOWS_1252;
-    case 1253:
-        return ICONV_WINDOWS_1253;
-    case 1254:
-        return ICONV_WINDOWS_1254;
-    case 1255:
-        return ICONV_WINDOWS_1255;
-    case 1256:
-        return ICONV_WINDOWS_1256;
-    case 1257:
-        return ICONV_WINDOWS_1257;
-    case 1258:
-        return ICONV_WINDOWS_1258;
-    default:
-        return NULL;
-    }
-}
-
-// ============================================================================
-// iconv 不可用时的内置码表兜底
-// ----------------------------------------------------------------------------
-// Android(bionic) 与 OHOS(musl) 的 iconv 只实现了 Unicode 系编码(UTF-8/16/32、
-// US-ASCII、wchar_t), 既不认识 GBK/CP936 与 Windows-125x, 也没有别名解析能力,
-// 于是 iconv_open 对传统代码页必然失败(失败时返回 -1, 个别实现返回 NULL),
-// 使 MultiByteToWideChar/WideCharToMultiByte 对 CP936 等直接失效。
-// 这里用 cptable.h 的静态码表兜底, 让各平台的转换结果保持一致; iconv 可用的平台
-// (Linux/macOS/iOS 桌面链)仍优先走 iconv, 行为不变。
-// ============================================================================
-
-// iconv_open 成功时才返回有效句柄; 失败时不同实现返回 (iconv_t)-1 或 NULL, 都算失败
-static inline bool isInvalidIconv(iconv_t cd)
-{
-    return cd == (iconv_t)-1 || cd == (iconv_t)0;
-}
-
-// Windows-125x 单字节页码表; 该代码页无内置码表时返回 NULL
-static const unsigned short *builtinSingleByteTable(int codePage)
-{
-    switch (codePage)
-    {
-    case 1250:
-        return kCP1250ToUnicode;
-    case 1251:
-        return kCP1251ToUnicode;
-    case 1252:
-        return kCP1252ToUnicode;
-    case 1253:
-        return kCP1253ToUnicode;
-    case 1254:
-        return kCP1254ToUnicode;
-    case 1255:
-        return kCP1255ToUnicode;
-    case 1256:
-        return kCP1256ToUnicode;
-    case 1257:
-        return kCP1257ToUnicode;
-    case 1258:
-        return kCP1258ToUnicode;
-    default:
-        return NULL;
-    }
-}
-
-// 是否有内置码表可以处理该代码页(目前为 CP936 与 Windows-125x)
-static inline bool hasBuiltinTable(int codePage)
-{
-    return codePage == 936 || builtinSingleByteTable(codePage) != NULL;
-}
-
-// 尾字节 -> 表内序号(0x40..0x7E 与 0x80..0xFE 合法, 0x7F/0xFF 非法), 非法返回 -1
-static inline int cp936TrailIndex(unsigned char c)
-{
-    if (c >= 0x40 && c <= 0x7E)
-        return c - 0x40;
-    if (c >= 0x80 && c <= 0xFE)
-        return c - 0x80 + 63; // 0x40..0x7E 共 63 个尾字节
-    return -1;
-}
-
-// 用内置码表把多字节串转成宽字符串。返回值语义同 to_unicode(写出的字符数);
-// unConvertedChars 记录未能转换的字节数(语义与 iconv 路径一致), 供
-// MultiByteToWideChar 判定 ERROR_NO_UNICODE_TRANSLATION。无法转换的字节按 Win32
-// 语义替换为 U+FFFD 并继续, 而不是中断整个转换。
-static int builtinToUnicode(const char *input, size_t input_len, int codePage, std::wstring &out, int &unConvertedChars)
-{
-    size_t unconverted = 0;
-    out.clear();
-    out.reserve(input_len);
-
-    if (codePage == 936)
-    {
-        for (size_t i = 0; i < input_len;)
-        {
-            unsigned char c = (unsigned char)input[i];
-            if (c < 0x80)
-            { // 单字节区与 ASCII 一致
-                out.push_back((wchar_t)c);
-                ++i;
-                continue;
-            }
-            int trail = (i + 1 < input_len) ? cp936TrailIndex((unsigned char)input[i + 1]) : -1;
-            if (c >= kCP936LeadFirst && c <= kCP936LeadLast && trail >= 0)
-            {
-                unsigned short u = kCP936ToUnicode[(c - kCP936LeadFirst) * kCP936TrailCount + trail];
-                if (u)
-                {
-                    out.push_back((wchar_t)u);
-                    i += 2;
-                    continue;
-                }
-            }
-            // 非法序列: 只前进一个字节, 让后一个字节仍有机会被正确解码
-            out.push_back((wchar_t)0xFFFD);
-            ++unconverted;
-            ++i;
-        }
-        unConvertedChars = (int)unconverted;
-        return (int)out.length();
-    }
-
-    const unsigned short *table = builtinSingleByteTable(codePage);
-    if (!table)
-        return 0; // 该代码页无内置码表(如 UTF-16), 由调用方按转换失败处理
-
-    for (size_t i = 0; i < input_len; ++i)
-    {
-        unsigned char c = (unsigned char)input[i];
-        unsigned short u = c;
-        if (c >= 0x80)
-        {
-            u = table[c - 0x80];
-            if (!u)
-            { // 该页未定义此字节
-                u = 0xFFFD;
-                ++unconverted;
-            }
-        }
-        out.push_back((wchar_t)u);
-    }
-    unConvertedChars = (int)unconverted;
-    return (int)out.length();
-}
-
-// Unicode -> CP936 反查表: 元素为 (unicode << 16) | 表内序号, 排序后即可二分查找。
-// 首次使用时由正向码表构建一次。故意 new 出来不释放(leak-on-purpose): 若被其它
-// 静态对象的析构函数调用, 函数局部静态的析构会早于调用方, 造成 UAF。
-static const std::vector<unsigned int> &cp936ReverseMap()
-{
-    static const std::vector<unsigned int> *s_map = []() {
-        std::vector<unsigned int> *map = new std::vector<unsigned int>();
-        map->reserve(kCP936TableSize);
-        for (unsigned int i = 0; i < (unsigned int)kCP936TableSize; ++i)
-        {
-            unsigned short u = kCP936ToUnicode[i];
-            if (u)
-                map->push_back((((unsigned int)u) << 16) | i);
-        }
-        std::sort(map->begin(), map->end());
-        return map;
-    }();
-    return *s_map;
-}
-
-// Unicode -> CP936 单字符编码; 无法映射返回 0
-static unsigned short cp936Encode(unsigned int ch)
-{
-    if (ch < 0x80)
-        return (unsigned short)ch;
-    const std::vector<unsigned int> &map = cp936ReverseMap();
-    std::vector<unsigned int>::const_iterator it = std::lower_bound(map.begin(), map.end(), ch << 16);
-    if (it != map.end() && (*it >> 16) == ch)
-        return (unsigned short)(*it & 0xFFFF);
-    return 0;
-}
-
-// 用内置码表把宽字符串转成多字节串。返回值语义同 to_mb(写出的字节数); 无法映射的
-// 字符按 Win32 语义替换为 '?'。不写结尾 0, 由调用方按 dstLen 处理。
-static int builtinToMb(const wchar_t *input, size_t input_len, int codePage, std::string &out)
-{
-    out.clear();
-    out.reserve(input_len * 2);
-
-    if (codePage == 936)
-    {
-        for (size_t i = 0; i < input_len; ++i)
-        {
-            unsigned int ch = (unsigned int)input[i];
-            if (ch < 0x80)
-            {
-                out.push_back((char)ch);
-                continue;
-            }
-            unsigned short idx = cp936Encode(ch);
-            if (!idx)
-            {
-                out.push_back('?');
-                continue;
-            }
-            int trail = idx % kCP936TrailCount;
-            out.push_back((char)(kCP936LeadFirst + idx / kCP936TrailCount));
-            out.push_back((char)(trail < 63 ? (0x40 + trail) : (0x80 + trail - 63)));
-        }
-        return (int)out.length();
-    }
-
-    const unsigned short *table = builtinSingleByteTable(codePage);
-    if (!table)
-        return 0; // 该代码页无内置码表(如 UTF-16), 由调用方按转换失败处理
-
-    for (size_t i = 0; i < input_len; ++i)
-    {
-        unsigned int ch = (unsigned int)input[i];
-        char mb = 0;
-        if (ch < 0x80)
-            mb = (char)ch;
-        else
-        {
-            for (int b = 0; b < 128; ++b)
-            { // 单字节页只有 128 项, 线性反查足够
-                if (table[b] == ch)
-                {
-                    mb = (char)(0x80 + b);
-                    break;
-                }
-            }
-            if (!mb)
-                mb = '?';
-        }
-        out.push_back(mb);
-    }
-    return (int)out.length();
-}
-
-static int to_mb(const wchar_t *input, size_t input_len, int codePage, std::string &out)
-{
-    const char *toCode = Cp2IConvCode(codePage);
-    if (!toCode)
-        return 0;
-#if WCHAR_SIZE == 4
-    iconv_t cd = iconv_open(toCode, ICONV_UTF32LE);
-#else
-    iconv_t cd = iconv_open(toCode, ICONV_UTF16LE);
-#endif
-    if (isInvalidIconv(cd))
-    {
-        // iconv 不认识该代码页(典型: Android/OHOS 上的 CP936 与 Windows-125x),
-        // 改用内置码表兜底, 否则这些代码页在移动平台上完全不可用。
-        if (hasBuiltinTable(codePage))
-        {
-            SLOG_STMW() << "iconv_open failed, fallback to builtin table, codePage=" << codePage;
-            return builtinToMb(input, input_len, codePage, out);
-        }
-        SLOG_STMW() << "iconv_open failed, codePage=" << codePage;
-        return 0;
-    }
-    size_t output_len = (input_len + 1) * 4; // UTF-32 字符一般比 GBK 长
-    out.resize(output_len);
-    char *output = (char *)out.c_str();
-    char *inbuf = (char *)input;
-    char *outbuf = output;
-    size_t inbytesleft = input_len * sizeof(wchar_t);
-    size_t outbytesleft = output_len;
-
-    size_t ret = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
-    if (ret != (size_t)-1)
-    {
-        out.resize(output_len - outbytesleft);
-    }
-    else
-    {
-        out.clear();
-    }
-
-    iconv_close(cd);
-    return out.length();
-}
-
-int to_unicode(const char *input, size_t input_len, int codePage, std::wstring &out, int &unConvertedChars)
-{
-    const char *fromCode = Cp2IConvCode(codePage);
-    if (!fromCode)
-        return 0;
-#if WCHAR_SIZE == 4
-    iconv_t cd = iconv_open(ICONV_UTF32LE, fromCode);
-#else
-    iconv_t cd = iconv_open(ICONV_UTF16LE, fromCode);
-#endif
-    if (isInvalidIconv(cd))
-    {
-        // iconv 不认识该代码页(典型: Android/OHOS 的 bionic/musl 只实现了 Unicode
-        // 系编码), 改用内置码表兜底, 否则 GBK 等中文编码在本平台完全无法转换。
-        if (hasBuiltinTable(codePage))
-        {
-            SLOG_STMW() << "iconv_open failed, fallback to builtin table, codePage=" << codePage;
-            return builtinToUnicode(input, input_len, codePage, out, unConvertedChars);
-        }
-        SLOG_STMW() << "iconv_open failed, codePage=" << codePage;
-        return 0;
-    }
-    size_t output_len = (input_len + 1) * sizeof(wchar_t); // UTF-32 字符一般比 GBK 长
-    out.resize(output_len);
-    char *output = (char *)out.c_str();
-    char *inbuf = (char *)input;
-    char *outbuf = output;
-    size_t inbytesleft = input_len;
-    size_t outbytesleft = output_len;
-
-    size_t ret = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
-    if (ret != (size_t)-1)
-    {
-        out.resize((output_len - outbytesleft) / sizeof(wchar_t));
-    }
-    else
-    {
-        out.clear();
-    }
-    unConvertedChars = inbytesleft;
-    iconv_close(cd);
-    return out.length();
-}
-
-FILE *_wfopen(const wchar_t *path, const wchar_t *mode)
-{
-    int len = WideCharToMultiByte(CP_UTF8, 0, path, -1, nullptr, 0, nullptr, nullptr);
-    char *u8path = (char *)malloc(len + 1);
-    WideCharToMultiByte(CP_UTF8, 0, path, -1, u8path, len + 1, nullptr, nullptr);
-    u8path[len] = 0;
-    char u8mode[20] = { 0 };
-    WideCharToMultiByte(CP_UTF8, 0, mode, -1, u8mode, 20, nullptr, nullptr);
-    FILE *ret = fopen(u8path, u8mode);
-    free(u8path);
-    return ret;
-}
-
-void SetLastError(int e)
-{
-    errno = e;
-}
-
-int GetLastError()
-{
-    return errno;
-}
 
 /* FormatMessage 的公共实现。swinx 没有 Windows 的消息表：FROM_SYSTEM 时把
  * 消息号当 errno 用 strerror 取描述，其它来源一律给 "unknown error <id>"。 */
@@ -698,195 +182,12 @@ DWORD WINAPI FormatMessageW(DWORD dwFlags, LPCVOID lpSource, DWORD dwMessageId, 
     return FormatMessageImpl(dwFlags, dwMessageId, lpBuffer, nSize, true);
 }
 
-int MulDiv(int a, int b, int c)
-{
-    if (c == 0)
-    {
-        SetLastError(ERROR_INT_DIVIDE_BY_ZERO);
-        return -1;
-    }
-    LONGLONG ret;
-    /* We want to deal with a positive divisor to simplify the logic. */
-    if (c < 0)
-    {
-        a = -a;
-        c = -c;
-    }
-
-    /* If the result is positive, we "add" to round. else, we subtract to round. */
-    if ((a < 0 && b < 0) || (a >= 0 && b >= 0))
-        ret = (((LONGLONG)a * b) + (c / 2)) / c;
-    else
-        ret = (((LONGLONG)a * b) - (c / 2)) / c;
-
-    if (ret > 2147483647 || ret < -2147483647)
-        return -1;
-    return ret;
-}
 
 tid_t GetCurrentThreadId()
 {
     return (tid_t)pthread_self();
 }
 
-int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *dst, int dstLen)
-{
-    assert(src);
-    if (cp == CP_OEMCP)
-        cp = 936;
-
-    if (len < 0)
-        len = strlen(src) + 1;
-    if (cp != CP_ACP && cp != CP_UTF8)
-    {
-        std::wstring str;
-        int unConvertedChars = 0;
-        int ret = to_unicode(src, len, cp, str, unConvertedChars); // iconv 或内置码表(见 builtinToUnicode)
-        if (unConvertedChars)
-        {
-            if (flags & MB_ERR_INVALID_CHARS)
-                return 0;
-            else
-                SetLastError(ERROR_NO_UNICODE_TRANSLATION);
-        }
-        if (!dst)
-            return str.length();
-        else if (dstLen < ret)
-        {
-            SetLastError(ERROR_INSUFFICIENT_BUFFER);
-            return 0;
-        }
-        else
-        {
-            memcpy(dst, str.c_str(), ret * sizeof(wchar_t));
-            if (ret < dstLen)
-                dst[ret] = 0;
-            return ret;
-        }
-    }
-
-#if (WCHAR_SIZE == 2)
-    assert(sizeof(wchar_t) == 2);
-    // handle for utf16
-    size_t unconvertedCharacters = 0;
-    int bufRequire = UTF16Length(src, len, unconvertedCharacters);
-    if (unconvertedCharacters)
-    {
-        if (flags & MB_ERR_INVALID_CHARS)
-            return 0;
-        else
-            SetLastError(ERROR_NO_UNICODE_TRANSLATION);
-    }
-    if (!dst)
-    {
-        return bufRequire;
-    }
-    else if (bufRequire > dstLen)
-    {
-        SetLastError(ERROR_INSUFFICIENT_BUFFER);
-        return 0;
-    }
-    else
-    {
-        SetLastError(NO_ERROR);
-        return UTF16FromUTF8(src, len, (uint16_t *)dst, dstLen);
-    }
-#else
-    assert(sizeof(wchar_t) == 4);
-    // handle for utf32
-    size_t unconvertedCharacters = 0;
-    int bufRequire = UTF32Length(src, len, unconvertedCharacters);
-    if (unconvertedCharacters)
-    {
-        if (flags & MB_ERR_INVALID_CHARS)
-            return 0;
-        else
-            SetLastError(ERROR_NO_UNICODE_TRANSLATION);
-    }
-    if (!dst)
-    {
-        return bufRequire;
-    }
-    if (bufRequire > dstLen)
-    {
-        SetLastError(ERROR_INSUFFICIENT_BUFFER);
-        return 0;
-    }
-    else
-    {
-        SetLastError(NO_ERROR);
-        return UTF32FromUTF8(src, len, (uint32_t *)dst, dstLen);
-    }
-#endif
-}
-
-int WideCharToMultiByte(int cp, int flags __attribute__((unused)), const wchar_t *src, int len, char *dst, int dstLen, LPCSTR p1 __attribute__((unused)), BOOL *p2 __attribute__((unused)))
-{
-    assert(src);
-    // a NUL-terminated source (len == -1) must include the terminator in the
-    // returned size, like Win32 does.
-    bool nullTerminated = len < 0;
-    if (len < 0)
-        len = wcslen(src);
-    if (cp == CP_OEMCP)
-        cp = CP_UTF8; // todo:hjx
-    if (cp != CP_ACP && cp != CP_UTF8)
-    {
-        std::string str;
-        int ret = to_mb(src, len, cp, str);
-        if (ret == 0)
-            return 0;
-        if (ret > dstLen)
-        {
-            SetLastError(ERROR_INSUFFICIENT_BUFFER);
-            return 0;
-        }
-        memcpy(dst, str.c_str(), ret);
-        if (ret < dstLen)
-            dst[ret] = 0;
-        return ret;
-    }
-
-#if (WCHAR_SIZE == 2)
-    assert(sizeof(wchar_t) == 2);
-    int bufRequire = UTF16toUTF8Length((const uint16_t *)src, len);
-    if (nullTerminated)
-        bufRequire++;
-    if (!dst)
-    {
-        return bufRequire;
-    }
-    else if (bufRequire > dstLen)
-    {
-        SetLastError(ERROR_INSUFFICIENT_BUFFER);
-        return 0;
-    }
-    else
-    {
-        SetLastError(NO_ERROR);
-        int ret = UTF8FromUTF16((const uint16_t *)src, len, dst, dstLen);
-        return nullTerminated ? ret + 1 : ret;
-    }
-#else
-    assert(sizeof(wchar_t) == 4);
-    int bufRequire = UTF32toUTF8Length((const uint32_t *)src, len);
-    if (nullTerminated)
-        bufRequire++;
-    if (!dst)
-        return bufRequire;
-    else if (bufRequire > dstLen)
-    {
-        SetLastError(ERROR_INSUFFICIENT_BUFFER);
-        return 0;
-    }
-    else
-    {
-        SetLastError(NO_ERROR);
-        int ret = UTF8FromUTF32((const uint32_t *)src, len, dst, dstLen);
-        return nullTerminated ? ret + 1 : ret;
-    }
-#endif
-}
 
 #ifdef __APPLE__
 // 获取当前进程的 RPATH 列表
@@ -1201,94 +502,6 @@ BOOL WINAPI SetDllDirectoryW(LPCWSTR lpPathName)
     return SetDllDirectoryA(str.c_str());
 }
 
-#define STIF_DEFAULT     0x00000000L
-#define STIF_SUPPORT_HEX 0x00000001L
-
-BOOL StrToInt64ExW(const wchar_t *str, DWORD flags, LONGLONG *ret)
-{
-    BOOL negative = FALSE;
-    LONGLONG value = 0;
-
-    if (!str || !ret)
-        return FALSE;
-
-    /* Skip leading space, '+', '-' */
-    while (*str == ' ' || *str == '\t' || *str == '\n')
-        str++;
-
-    if (*str == '-')
-    {
-        negative = TRUE;
-        str++;
-    }
-    else if (*str == '+')
-        str++;
-
-    if (flags & STIF_SUPPORT_HEX && *str == '0' && (str[1] == 'x' || str[1] == 'X'))
-    {
-        /* Read hex number */
-        str += 2;
-
-        if (!isxdigit(*str))
-            return FALSE;
-
-        while (isxdigit(*str))
-        {
-            value *= 16;
-            if (*str >= '0' && *str <= '9')
-                value += (*str - '0');
-            else if (*str >= 'A' && *str <= 'Z')
-                value += 10 + (*str - 'A');
-            else
-                value += 10 + (*str - 'a');
-            str++;
-        }
-
-        *ret = value;
-        return TRUE;
-    }
-
-    /* Read decimal number */
-    if (*str < '0' || *str > '9')
-        return FALSE;
-
-    while (*str >= '0' && *str <= '9')
-    {
-        value *= 10;
-        value += (*str - '0');
-        str++;
-    }
-
-    *ret = negative ? -value : value;
-    return TRUE;
-}
-
-BOOL StrToIntExW(const wchar_t *str, DWORD flags, INT *ret)
-{
-    LONGLONG value;
-    BOOL res;
-    res = StrToInt64ExW(str, flags, &value);
-    if (res)
-        *ret = value;
-    return res;
-}
-
-BOOL StrToInt64ExA(const char *str, DWORD flags, LONGLONG *ret)
-{
-    std::wstring wstr;
-    towstring(str, -1, wstr);
-    return StrToInt64ExW(wstr.c_str(), flags, ret);
-}
-
-BOOL StrToIntExA(const char *str, DWORD flags, INT *ret)
-{
-    LONGLONG value;
-    BOOL res;
-    res = StrToInt64ExA(str, flags, &value);
-    if (res)
-        *ret = value;
-    return res;
-}
 
 void GetLocalTime(SYSTEMTIME *pSysTime)
 {
@@ -1478,36 +691,6 @@ static void shortsort_s(char *lo, char *hi, size_t width, int(__cdecl *comp)(voi
 #define swap swap_c
 
 static void swap(char *p, char *q, size_t width);
-
-LONG InterlockedDecrement(LONG volatile *v)
-{
-    return __atomic_fetch_sub(v, 1, __ATOMIC_SEQ_CST) - 1;
-}
-
-LONG InterlockedIncrement(LONG volatile *v)
-{
-    return __atomic_fetch_add(v, 1, __ATOMIC_SEQ_CST) + 1;
-}
-
-LONG InterlockedCompareExchange(LONG volatile *v, LONG Exchange, LONG Comparand)
-{
-    // Win32 semantics: return the ORIGINAL value of *v.
-    // On failure __atomic_compare_exchange_n stores the original into
-    // Comparand; on success Comparand already holds it (it matched).
-    __atomic_compare_exchange_n(v, &Comparand, Exchange, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-    return Comparand;
-}
-
-LONG InterlockedExchange(LONG volatile *Target, LONG Value)
-{
-    // Win32 semantics: unconditional swap, returning the ORIGINAL value.
-    return __atomic_exchange_n(Target, Value, __ATOMIC_SEQ_CST);
-}
-
-LONG InterlockedExchangeAdd(LONG volatile *v, LONG Increment)
-{
-    return __sync_add_and_fetch(v, Increment);
-}
 
 int64_t InterlockedExchangeAdd64(int64_t volatile *v, int64_t Increment)
 {
@@ -1857,213 +1040,23 @@ void PostThreadMessageA(uint64_t tid, UINT msg, WPARAM wp, LPARAM lp)
     conn->postMsg(0, msg, wp, lp);
 }
 
-BOOL WaitMessage()
+/* WaitMessage / MsgWaitForMultipleObjects / GetQueueStatus / GetLastInputInfo /
+ * GetMessage / PeekMessage 已下沉到 src/platform/common/msgpump.cpp —— 这些
+ * 函数的 Win32 语义与窗口系统无关，各平台的区别只在 SConnection::getMsg 等
+ * 实现里。本文件（以及 freertos 端口）都不再各写一份泵。 */
+/* GetSystemMetrics 的缩放百分比（契约见 src/SwinxUtils.h）。取值表与 GetSystemMetrics
+ * 本身已下沉到 src/platform/common/sysapi.cpp，这里只回答这一个平台问题：某个度量值
+ * 要不要按 DPI 放大。macOS 的 SM_CXCURSOR/SM_CYCURSOR 是 CoreGraphics 的 point，
+ * 再乘 DPI 会翻倍，其余度量照常放大。 */
+int swinx_system_metric_scale(int nIndex)
 {
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->waitMsg();
-}
-
-DWORD MsgWaitForMultipleObjects(DWORD nCount, const HANDLE *pHandles, BOOL fWaitAll, DWORD dwMilliseconds, DWORD dwWakeMask)
-{
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->waitMutliObjectAndMsg(pHandles, nCount, dwMilliseconds, fWaitAll, dwWakeMask);
-}
-
-DWORD WINAPI GetQueueStatus(UINT flags)
-{
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    if (!conn)
-        return 0;
-    return conn->GetQueueStatus(flags);
-}
-
-/* GetLastInputInfo 的输入时间戳。
- *
- * Win32 在输入事件到达时就刷新它；swinx 选择在消息泵取出输入类消息时刷新：
- * 对「用户空闲了多久」这个用途二者等价，而且不必给 4 个平台的 SConnection
- * 各加一份 idle 追踪。 */
-static std::atomic<DWORD> s_lastInputTick(0);
-
-static bool IsInputMessage(UINT msg)
-{
-    if (msg >= 0x0100 && msg <= 0x0109) // WM_KEYFIRST..WM_KEYLAST
-        return true;
-    if (msg >= 0x00A0 && msg <= 0x00AD) // WM_NCMOUSEMOVE..WM_NCXBUTTONDBLCLK
-        return true;
-    if (msg >= 0x0200 && msg <= 0x020E) // WM_MOUSEFIRST..WM_MOUSELAST
-        return true;
-    if (msg == 0x00FF) // WM_INPUT（原始输入）
-        return true;
-    return false;
-}
-
-static void RefreshLastInputTick(UINT msg)
-{
-    if (IsInputMessage(msg))
-        s_lastInputTick.store(GetTickCount());
-}
-
-BOOL WINAPI GetLastInputInfo(PLASTINPUTINFO plii)
-{
-    if (!plii || plii->cbSize != sizeof(LASTINPUTINFO))
-        return FALSE;
-    DWORD tick = s_lastInputTick.load();
-    if (tick == 0)
-        tick = GetTickCount(); // 还没有收到过输入：按「刚有输入」处理
-    plii->dwTime = tick;
-    return TRUE;
-}
-
-/* WinEvent 异步派发（实现位于 src/oleacc.cpp，所有平台变体均在编译）：
- * OUTOFCONTEXT 钩子的回调与 user32 一致，在消息泵里投递。 */
-extern "C" void WINAPI SwinxDispatchPendingWinEvents(void);
-
-BOOL GetMessage(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax)
-{
-    SwinxDispatchPendingWinEvents();
-    if (hWnd)
-    {
-        WndObj wndObj = WndMgr::fromHwnd(hWnd);
-        if (!wndObj)
-        {
-            return FALSE;
-        }
-        if (wndObj->tid != GetCurrentThreadId())
-        {
-            return FALSE;
-        }
-    }
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    BOOL bRet = conn->getMsg(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
-    SwinxDispatchPendingWinEvents();
-    if (bRet)
-    {
-        if (lpMsg)
-            RefreshLastInputTick(lpMsg->message);
-        if (CallHook(WH_GETMESSAGE, HC_ACTION, 1, (LPARAM)lpMsg))
-            return GetMessage(lpMsg, hWnd, wMsgFilterMin, wMsgFilterMax);
-    }
-    return bRet;
-}
-
-BOOL PeekMessage(LPMSG pMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg)
-{
-    SwinxDispatchPendingWinEvents();
-    if (hWnd)
-    {
-        WndObj wndObj = WndMgr::fromHwnd(hWnd);
-        if (!wndObj)
-        {
-            return FALSE;
-        }
-        if (wndObj->tid != GetCurrentThreadId())
-        {
-            return FALSE;
-        }
-    }
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    if (!conn)
-        return FALSE;
-    BOOL bRet = conn->peekMsg(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
-    SwinxDispatchPendingWinEvents();
-    if (bRet)
-    {
-        // 只有真正把消息取走（PM_REMOVE）才算「消费了这次输入」
-        if (pMsg && (wRemoveMsg & PM_REMOVE))
-            RefreshLastInputTick(pMsg->message);
-        if (CallHook(WH_GETMESSAGE, HC_ACTION, wRemoveMsg & PM_REMOVE, (LPARAM)pMsg))
-            return PeekMessage(pMsg, hWnd, wMsgFilterMin, wMsgFilterMax, wRemoveMsg);
-    }
-    return bRet;
-}
-
-int GetSystemScale()
-{
-    int dpi = GetDpiForWindow(0);
-    return dpi * 100 / 96;
-}
-
-int GetSystemMetrics(int nIndex)
-{
-    int ret = 0;
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    HMONITOR hMonitor = conn->GetScreen(0);
-    switch (nIndex)
-    {
-    case SM_CXSCREEN:
-        return conn->GetScreenWidth(hMonitor);
-    case SM_CYSCREEN:
-        return conn->GetScreenHeight(hMonitor);
-    case SM_CXBORDER:
-    case SM_CYBORDER:
-    case SM_CXEDGE:
-    case SM_CYEDGE:
-        return 1;
-    case SM_CXSMICON:
-        return 16;
-    case SM_CYSMICON:
-        return 16;
-    // swinx 不自绘的非客户区尺寸：标题栏及其按钮、调整边框、对话框边框、菜单栏。
-    // 它们要么由原生窗口管理器画在窗口矩形之外（Linux 的 _MOTIF_WM_HINTS、macOS 的
-    // NSWindowStyleMask），要么由上层 UI 库（SOUI 的菜单控件）负责，因此在 swinx 的
-    // 窗口矩形里厚度恒为 0。显式返回 0 而不是落进 default 分支，免得每次查询都刷
-    // 一遍 "unknown index"——0 在这里是"确知没有"，不是"未实现"。
-    case SM_CYCAPTION:
-    case SM_CXSIZE:
-    case SM_CYSIZE:
-    case SM_CXSMSIZE:
-    case SM_CYSMSIZE:
-    case SM_CXFRAME:
-    case SM_CYFRAME:
-    case SM_CXDLGFRAME:
-    case SM_CYDLGFRAME:
-    case SM_CYMENU:
-        return 0;
-    case SM_CXICON:
-        ret = 32;
-        break;
-    case SM_CYICON:
-        ret = 32;
-        break;
-    case SM_CXCURSOR:
-        ret = 24;
-        break;
-    case SM_CYCURSOR:
-        ret = 24;
-        break;
-    case SM_CYHSCROLL:
-    case SM_CXVSCROLL:
-        ret = 16;
-        break;
-    case SM_CYVTHUMB:
-    case SM_CXHTHUMB:
-        ret = 16;
-        break;
-    case SM_CXMENUCHECK:
-    case SM_CYMENUCHECK:
-        ret = 16;
-        break;
-    case SM_CXDRAG:
-    case SM_CYDRAG:
-        ret = 4;
-        break;
-    case SM_CXMINTRACK:
-    case SM_CYMINTRACK:
-        ret = 6;
-        break;
-    case SM_CXDOUBLECLK:
-    case SM_CYDOUBLECLK:
-        ret = 1;
-        break;
-    default:
-        printf("unknown index for GetSystemMetrics, index=%d\n", nIndex);
-        break;
-    }
-#ifdef __APPLE__
+#if defined(__APPLE__)
     if (nIndex == SM_CXCURSOR || nIndex == SM_CYCURSOR)
-        return ret;
+        return 100;
+#else
+    (void)nIndex;
 #endif
-    return ret * GetSystemScale() / 100;
+    return GetSystemScale();
 }
 
 #define PROC_EVENT_FMT "proc_event_E23A140E-2711-44CE-AE4E-67D55217FF7A_%u"
@@ -2573,35 +1566,8 @@ BOOL WINAPI CreateProcessW(LPCWSTR lpApplicationName, LPWSTR lpCommandLine, LPSE
     return CreateProcessAsUserW(0, lpApplicationName, lpCommandLine, lpProcessAttributes, lpThreadAttributes, bInheritHandles, dwCreationFlags, lpEnvironment, lpCurrentDirectory, lpStartupInfo, lpProcessInformation);
 }
 
-BOOL GetKeyboardState(PBYTE lpKeyState)
-{
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->GetKeyboardState(lpKeyState);
-}
-
-SHORT GetKeyState(int nVirtKey)
-{
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->GetKeyState(nVirtKey);
-}
-
-SHORT WINAPI GetAsyncKeyState(int vKey)
-{
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->GetAsyncKeyState(vKey);
-}
-
-UINT MapVirtualKey(UINT uCode, UINT uMapType)
-{
-    SConnection *conn = SConnMgr::instance()->getConnection();
-    return conn->MapVirtualKey(uCode, uMapType);
-}
-
-UINT MapVirtualKeyEx(UINT uCode, UINT uMapType, HKL dwhkl __attribute__((unused)))
-{
-    // todo:hjx
-    return MapVirtualKey(uCode, uMapType);
-}
+/* GetKeyboardState / GetKeyState / GetAsyncKeyState / MapVirtualKey / MapVirtualKeyEx
+ * 见 src/platform/common/msgpump.cpp：都是 SConnection 的同名转发，没有平台分支。 */
 
 DWORD GetTickCount()
 {
@@ -2615,12 +1581,7 @@ uint64_t GetTickCount64()
     return (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 
-BOOL CallMsgFilter(LPMSG lpMsg, int nCode)
-{
-    if (CallHook(WH_SYSMSGFILTER, nCode, 0, (LPARAM)lpMsg))
-        return TRUE;
-    return CallHook(WH_MSGFILTER, nCode, 0, (LPARAM)lpMsg);
-}
+/* CallMsgFilter 见 src/platform/common/msgpump.cpp（纯钩子转发）。 */
 
 __time64_t _mktime64(const tm *ptime)
 {
@@ -2639,21 +1600,6 @@ __time64_t _time64(__time64_t *_Time)
     return ret;
 #endif //__x86_64
 }
-
-HCURSOR LoadCursorA(HINSTANCE hInstance __attribute__((unused)), LPCSTR lpCursorName)
-{
-    return CursorMgr::loadCursor(lpCursorName);
-}
-
-HCURSOR LoadCursorW(HINSTANCE hInstance, LPCWSTR lpCursorName)
-{
-    if (IS_INTRESOURCE(lpCursorName))
-        return LoadCursorA(hInstance, (LPCSTR)lpCursorName);
-    std::string str;
-    tostring(lpCursorName, -1, str);
-    return CursorMgr::loadCursor(str.c_str());
-}
-
 BOOL DestroyCursor(HCURSOR hCursor)
 {
     SConnection *conn = SConnMgr::instance()->getConnection();
@@ -3243,18 +2189,7 @@ VOID WINAPI RaiseException(DWORD dwExceptionCode, DWORD dwExceptionFlags,
     abort();
 }
 
-UINT WINAPI GetDoubleClickTime(VOID)
-{
-    return SConnMgr::instance()->getConnection()->GetDoubleClickTime();
-}
-
 #define TICKSPERSEC 10000000
-
-BOOL WINAPI QueryPerformanceFrequency(LARGE_INTEGER *lpFrequency)
-{
-    lpFrequency->QuadPart = TICKSPERSEC;
-    return TRUE;
-}
 
 #define SECS_1601_TO_1970 ((369 * 365 + 89) * (ULONGLONG)86400)
 
@@ -3266,12 +2201,17 @@ static inline ULONGLONG ticks_from_time_t(time_t time)
         return ((ULONGLONG)time + SECS_1601_TO_1970) * TICKSPERSEC;
 }
 
-BOOL WINAPI QueryPerformanceCounter(LARGE_INTEGER *lpPerformanceCount)
+/* QueryPerformanceCounter 的 tick 源（契约见 src/SwinxUtils.h）。QPF/QPC 本身
+ * 在 src/platform/common/perfclock.cpp 只有一份，这里只回答"现在多少 tick"。
+ *
+ * 用 gettimeofday 而不是 CLOCK_MONOTONIC：1601 纪元 + 10MHz 是 swinx 从
+ * Wine 继承下来的取值，SOUI/wke 的计时路径按它换算；改成单调时钟会让同一份
+ * 代码在跨平台时出现"纪元不同"的惊喜，收益（防拨表）对 UI 计时没有意义。 */
+long long swinx_perf_ticks_100ns(void)
 {
     struct timeval now;
     gettimeofday(&now, 0);
-    lpPerformanceCount->QuadPart = ticks_from_time_t(now.tv_sec) + now.tv_usec * 10;
-    return TRUE;
+    return (long long)(ticks_from_time_t(now.tv_sec) + now.tv_usec * 10);
 }
 
 //---------------------------------------------------
@@ -3918,11 +2858,6 @@ UINT WINAPI GetTempFileNameA(LPCSTR lpPathName, LPCSTR lpPrefixString, UINT uniq
     return unique;
 }
 
-BOOL IsValidCodePage(UINT CodePage __attribute__((unused)))
-{
-    // todo:hjx
-    return TRUE;
-}
 
 UINT WINAPI GetKeyboardLayoutList(int nBuff, HKL *lpList)
 {
@@ -3934,14 +2869,12 @@ HKL ActivateKeyboardLayout(HKL hkl, UINT Flags __attribute__((unused)))
     return SConnMgr::instance()->getConnection()->ActivateKeyboardLayout(hkl);
 }
 
-UINT WINAPI GetACP(void)
+/* ANSI 代码页（契约见 src/SwinxUtils.h）。swinx 内部统一用 UTF-8 表示多字节串，
+ * 所以 posix 家族的答案是 CP_UTF8；GetACP 本体与 IsDBCSLeadByte 一起在
+ * src/platform/common/codepage.cpp，不再各平台各写一份。 */
+int swinx_ansi_codepage(void)
 {
     return CP_UTF8;
-}
-
-BOOL WINAPI IsDBCSLeadByte(BYTE c)
-{
-    return UTF8CharLength(c) > 1;
 }
 
 HMODULE WINAPI GetModuleHandleA(LPCSTR lpModuleName)

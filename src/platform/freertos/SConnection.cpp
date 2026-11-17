@@ -18,11 +18,18 @@
 #include <gdi.h>
 #include <cairo.h>
 #include <log.h>
+#include <stdlib.h> /* malloc/free for GetRegionData's RGNDATA */
+
 #include <algorithm>
 #include <functional>
 #include <sfr_config.h>
 #if !SFR_KERNEL_REAL
 #include <sched.h>  /* 主机 emu / passthrough 没有 FreeRTOS 内核，让出宿主时间片用 */
+#else
+/* taskYIELD() below. Where the stl/ shims are on the include path this arrives
+ * transitively through <mutex>/<thread>; a build that uses the real libstdc++
+ * (ESP-IDF) has to pull the kernel API in explicitly. */
+#include "swinx_freertos_api.h"
 #endif
 
 #define kLogTag "SConnection"
@@ -311,6 +318,10 @@ DWORD SConnection::GetQueueStatus(UINT flags)
     return 0;
 }
 
+// Defined next to hasQueuedPaintMsg(); forward-declared here because
+// updateMsgQueue() (which is above that helper) needs it.
+static bool hasQueuedTimerMsg(const std::list<Msg *> &queue, HWND hWnd, UINT_PTR id);
+
 // fire due timers into the message queue (tick based, connection-internal)
 void SConnection::updateMsgQueue(DWORD dwTimeout)
 {
@@ -326,6 +337,10 @@ void SConnection::updateMsgQueue(DWORD dwTimeout)
         if (now - (uint64_t)ti.fireRemain >= ti.elapse || (uint64_t)ti.fireRemain > now)
         {
             ti.fireRemain = (UINT)now;
+            // 队列里已有同一计时器的 WM_TIMER 就跳过：Win32 不累积计时器消息，
+            // 见 hasQueuedTimerMsg() 的注释（慢渲染下这是队列不爆的唯一保证）。
+            if (hasQueuedTimerMsg(m_msgQueue, ti.hWnd, ti.id))
+                continue;
             Msg *msg = new Msg;
             msg->hwnd = ti.hWnd;
             msg->message = WM_TIMER;
@@ -562,6 +577,24 @@ static bool hasQueuedPaintMsg(const std::list<Msg *> &queue, HWND hWnd)
     for (auto msg : queue)
     {
         if (msg && msg->message == WM_PAINT && msg->hwnd == hWnd)
+            return true;
+    }
+    return false;
+}
+
+// Win32 的 WM_TIMER 是"生成型"消息：同一个计时器在队列里最多只有一条，
+// 到期时如果上一条还没被取走，就不再生成了（丢掉这一拍），而不是排队累积。
+//
+// 这条规则对慢渲染的移植是硬要求：SOUI 的值动画用 16ms 的 SetTimer 驱动，
+// 一帧在这块板子上要几十到几百毫秒。不合并的话每帧会往队列里压 5~20 条
+// WM_TIMER，队列长度随时间线性增长，鼠标/触摸消息永远排在几百条过期计时器
+// 后面 —— 表现出来就是"点了没反应，过几秒才动"。合并之后队列长度恒定为
+// 一帧的量级，输入延迟回到"一条消息"的水平。
+static bool hasQueuedTimerMsg(const std::list<Msg *> &queue, HWND hWnd, UINT_PTR id)
+{
+    for (auto msg : queue)
+    {
+        if (msg && msg->message == WM_TIMER && msg->hwnd == hWnd && msg->wParam == (WPARAM)id)
             return true;
     }
     return false;
@@ -886,14 +919,35 @@ void SConnection::SetWindowPos(HWND hWnd, int, int) const
     // 的 rc 还是旧矩形。旧矩形上的像素现在归下面的窗口：跳过 hWnd 重排一遍，
     // 把这块还回去，且不要把它的旧内容按旧位置又贴上来。它的新位置由随后的
     // WM_SIZE/InvalidateRect 触发的重绘负责。
-    composeScreen(hWnd);
+    //
+    // 只重排"旧矩形"这一块，而不是整屏：整屏是 320x240 的 SPI 上屏（~21ms），
+    // 而 ShowWindow 一次就会走到这里好几回（打开下拉量到 4 次，共 84ms，都花在
+    // 重贴屏幕上没变过的像素）。
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return;
+    // 还没上过屏的窗口，旧矩形里根本没有它的像素，什么都不用还。
+    if (m_committed.find(hWnd) == m_committed.end())
+        return;
+    RECT rcOld = wndObj->rc;
+    if (IsRectEmpty(&rcOld))
+        return;
+    composeRegion(rcOld, hWnd);
 }
 
-void SConnection::SetWindowSize(HWND, int, int) const
+void SConnection::SetWindowSize(HWND hWnd, int, int) const
 {
     // 同 SetWindowPos：rc 的 right/bottom 要等 WM_SIZE 才更新（画布也是那时才
     // resize），这里按旧矩形把右侧/下侧让出去。
-    composeScreen();
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return;
+    if (m_committed.find(hWnd) == m_committed.end())
+        return;
+    RECT rcOld = wndObj->rc;
+    if (IsRectEmpty(&rcOld))
+        return;
+    composeRegion(rcOld, hWnd);
 }
 
 BOOL SConnection::MoveWindow(HWND, int, int, int, int) const
@@ -1154,8 +1208,18 @@ void SConnection::SetZOrder(HWND hWnd, _Window *, HWND hWndInsertAfter)
         else
             m_zTop.insert(pos + 1, hWnd);
     }
-    // 遮挡关系变了：屏幕上已有的像素按旧 z 序叠的，重排一次
-    composeScreen();
+    // 遮挡关系变了：屏幕上已有的像素按旧 z 序叠的，得重排一次。只重排它自己
+    // 的矩形就够了——一次 z 序调整能影响的像素全在这块里。整屏重排是 320x240
+    // 的 SPI 上屏（~21ms），而打开一个下拉窗会连着调整好几次 z 序。
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return;
+    // 从没画过的窗口（正要首次显示）没有像素在屏幕上，重排没有意义：它自己的
+    // 首帧 WM_PAINT 会上屏。
+    if (m_committed.find(hWnd) == m_committed.end())
+        return;
+    // 不跳过 hWnd：它是 z 序变动的主角，这块区域要按新顺序完整叠一遍（含它自己）。
+    composeRegion(wndObj->rc);
 }
 
 void SConnection::OnStyleChanged(HWND, _Window *, DWORD, DWORD)
@@ -1175,7 +1239,7 @@ uint32_t SConnection::GetIpcAtom() const
     return 0;
 }
 
-cairo_surface_t *SConnection::CreateWindowSurface(HWND, uint32_t, int cx, int cy)
+cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, uint32_t, int cx, int cy)
 {
     // software renderer: every window paints into its own ARGB32 image
     // surface; commitCanvas() blits dirty regions into the framebuffer.
@@ -1364,6 +1428,64 @@ void SConnection::updateWindow(HWND hWnd, const RECT &)
     SendMessageA(hWnd, WM_PAINT, 0, 0);
 }
 
+// Source-over for cairo's *premultiplied* ARGB32, straight onto the screen
+// framebuffer.  Because cairo premultiplies, "src + dst * (1 - src.a)" is the
+// whole blend -- there is no divide by src.a.
+//
+// The two 16-bit lanes are handled in one multiply each (Skia's trick): the
+// channels are 16 bits apart, so `mask * alpha` cannot carry into the neighbour
+// lane, and 0x00FF00FF * 255 still fits in 32 bits.  The +0x80 terms are the
+// rounding of the >>8.
+static inline uint32_t BlendOverFb(uint32_t s, uint32_t d)
+{
+    const uint32_t sa = s >> 24;
+    if (sa == 0xFF)
+        return s;
+    if (sa == 0)
+        return d; // fully transparent: keep what the panel already shows
+    const uint32_t ia = 0xFF - sa;
+    const uint32_t rb =
+        ((s & 0x00FF00FFu) + (((d & 0x00FF00FFu) * ia + 0x00800080u) >> 8)) & 0x00FF00FFu;
+    const uint32_t g =
+        ((s & 0x0000FF00u) + (((d & 0x0000FF00u) * ia + 0x00008000u) >> 8)) & 0x0000FF00u;
+    return 0xFF000000u | rb | g;
+}
+
+#if SWINX_FB_RGB565
+// Route (1): the software framebuffer is RGB565.  The window canvas is still
+// premultiplied ARGB32, so blitCanvas() has to pack (and, for translucent
+// pixels, blend) on the way into the framebuffer.  The old path did the very
+// same conversion in the present callback, but into a second 150KB buffer;
+// doing it here removes that buffer and one PSRAM write+read pass.
+static inline uint16_t ToRGB565(uint32_t argb)
+{
+    return (uint16_t)(((argb >> 8) & 0xF800u) |
+                      ((argb >> 5) & 0x07E0u) |
+                      ((argb >> 3) & 0x001Fu));
+}
+
+static inline uint16_t BlendOverFb565(uint32_t s, uint16_t d)
+{
+    const uint32_t sa = s >> 24;
+    if (sa == 0xFF)
+        return ToRGB565(s);
+    if (sa == 0)
+        return d;   // fully transparent: keep what the panel already shows
+    const uint32_t ia = 0xFFu - sa;
+    // unpack the opaque destination to 8-bit channels (s is premultiplied)
+    const uint32_t dr = ((d >> 11) & 0x1Fu) * 255u / 31u;
+    const uint32_t dg = ((d >> 5) & 0x3Fu) * 255u / 63u;
+    const uint32_t db = (d & 0x1Fu) * 255u / 31u;
+    uint32_t r = ((s >> 16) & 0xFFu) + ((dr * ia) >> 8);
+    uint32_t g = ((s >> 8) & 0xFFu) + ((dg * ia) >> 8);
+    uint32_t b = (s & 0xFFu) + ((db * ia) >> 8);
+    if (r > 255) r = 255;
+    if (g > 255) g = 255;
+    if (b > 255) b = 255;
+    return (uint16_t)(((r & 0xF8u) << 8) | ((g & 0xFCu) << 3) | (b >> 3));
+}
+#endif
+
 bool SConnection::blitCanvas(HWND hWnd, const RECT &rcLocal) const
 {
     // blit the window canvas region (rcLocal is window-local) into the software
@@ -1412,19 +1534,45 @@ bool SConnection::blitCanvas(HWND hWnd, const RECT &rcLocal) const
         rcSrc.top -= rcFb.top;
         rcFb.top = 0;
     }
-    if (rcFb.right > SWINX_FB_WIDTH)
-        rcFb.right = SWINX_FB_WIDTH;
-    if (rcFb.bottom > SWINX_FB_HEIGHT)
-        rcFb.bottom = SWINX_FB_HEIGHT;
+    if (rcFb.right > SwinxFbWidth())
+        rcFb.right = SwinxFbWidth();
+    if (rcFb.bottom > SwinxFbHeight())
+        rcFb.bottom = SwinxFbHeight();
     if (rcFb.left >= rcFb.right || rcFb.top >= rcFb.bottom)
         return false;
 
     int w = rcFb.right - rcFb.left;
     for (int y = 0; y < rcFb.bottom - rcFb.top; ++y)
     {
-        memcpy(SwinxFbBits() + (size_t)(rcFb.top + y) * SwinxFbStride() + rcFb.left,
-               srcBase + (size_t)(rcSrc.top + y) * stride + rcSrc.left,
-               w * sizeof(uint32_t));
+        const uint32_t *srcRow = srcBase + (size_t)(rcSrc.top + y) * stride + rcSrc.left;
+        FBPIXEL *dstRow = SwinxFbBits() + (size_t)(rcFb.top + y) * SwinxFbStride() + rcFb.left;
+#if SWINX_FB_RGB565
+        for (int x = 0; x < w; ++x)
+        {
+            const uint32_t s = srcRow[x];
+            dstRow[x] = BlendOverFb565(s, dstRow[x]);
+        }
+#else
+        // Fast path: an opaque run is copied verbatim (memcpy is vectorised, the
+        // blend loop is not).  Every window's canvas is ARGB32 and SOUI clears
+        // the invalid rect with ClearRect(rc, 0) -- i.e. *transparent* -- before
+        // painting, so any pixel the window's own content does not cover stays
+        // at alpha 0.  A plain memcpy of those pixels writes RGB=0, which is
+        // exactly the black frame the combobox dropdown showed: measured, the
+        // popup's very first commit had 18688 of 18688 pixels at alpha 0
+        // (SetWindowVisible() invalidates before WM_SHOWWINDOW reaches the SOUI
+        // tree, so that first paint clears the canvas and then draws nothing),
+        // and the framebuffer has no compositor to fall back on.
+        int x = 0;
+        while (x < w && (srcRow[x] >> 24) == 0xFF)
+            ++x;
+        if (x)
+            memcpy(dstRow, srcRow, (size_t)x * sizeof(FBPIXEL));
+        for (; x < w; ++x)
+        {
+            dstRow[x] = BlendOverFb(srcRow[x], dstRow[x]);
+        }
+#endif // SWINX_FB_RGB565
     }
     RECT dirty = rcFb;
     swinxFbPresent(&dirty);
@@ -1460,20 +1608,100 @@ void SConnection::composeAbove(HWND hWnd, const RECT &rcScreen) const
 
 void SConnection::composeScreen(HWND hSkip) const
 {
-    // 自底向顶把每个窗口的画布整幅 blit 一遍。上面某个窗口（弹出列表）被销毁/
-    // 隐藏/挪走之后，它原来的位置属于下面那些窗口，而它们既没有收到 WM_PAINT、
-    // 也不需要重画——画布里就是它最后的内容。
-    RECT rcFull = { 0, 0, 0x7FFFFFFF, 0x7FFFFFFF };
+    // 自底向顶把每个窗口的画布重排一遍。上面某个窗口（弹出列表）被销毁/隐藏/
+    // 挪走之后，它原来的位置属于下面那些窗口，而它们既没有收到 WM_PAINT、也
+    // 不需要重画——画布里就是它最后的内容。
+    RECT rcFull = { 0, 0, SwinxFbWidth(), SwinxFbHeight() };
+    composeRegion(rcFull, hSkip);
+}
+
+void SConnection::composeRegion(const RECT &rcScreen, HWND hSkip) const
+{
     for (size_t i = 0; i < m_zTop.size(); ++i)
     {
-        if (hSkip && m_zTop[i] == hSkip)
+        HWND h = m_zTop[i];
+        if (hSkip && h == hSkip)
             continue;
-        if (!IsWindowVisible(m_zTop[i]))
+        if (!IsWindowVisible(h))
             continue;
-        if (m_committed.find(m_zTop[i]) == m_committed.end())
+        if (m_committed.find(h) == m_committed.end())
             continue;
-        blitCanvas(m_zTop[i], rcFull);
+        WndObj wndObj = WndMgr::fromHwnd(h);
+        if (!wndObj || wndObj->bDestroyed)
+            continue;
+        RECT rcInter;
+        if (!IntersectRect(&rcInter, &rcScreen, &wndObj->rc))
+            continue;
+        // IntersectRect 对空矩形照样"成功"（会给出 left>right 的退化矩形），
+        // 所以这里必须再判一次空：否则 [compose] 会打出一条 local=(0,0)-(-14,-130)。
+        if (IsRectEmpty(&rcInter))
+            continue;
+        RECT rcLocal = { rcInter.left - wndObj->rc.left, rcInter.top - wndObj->rc.top,
+                         rcInter.right - wndObj->rc.left, rcInter.bottom - wndObj->rc.top };
+        blitCanvas(h, rcLocal);
     }
+}
+
+void SConnection::invalidateBelow(const RECT &rcScreen) const
+{
+    // 把这块屏幕区域交给最上面那个与它相交的下层窗口，让它自己重画。
+    //
+    // 为什么不直接贴它的画布？因为它很可能紧接着就会因为别的原因重绘同一块
+    // （关下拉时 combobox 自己就要更新），那时屏幕上是*旧画面*，一帧之后再变成
+    // *新画面* —— 这就是"关弹窗闪两下"。交给它自己画，则只有一次刷新，内容和
+    // 它当时的状态一致。代价是这一块要等到它的下一个 WM_PAINT（约一帧）才更新。
+    for (size_t i = m_zTop.size(); i-- > 0;)
+    {
+        HWND h = m_zTop[i];
+        if (!IsWindowVisible(h))
+            continue;
+        WndObj wndObj = WndMgr::fromHwnd(h);
+        if (!wndObj || wndObj->bDestroyed)
+            continue;
+        RECT rcInter;
+        if (!IntersectRect(&rcInter, &rcScreen, &wndObj->rc))
+            continue;
+        RECT rcLocal = { rcInter.left - wndObj->rc.left, rcInter.top - wndObj->rc.top,
+                         rcInter.right - wndObj->rc.left, rcInter.bottom - wndObj->rc.top };
+        InvalidateRect(h, &rcLocal, FALSE);
+        return;
+    }
+}
+
+// Rect difference for the occlusion clip below: split `r` around `cut` into
+// at most four non-overlapping rects.  Both rects are in the same coordinate
+// space.  IntersectRect() here follows Win32 semantics, so a degenerate
+// intersection returns FALSE and leaves `inter` emptied.
+static int SubtractRectFrom(const RECT &r, const RECT &cut, RECT *out)
+{
+    RECT inter;
+    if (!IntersectRect(&inter, &r, &cut) || IsRectEmpty(&inter))
+    {
+        out[0] = r;
+        return 1;
+    }
+    int n = 0;
+    if (r.top < inter.top)
+    {
+        out[n] = RECT{ r.left, r.top, r.right, inter.top };
+        ++n;
+    }
+    if (inter.bottom < r.bottom)
+    {
+        out[n] = RECT{ r.left, inter.bottom, r.right, r.bottom };
+        ++n;
+    }
+    if (r.left < inter.left)
+    {
+        out[n] = RECT{ r.left, inter.top, inter.left, inter.bottom };
+        ++n;
+    }
+    if (inter.right < r.right)
+    {
+        out[n] = RECT{ inter.right, inter.top, r.right, inter.bottom };
+        ++n;
+    }
+    return n;
 }
 
 void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
@@ -1482,27 +1710,175 @@ void SConnection::commitCanvas(HWND hWnd, const RECT &rc)
     if (!wndObj)
         return;
 
-    // `rc` comes from the DC's clip box (ReleaseDC -> GetClipBox), and that box
-    // is *not* the dirty rect: SOUI's paint path saves/restores DC state, so
-    // ReleaseDC's RestoreDC(-1) has already reset the clip to the whole
-    // surface by the time the box is read.  The accumulated invalid region is
-    // the authoritative dirty rect -- pushing the whole canvas instead would
-    // repaint every overlapping window with stale pixels (composeAbove() has to
-    // undo that one window at a time below).
-    RECT rcDirty = rc;
+    // A hidden window must never reach the framebuffer.
+    //
+    // Win32 lets a hidden window receive WM_PAINT, and neither BeginPaint nor
+    // EndPaint here checks visibility, so a paint that draws nothing still ends
+    // in ReleaseDC -> commitCanvas and would blit a canvas that was never
+    // painted.  (Measured: the dropdown's black frame was NOT this case -- it
+    // commits *after* being shown, see the alpha note in blitCanvas -- but the
+    // hole is real and closing it is free.)
+    if (!IsWindowVisible(hWnd))
+        return;
+
+
+    // Present the *rects* of the invalid region, not its bounding box.
+    //
+    // Two 40x16 animated windows 4px apart own 1280 dirty pixels, but their
+    // bounding box is 292x36 = 10512.  Every extra pixel costs a PSRAM read, an
+    // RGB565 conversion and two bytes on the panel bus, so the bbox approach
+    // pays ~8x the necessary traffic exactly when a UI has several small
+    // independent animations -- the common mobile case.
+    //
+    // Cost model measured on this board: flush ~= 1.1ms fixed (5 SPI
+    // transactions: 0x2A/0x2B/0x2C + address payloads, all with polling
+    // transmit) + ~0.27us/px.  Breaking one 10512px rect into two 640px rects
+    // therefore pays the fixed part twice but drops ~9200px of traffic.
+    //
+    // kMaxPresentRects bounds the fixed part: a pathological region (hundreds
+    // of 1px slivers) is better served by its bbox, so above the cap we fall
+    // back to what this function always did.
+    const int kMaxPresentRects = 8;
+    RECT aPresent[kMaxPresentRects];
+    int nPresent = 0;
+
     if (wndObj->invalid.hRgn)
     {
-        RECT rb;
-        RECT rcClip;
-        if (GetRgnBox(wndObj->invalid.hRgn, &rb) != NULLREGION && IntersectRect(&rcClip, &rc, &rb))
-            rcDirty = rcClip;
+        // Stack RGNDATA: the invalid region is a handful of rects, and asking
+        // GetRegionData() for the size + malloc + asking again + free() cost
+        // two heap round trips per presented frame (EndPaint path).
+        struct
+        {
+            RGNDATAHEADER hdr;
+            RECT rc[kMaxPresentRects];
+        } rgnData;
+        if (GetRegionData(wndObj->invalid.hRgn, sizeof(rgnData), (RGNDATA *)&rgnData) &&
+            rgnData.hdr.nCount > 0 && rgnData.hdr.nCount <= (DWORD)kMaxPresentRects)
+        {
+            const RECT *pRc = rgnData.rc;
+            for (DWORD i = 0; i < rgnData.hdr.nCount; ++i)
+            {
+                RECT rcOne;
+                if (IntersectRect(&rcOne, &rc, &pRc[i]) && !IsRectEmpty(&rcOne))
+                    aPresent[nPresent++] = rcOne;
+            }
+        }
+        if (nPresent == 0)
+        {   // region empty / too complex / GetRegionData failed: bbox, as before
+            RECT rb;
+            if (GetRgnBox(wndObj->invalid.hRgn, &rb) != NULLREGION &&
+                IntersectRect(&rb, &rc, &rb) && !IsRectEmpty(&rb))
+                aPresent[nPresent++] = rb;
+        }
+    }
+    if (nPresent == 0)
+    {   // no invalid region at all: the clip box is all we know (old behaviour)
+        if (!IsRectEmpty(&rc))
+            aPresent[nPresent++] = rc;
     }
 
-    if (!blitCanvas(hWnd, rcDirty))
+    // ---- Occlusion clip -------------------------------------------------
+    // The framebuffer has no compositor.  Writing a lower window's dirty rect
+    // verbatim overwrites the pixels of an opaque window stacked above it
+    // (the combobox dropdown), and composeAbove() then pushes the popup back
+    // in a SECOND SPI transaction.  The panel can show that intermediate
+    // state; with the animation running underneath it reads as flicker.
+    // Subtract the covered parts from the rects we are about to write so the
+    // popup's pixels are never touched in the first place.
+    //
+    // Layered (translucent / shaped) windows are deliberately NOT listed:
+    // they need fresh pixels underneath to blend against, so they keep the
+    // "write then recompose" path through composeAbove().
+    enum
+    {
+        kMaxAbove = 8,
+        kMaxParts = 32
+    };
+    RECT aAbove[kMaxAbove];
+    int nAbove = 0;
+    std::vector<HWND>::const_iterator it = std::find(m_zTop.begin(), m_zTop.end(), hWnd);
+    if (it != m_zTop.end())
+    {
+        for (++it; it != m_zTop.end() && nAbove < kMaxAbove; ++it)
+        {
+            if (!IsWindowVisible(*it))
+                continue;
+            if (m_committed.find(*it) == m_committed.end())
+                continue;
+            if (GetWindowLongA(*it, GWL_EXSTYLE) & WS_EX_LAYERED)
+                continue;
+            WndObj above = WndMgr::fromHwnd(*it);
+            if (!above || above->bDestroyed || IsRectEmpty(&above->rc))
+                continue;
+            // same window-local space as aPresent[]
+            aAbove[nAbove++] = RECT{ above->rc.left - wndObj->rc.left,
+                                     above->rc.top - wndObj->rc.top,
+                                     above->rc.right - wndObj->rc.left,
+                                     above->rc.bottom - wndObj->rc.top };
+        }
+    }
+
+    bool bBlitted = false;
+    RECT rcDirty = { 0, 0, 0, 0 };
+    for (int i = 0; i < nPresent; ++i)
+    {
+        RECT aParts[kMaxParts];
+        int nParts = 1;
+        aParts[0] = aPresent[i];
+        bool bTooComplex = false;
+        for (int k = 0; k < nAbove && nParts > 0 && !bTooComplex; ++k)
+        {
+            RECT aNext[kMaxParts];
+            int nNext = 0;
+            for (int j = 0; j < nParts; ++j)
+            {
+                if (nNext + 4 > kMaxParts)
+                {
+                    bTooComplex = true;
+                    break;
+                }
+                nNext += SubtractRectFrom(aParts[j], aAbove[k], aNext + nNext);
+            }
+            if (bTooComplex)
+                break;
+            for (int j = 0; j < nNext; ++j)
+                aParts[j] = aNext[j];
+            nParts = nNext;
+        }
+        if (bTooComplex)
+        {   // pathological split: fall back to the unclipped rect, and let
+            // composeAbove() repair the covered pixels as before.
+            nParts = 1;
+            aParts[0] = aPresent[i];
+        }
+        for (int j = 0; j < nParts; ++j)
+        {
+            if (IsRectEmpty(&aParts[j]))
+                continue;
+            if (!blitCanvas(hWnd, aParts[j]))
+                continue;
+            bBlitted = true;
+            if (IsRectEmpty(&rcDirty))
+                rcDirty = aParts[j];
+            else
+                UnionRect(&rcDirty, &rcDirty, &aParts[j]);
+        }
+    }
+    if (!bBlitted)
         return;
-    // 从这一帧起该窗口的画布可信，可以参与整屏合成
+
+    // From this frame on the window's canvas is trustworthy: it actually
+    // reached the framebuffer, so it may take part in screen composition.
+    // 64426ff deleted this together with a neighbouring #if block; without it
+    // m_committed stays empty forever, every "is there a window above me?"
+    // check below returns false, and an animation on the lower window paints
+    // straight over the combobox dropdown.
     m_committed.insert(hWnd);
 
+    // Layered windows are intentionally skipped by the occlusion clip above
+    // (they need the pixels underneath to blend against).  Put them back in
+    // the same frame.  For opaque windows this is a no-op: their area has
+    // already been subtracted from aParts[].
     RECT rcScreen = { wndObj->rc.left + rcDirty.left, wndObj->rc.top + rcDirty.top,
                       wndObj->rc.left + rcDirty.right, wndObj->rc.top + rcDirty.bottom };
     composeAbove(hWnd, rcScreen);
@@ -1703,13 +2079,28 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *)
     // 已死的窗口（下拉窗是 capture 持有者，必须先清掉）。
     if (m_hWndCapture == hWnd)
         ReleaseCapture();
+    // 被销毁窗口的屏幕矩形要先取：erase 之后 WndMgr 里就查不到了。重排只需要
+    // 这块——整屏重排会白白走一次 320x240 的 SPI 上屏（~21ms，屏幕上能看出
+    // 自上而下扫一遍），关闭弹窗时看上去就是"闪一下"。
+    RECT rcGone = { 0, 0, 0, 0 };
+    BOOL bHaveRect = FALSE;
+    WndObj gone = WndMgr::fromHwnd(hWnd);
+    if (gone)
+    {
+        rcGone = gone->rc;
+        bHaveRect = TRUE;
+    }
     std::vector<HWND>::iterator it = std::find(m_zTop.begin(), m_zTop.end(), hWnd);
     if (it != m_zTop.end())
         m_zTop.erase(it);
     m_committed.erase(hWnd);
-    // 弹出窗销毁会曝露它盖住的那块区域：下面的窗口收不到 WM_PAINT（它们的
-    // 内容没变），只能按各自的画布整屏重排一遍，把这块补回来。
-    composeScreen();
+    // 弹出窗销毁会曝露它盖住的那块区域。这块交给下层窗口自己重绘：它经常紧接
+    // 着就会因为别的原因重绘同一块（关下拉时 combobox 自己就要更新），先贴旧
+    // 画布只会让屏幕先出现"旧画面"、下一帧再被新画面盖掉 —— 闪两下。
+    if (!bHaveRect)
+        composeScreen();
+    else
+        invalidateBelow(rcGone);
 }
 
 void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, int)
@@ -1738,8 +2129,10 @@ void SConnection::SetWindowVisible(HWND hWnd, _Window *wndObj, BOOL bVisible, in
         if ((wndObj->dwStyle & WS_VISIBLE) == 0)
             return; // already hidden
         wndObj->dwStyle &= ~WS_VISIBLE;
-        // 隐藏等价于"从画面上拿走一层"：它盖住的区域同样没有 WM_PAINT 的机会
-        composeScreen();
+        // 隐藏等价于"从画面上拿走一层"：它盖住的区域同样没有 WM_PAINT 的机会，
+        // 只重排它自己占的这块（整屏重排 = 一次 320x240 的 SPI 上屏，看得出闪）。
+        RECT rcGone = wndObj->rc;
+        invalidateBelow(rcGone);
     }
 }
 
