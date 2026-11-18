@@ -18,12 +18,12 @@
 
 | 分级 | 数量 |
 |---|---|
-| 实现 | 996 |
+| 实现 | 998 |
 | 简单实现 | 92 |
 | 部分实现 | 14 |
 | 空实现 / 语义桩 | 41 |
 | 未提供（仅声明） | 2 |
-| **合计（有定义）** | **1143** |
+| **合计（有定义）** | **1145** |
 
 ## 3. 模块分布
 
@@ -34,7 +34,7 @@
 | 系统、文件、进程与线程（KERNEL32 等价） | 301 | 18 | 7 | 2 |
 | COM / OLE（OLE32·OLEAUT32 等价） | 56 | 8 | 0 | 4 |
 | 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 79 | 18 | 4 | 2 |
-| 多媒体、资源及其它（WINMM·杂项） | 194 | 9 | 1 | 21 |
+| 多媒体、资源及其它（WINMM·杂项） | 196 | 9 | 1 | 21 |
 
 ## 4. 模块 API 明细
 
@@ -1041,8 +1041,10 @@
 | `GetAddrInfoW` | 实现 | src/platform/*/winsock2.cpp |  |
 | `GetAtomNameA` | 实现 | src/class.cpp |  |
 | `GetAtomNameW` | 实现 | src/class.cpp |  |
+| `GetClassInfoA` | 实现 | src/class.cpp |  |
 | `GetClassInfoExA` | 实现 | src/class.cpp |  |
 | `GetClassInfoExW` | 实现 | src/class.cpp |  |
+| `GetClassInfoW` | 实现 | src/class.cpp |  |
 | `GetFileVersionInfoA` | 实现 | src/platform/*/version.cpp |  |
 | `GetFileVersionInfoSizeA` | 实现 | src/platform/*/version.cpp |  |
 | `GetFileVersionInfoSizeW` | 实现 | src/platform/*/version.cpp |  |

@@ -1,7 +1,7 @@
 {
  "_meta": {
-  "decl_total": 1145,
-  "defined_total": 1143,
+  "decl_total": 1147,
+  "defined_total": 1145,
   "no_def": [
    "CreateTextServices",
    "FlatSB_GetScrollPropPtr"
@@ -121,6 +121,38 @@
    ]
   },
   "GetClassInfoExW": {
+   "headers": [
+    "class.h"
+   ],
+   "files": [
+    "class.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "class.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetClassInfoA": {
+   "headers": [
+    "class.h"
+   ],
+   "files": [
+    "class.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "class.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "GetClassInfoW": {
    "headers": [
     "class.h"
    ],

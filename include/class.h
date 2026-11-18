@@ -103,6 +103,9 @@ typedef LPWNDCLASSA LPWNDCLASS;
     ATOM WINAPI GetClassInfoExA(HINSTANCE hInstance, LPCSTR name, WNDCLASSEXA *wc);
     ATOM WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW *wc);
 
+    BOOL WINAPI GetClassInfoA(HINSTANCE hInstance, LPCSTR name, WNDCLASSA *wc);
+    BOOL WINAPI GetClassInfoW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSW *wc);
+
     UINT WINAPI GetAtomNameA(ATOM atomName, LPSTR name, int cchLen);
     UINT WINAPI GetAtomNameW(ATOM atomName, LPWSTR name, int cchLen);
 
@@ -115,6 +118,7 @@ typedef LPWNDCLASSA LPWNDCLASS;
 #define RegisterClassEx RegisterClassExW
 #define UnregisterClass UnregisterClassW
 #define GetClassInfoEx  GetClassInfoExW
+#define GetClassInfo    GetClassInfoW
 #define GetAtomName     GetAtomNameW
 #define FindAtom        FindAtomW
 #else
@@ -123,6 +127,7 @@ typedef LPWNDCLASSA LPWNDCLASS;
 #define RegisterClassEx RegisterClassExA
 #define UnregisterClass UnregisterClassA
 #define GetClassInfoEx  GetClassInfoExA
+#define GetClassInfo    GetClassInfoA
 #define GetAtomName     GetAtomNameA
 #define FindAtom        FindAtomA
 #endif // UNICODE

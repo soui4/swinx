@@ -166,6 +166,53 @@ ATOM WINAPI GetClassInfoExW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSEXW *wc)
     return atom;
 }
 
+/***********************************************************************
+ *		GetClassInfoA (USER32.@)
+ */
+BOOL WINAPI GetClassInfoA(HINSTANCE hInstance, LPCSTR name, WNDCLASSA *wc)
+{
+    if (!wc)
+    {
+        SetLastError(ERROR_NOACCESS);
+        return FALSE;
+    }
+    WNDCLASSEXA wca = {};
+    if (!GetClassInfoExA(hInstance, name, &wca))
+        return FALSE;
+    wc->style = wca.style;
+    wc->lpfnWndProc = wca.lpfnWndProc;
+    wc->cbClsExtra = wca.cbClsExtra;
+    wc->cbWndExtra = wca.cbWndExtra;
+    wc->hInstance = wca.hInstance;
+    wc->hIcon = wca.hIcon;
+    wc->hCursor = wca.hCursor;
+    wc->hbrBackground = wca.hbrBackground;
+    wc->lpszClassName = wca.lpszClassName;
+    return TRUE;
+}
+
+BOOL WINAPI GetClassInfoW(HINSTANCE hInstance, LPCWSTR name, WNDCLASSW *wc)
+{
+    if (!wc)
+    {
+        SetLastError(ERROR_NOACCESS);
+        return FALSE;
+    }
+    WNDCLASSEXW wcex = {};
+    if (!GetClassInfoExW(hInstance, name, &wcex))
+        return FALSE;
+    wc->style = wcex.style;
+    wc->lpfnWndProc = wcex.lpfnWndProc;
+    wc->cbClsExtra = wcex.cbClsExtra;
+    wc->cbWndExtra = wcex.cbWndExtra;
+    wc->hInstance = wcex.hInstance;
+    wc->hIcon = wcex.hIcon;
+    wc->hCursor = wcex.hCursor;
+    wc->hbrBackground = wcex.hbrBackground;
+    wc->lpszClassName = wcex.lpszClassName;
+    return TRUE;
+}
+
 ULONG_PTR GetClassLongSize(ATOM atom, int nIndex, int sz)
 {
     if (nIndex < 0)
