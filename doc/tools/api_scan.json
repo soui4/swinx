@@ -1,7 +1,7 @@
 {
  "_meta": {
-  "decl_total": 1147,
-  "defined_total": 1145,
+  "decl_total": 1148,
+  "defined_total": 1146,
   "no_def": [
    "CreateTextServices",
    "FlatSB_GetScrollPropPtr"
@@ -8918,7 +8918,29 @@
     ]
    ]
   },
-  "PlaySound": {
+  "PlaySoundA": {
+   "headers": [
+    "mmsystem.h"
+   ],
+   "files": [
+    "platform/posix/audio.cpp",
+    "platform/wasm/audio.cpp"
+   ],
+   "agg": "impl",
+   "site_classes": [
+    [
+     "platform/posix/audio.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/wasm/audio.cpp",
+     "impl",
+     ""
+    ]
+   ]
+  },
+  "PlaySoundW": {
    "headers": [
     "mmsystem.h"
    ],

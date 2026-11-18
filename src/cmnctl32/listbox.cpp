@@ -389,6 +389,7 @@ static LRESULT LISTBOX_SetTopItem(LB_DESCR *descr, INT index, BOOL scroll)
     {
         INT dx = 0, dy = 0;
         (void)dx;
+        (void)dy;
         if (descr->style & LBS_MULTICOLUMN)
             dx = (descr->top_item - index) / descr->page_size * descr->column_width;
         else if (descr->style & LBS_OWNERDRAWVARIABLE)

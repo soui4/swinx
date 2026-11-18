@@ -680,8 +680,9 @@ int MultiByteToWideChar(int cp, int flags, const char *src, int len, wchar_t *ds
         else
         {
             memcpy(dst, str.c_str(), ret * sizeof(wchar_t));
-            if (ret < dstLen)
-                dst[ret] = 0;
+            // 与 Win32 一致，不额外补宽字符结尾：源串的 NUL 若落在 len 内会作为
+            // 普通字符被转换（len == -1 时已经包含），再写 dst[ret] 就会改掉调用方
+            // 缓冲区里紧随其后的数据，也不会写进返回值。
             return ret;
         }
     }

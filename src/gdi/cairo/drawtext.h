@@ -10,6 +10,7 @@ class TextLayoutEx {
     enum
     {
         kLineInterval = 0,
+        kTabWidth = 4, //制表位宽度（字符数）
     };
 
   public:

@@ -18,12 +18,12 @@
 
 | 分级 | 数量 |
 |---|---|
-| 实现 | 998 |
+| 实现 | 999 |
 | 简单实现 | 92 |
 | 部分实现 | 14 |
 | 空实现 / 语义桩 | 41 |
 | 未提供（仅声明） | 2 |
-| **合计（有定义）** | **1145** |
+| **合计（有定义）** | **1146** |
 
 ## 3. 模块分布
 
@@ -34,7 +34,7 @@
 | 系统、文件、进程与线程（KERNEL32 等价） | 301 | 18 | 7 | 2 |
 | COM / OLE（OLE32·OLEAUT32 等价） | 56 | 8 | 0 | 4 |
 | 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 79 | 18 | 4 | 2 |
-| 多媒体、资源及其它（WINMM·杂项） | 196 | 9 | 1 | 21 |
+| 多媒体、资源及其它（WINMM·杂项） | 197 | 9 | 1 | 21 |
 
 ## 4. 模块 API 明细
 
@@ -1074,7 +1074,8 @@
 | `OemToCharBuffW` | 实现 | src/strapi.cpp |  |
 | `OemToCharW` | 实现 | src/strapi.cpp |  |
 | `PlatformAPI_Deinit` | 实现 | src/platform_api.cpp | 平台注入接口内部辅助 |
-| `PlaySound` | 实现 | src/platform/*/audio.cpp 等 2 处 | 只支持文件播放（SND_MEMORY / SND_RESOURCE / SND_ALIAS 显式返回 FALSE），且一律异步：SND_SYNC 按 SND_ASYNC 处理。各后端的通道不同——linux/macOS/iOS 用播放线程（ALSA 或 aplay），Android/OHOS 转发 g_platformAPI.audio.playSound，wasm 从 wasm 文件系统读出 wav 交给页面实现的 Module.swinxAudioPlay（WebAudio；宿主未安装该钩子时返回 FALSE）；freertos 不编译本 API，引用即链接失败 |
+| `PlaySoundA` | 实现 | src/platform/*/audio.cpp 等 2 处 | 只支持文件播放（SND_MEMORY / SND_RESOURCE / SND_ALIAS 显式返回 FALSE），且一律异步：SND_SYNC 按 SND_ASYNC 处理。各后端的通道不同——linux/macOS/iOS 用播放线程（ALSA 或 aplay），Android/OHOS 转发 g_platformAPI.audio.playSound，wasm 从 wasm 文件系统读出 wav 交给页面实现的 Module.swinxAudioPlay（WebAudio；宿主未安装该钩子时返回 FALSE）；freertos 不编译本 API，引用即链接失败 |
+| `PlaySoundW` | 实现 | src/platform/*/audio.cpp 等 2 处 | 宽字符路径先转成 UTF-8 再复用 PlaySoundA，通道与 flag 语义同 A 版；NULL 是停止播放请求，直接透传 |
 | `RegCloseKey` | 实现 | src/platform/*/registry.cpp |  |
 | `RegCreateKeyExA` | 实现 | src/platform/*/registry.cpp |  |
 | `RegCreateKeyExW` | 实现 | src/platform/*/registry.cpp |  |
@@ -1324,7 +1325,7 @@ swinx 将与宿主平台强相关的能力抽象为 C 结构体函数指针表�
 | `PlatformClipboardAPI` | 剪切板开关/读写/格式注册 |
 | `PlatformWindowAPI` | 原生窗口创建销毁、位置尺寸、可见性、焦点、捕获、屏幕/DPI/光标、RawInput、软键盘 |
 | `PlatformIMEAPI` | 输入法上下文与组合字符串 |
-| `PlatformAudioAPI` | `PlaySound` / `MessageBeep` 的宿主发声通道（Android / OHOS 无本地音频栈） |
+| `PlatformAudioAPI` | `PlaySoundA` / `PlaySoundW` / `MessageBeep` 的宿主发声通道（Android / OHOS 无本地音频栈） |
 | `PlatformPathAPI` | `GetTempPathA` / `SHGetSpecialFolderPathA` 的路径来源（沙箱内没有 Win32 目录概念，路径按 UTF-8 返回） |
 | `PlatformShellAPI` | `ShellExecute` 的平台回调：swinx 侧没有 JNI / N-API 通道，打开 URL 或文件必须交宿主应用（Android Intent、OHOS Want） |
 

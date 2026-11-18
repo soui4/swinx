@@ -1,7 +1,7 @@
 /*
  * swinx/platform/wasm/audio.cpp
  *
- * PlaySound 的 wasm 实现（声明在 include/mmsystem.h，调用方是
+ * PlaySoundA / PlaySoundW 的 wasm 实现（声明在 include/mmsystem.h，调用方是
  * utilities/audio/SPlaySound_unix.cpp → ScriptModule-LUA 的 PlaySound 导出）。
  *
  * 浏览器里唯一可行的发声通道是 WebAudio，而 AudioContext 只能由宿主页面持有：
@@ -62,7 +62,7 @@ static unsigned char *readWholeFile(const char *pszPath, int *pLen)
     return buf;
 }
 
-BOOL PlaySound(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound)
+BOOL PlaySoundA(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound)
 {
     (void)hmod;
 
@@ -96,4 +96,24 @@ BOOL PlaySound(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound)
     }, (int)(uintptr_t)data, len, (int)fdwSound, (int)(uintptr_t)pszSound);
     free(data);
     return accepted ? TRUE : FALSE;
+}
+
+/* Win32 的 PlaySoundW：A 版把 char* 当 UTF-8，这里统一转换后复用 A 版；
+ * NULL 是停止请求，直接透传。 */
+BOOL PlaySoundW(LPCWSTR pszSound, HMODULE hmod, DWORD fdwSound)
+{
+    if (pszSound == NULL)
+        return PlaySoundA(NULL, hmod, fdwSound);
+
+    int len = WideCharToMultiByte(CP_UTF8, 0, pszSound, -1, NULL, 0, NULL, NULL);
+    if (len <= 0)
+        return FALSE;
+    char *pszUtf8 = (char *)malloc((size_t)len);
+    if (!pszUtf8)
+        return FALSE;
+    BOOL ret = FALSE;
+    if (WideCharToMultiByte(CP_UTF8, 0, pszSound, -1, pszUtf8, len, NULL, NULL) > 0)
+        ret = PlaySoundA(pszUtf8, hmod, fdwSound);
+    free(pszUtf8);
+    return ret;
 }

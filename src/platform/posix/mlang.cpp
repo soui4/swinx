@@ -41,6 +41,7 @@ typedef unsigned int FcChar32;
 #endif
 
 #include "debug.h"
+#include "SUnkImpl.h"
 #define kLogTag "mlang"
 
 namespace
@@ -850,15 +851,27 @@ std::map<HFONT, bool> &MappedFonts()
 
 class CLangFontLink2;
 
-class CMultiLanguage : public IMultiLanguage2
+class CMultiLanguage : public SUnkImpl<IMultiLanguage2>
 {
 public:
     CMultiLanguage();
+    virtual ~CMultiLanguage();
 
-    /* IUnknown */
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFGUID riid, void **ppvObject);
-    ULONG STDMETHODCALLTYPE AddRef();
-    ULONG STDMETHODCALLTYPE Release();
+    /* IMultiLanguage2 / IMultiLanguage 由本对象实现；IMLangFontLink2 由
+     * m_fontLink 承担。两个对象共用本对象的引用计数，因此这里只 AddRef
+     * 一次（见 CLangFontLink2::_AddRef）。
+     *
+     * 注意：这里把 CLangFontLink2* 转成接口指针时 CLangFontLink2 尚未定义
+     * （只有上面的前置声明），C 风格转换会退化成 reinterpret_cast，因此依赖
+     * "接口的 IUnknown 位于对象偏移 0" 这一前提。当前是单继承链
+     * （IMLangFontLink2 : IMLangCodePages : IUnknown），成立；若以后给
+     * CLangFontLink2 增加第二个基类，需要把 QueryInterface 移到两个类都
+     * 完整定义之后再实现。 */
+    IUNKNOWN_BEGIN(IMultiLanguage2)
+        IUNKNOWN_ADD_IID(IMultiLanguage)
+        IUNKNOWN_ADD_FIELD_IID(IMLangCodePages,m_fontLink)
+        IUNKNOWN_ADD_FIELD_IID(IMLangFontLink2,m_fontLink)
+    IUNKNOWN_END()
 
     /* IMultiLanguage */
     HRESULT STDMETHODCALLTYPE GetFamilyCodePage(UINT uiCodePage, UINT *puiFamilyCodePage);
@@ -890,23 +903,26 @@ public:
     HRESULT STDMETHODCALLTYPE GetMimeDecodeOptions(DWORD *pdwMimeDecodeOptions);
 
 private:
-    LONG m_ref;
     CLangFontLink2 *m_fontLink;
     DWORD m_mimeDecodeOptions;
 };
 
-class CLangFontLink2 : public IMLangFontLink2
+class CLangFontLink2 : public SUnkImpl<IMLangFontLink2>
 {
 public:
     explicit CLangFontLink2(CMultiLanguage *owner)
         : m_owner(owner)
     {
     }
-
-    /* IUnknown（引用计数与 CMultiLanguage 共用，生命周期由它管） */
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFGUID riid, void **ppvObject);
-    ULONG STDMETHODCALLTYPE AddRef();
-    ULONG STDMETHODCALLTYPE Release();
+    virtual ~CLangFontLink2(){}
+    
+    /* IUnknown：引用计数与 CMultiLanguage 共用，生命周期由它管。
+     * 下面的 _AddRef/_Release 在宏展开时按名字解析到本类的版本。 */
+    IUNKNOWN_BEGIN(IMLangFontLink2)
+        IUNKNOWN_ADD_IID(IMLangCodePages)
+        IUNKNOWN_ADD_FIELD_IID(IMultiLanguage,m_owner)
+        IUNKNOWN_ADD_FIELD_IID(IMultiLanguage2,m_owner)
+    IUNKNOWN_END()
 
     /* IMLangCodePages */
     HRESULT STDMETHODCALLTYPE GetCharCodePages(WCHAR chSrc, DWORD *pdwCodePages);
@@ -927,89 +943,33 @@ public:
 
 private:
     CMultiLanguage *m_owner;
+
+protected:
+    /* 隐藏 SUnkImpl 的同名成员：本对象不自持引用计数，统一转交给 owner。 */
+    ULONG _AddRef()
+    {
+        return m_owner->AddRef();
+    }
+
+    ULONG _Release()
+    {
+        /* m_owner 的 Release 可能把本对象一起删掉，所以这里不再触碰成员。 */
+        return m_owner->Release();
+    }
 };
 
 CMultiLanguage::CMultiLanguage()
-    : m_ref(1)
-    , m_mimeDecodeOptions(MIMEDECODEOPT_NONE)
+    : m_mimeDecodeOptions(MIMEDECODEOPT_NONE)
 {
     m_fontLink = new CLangFontLink2(this);
 }
 
-HRESULT STDMETHODCALLTYPE CMultiLanguage::QueryInterface(REFGUID riid, void **ppvObject)
+CMultiLanguage::~CMultiLanguage()
 {
-    if (!ppvObject)
-        return E_POINTER;
-
-    if (IsEqualGUID(riid, IID_IUnknown))
-    {
-        *ppvObject = static_cast<IUnknown *>(this);
-        AddRef();
-        return S_OK;
-    }
-    if (IsEqualGUID(riid, IID_IMultiLanguage) || IsEqualGUID(riid, IID_IMultiLanguage2))
-    {
-        *ppvObject = static_cast<IMultiLanguage2 *>(this);
-        AddRef();
-        return S_OK;
-    }
-    if (IsEqualGUID(riid, IID_IMLangCodePages) || IsEqualGUID(riid, IID_IMLangFontLink2))
-    {
-        *ppvObject = static_cast<IMLangFontLink2 *>(m_fontLink);
-        AddRef();
-        return S_OK;
-    }
-
-    *ppvObject = NULL;
-    return E_NOINTERFACE;
-}
-
-ULONG STDMETHODCALLTYPE CMultiLanguage::AddRef()
-{
-    return (ULONG)__sync_add_and_fetch(&m_ref, 1);
-}
-
-ULONG STDMETHODCALLTYPE CMultiLanguage::Release()
-{
-    LONG ref = __sync_sub_and_fetch(&m_ref, 1);
-    if (ref <= 0)
-    {
-        delete m_fontLink;
-        delete this;
-    }
-    return (ULONG)(ref > 0 ? ref : 0);
-}
-
-HRESULT STDMETHODCALLTYPE CLangFontLink2::QueryInterface(REFGUID riid, void **ppvObject)
-{
-    if (!ppvObject)
-        return E_POINTER;
-    if (IsEqualGUID(riid, IID_IUnknown) || IsEqualGUID(riid, IID_IMLangCodePages) ||
-        IsEqualGUID(riid, IID_IMLangFontLink2))
-    {
-        *ppvObject = static_cast<IMLangFontLink2 *>(this);
-        m_owner->AddRef();
-        return S_OK;
-    }
-    if (IsEqualGUID(riid, IID_IMultiLanguage) || IsEqualGUID(riid, IID_IMultiLanguage2))
-    {
-        *ppvObject = static_cast<IMultiLanguage2 *>(m_owner);
-        m_owner->AddRef();
-        return S_OK;
-    }
-    *ppvObject = NULL;
-    return E_NOINTERFACE;
-}
-
-ULONG STDMETHODCALLTYPE CLangFontLink2::AddRef()
-{
-    return m_owner->AddRef();
-}
-
-ULONG STDMETHODCALLTYPE CLangFontLink2::Release()
-{
-    /* m_owner 的 Release 可能把本对象一起删掉，所以这里不再触碰成员。 */
-    return m_owner->Release();
+    /* m_fontLink 不持有自身计数，Release 会被转交给 owner；走到这里 owner 的计数
+     * 已归零，再 Release 只会减到 -1 而不会回收对象，因此必须直接 delete。 */
+    delete m_fontLink;
+    m_fontLink = NULL;
 }
 
 HRESULT STDMETHODCALLTYPE CMultiLanguage::GetFamilyCodePage(UINT uiCodePage, UINT *puiFamilyCodePage)

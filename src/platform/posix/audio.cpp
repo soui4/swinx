@@ -2,6 +2,7 @@
 #include <mmsystem.h>
 #include <time.h>
 #include <map>
+#include "tostring.h"
 #ifdef __APPLE__
 #include <AudioToolbox/AudioToolbox.h>
 #include <CoreFoundation/CoreFoundation.h>
@@ -457,10 +458,10 @@ class AudioPlayer {
 #endif
 
 #if !defined(__EMSCRIPTEN__)
-// wasm 侧自己定义 PlaySound（src/platform/wasm/audio.cpp：文件系统里的 wav 交给宿主
-// 页面的 WebAudio）。wasm.cmake 同时编译 posix/ 与 wasm/ 两个目录，这里必须让位，
-// 否则同名符号重复定义；裸金属（freertos）不编译本文件。
-BOOL PlaySound(LPCSTR pszSound, HMODULE hmod __attribute__((unused)), DWORD fdwSound)
+// wasm 侧自己定义 PlaySoundA/PlaySoundW（src/platform/wasm/audio.cpp：文件系统里的 wav
+// 交给宿主页面的 WebAudio）。wasm.cmake 同时编译 posix/ 与 wasm/ 两个目录，这里必须
+// 让位，否则同名符号重复定义；裸金属（freertos）不编译本文件。
+BOOL PlaySoundA(LPCSTR pszSound, HMODULE hmod __attribute__((unused)), DWORD fdwSound)
 {
     if (fdwSound & (SND_MEMORY | SND_RESOURCE | SND_ALIAS | SND_ALIAS_ID))
     {
@@ -477,5 +478,19 @@ BOOL PlaySound(LPCSTR pszSound, HMODULE hmod __attribute__((unused)), DWORD fdwS
     // 新后端的兜底，按 Win32 失败语义返回 FALSE，不假装播放成功。
     return FALSE;
 #endif
+}
+
+// Win32 的 PlaySoundW：A 版把 char* 当 UTF-8（见 swinx/AGENTS.md §6），这里统一转成
+// UTF-8 后复用同一条播放通道，避免每个后端各写一份宽字符转换。
+BOOL PlaySoundW(LPCWSTR pszSound, HMODULE hmod, DWORD fdwSound)
+{
+    if (pszSound == NULL)
+    {
+        // NULL 表示停止播放，与 A 版同一语义。
+        return PlaySoundA(NULL, hmod, fdwSound);
+    }
+    std::string str;
+    tostring(pszSound,-1,str);
+    return PlaySoundA(str.c_str(),hmod,fdwSound);
 }
 #endif // !__EMSCRIPTEN__

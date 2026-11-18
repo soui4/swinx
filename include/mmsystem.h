@@ -48,7 +48,13 @@ extern "C"
 #define SND_FILENAME  0x00020000
 #define SND_RESERVED  0x00080000
 
-    BOOL WINAPI PlaySound(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound);
+    BOOL WINAPI PlaySoundA(LPCSTR pszSound, HMODULE hmod, DWORD fdwSound);
+    BOOL WINAPI PlaySoundW(LPCWSTR pszSound, HMODULE hmod, DWORD fdwSound);
+#ifdef UNICODE
+#define PlaySound PlaySoundW
+#else
+#define PlaySound PlaySoundA
+#endif
 #ifdef __cplusplus
 }
 #endif //__cplusplus

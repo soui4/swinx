@@ -19,47 +19,56 @@ void cairo_draw_text(cairo_t *ctx, const char *text, int len, RECT *box, UINT uF
 //////////////////////////////////////////////////////////////////////////
 void TextLayoutEx::init(cairo_t *ctx, const char *text, size_t length, const RECT &rc, UINT uFormat)
 {
-    // 展开 '\t'：Win32 GDI 的 DrawText 会把制表符推进到下一个制表位，但
-    // cairo/fontconfig 下 U+0009 没有字形，会画成 .notdef 方块（SOUI 菜单
-    // 的 "标题\t快捷键" 就中招）。这里统一换成等宽空格，测量与绘制走同一
-    // 条路径，宽度保持一致。
-    std::vector<char> expandedTab;
-    if (text && memchr(text, '\t', length))
+    // cairo/fontconfig 下 '\t' 没有字形，会被画成 .notdef 方块。
+    // 先按 kTabWidth 制表位把 '\t' 展开成空格，再解析前缀符，
+    // 保证 m_prefix 的索引与展开后的文本一致。
+    std::vector<char> src;
+    src.reserve(length);
+    int nCol = 0;
+    for (size_t i = 0; i < length;)
     {
-        expandedTab.reserve(length + 16);
-        for (size_t i = 0; i < length; i++)
+        if (text[i] == '\t')
         {
-            if (text[i] == '\t')
-                expandedTab.insert(expandedTab.end(), 4, ' ');
-            else
-                expandedTab.push_back(text[i]);
+            int nSpaces = kTabWidth - nCol % kTabWidth;
+            src.insert(src.end(), nSpaces, ' ');
+            nCol += nSpaces;
+            i++;
         }
-        text = expandedTab.data();
-        length = expandedTab.size();
+        else if (text[i] == '\r' || text[i] == '\n')
+        {
+            src.push_back(text[i]);
+            nCol = 0;
+            i++;
+        }
+        else
+        {
+            const uint8_t *p = (const uint8_t *)text + i;
+            const uint8_t *next = _mbsinc(p);
+            src.insert(src.end(), text + i, text + i + (next - p));
+            nCol++;
+            i = next - (const uint8_t *)text;
+        }
     }
+
     if (uFormat & DT_NOPREFIX)
     {
-        m_text.resize(length);
-        memcpy(m_text.data(), text, length);
+        m_text = src;
     }
     else
     {
         m_prefix.clear();
-        std::vector<char> tmp;
-        tmp.resize(length);
-        memcpy(tmp.data(), text, length);
-        const char *p = tmp.data();
-        for (int i = 0; i < (int)tmp.size();)
+        const char *p = src.data();
+        for (int i = 0; i < (int)src.size();)
         {
-            if (*p == '&' && i + 1 < (int)tmp.size())
+            if (*p == '&' && i + 1 < (int)src.size())
             {
-                if (tmp[1] == '&')
+                if (src[1] == '&')
                 {
-                    tmp.erase(tmp.begin() + i);
+                    src.erase(src.begin() + i);
                 }
                 else
                 {
-                    tmp.erase(tmp.begin() + i);
+                    src.erase(src.begin() + i);
                     m_prefix.push_back(i);
                 }
                 i += 1;
@@ -72,7 +81,7 @@ void TextLayoutEx::init(cairo_t *ctx, const char *text, size_t length, const REC
                 p = next;
             }
         }
-        m_text = tmp;
+        m_text = src;
     }
 
     m_ctx = ctx;

@@ -624,18 +624,19 @@ void CMenu::DrawItemLoop(HDC memdc, RECT clentRc)
                     SelectObject(memdc, BackUpPen);
                 }
             }
-            RECT rcText = { rc.left + checkArea, rc.top, rc.right - 10, rc.bottom };
-            // 菜单文本约定 "标题\t快捷键"。原生 Win32 的 DrawText 会把 '\t'
-            // 当制表位，但 cairo/fontconfig 下 U+0009 没有字形，会被画成
-            // .notdef 方块，且两段挤在一起。这里按 '\t' 拆成左右两列手动绘制。
-            const char *pTab = strchr(txt, '\t');
+            // 菜单文本约定 "标题\t快捷键"，与 SOUI 的 SMenuExItem::OnPaint 保持一致：
+            // 标题和快捷键分成两段绘制，快捷键右对齐并预留右边距，避免贴住箭头或边缘。
+            int nRightPad = MENU_TRAILING_PAD / 2;
+            RECT rcText = { rc.left + checkArea, rc.top, rc.right - nRightPad, rc.bottom };
+            const char *pTab = strrchr(txt, '\t');
             if (pTab)
             {
-                std::string strLeft(txt, (size_t)(pTab - txt));
-                const char *pszRight = pTab + 1;
-                DrawTextA(memdc, strLeft.c_str(), -1, &rcText,
+                std::string strTitle(txt, (size_t)(pTab - txt));
+                RECT rcKey = rcText;
+                rcKey.right -= nRightPad;
+                DrawTextA(memdc, strTitle.c_str(), -1, &rcText,
                           DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_END_ELLIPSIS);
-                DrawTextA(memdc, pszRight, -1, &rcText,
+                DrawTextA(memdc, pTab + 1, -1, &rcKey,
                           DT_SINGLELINE | DT_VCENTER | DT_RIGHT | DT_END_ELLIPSIS);
             }
             else
@@ -1076,7 +1077,6 @@ void CMenu::ShowMenu(UINT uFlag, int x, int y)
             }
             else
             {
-                x = x;
                 rcMenu.right = rcMenu.right - rcMenu.left + x;
                 rcMenu.left = x;
             }
