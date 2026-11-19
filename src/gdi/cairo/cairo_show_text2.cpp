@@ -294,13 +294,14 @@ int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_ex
         int rn = 0; // glyphs produced by this run (0 => do not advance x)
         if (status == CAIRO_STATUS_SUCCESS && num_glyphs > 0)
         {
-            // total advance of the run = last glyph position + its own advance
-            for (int i = 0; i < num_glyphs; i++)
-            {
-                cairo_text_extents_t ge;
-                cairo_scaled_font_glyph_extents(font, &glyphs[i], 1, &ge);
-                runEndX = glyphs[i].x + ge.x_advance;
-            }
+            // 整个 run 取一次度量：cairo 数组版 glyph_extents 给的是
+            //   x_advance = (最后一个 glyph 的 x + 它自己的 advance) - 第一个 glyph 的 x
+            // 也就是相对 run 起点的宽度，不含 glyphs[0].x。只有首个 run（x == 0）时
+            // 它才恰好等于绝对终点；字体回退产生后续 run 时 x != 0，必须补回
+            // glyphs[0].x，否则 runEndX 会退回成相对宽度，累积宽度和总宽度全错。
+            cairo_text_extents_t runExt;
+            cairo_scaled_font_glyph_extents(font, glyphs, num_glyphs, &runExt);
+            runEndX = glyphs[0].x + runExt.x_advance;
             // walk the cluster table (logical order) and paint every byte each
             // cluster covers, so no byte of a multi-byte character is left out
             int gi = 0, ci = 0;
@@ -319,9 +320,13 @@ int cairo_text_extents2_ex(cairo_t *cr, const char *utf8, int len, cairo_text_ex
                 double cum = runEndX;
                 if (g1 >= 0 && g1 < num_glyphs)
                 {
-                    cairo_text_extents_t ge;
-                    cairo_scaled_font_glyph_extents(font, &glyphs[g1], 1, &ge);
-                    cum = glyphs[g1].x + ge.x_advance;
+                    /* 一个 glyph 的"末端位置"就是下一个 glyph 的起点（cairo
+                     * shaping 出来的 x 本来就是按 advance 逐个累加的），最后
+                     * 一个用 runEndX。这样每个 cluster 都不必再单独调一次
+                     * glyph_extents：原来是一个字符一次，长串光这一项就是
+                     * 几十次调用，而它正好在 DrawText 的省略号/折行热点上。
+                     * 零宽记号（combining mark）两个值相等，与旧写法一致。 */
+                    cum = (g1 + 1 < num_glyphs) ? glyphs[g1 + 1].x : runEndX;
                 }
                 int v = (int)floor(cum + 0.5);
                 if (v < prevByteVal)

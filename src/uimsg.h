@@ -312,7 +312,7 @@ enum{
     SETTINGS_DPI=1,
 };
 
-#if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
+#if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM && !defined(SWINX_USE_WAYLAND)
 struct DragBase {
     HWND hFrom;
 };

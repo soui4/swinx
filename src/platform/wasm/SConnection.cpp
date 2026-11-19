@@ -1443,7 +1443,7 @@ uint32_t SConnection::GetIpcAtom() const
 }
 
 #ifdef SWINX_WASM_CANVAS2D
-cairo_surface_t *SConnection::CreateWindowSurface(HWND, uint32_t, int cx, int cy)
+cairo_surface_t *SConnection::CreateWindowSurface(HWND, int cx, int cy)
 {
     // route C (canvas2d): 每个窗口绘制进自己的离屏 HTMLCanvasElement 后备画布；
     // commitCanvas() 把脏矩形读回 framebuffer，由既有 JS 上屏链路复制到可见 canvas。
@@ -1457,13 +1457,13 @@ cairo_surface_t *SConnection::CreateWindowSurface(HWND, uint32_t, int cx, int cy
     return (cairo_surface_t *)SwinxCanvasCreateSurfaceRaw(cx, cy, 0);
 }
 
-cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND, uint32_t, int cx, int cy)
+cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND, int cx, int cy)
 {
     // canvas 改变尺寸会清空内容，与 cairo surface resize 语义一致；同一指针原地缩放，
     // HBITMAP 包裹不变（wnd.cpp 的 linux/wasm 分支随后 SetGdiObjPtr + 重建 DC 重绑）。
     Canvas2DSurface *surf = (Canvas2DSurface *)surface;
     if (!surf)
-        return CreateWindowSurface(NULL, 0, cx, cy);
+        return CreateWindowSurface(NULL, cx, cy);
     if (cx < 1)
         cx = 1;
     if (cy < 1)
@@ -1478,7 +1478,7 @@ cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND, uint
     return surface;
 }
 #else
-cairo_surface_t *SConnection::CreateWindowSurface(HWND, uint32_t, int cx, int cy)
+cairo_surface_t *SConnection::CreateWindowSurface(HWND, int cx, int cy)
 {
     // software renderer: every window paints into its own ARGB32 image
     // surface; commitCanvas() blits dirty regions into the framebuffer.
@@ -1489,11 +1489,11 @@ cairo_surface_t *SConnection::CreateWindowSurface(HWND, uint32_t, int cx, int cy
     return cairo_image_surface_create(CAIRO_FORMAT_ARGB32, cx, cy);
 }
 
-cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd, uint32_t visualId, int cx, int cy)
+cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd, int cx, int cy)
 {
     if (surface)
         cairo_surface_destroy(surface);
-    return CreateWindowSurface(hWnd, visualId, cx, cy);
+    return CreateWindowSurface(hWnd, cx, cy);
 }
 #endif
 

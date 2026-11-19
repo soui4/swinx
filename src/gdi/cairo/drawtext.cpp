@@ -122,11 +122,12 @@ void TextLayoutEx::buildLines()
     }
 }
 
-SkScalar TextLayoutEx::drawLine(cairo_t *ctx, SkScalar x1, SkScalar x2, SkScalar y, int iBegin, int iEnd)
+SkScalar TextLayoutEx::drawLine(cairo_t *ctx, SkScalar x1, SkScalar x2, SkScalar y, int iBegin, int iEnd, SkScalar nTextWidth)
 {
     const char *text = m_text.data() + iBegin;
 
-    SkScalar nTextWidth = measureText(ctx, text, (iEnd - iBegin));
+    if (nTextWidth < 0.0f)
+        nTextWidth = measureText(ctx, text, (iEnd - iBegin));
     if (!(m_uFormat & DT_CALCRECT))
     {
         SkScalar x = x1;
@@ -165,23 +166,43 @@ SkScalar TextLayoutEx::drawLineEndWithEllipsis(cairo_t *ctx, SkScalar x1, SkScal
     SkScalar widReq = measureText(ctx, m_text.data() + iBegin, (iEnd - iBegin));
     if (widReq <= m_rcBound.right - m_rcBound.left)
     {
-        return drawLine(ctx, x1, x2, y, iBegin, iEnd);
+        /* 不溢出：宽度刚刚量过，直接交给 drawLine，省掉它的内部再量一次
+         * （DT_END_ELLIPSIS 是常用格式，"文本放得下"更是常态，所以这条
+         * 分支少一次整行 shaping 就等于这一档快一倍）。 */
+        return drawLine(ctx, x1, x2, y, iBegin, iEnd, widReq);
     }
     else
     {
         SkScalar fWidEllipsis = measureText(ctx, CH_ELLIPSIS, 3);
         maxWidth -= fWidEllipsis;
 
-        int i = 0;
         const char *text = m_text.data() + iBegin;
+        int nLen = iEnd - iBegin;
+
+        /* 逐字求"能塞下几个字"：原来这里是
+         *     while (i < nLen) { fWord = measureText(ctx, text + i, 1); ... i++; }
+         * 即每个字节一次 shaping（SplitTextRuns + text_to_glyphs +
+         * glyph_extents + 两次 heap 分配）。一次调用的固定开销远大于单字
+         * 度量本身，于是"一行溢出文本"要花几十次 shaping 的钱；如果某个
+         * 后端的固定开销偏高，这里还会把偏差放大几十倍。
+         *
+         * cairo_text_extents2_ex 一次就给出逐字节累计宽度（多字节字符的
+         * 每个字节带同一个累计值），扫一遍数组即可，且天然按字符对齐 ——
+         * 顺带修掉了原来按字节调用 measureText(text+i, 1) 会把 UTF-8 字符
+         * 削成半个字节序列去度量的老问题。 */
         SkScalar fWid = 0.0f;
-        while (i < (iEnd - iBegin))
+        int i = 0;
+        if (nLen > 0)
         {
-            SkScalar fWord = measureText(ctx, text + i, 1);
-            if (fWid + fWord > maxWidth)
-                break;
-            fWid += fWord;
-            i++;
+            std::vector<int> charWid(nLen);
+            cairo_text_extents_t extChar;
+            cairo_text_extents2_ex(ctx, text, nLen, &extChar, &charWid[0]);
+            while (i < nLen && (double)charWid[i] <= (double)maxWidth)
+                i++;
+            // 截断点必须落在字符边界上（charWid 是按字节索引的）
+            while (i > 0 && i < nLen && (((unsigned char)text[i]) & 0xC0) == 0x80)
+                i--;
+            fWid = (i > 0) ? (SkScalar)charWid[i - 1] : 0.0f;
         }
         if (!(m_uFormat & DT_CALCRECT))
         {

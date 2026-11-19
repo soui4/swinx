@@ -9,6 +9,12 @@
 #include <vector>
 #include <functional>
 
+#if defined(SWINX_USE_X11) || defined(SWINX_USE_WAYLAND)
+/* 后端私有字段（X11: visualId/cmap，Wayland: CSD 装饰窗句柄）。头文件由
+ * 后端 include 目录解析，同名不同内容；其它平台不引入、不占空间。 */
+#include "wndplatform.h"
+#endif
+
 enum WndState
 {
     WS_Normal = 0,
@@ -88,6 +94,12 @@ public:
     RECT rcClipPushed;   /* 平台侧当前挂着的那块裁剪矩形（bClipPushed 为真时有效） */
     HWND parent;         /* Window parent */
     HWND owner;          /* Window owner */
+    /* 平台层私有数据：X11 存 visualId/cmap，Wayland 存 CSD 装饰窗句柄
+     * （见 src/platform/wayland/wlframewnd.h）。只在对应后端编译时存在，
+     * macOS/iOS/mobile/wasm/FreeRTOS 没有这个成员；内容由平台层填充。 */
+#if defined(SWINX_USE_X11) || defined(SWINX_USE_WAYLAND)
+    WndPlatformData plat;
+#endif
     WNDPROC winproc;     /* Window procedure */
     HINSTANCE hInstance; /* Window hInstance (from CreateWindow) */
     UINT dwStyle;        /* Window style (from CreateWindow) */
@@ -95,8 +107,6 @@ public:
     UINT_PTR wIDmenu;    /* ID or hmenu (from CreateWindow) */
     UINT helpContext;    /* Help context ID */
     UINT flags;          /* Misc. flags (see below) */
-    uint32_t visualId;
-    uint32_t cmap;
     LPDROPTARGET   dropTarget;
     IDataObject* dragData;
     DWORD_PTR userdata;  /* User private data */

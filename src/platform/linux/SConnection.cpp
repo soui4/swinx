@@ -1431,10 +1431,16 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
 {
     if(!screen)
         return 0;
-    
+
+    /* visual 由平台层自己决定：depth==32 是 wnd.cpp 对合成屏 + WS_EX_COMPOSITED
+     * 顶层窗选出来的 RGBA 路径，其余窗口用屏幕根 visual。 */
+    pWnd->plat.visualId = (depth == 32) ? GetVisualID(FALSE) : GetVisualID(TRUE);
+    if (!pWnd->plat.visualId)
+        return 0;
+
     HWND hWnd = hwndFromXcb(xcb_generate_id(connection));
     xcb_colormap_t cmap = xcb_generate_id(connection);
-    xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE, cmap, screen->root, pWnd->visualId);
+    xcb_create_colormap(connection, XCB_COLORMAP_ALLOC_NONE, cmap, screen->root, pWnd->plat.visualId);
 
     const uint32_t evt_mask = XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_STRUCTURE_NOTIFY | XCB_EVENT_MASK_PROPERTY_CHANGE  | XCB_EVENT_MASK_BUTTON_PRESS | XCB_EVENT_MASK_BUTTON_RELEASE | XCB_EVENT_MASK_POINTER_MOTION | XCB_EVENT_MASK_ENTER_WINDOW | XCB_EVENT_MASK_LEAVE_WINDOW |XCB_EVENT_MASK_FOCUS_CHANGE | XCB_EVENT_MASK_KEY_PRESS | XCB_EVENT_MASK_KEY_RELEASE;
     const uint32_t mask = XCB_CW_BACK_PIXMAP | XCB_CW_BORDER_PIXEL | XCB_CW_OVERRIDE_REDIRECT | XCB_CW_SAVE_UNDER | XCB_CW_EVENT_MASK | XCB_CW_COLORMAP;
@@ -1456,7 +1462,7 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
     }
     else if (!(cs->style & WS_CHILD) || !hParent)
         hParent = hwndFromXcb(screen->root);
-    xcb_void_cookie_t cookie = xcb_create_window_checked(connection, depth, xcbFromHwnd(hWnd), xcbFromHwnd(hParent), cs->x, cs->y, std::max(cs->cx, 1u), std::max(cs->cy, 1u), 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, pWnd->visualId, mask, values);
+    xcb_void_cookie_t cookie = xcb_create_window_checked(connection, depth, xcbFromHwnd(hWnd), xcbFromHwnd(hParent), cs->x, cs->y, std::max(cs->cx, 1u), std::max(cs->cy, 1u), 0, XCB_WINDOW_CLASS_INPUT_OUTPUT, pWnd->plat.visualId, mask, values);
 
     xcb_generic_error_t *err = xcb_request_check(connection, cookie);
     if (err)
@@ -1466,7 +1472,7 @@ HWND SConnection::OnWindowCreate(_Window *pWnd, CREATESTRUCT *cs, int depth)
         xcb_free_colormap(connection, cmap);
         return 0;
     }
-    pWnd->cmap = cmap;
+    pWnd->plat.cmap = cmap;
     xcb_change_window_attributes(connection, xcbFromHwnd(hWnd), mask, values);
     xcb_atom_t protocols[] = { atoms.WM_DELETE_WINDOW};
     xcb_change_property(connection, XCB_PROP_MODE_REPLACE, xcbFromHwnd(hWnd), atoms.WM_PROTOCOLS, XCB_ATOM_ATOM, 32, ARRAYSIZE(protocols), protocols);
@@ -1529,10 +1535,10 @@ void SConnection::OnWindowDestroy(HWND hWnd, _Window *wnd)
     }
     m_wndCursor.erase(hWnd);
     xcb_destroy_window(connection, xcbFromHwnd(hWnd));
-    if (wnd->cmap)
+    if (wnd->plat.cmap)
     {
-        xcb_free_colormap(connection, wnd->cmap);
-        wnd->cmap = 0;
+        xcb_free_colormap(connection, wnd->plat.cmap);
+        wnd->plat.cmap = 0;
     }
 
     xcb_flush(connection);
@@ -2846,7 +2852,16 @@ bool SConnection::pushEvent(xcb_generic_event_t *event)
             }
         }
         POINT pos = { e2->x, e2->y };
-        if (!GetParent(hwndFromXcb(e2->window)))
+        /* 顶层窗口（WndMgr 里没有父窗口，或者父窗口就是 root）在 X11 上可能被
+         * 别人 reparent：WM 会把客户窗口塞进自己的 frame，系统托盘面板（tray
+         * manager）会把图标窗口塞进它的 embedder。此时 ConfigureNotify 里的
+         * x/y 是相对那个容器窗口的坐标，直接当根坐标写进缓存的窗口矩形，
+         * ClientToScreen / GetWindowRect 全部偏移，托盘图标点击后按
+         * ClientToScreen 定位菜单就会跑到屏幕左上角。
+         * 顶层窗口的合成 ConfigureNotify（ICCCM 要求 WM 发根坐标）与真实事件
+         * 在这里统一处理：直接问服务器要窗口原点在 root 下的坐标，两种情况都对。 */
+        HWND hParentWnd = GetParent(hwndFromXcb(e2->window));
+        if (!hParentWnd || hParentWnd == hwndFromXcb(screen->root))
         {
             // Do not trust the position, query it instead.
                 xcb_translate_coordinates_cookie_t cookie = xcb_translate_coordinates(connection, e2->window, screen->root, 0, 0);
@@ -3842,9 +3857,12 @@ HWND SConnection::OnGetAncestor(HWND hwnd, UINT gaFlags)
     }
 }
 
-cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, uint32_t visualId, int cx, int cy)
+cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, int cx, int cy)
 {
-    cairo_surface_t *surf = cairo_xcb_surface_create(connection, xcbFromHwnd(hWnd), xcb_aux_find_visual_by_id(screen, visualId), std::max(cx, 1), std::max(cy, 1));
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (!wndObj)
+        return NULL;
+    cairo_surface_t *surf = cairo_xcb_surface_create(connection, xcbFromHwnd(hWnd), xcb_aux_find_visual_by_id(screen, wndObj->plat.visualId), std::max(cx, 1), std::max(cy, 1));
     if (m_cairoDevice == nullptr && surf && cairo_surface_status(surf) == CAIRO_STATUS_SUCCESS)
     {
         // Keep our own reference so we can finish the device at teardown.
@@ -3857,7 +3875,7 @@ cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, uint32_t visualId, 
     return surf;
 }
 
-cairo_surface_t * SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd __attribute__((unused)), uint32_t visualId __attribute__((unused)),int cx, int cy)
+cairo_surface_t * SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd __attribute__((unused)), int cx, int cy)
 {
     cairo_xcb_surface_set_size(surface, std::max(cx, 1), std::max(cy, 1));
     return surface;

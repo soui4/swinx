@@ -142,7 +142,6 @@ _Window *SConnection::CreateVirtualWindowObject()
     pWnd->winproc = DefWindowProc;
     pWnd->rc = {0, 0, 0, 0};
     pWnd->showSbFlags = 0;
-    pWnd->visualId = GetVisualID(TRUE);
     return pWnd;
 }
 
@@ -168,7 +167,7 @@ SConnection::RegisterVirtualHWND(UINT_PTR externalId, HWND hParent, DWORD dwStyl
     int cx =  prc->right-prc->left;
     int cy = prc->bottom-prc->top;
     SetWindowLongPtrA(hWnd, GWLP_ID, ctrlId);
-    cairo_surface_t *surface = pConn->CreateWindowSurface(hWnd, 0, cx, cy);
+    cairo_surface_t *surface = pConn->CreateWindowSurface(hWnd, cx, cy);
     pWnd->bmp = (HBITMAP)InitGdiObj(OBJ_BITMAP, surface);
     pWnd->hdc = new _SDC(hWnd);
     SelectObject(pWnd->hdc, pWnd->bmp);
@@ -890,12 +889,12 @@ uint32_t SConnection::GetIpcAtom() const
     return 0;
 }
 
-cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, uint32_t visualId, int cx, int cy)
+cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, int cx, int cy)
 {
     return cairo_image_surface_create(CAIRO_FORMAT_ARGB32,cx,cy);
 }
 
-cairo_surface_t * SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd, uint32_t visualId,int cx, int cy)
+cairo_surface_t * SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd,int cx, int cy)
 {
     if(surface) cairo_surface_destroy(surface);
     return cairo_image_surface_create(CAIRO_FORMAT_ARGB32,cx,cy);

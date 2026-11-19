@@ -107,7 +107,7 @@ void IpcMsg::SetResult(LRESULT res)
     SetEvent(synEvt);
 }
 //-----------------------------------------------------------
-#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__) && !SFR_PLATFORM
+#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__) && !SFR_PLATFORM && !defined(SWINX_USE_WAYLAND)
 DragEnterData::DragEnterData(XDndDataObjectProxy *_pData)
 {
     pData = _pData;

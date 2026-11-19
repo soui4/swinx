@@ -14,13 +14,14 @@
  *               wglShareLists 能在"创建之后、绑定之前"生效（GLX/NSOpenGL 都只允许
  *               在创建时指定 share group，无法后设）。
  *
- *             GLX 上下文必须与窗口的 Visual 一致：用建窗时记下的
- *             _Window::visualId 选同 Visual 的 FBConfig（见 PickFBConfig），
- *             选不到（该 Visual 不支持 GLX）则返回失败。
+ *             GLX 上下文必须与窗口的 Visual 一致：按建窗时同一规则重算窗口
+ *             的 X visual（见 PlatformCreateCtx），用它选同 Visual 的 FBConfig
+ *             （见 PickFBConfig），选不到（该 Visual 不支持 GLX）则返回失败。
  */
 
 #include <wgl.h>
 #include <string.h>
+#include <stdint.h>
 #include "sdc.h"
 #include "wndobj.h"
 #include "log.h"
@@ -443,7 +444,17 @@ static void *PlatformCreateCtx(HWND hWnd, int nMajor, int nMinor, int nProfileMa
         return NULL;
     }
     WndObj wndObj = WndMgr::fromHwnd(hWnd);
-    if (!wndObj || !wndObj->visualId)
+    if (!wndObj || !wndObj->mConnection)
+        return NULL;
+
+    /* 窗口的 X visual 已收进 X11 平台层私有数据，wgl.cpp 又会被 mobile/wasm 等
+     * 非 X11 后端编译，因此不直接读后端字段，而是按 wnd.cpp 建窗时的规则重算：
+     * 合成屏 + WS_EX_COMPOSITED 的顶层窗用 FALSE（32 位 RGBA）visual，其余用默认
+     * visual。非 X11 后端的 GetVisualID 返回 0，下面会按不支持 GLX 失败返回。 */
+    uint32_t visualId = (wndObj->dwExStyle & WS_EX_COMPOSITED)
+                            ? wndObj->mConnection->GetVisualID(FALSE)
+                            : wndObj->mConnection->GetVisualID(TRUE);
+    if (!visualId)
         return NULL;
 
     // 窗口建立在 xcb 连接上，GLX 走的是另一条 Xlib 连接：先把建窗请求刷到 server，
@@ -459,12 +470,12 @@ static void *PlatformCreateCtx(HWND hWnd, int nMajor, int nMinor, int nProfileMa
     // 侧为准，拿不到 XDefaultScreen 就退回 0）。FBConfig 必须与该窗口的 Visual 严格匹配，
     // 否则 glXMakeCurrent 必然失败，所以这里只回退双缓冲 -> 单缓冲，不放宽 Visual。
     int screen = s_XDefaultScreen ? s_XDefaultScreen(dpy) : 0;
-    GLXFBConfig cfg = PickFBConfig(dpy, screen, (VisualID)wndObj->visualId, 1);
+    GLXFBConfig cfg = PickFBConfig(dpy, screen, (VisualID)visualId, 1);
     if (!cfg)
-        cfg = PickFBConfig(dpy, screen, (VisualID)wndObj->visualId, 0);
+        cfg = PickFBConfig(dpy, screen, (VisualID)visualId, 0);
     if (!cfg)
     {
-        SLOG_FMTE("no FBConfig for visual 0x%lx (screen %d)", (unsigned long)wndObj->visualId, screen);
+        SLOG_FMTE("no FBConfig for visual 0x%lx (screen %d)", (unsigned long)visualId, screen);
         return NULL; // 该窗口 Visual 不支持 GLX
     }
 
@@ -512,7 +523,7 @@ static void *PlatformCreateCtx(HWND hWnd, int nMajor, int nMinor, int nProfileMa
         ctx = s_glXCreateNewContext(dpy, cfg, LX_GLX_RGBA_TYPE, share, 1);
         if (!ctx)
         {
-            SLOG_FMTE("glXCreateNewContext failed (visual 0x%lx)", (unsigned long)wndObj->visualId);
+            SLOG_FMTE("glXCreateNewContext failed (visual 0x%lx)", (unsigned long)visualId);
             return NULL;
         }
     }

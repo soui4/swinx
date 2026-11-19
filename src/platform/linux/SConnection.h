@@ -193,8 +193,8 @@ class SConnection {
     BOOL OnEnumWindows(HWND hParent, HWND hChildAfter,WNDENUMPROC lpEnumFunc, LPARAM lParam);
     HWND OnGetAncestor(HWND hwnd,UINT gaFlags);
 
-    cairo_surface_t * CreateWindowSurface(HWND hWnd,uint32_t visualId,int cx, int cy);
-    cairo_surface_t * ResizeSurface(cairo_surface_t *surface,HWND hWnd, uint32_t visualId, int width, int height);
+    cairo_surface_t * CreateWindowSurface(HWND hWnd,int cx, int cy);
+    cairo_surface_t * ResizeSurface(cairo_surface_t *surface,HWND hWnd, int width, int height);
     
     void SendSysCommand(HWND hWnd,int nCmd);
     BOOL EnableWindow(HWND hWnd, BOOL bEnable);

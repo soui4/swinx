@@ -23,11 +23,12 @@ _Window::_Window(uint32_t extraLen)
     , rcClipPushed{ 0, 0, 0, 0 }
     , parent(0)
     , owner(0)
+#if defined(SWINX_USE_X11) || defined(SWINX_USE_WAYLAND)
+    , plat()
+#endif
     , wIDmenu(0)
     , helpContext(0)
     , flags(0)
-    , visualId(0)
-    , cmap(0)
     , dropTarget(NULL)
     , dragData(NULL)
     , userdata(0)
@@ -53,7 +54,12 @@ _Window::_Window(uint32_t extraLen)
 
 _Window::~_Window()
 {
-    assert(cmap == 0);
+#if defined(SWINX_USE_X11)
+    assert(plat.cmap == 0);
+#elif defined(SWINX_USE_WAYLAND)
+    assert(plat.frame == 0);
+    assert(plat.frameContent == 0);
+#endif
     assert(hIMC == 0);
     assert(pPrivData == nullptr);
     if (dropTarget)

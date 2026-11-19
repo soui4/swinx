@@ -80,7 +80,7 @@ graph TD
 | swinx 兼容面 | `swinx/src/*.cpp`、`swinx/src/cmnctl32/`、`swinx/src/platform/posix/` | Win32 窗口/GDI/内核对象语义；posix 层与 Linux/macOS/iOS/移动端共用 |
 | wasm 平台层 | `swinx/src/platform/wasm/` | 消息队列、定时器、窗口 z 序、帧缓冲、输入注入、剪贴板、文件选择、音频 |
 | GDI 后端 | `swinx/src/gdi/canvas2d/` 或 `swinx/src/gdi/cairo/` | DC/位图/文本/路径绘制与上屏 |
-| 宿主壳 | `demos/wasm-demo/soui-host.js`、`soui.html`、`tools/wasm/serve-isolated.py` | canvas、事件注入、IME 代理、WebAudio、加载进度、隔离响应头与 WS 隧道；需要同源 HTTP 转发的 app 另有自己的服务入口（如 `demos/fundholdings/wasm/serve-fundholdings.py`） |
+| 宿主壳 | `tools/wasm/soui-host.js`、`demos/wasm-demo/soui.html`、`tools/wasm/serve-isolated.py` | canvas、事件注入、IME 代理、WebAudio、加载进度、隔离响应头与 WS 隧道；需要同源 HTTP 转发的 app 另有自己的服务入口（如 `demos/fundholdings/wasm/serve-fundholdings.py`） |
 
 两条绘制路径的差别集中在「谁光栅化」：
 
@@ -194,7 +194,7 @@ node demos/fun_test/wasm/run-node.js
 
 ### 3.6 链接参数与产物
 
-`SUFFIX ".html"` 让 emcc 产出 `.html / .js / .wasm / .data` 四件，`soui-host.js` 由 POST_BUILD 拷入成为第五个文件（`demos/wasm-demo/CMakeLists.txt:190-196`、`:346-354`）。
+`SUFFIX ".html"` 让 emcc 产出 `.html / .js / .wasm / .data` 四件；第五个文件 `soui-host.js`（仓库级共用的浏览器宿主，在 `tools/wasm/`）由 `__cmake/wasm-host-js.cmake` 的 `soui_wasm_host_js(<target> <out_dir>)` 装到 target 上（进 `LINK_DEPENDS`，POST_BUILD 拷进 `<out_dir>`），改宿主 js 会重链重拷。三个 wasm app 都调这一个函数。
 
 | 参数 | 作用 |
 |---|---|

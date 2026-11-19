@@ -1239,7 +1239,7 @@ uint32_t SConnection::GetIpcAtom() const
     return 0;
 }
 
-cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, uint32_t, int cx, int cy)
+cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, int cx, int cy)
 {
     // software renderer: every window paints into its own ARGB32 image
     // surface; commitCanvas() blits dirty regions into the framebuffer.
@@ -1250,11 +1250,11 @@ cairo_surface_t *SConnection::CreateWindowSurface(HWND hWnd, uint32_t, int cx, i
     return cairo_image_surface_create(CAIRO_FORMAT_ARGB32, cx, cy);
 }
 
-cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd, uint32_t visualId, int cx, int cy)
+cairo_surface_t *SConnection::ResizeSurface(cairo_surface_t *surface, HWND hWnd, int cx, int cy)
 {
     if (surface)
         cairo_surface_destroy(surface);
-    return CreateWindowSurface(hWnd, visualId, cx, cy);
+    return CreateWindowSurface(hWnd, cx, cy);
 }
 
 DWORD SConnection::GetWndProcessId(HWND)

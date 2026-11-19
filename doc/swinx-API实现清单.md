@@ -18,12 +18,12 @@
 
 | 分级 | 数量 |
 |---|---|
-| 实现 | 999 |
+| 实现 | 1001 |
 | 简单实现 | 92 |
 | 部分实现 | 14 |
 | 空实现 / 语义桩 | 41 |
 | 未提供（仅声明） | 2 |
-| **合计（有定义）** | **1146** |
+| **合计（有定义）** | **1148** |
 
 ## 3. 模块分布
 
@@ -33,7 +33,7 @@
 | 图形设备接口（GDI32 等价） | 168 | 31 | 2 | 6 |
 | 系统、文件、进程与线程（KERNEL32 等价） | 301 | 18 | 7 | 2 |
 | COM / OLE（OLE32·OLEAUT32 等价） | 56 | 8 | 0 | 4 |
-| 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 79 | 18 | 4 | 2 |
+| 通用控件、Shell 与公共对话框（COMCTL32·SHELL32·SHLWAPI 等价） | 81 | 18 | 4 | 2 |
 | 多媒体、资源及其它（WINMM·杂项） | 197 | 9 | 1 | 21 |
 
 ## 4. 模块 API 明细
@@ -818,19 +818,19 @@
 | `CoCreateGuid` | 实现 | src/objbase.cpp |  |
 | `CoCreateInstance` | 实现 | src/objbase.cpp |  |
 | `CoGetMalloc` | 实现 | src/malloc_impl.cpp |  |
-| `CoInitialize` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
+| `CoInitialize` | 实现 | src/platform/*/ole2.cpp 等 5 处 |  |
 | `CoTaskMemAlloc` | 实现 | src/malloc_impl.cpp |  |
 | `CoTaskMemFree` | 实现 | src/malloc_impl.cpp |  |
 | `CoTaskMemRealloc` | 实现 | src/malloc_impl.cpp |  |
-| `DoDragDrop` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
-| `OleDuplicateData` | 实现 | src/platform/*/ole2.cpp 等 3 处 |  |
-| `OleFlushClipboard` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
-| `OleGetClipboard` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
-| `OleIsCurrentClipboard` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
-| `OleSetClipboard` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
-| `RegisterDragDrop` | 实现 | src/platform/*/dlghelper.cpp 等 6 处 |  |
-| `ReleaseStgMedium` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
-| `RevokeDragDrop` | 实现 | src/platform/*/ole2.cpp 等 6 处 |  |
+| `DoDragDrop` | 实现 | src/platform/*/ole2.cpp 等 7 处 |  |
+| `OleDuplicateData` | 实现 | src/platform/*/ole2.cpp 等 4 处 |  |
+| `OleFlushClipboard` | 实现 | src/platform/*/ole2.cpp 等 7 处 |  |
+| `OleGetClipboard` | 实现 | src/platform/*/ole2.cpp 等 7 处 |  |
+| `OleIsCurrentClipboard` | 实现 | src/platform/*/ole2.cpp 等 7 处 |  |
+| `OleSetClipboard` | 实现 | src/platform/*/ole2.cpp 等 7 处 |  |
+| `RegisterDragDrop` | 实现 | src/platform/*/dlghelper.cpp 等 7 处 |  |
+| `ReleaseStgMedium` | 实现 | src/platform/*/ole2.cpp 等 7 处 |  |
+| `RevokeDragDrop` | 实现 | src/platform/*/ole2.cpp 等 7 处 |  |
 | `SHCreateDirectoryExA` | 实现 | src/platform/*/shellobj.cpp |  |
 | `SHCreateDirectoryExW` | 实现 | src/platform/*/shellobj.cpp |  |
 | `SHCreateStdEnumFmtEtc` | 实现 | src/platform/*/shellobj.cpp |  |
@@ -878,8 +878,8 @@
 | `SafeArrayPtrOfIndex` | 简单实现 | src/safearray.cpp |  |
 | `SafeArraySetIID` | 简单实现 | src/safearray.cpp |  |
 | `VariantInit` | 简单实现 | src/variant.cpp |  |
-| `CoInitializeEx` | 空实现 | src/platform/*/ole2.cpp 等 4 处 | 恒返回 S_OK，为 COM 初始化协议占位（swinx COM 子系统无需真正初始化） |
-| `CoUninitialize` | 空实现 | src/platform/*/ole2.cpp 等 4 处 | 空操作，与 CoInitializeEx 配对 |
+| `CoInitializeEx` | 空实现 | src/platform/*/ole2.cpp 等 5 处 | 恒返回 S_OK，为 COM 初始化协议占位（swinx COM 子系统无需真正初始化） |
+| `CoUninitialize` | 空实现 | src/platform/*/ole2.cpp 等 5 处 | 空操作，与 CoInitializeEx 配对 |
 | `OleInitialize` | 空实现 | src/objbase.cpp | 恒返回 S_OK（OLE 初始化占位） |
 | `OleUninitialize` | 空实现 | src/objbase.cpp | 空操作，与 OleInitialize 配对 |
 
@@ -891,8 +891,8 @@
 |---|---|---|---|
 | `ChooseColorA` | 实现 | src/cmmmdlg.cpp |  |
 | `ChooseColorW` | 实现 | src/cmmmdlg.cpp |  |
-| `ChooseFontA` | 实现 | src/platform/*/dlghelper.cpp 等 5 处 |  |
-| `ChooseFontW` | 实现 | src/platform/*/dlghelper.cpp 等 5 处 |  |
+| `ChooseFontA` | 实现 | src/platform/*/dlghelper.cpp 等 6 处 |  |
+| `ChooseFontW` | 实现 | src/platform/*/dlghelper.cpp 等 6 处 |  |
 | `DragAcceptFiles` | 实现 | src/platform/*/shellapi.cpp |  |
 | `DragFinish` | 实现 | src/platform/*/shellapi.cpp | 释放 WM_DROPFILES 交付给宿主的拖放数据；宿主未调用时由 CDropFileTarget::Drop 兜底释放，重复调用幂等 |
 | `DragQueryFileA` | 实现 | src/platform/*/shellapi.cpp |  |
@@ -903,24 +903,24 @@
 | `GetOpenFileNameW` | 实现 | src/cmmmdlg.cpp |  |
 | `GetSaveFileNameA` | 实现 | src/cmmmdlg.cpp |  |
 | `GetSaveFileNameW` | 实现 | src/cmmmdlg.cpp |  |
-| `ImmAssociateContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmCreateContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmDestroyContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmEscapeA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmEscapeW` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmGetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmGetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmGetContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmGetDefaultIMEWnd` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmGetProperty` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmGetVirtualKey` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmIsIME` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmNotifyIME` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmReleaseContext` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmSetCompositionFontA` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmSetCompositionFontW` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
-| `ImmSetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmAssociateContext` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmCreateContext` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmDestroyContext` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmEscapeA` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmEscapeW` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmGetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmGetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmGetContext` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmGetDefaultIMEWnd` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmGetProperty` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmGetVirtualKey` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmIsIME` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmNotifyIME` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmReleaseContext` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmSetCompositionFontA` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmSetCompositionFontW` | 实现 | src/platform/*/imm.cpp 等 6 处 |  |
+| `ImmSetCompositionStringA` | 实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmSetCompositionStringW` | 实现 | src/platform/*/imm.cpp 等 7 处 |  |
 | `PathAppendA` | 实现 | src/shlwapi.cpp |  |
 | `PathAppendW` | 实现 | src/shlwapi.cpp |  |
 | `PathCanonicalizeA` | 实现 | src/platform/*/shellapi.cpp |  |
@@ -968,17 +968,19 @@
 | `Shell_NotifyIconW` | 实现 | src/platform/*/shellapi.cpp |  |
 | `SwinxFilterToAcceptA` | 实现 | src/cmmmdlg.cpp | Win32 筛选表（"描述\0模式\0…\0\0"）→ 浏览器 <input accept> 的纯换算（Win32 无同名 API）：丢弃描述段、按 ';' 切分、"*.x" 去星留 ".x"、MIME 型模式原样交给浏览器、去重并 trim 空白；"*"、"*.*" 或空模式段表示这组接受全部，而 accept 表达不了"其中一组接受全部"，整份筛选退化成空串（不限制）。cchOut==0 是探长度形态：返回含结尾 0 的所需字节数且一个字节都不写；缓冲放不下返回 -1 + ERROR_INVALID_PARAMETER，绝不静默截断 |
 | `SwinxPickFileAsyncA` | 实现 | src/cmmmdlg.cpp | 异步文件选择（Win32 无同名 API，只有 A 版）：返回 1 表示请求已受理，结果一律经 pfnDone 给出 —— 桌面/iOS 的本地对话框本来就阻塞，回调在返回之前内联执行；wasm 的回调稍后在浏览器主线程上执行（浏览器不能在这次 JS→wasm 调用里阻塞等 change 事件）。返回 0 表示请求未发起，原因见 GetLastError，pfnDone 不会被调用。nResult 1=已选中 / 0=取消 / -1=失败（含本平台显式拒绝该能力，裸金属与移动端就是这一条内联拒绝路径）。路径只在回调期间有效且不回写调用方的 p->lpstrFile（异步返回时那块缓冲可能已经不在）。多选、wasm 上的 SAVE/FOLDER、以及宿主没装 Module.swinxPickFile 都是显式拒绝（ERROR_CALL_NOT_IMPLEMENTED），不是漏实现 |
+| `SwinxSetTrayMenuProvider` | 实现 | src/platform/*/shellapi.cpp |  |
+| `SwinxUpdateTrayMenu` | 实现 | src/platform/*/shellapi.cpp |  |
 | `DragQueryPoint` | 简单实现 | src/platform/*/shellapi.cpp |  |
-| `ImmGetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmGetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmGetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmGetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmGetStatusWindowPos` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
-| `ImmSetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmSetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmSetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmSetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 6 处 |  |
-| `ImmSetStatusWindowPos` | 简单实现 | src/platform/*/imm.cpp 等 4 处 |  |
+| `ImmGetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmGetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmGetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmGetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmGetStatusWindowPos` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
+| `ImmSetCandidateWindow` | 简单实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmSetCompositionWindow` | 简单实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmSetConversionStatus` | 简单实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmSetOpenStatus` | 简单实现 | src/platform/*/imm.cpp 等 7 处 |  |
+| `ImmSetStatusWindowPos` | 简单实现 | src/platform/*/imm.cpp 等 5 处 |  |
 | `PathFindExtensionW` | 简单实现 | src/platform/*/shellapi.cpp |  |
 | `PathFindFileNameW` | 简单实现 | src/platform/*/shellapi.cpp |  |
 | `PathIsRelativeA` | 简单实现 | src/platform/*/shellapi.cpp |  |

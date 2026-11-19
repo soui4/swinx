@@ -560,6 +560,44 @@ BOOL WINAPI Shell_NotifyIconW(DWORD dwMessage, PNOTIFYICONDATAW lpData)
     return Shell_NotifyIconA(dwMessage, &dataA);
 }
 
+//----------------------------------------------------------------------
+// 托盘菜单提供者：X11 返回 FALSE（图标是自己的窗口，应用自绘菜单即可）；
+// Wayland 返回 TRUE（菜单由面板经 dbusmenu 绘制，点击回投 WM_COMMAND）。
+//----------------------------------------------------------------------
+BOOL WINAPI SwinxSetTrayMenuProvider(HWND hWnd, UINT uID, const TRAYMENUPROVIDER *pProvider)
+{
+#if defined(__linux__) && defined(SWINX_USE_WAYLAND)
+    if (!hWnd)
+        return FALSE;
+    SConnection *conn = SConnMgr::instance()->getConnection();
+    if (!conn)
+        return FALSE;
+    return conn->SetTrayMenuProvider(hWnd, uID, pProvider);
+#else
+    /* macOS/iOS/Android/wasm 没有"面板绘制托盘菜单"这一层，应用继续自己弹菜单。 */
+    (void)hWnd;
+    (void)uID;
+    (void)pProvider;
+    return FALSE;
+#endif
+}
+
+BOOL WINAPI SwinxUpdateTrayMenu(HWND hWnd, UINT uID)
+{
+#if defined(__linux__) && defined(SWINX_USE_WAYLAND)
+    if (!hWnd)
+        return FALSE;
+    SConnection *conn = SConnMgr::instance()->getConnection();
+    if (!conn)
+        return FALSE;
+    return conn->UpdateTrayMenu(hWnd, uID);
+#else
+    (void)hWnd;
+    (void)uID;
+    return FALSE;
+#endif
+}
+
 BOOL WINAPI PathMatchSpecExW(LPCWSTR pszFile, LPCWSTR pszSpec, DWORD dwFlags)
 {
     std::string strFile, strSpec;

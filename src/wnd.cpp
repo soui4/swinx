@@ -119,7 +119,7 @@ static BOOL InitWndDC(HWND hwnd, int cx, int cy)
     assert(hwnd);
     WndObj wndObj = WndMgr::fromHwnd(hwnd);
     assert(wndObj);
-    cairo_surface_t *surface = wndObj->mConnection->CreateWindowSurface(hwnd, wndObj->visualId, cx, cy);
+    cairo_surface_t *surface = wndObj->mConnection->CreateWindowSurface(hwnd, cx, cy);
     wndObj->bmp = (HBITMAP)InitGdiObj(OBJ_BITMAP, surface);
     wndObj->hdc = new _SDC(hwnd);
     SelectObject(wndObj->hdc, wndObj->bmp);
@@ -439,8 +439,7 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     pWnd->rc = rcInit;
     pWnd->showSbFlags |= (cs->style & WS_HSCROLL) ? SB_HORZ : 0;
     pWnd->showSbFlags |= (cs->style & WS_VSCROLL) ? SB_VERT : 0;
-    pWnd->visualId = conn->GetVisualID(TRUE);
-#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__) && !SFR_PLATFORM
+#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__) && !SFR_PLATFORM && !defined(SWINX_USE_WAYLAND)
     int depth = XCB_COPY_FROM_PARENT;
 #else
     int depth = 24;
@@ -448,7 +447,6 @@ static HWND WIN_CreateWindowEx(CREATESTRUCT *cs, LPCSTR className, HINSTANCE mod
     if ((pWnd->dwExStyle & WS_EX_COMPOSITED) && !(pWnd->dwStyle & WS_CHILD) && conn->IsScreenComposited())
     {
         pWnd->dwStyle &= ~WS_CAPTION;
-        pWnd->visualId = conn->GetVisualID(FALSE);
         depth = 32;
     }
     else
@@ -728,6 +726,16 @@ static HRESULT HandleNcTestCode(HWND hWnd, UINT htCode)
         return -1;
     if (!(htCode >= HTCAPTION && htCode <= HTBOTTOMRIGHT) || htCode == HTVSCROLL || htCode == HTHSCROLL)
         return -2;
+#ifdef SWINX_USE_WAYLAND
+    /* Wayland 没有"标题栏"概念：自绘 NC 的 xdg_toplevel 移动/缩放必须由客户端
+     * 拿 pointer press 的 serial 主动发 xdg_toplevel_move/resize（GTK
+     * gdk_wayland_window_begin_move_drag 同款）；合成器随后独占整个拖动期的
+     * pointer 事件。因此这里**不能**进下面的 SetWindowPos 模态循环——toplevel
+     * 的 x/y 由合成器决定，SetWindowPos 写 wndObj->rc 无效，且合成器吞掉
+     * WM_MOUSEMOVE/WM_LBUTTONUP 会让循环卡死。发一次请求即返回。 */
+    wndObj->mConnection->beginWlDrag(hWnd, htCode);
+    return 0;
+#endif
     POINT ptClick;
     if (!wndObj->mConnection->GetCursorPos(&ptClick))
         return -1;
@@ -1011,7 +1019,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     BOOL bSkipMsg = FALSE;
     switch (msg)
     {
-#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__) && !SFR_PLATFORM
+#if defined(__linux__) && !defined(__OHOS__) && !defined(__ANDROID__) && !SFR_PLATFORM && !defined(SWINX_USE_WAYLAND)
     case UM_XDND_DRAG_ENTER:
     {
         SLOG_STMI() << "UM_XDND_DRAG_ENTER!";
@@ -1097,6 +1105,22 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
     }
 #endif // defined(__linux__) && !defined(__OHOS__)
     case WM_LBUTTONDOWN:
+#ifdef SWINX_USE_WAYLAND
+        /* 合成器独占 xdg_toplevel_move/resize 时会吞掉 release/motion；即便平台层
+         * 已清掉按键缓存，按下这一刻也不能盲信 wndObj->htCode：窗口刚 configure
+         * 或拖动结束后可能还没有新的 hover 刷新它。按 Win32 语义在按下点重做一次
+         * WM_NCHITTEST，确保 caption/edge 的分支用的是当前指针位置。 */
+        {
+            POINT ptHit;
+            if (wndObj->mConnection->GetCursorPos(&ptHit))
+            {
+                UINT hitCode = (UINT)CallWindowObjProc(wndObj, proc, hWnd, WM_NCHITTEST, 0, MAKELPARAM(ptHit.x, ptHit.y));
+                wndObj->htCode = (int)hitCode;
+                if (CallWindowObjProc(wndObj, proc, hWnd, WM_SETCURSOR, (WPARAM)hWnd, hitCode) == 0)
+                    UpdateWindowCursor(wndObj, hWnd, hitCode);
+            }
+        }
+#endif
 #if defined(__OHOS__) || defined(__ANDROID__) || defined(__IOS__)
     { // for mobile os
         POINT pt;
@@ -1372,7 +1396,7 @@ static LRESULT CallWindowProcPriv(WNDPROC proc, HWND hWnd, UINT msg, WPARAM wp, 
             wndObj->rc.right = wndObj->rc.left + sz.cx;
             wndObj->rc.bottom = wndObj->rc.top + sz.cy;
             cairo_surface_t *surface = (cairo_surface_t *)GetGdiObjPtr(wndObj->bmp);
-            surface = wndObj->mConnection->ResizeSurface(surface, hWnd, wndObj->visualId, sz.cx, sz.cy);
+            surface = wndObj->mConnection->ResizeSurface(surface, hWnd, sz.cx, sz.cy);
             SetGdiObjPtr(wndObj->bmp, surface);
             /* DC 的 cairo 目标和裁剪基线都钉在旧表面上：表面在同一 HBITMAP
              * 内被换掉后，SelectObject 遇到相同 bmp 会当作 no-op（gdi.cpp
@@ -1898,7 +1922,7 @@ BOOL SetForegroundWindow(HWND hWnd)
         return FALSE;
     if (!(wndObj->dwStyle & WS_VISIBLE))
         return FALSE;
-#if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
+#if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM && !defined(SWINX_USE_WAYLAND)
     if (!(wndObj->flags & kMapped))
     { // wait for mapped
         MSG msg;
@@ -3642,7 +3666,7 @@ BOOL SetLayeredWindowAttributes(HWND hWnd, COLORREF crKey __attribute__((unused)
     if ((dwFlags & LWA_ALPHA) && byAlpha != wndObj->byAlpha)
     {
         wndObj->byAlpha = byAlpha;
-#if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
+#if defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM && !defined(SWINX_USE_WAYLAND)
         if (wndObj->flags & kMapped)
 #endif // defined(__linux__) && !defined(__OHOS__) && !SFR_PLATFORM
             wndObj->mConnection->SetWindowOpacity(hWnd, byAlpha);

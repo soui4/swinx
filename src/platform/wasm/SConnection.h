@@ -165,8 +165,8 @@ public:
     void OnExStyleChanged(HWND hWnd, _Window *wndObj, DWORD oldStyle, DWORD newStyle);
     void SendClientMessage(HWND hWnd, uint32_t type, uint32_t *data, int len);
     uint32_t GetIpcAtom() const;
-    cairo_surface_t *CreateWindowSurface(HWND hWnd, uint32_t visualId, int cx, int cy);
-    cairo_surface_t *ResizeSurface(cairo_surface_t *surface, HWND hWnd, uint32_t visualId, int cx, int cy);
+    cairo_surface_t *CreateWindowSurface(HWND hWnd, int cx, int cy);
+    cairo_surface_t *ResizeSurface(cairo_surface_t *surface, HWND hWnd, int cx, int cy);
     DWORD GetWndProcessId(HWND hWnd);
     HWND WindowFromPoint(POINT pt);
     BOOL GetClientRect(HWND hWnd, RECT *pRc);

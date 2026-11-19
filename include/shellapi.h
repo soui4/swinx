@@ -93,6 +93,59 @@ extern "C"
 
 #define NIF_SHOWTIP 0x00000080
 
+    /*
+     * 托盘菜单提供者（Wayland/SNI 使用）。
+     *
+     * X11/Windows 的托盘图标是应用自己创建的窗口，鼠标事件直接送到应用，应用
+     * 可以随时弹自绘菜单。Wayland 没有跨进程窗口嵌入：图标由面板进程自己绘制，
+     * 指针事件也在面板内被消费，应用既收不到 WM_LBUTTONDOWN 也收不到
+     * WM_RBUTTONDOWN。面板只能通过 com.canonical.dbusmenu 询问"你的菜单有哪
+     * 些项"，用户点中某一项后再通过 D-Bus 把该项的名字告诉应用。
+     *
+     * 因此托盘菜单改成"回调提供菜单内容"模型：应用用 SwinxSetTrayMenuProvider
+     * 把菜单内容登记进来，swinx 据此构建 dbusmenu 树交给面板绘制；用户点击某项
+     * 后，swinx 把该项的 uID 以 WM_COMMAND 投给 hWndCmd，语义与
+     * SMenuEx::TrackPopupMenu 选中菜单项一致，应用按命令 id 处理即可。
+     *
+     * SwinxSetTrayMenuProvider 返回 TRUE 表示宿主确实接管了托盘菜单（Wayland+
+     * SNI），应用不要再自己弹菜单；返回 FALSE 表示当前平台仍走"自己的窗口收
+     * 消息"的老路（X11/Windows），应用保持原有自绘菜单逻辑。
+     */
+#define TRMIF_SEPARATOR  0x0001 /* 分隔符：uID/pszText 忽略 */
+#define TRMIF_CHECKED    0x0002 /* 勾选（配合 TRMIF_RADIOCHECK 显示为单选圆点） */
+#define TRMIF_DISABLED   0x0004 /* 灰显不可点 */
+#define TRMIF_RADIOCHECK 0x0008 /* 勾选样式为 radio */
+
+    typedef struct _TRAYMENUITEMW
+    {
+        UINT uID;        /* 命令 id，点击时以 WM_COMMAND 回投；0 = 不可点 */
+        UINT uFlags;     /* TRMIF_* */
+        LPCWSTR pszText; /* 菜单文本（UTF-16）；只在回调期间需要有效 */
+        UINT uSubMenu;   /* 子菜单句柄；0 = 无子菜单，回调时原样传回 */
+    } TRAYMENUITEMW, *PTRAYMENUITEMW;
+
+    /* 询问某个菜单（uSubMenu == 0 为根菜单）有多少项 */
+    typedef int(WINAPI *PFN_TRAYMENUCOUNT)(HWND hWnd, UINT uID, UINT uSubMenu, LPVOID pCtx);
+    /* 取第 iIndex 项（0 基）的内容 */
+    typedef BOOL(WINAPI *PFN_TRAYMENUITEM)(HWND hWnd, UINT uID, UINT uSubMenu, int iIndex,
+                                           PTRAYMENUITEMW pItem, LPVOID pCtx);
+
+    typedef struct _TRAYMENUPROVIDER
+    {
+        HWND hWndCmd;              /* WM_COMMAND 投递目标；NULL = 投给 hWnd（通知窗口） */
+        PFN_TRAYMENUCOUNT pfnCount; /* 必填 */
+        PFN_TRAYMENUITEM pfnItem;   /* 必填 */
+        LPVOID pCtx;                /* 回调上下文（通常是应用对象指针） */
+    } TRAYMENUPROVIDER, *PTRAYMENUPROVIDER;
+
+    /* 注册/注销（pProvider == NULL 注销）托盘菜单内容提供者。
+     * 返回 TRUE 表示宿主接管菜单，FALSE 表示平台不支持（应用继续自绘）。 */
+    BOOL WINAPI SwinxSetTrayMenuProvider(HWND hWnd, UINT uID, const TRAYMENUPROVIDER *pProvider);
+
+    /* 菜单内容变化（如勾选状态）后调用，通知宿主重新拉取布局。
+     * 未注册 provider 或平台不支持时返回 FALSE。 */
+    BOOL WINAPI SwinxUpdateTrayMenu(HWND hWnd, UINT uID);
+
 #ifdef UNICODE
 #define NOTIFYICONDATA   NOTIFYICONDATAW
 #define Shell_NotifyIcon Shell_NotifyIconW

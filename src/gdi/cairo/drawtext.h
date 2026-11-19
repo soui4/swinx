@@ -22,7 +22,10 @@ class TextLayoutEx {
   private:
     SkScalar drawLineEndWithEllipsis(cairo_t *ctx, SkScalar x1, SkScalar x2, SkScalar y, int iBegin, int iEnd, SkScalar maxWidth);
 
-    SkScalar drawLine(cairo_t *ctx, SkScalar x1, SkScalar x2, SkScalar y, int iBegin, int iEnd);
+    // nTextWidth >= 0 时直接用调用方量好的行宽，不再自己 shaping 一遍
+    // （省略号分支判断"是否溢出"时刚量过整行，正好复用）。
+    SkScalar drawLine(cairo_t *ctx, SkScalar x1, SkScalar x2, SkScalar y, int iBegin, int iEnd,
+                      SkScalar nTextWidth = -1.0f);
 
     void buildLines();
 
