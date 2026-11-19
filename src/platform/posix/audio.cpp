@@ -79,6 +79,11 @@ class AudioPlayer {
 };
 #elif defined(__linux__)
 #ifdef HAS_ALSA // HAS_ALSA
+
+#ifdef interface
+#undef interface
+#endif//interface
+
 #include <alsa/asoundlib.h>
 // WAV文件头部结构 - RIFF chunk
 struct RiffHeader
