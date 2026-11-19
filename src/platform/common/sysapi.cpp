@@ -275,8 +275,9 @@ int GetSystemMetrics(int nIndex)
         printf("unknown index for GetSystemMetrics, index=%d\n", nIndex);
         break;
     }
-    // 是否按 DPI 放大由平台回答（旧代码是这里一个 #ifdef __APPLE__）
-    return ret * swinx_system_metric_scale(nIndex) / 100;
+    // SOUI 的 DPI 约定一律是 MulDiv(x, GetScale(), 100)，两者在非 96 DPI
+    // 会差 1（如 scale=104 时 SM_CXCURSOR 截断得 24、MulDiv 得 25）。
+    return MulDiv(ret, swinx_system_metric_scale(nIndex), 100);
 }
 
 UINT WINAPI GetDoubleClickTime(VOID)

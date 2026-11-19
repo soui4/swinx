@@ -2332,15 +2332,95 @@ extern "C" BOOL WINAPI PatBlt(HDC hdc, int x, int y, int w, int h, DWORD rop)
     hdc->c2d = st0;
     return painted ? TRUE : FALSE;
 }
+/* 把任意位深的 DIB 展开成 32bpp BGRA（SwinxCanvasPutPixels 期望的字节序）。
+ *
+ * StretchDIBits 的源不总是 32bpp：光标/图标加载（posix/cursoricon.cpp 的
+ * create_icon_frame）会把 1bpp 的 XOR 位图和 AND 掩码分别传进来。旧实现无条件
+ * 按 w*h*4 读源，1bpp 的 32x32 光标实际只有 128 字节却读了 4096 字节，ASAN 报
+ * global-buffer-overflow（ocr_normal_cur）。这里按 bmi 的位深和调色板正确换算，
+ * 既消除越界，也让非 32bpp 的光标位图内容不再是无意义的填充字节。
+ *
+ * 返回 new[] 的缓冲，调用方负责 delete[]；32bpp 或无法识别的格式返回 NULL，
+ * 表示调用方应直接使用原指针（保持既有行为）。 */
+static uint8_t *stretchDibExpand(const void *bits, const BITMAPINFO *bmi, int w, int h)
+{
+    if (!bits || !bmi || w <= 0 || h <= 0)
+        return NULL;
+    const int bpp = (int)bmi->bmiHeader.biBitCount;
+    if (bpp != 1 && bpp != 4 && bpp != 8 && bpp != 16 && bpp != 24)
+        return NULL; /* 32bpp 或非法值：沿用原路径 */
+
+    const BOOL coreHeader = (bmi->bmiHeader.biSize == sizeof(BITMAPCOREHEADER));
+    /* DIB 行按 4 字节对齐；BITMAPCOREHEADER 的宽度/位深与 INFOHEADER 同偏移。 */
+    const int stride = ((w * bpp + 31) / 32) * 4;
+    uint8_t *out = new uint8_t[(size_t)w * h * 4];
+    const uint8_t *src = (const uint8_t *)bits;
+    const uint8_t *pal = coreHeader
+                             ? (const uint8_t *)((const BITMAPCOREHEADER *)bmi + 1)
+                             : (const uint8_t *)bmi->bmiColors;
+    const int palStep = coreHeader ? 3 : 4; /* RGBTRIPLE vs RGBQUAD */
+
+    for (int y = 0; y < h; ++y)
+    {
+        const uint8_t *row = src + (size_t)y * stride;
+        uint8_t *dst = out + (size_t)y * w * 4;
+        for (int x = 0; x < w; ++x)
+        {
+            uint8_t rr = 0, gg = 0, bb = 0, aa = 255;
+            switch (bpp)
+            {
+            case 1: case 4: case 8:
+            {
+                int idx;
+                if (bpp == 1) idx = (row[x >> 3] >> (7 - (x & 7))) & 1;
+                else if (bpp == 4) idx = (x & 1) ? (row[x >> 1] & 0x0f) : (row[x >> 1] >> 4);
+                else idx = row[x];
+                const uint8_t *e = pal + (size_t)idx * palStep;
+                bb = e[0]; gg = e[1]; rr = e[2];
+                if (!coreHeader && e[3] != 0) aa = e[3];
+                break;
+            }
+            case 16:
+            {
+                const uint16_t v = (uint16_t)(row[x * 2] | ((uint16_t)row[x * 2 + 1] << 8));
+                if (bmi->bmiHeader.biCompression == BI_BITFIELDS) /* RGB565 */
+                {
+                    rr = (uint8_t)(((v >> 11) & 31) * 255 / 31);
+                    gg = (uint8_t)(((v >> 5) & 63) * 255 / 63);
+                    bb = (uint8_t)((v & 31) * 255 / 31);
+                }
+                else /* BI_RGB: RGB555 */
+                {
+                    rr = (uint8_t)(((v >> 10) & 31) * 255 / 31);
+                    gg = (uint8_t)(((v >> 5) & 31) * 255 / 31);
+                    bb = (uint8_t)((v & 31) * 255 / 31);
+                }
+                break;
+            }
+            case 24:
+                bb = row[x * 3]; gg = row[x * 3 + 1]; rr = row[x * 3 + 2];
+                break;
+            }
+            dst[x * 4 + 0] = bb;
+            dst[x * 4 + 1] = gg;
+            dst[x * 4 + 2] = rr;
+            dst[x * 4 + 3] = aa;
+        }
+    }
+    return out;
+}
+
 extern "C" BOOL WINAPI StretchDIBits(HDC hdc, INT x_dst, INT y_dst, INT w_dst, INT h_dst,
                                     INT x_src, INT y_src, INT w_src, INT h_src, const void *bits,
                                     const BITMAPINFO *bmi, UINT coloruse, DWORD rop)
 {
-    if (!hdc || !bits) return FALSE;
-    // 把 ARGB32 源写进一张临时 canvas 再 drawImage（DIB → canvas）
+    if (!hdc || !bits || !bmi) return FALSE;
+    // 把 DIB 源展开成 ARGB32 后写进临时 canvas 再 drawImage（DIB → canvas）
     int W = w_src > 0 ? w_src : 1, H = h_src > 0 ? h_src : 1;
     val tmp = SwinxCanvasCreate(W, H, 1);
-    SwinxCanvasPutPixels(tmp, (int)(intptr_t)bits, W, H);
+    uint8_t *expanded = stretchDibExpand(bits, bmi, W, H);
+    SwinxCanvasPutPixels(tmp, (int)(intptr_t)(expanded ? expanded : bits), W, H);
+    delete[] expanded;
     /* rop 必须下发：以前这里直接 drawImage，rop 整个丢掉，于是 StretchDIBits(SRCCOPY)
      * 在 canvas2d 是叠加、在 Win32/cairo 是替换（cairo 版就是 CreateDIBitmap +
      * StretchBlt(rop)），32bpp 源里透明的位置会把目标上一帧留下来 —— 与 BitBlt 同一类

@@ -398,7 +398,9 @@ def build(platform, args):
         # iOS 不允许应用携带任意 dylib，静态库才是下游真正使用的形态，也省掉签名。
         plat_args = ["-DCMAKE_SYSTEM_NAME=iOS",
                      "-DCMAKE_OSX_ARCHITECTURES=%s" % args.abi,
-                     "-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0",
+                     # Xcode 26 起 iOS 最低部署目标是 15（12 在 ASC 上传时会被拒），
+                     # macos-26 runner 默认 Xcode 26，写 12.0 会直接编不过。
+                     "-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0",
                      "-DCMAKE_OSX_SYSROOT=iphoneos",
                      "-DSOUI_ENABLE_CORE_LIB=ON"]
     elif platform == "android":
