@@ -1,3 +1,8 @@
+
+if(NOT "${SWINX_LINUX_BACKEND}" MATCHES "^(x11|wayland)$")
+    message(FATAL_ERROR "SWINX_LINUX_BACKEND 必须是 'x11' 或 'wayland'（当前为 '${SWINX_LINUX_BACKEND}'）")
+endif()
+
 add_compile_options(-Wno-format-truncation)
 add_compile_options(-Wno-attributes)
 find_package(PkgConfig REQUIRED)
@@ -19,21 +24,6 @@ if(NOT TARGET cairo)
     message(FATAL_ERROR "cairo target not found. Make sure thirdparty is built first.")
 endif()
 
-# ---------------------------------------------------------------------------
-# Linux 窗口系统后端选择
-#
-# SWINX_LINUX_BACKEND 由 swinx/CMakeLists.txt 统一解析（根工程可用
-# -DSOUI_LINUX_BACKEND=wayland 或 -DSOUI_USE_WAYLAND=ON 覆盖）。这里是该开关
-# 唯一消费点：它同时决定参与编译的源文件目录、第三方依赖和导出宏，避免两个
-# 后端目录同时被 GLOB 造成 SConnection 等同名符号重复定义。
-# ---------------------------------------------------------------------------
-if(NOT DEFINED SWINX_LINUX_BACKEND OR "${SWINX_LINUX_BACKEND}" STREQUAL "")
-    set(SWINX_LINUX_BACKEND "x11")
-endif()
-if(NOT "${SWINX_LINUX_BACKEND}" MATCHES "^(x11|wayland)$")
-    message(FATAL_ERROR "SWINX_LINUX_BACKEND 必须是 'x11' 或 'wayland'（当前为 '${SWINX_LINUX_BACKEND}'）")
-endif()
-message(STATUS "####SWINX_LINUX_BACKEND=${SWINX_LINUX_BACKEND}")
 
 if(SWINX_LINUX_BACKEND STREQUAL "x11")
     # ---- X11/XCB 后端（现有实现，行为保持不变）----
@@ -52,10 +42,10 @@ if(SWINX_LINUX_BACKEND STREQUAL "x11")
         thirdparty/xcb-util-wm/*.c
         thirdparty/xcb-util/*.c
         thirdparty/libxcb/*.c
-        src/platform/linux/*.cpp
+        src/platform/x11/*.cpp
     )
     set(SWINX_BACKEND_INCLUDE_DIRS
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/linux
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/x11
         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xcb
         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xkbcommon
         ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/xcb-imdkit/include

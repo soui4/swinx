@@ -1108,6 +1108,116 @@ static CTLineRef CreateCTLineWithDC(HDC hdc, LPCSTR str, int c, CGFloat *outAsce
     return line;
 }
 
+// 一条已 shaping 的文本行及其字体度量。单行绘制入口可以复用调用方量好的这份
+// 结果，避免"先量一遍、再为绘制 shape 一遍"。
+struct CTLineMetrics
+{
+    CTLineRef line;
+    CGFloat ascent;
+    CGFloat descent;
+    CGFloat advance;
+};
+
+static CTLineMetrics MeasureCTLine(HDC hdc, LPCSTR str, int c)
+{
+    CTLineMetrics m;
+    m.ascent = 0;
+    m.descent = 0;
+    m.advance = 0;
+    m.line = CreateCTLineWithDC(hdc, str, c, &m.ascent, &m.descent, &m.advance);
+    return m;
+}
+
+static void ReleaseCTLineMetrics(CTLineMetrics &m)
+{
+    if (m.line)
+        CFRelease(m.line);
+    m.line = NULL;
+}
+
+// 由一条已 shape 的 CTLine 反推逐 UTF-8 字节的累计宽度，语义对齐 cairo 后端的
+// cairo_text_extents2_ex：多字节字符的每个字节共用该字符的右边界（相对行首）。
+// 与 GetTextExtentPoint32A 一样按截断取整（GDI 的整数宽度语义），这样
+// GetTextExtentExPointA 写出的 lpnDx 末项与 psizl->cx 始终一致。
+//
+// CoreText 的行内偏移按 UTF-16 索引给出（CFString 单位），这里先把 UTF-8 字节
+// 映射到所属字符的 UTF-16 索引，再用 CTRun 的 glyph 位置回填字符右边界。全部
+// 只需一次 shaping：原来每个字符建一次 CTLine，而每次创建都要走 CTFont 缓存锁
+// 并新建 CGColor/CFDictionary/CFString/CTAttributedString，固定开销远大于度量。
+// 反向 run（RTL）按单 glyph 单字符近似，与旧的逐字累加实现同为 LTR 假设。
+static void ComputeByteCumulativeWidths(CTLineRef line, LPCSTR str, int c, CGFloat totalAdv,
+                                        std::vector<int> &byteWid)
+{
+    byteWid.assign(c > 0 ? (size_t)c : (size_t)0, 0);
+    if (!line || c <= 0)
+        return;
+
+    // UTF-8 字节 → 所属字符在 CFString 里的 UTF-16 起始索引
+    std::vector<int> byteToU16((size_t)c);
+    int u16Len = 0;
+    for (int i = 0; i < c;)
+    {
+        int chLen = (int)swinx::UTF8CharLength((unsigned char)str[i]);
+        if (chLen > c - i)
+            chLen = c - i;
+        for (int j = 0; j < chLen; j++)
+            byteToU16[i + j] = u16Len;
+        u16Len += (chLen == 4) ? 2 : 1; // 补充平面在 CFString 里占代理对
+        i += chLen;
+    }
+
+    // 字符右边界；没有被任何 glyph 覆盖的索引（空簇、尾随组合符）退化为整行宽度，
+    // 保证"最后一个字符的右边界 == 行宽"。
+    std::vector<double> u16EndX((size_t)u16Len + 1, (double)totalAdv);
+    CFArrayRef runs = CTLineGetGlyphRuns(line);
+    CFIndex nRuns = runs ? CFArrayGetCount(runs) : 0;
+    for (CFIndex r = 0; r < nRuns; r++)
+    {
+        CTRunRef run = (CTRunRef)CFArrayGetValueAtIndex(runs, r);
+        CFIndex nGlyphs = CTRunGetGlyphCount(run);
+        if (nGlyphs <= 0)
+            continue;
+        std::vector<CGPoint> positions((size_t)nGlyphs);
+        std::vector<CGSize> advances((size_t)nGlyphs);
+        std::vector<CFIndex> indices((size_t)nGlyphs);
+        CFRange all = CFRangeMake(0, nGlyphs);
+        CTRunGetPositions(run, all, &positions[0]);
+        CTRunGetAdvances(run, all, &advances[0]);
+        CTRunGetStringIndices(run, all, &indices[0]);
+        CFRange strRange = CTRunGetStringRange(run);
+        for (CFIndex g = 0; g < nGlyphs; g++)
+        {
+            // 一个 glyph 覆盖的字符区间 = [本 glyph 起始索引, 下一个 glyph 起始索引)
+            CFIndex begin = indices[g];
+            CFIndex end = (g + 1 < nGlyphs) ? indices[g + 1] : strRange.location + strRange.length;
+            if (end <= begin)
+                end = begin + 1;
+            double endX = positions[g].x + advances[g].width;
+            for (CFIndex k = begin; k < end && k < u16Len; k++)
+                u16EndX[(size_t)k] = endX;
+        }
+    }
+
+    for (int i = 0; i < c; i++)
+        byteWid[(size_t)i] = (int)u16EndX[(size_t)byteToU16[(size_t)i]];
+}
+
+// 一次 shaping，附带逐字节累计宽度（见 ComputeByteCumulativeWidths）。
+static CTLineRef CreateCTLineWithDCOffsets(HDC hdc, LPCSTR str, int c, CGFloat *outAscent,
+                                           CGFloat *outDescent, CGFloat *outAdvance,
+                                           std::vector<int> &byteWid)
+{
+    CTLineRef line = CreateCTLineWithDC(hdc, str, c, outAscent, outDescent, outAdvance);
+    if (!line)
+    {
+        byteWid.clear();
+        return NULL;
+    }
+    CGFloat totalAdv = outAdvance ? *outAdvance : CTLineGetTypographicBounds(line, NULL, NULL, NULL);
+    ComputeByteCumulativeWidths(line, str, c, totalAdv, byteWid);
+    return line;
+}
+
 static void ApplyRegion(CGContextRef ctx, HRGN hRgn)
 {
     CGContextResetClip(ctx);
@@ -3016,54 +3126,27 @@ static LPCSTR WordNext(LPCSTR pszBuf, bool bWordbreak)
     return p;
 }
 
-static LPCSTR nextChar(LPCSTR p)
-{
-    int len = mbtowc(nullptr, p, MB_CUR_MAX);
-    assert(len > 0);
-    return p + len;
-}
-
-// 宽度全程浮点累加（CoreText 的 advance 是小数），最后输出时才转整数；
-// 逐字符 (LONG) 截断累加会使测量偏小，与 GetTextExtentPoint32A 的整行
-// 测量不一致。pFracWid 非空时输出未取整的浮点宽度，供 DrawMultiLine
-// 做无精度损失的折行/extent 累加。
+// 宽度直接取整行 shaping 的 advance（CoreText 的 advance 是小数），不再逐字符建
+// CTLine 累加：后者每次都要新建 CTFont/CGColor/CFString/CTLine 一整条对象链，
+// 且逐字累加会丢掉 kerning/连字，与 GetTextExtentPoint32A 的整行测量不一致。
+// pFracWid 非空时输出未取整的浮点宽度，供 DrawMultiLine 做无精度损失的折行累加。
 static SIZE OnMeasureText(HDC hdc, LPCSTR pszBuf, int cchText, double *pFracWid = NULL)
 {
-    int i = 0;
-    char word[6];
-    LPCSTR p = pszBuf;
-    LPCSTR pEnd = p + cchText;
     SIZE ret = { 0, 0 };
-    CGFloat ascent = 0, descent = 0;
-    bool gotMetrics = false;
-    double cx = 0;
-    while (p < pEnd)
+    CGFloat ascent = 0, descent = 0, advance = 0;
+    CTLineRef line = CreateCTLineWithDC(hdc, pszBuf, cchText, &ascent, &descent, &advance);
+    if (!line)
     {
-        LPCSTR next = nextChar(p);
-        assert(next - p <= 5);
-        memcpy(word, p, (next - p));
-        word[next - p] = 0;
-        CGFloat chWid = 0, chAscent = 0, chDescent = 0;
-        CTLineRef line = CreateCTLineWithDC(hdc, word, (int)(next - p), &chAscent, &chDescent, &chWid);
-        if (line)
-        {
-            if (!gotMetrics)
-            {
-                ascent = chAscent;
-                descent = chDescent;
-                gotMetrics = true;
-            }
-            cx += chWid;
-            CFRelease(line);
-        }
-        p = next;
-    }
-    ret.cx = (LONG)cx;
-    if (pFracWid)
-        *pFracWid = cx;
-    ret.cy = (LONG)(ascent + descent);
-    if (!gotMetrics)
+        if (pFracWid)
+            *pFracWid = 0;
         ret.cy = 16;
+        return ret;
+    }
+    CFRelease(line);
+    ret.cx = (LONG)advance;
+    if (pFracWid)
+        *pFracWid = (double)advance;
+    ret.cy = (LONG)(ascent + descent);
     return ret;
 }
 
@@ -3101,44 +3184,49 @@ static void DrawTextDecLines(HDC hdc, double ascent, double descent, LPCSTR str,
     }
 }
 
-static void DrawSingleLine(HDC hdc, LPCSTR pszBuf, int iBegin, int cchText, LPRECT pRect, UINT uFormat)
+// 用调用方量好（或内部新建）的一条 CTLine 完成单行绘制，不重复 shaping。
+static void DrawSingleLineMetrics(HDC hdc, const CTLineMetrics &m, LPCSTR pszBuf, int iBegin, int cchText,
+                                  LPRECT pRect, UINT uFormat)
 {
-    if(!hdc->cgCtx) return;
     CGContextRef ctx = hdc->cgCtx;
-    CGFloat ascent = 0, descent = 0, x_advance = 0;
-    CTLineRef line = CreateCTLineWithDC(hdc, pszBuf + iBegin, cchText, &ascent, &descent, &x_advance);
     double x_bearing = 0;
-    double font_hei = ascent + descent;
+    double font_hei = m.ascent + m.descent;
     if (uFormat & DT_CALCRECT)
     {
-        pRect->right = pRect->left + x_advance;
-        pRect->bottom = pRect->top + font_hei;
+        pRect->right = pRect->left + (LONG)m.advance;
+        pRect->bottom = pRect->top + (LONG)font_hei;
     }
     else
     {
         int drawX = pRect->left;
-        int drawY = pRect->top + ascent;
+        int drawY = pRect->top + (int)m.ascent;
         switch (uFormat & (DT_LEFT | DT_CENTER | DT_RIGHT))
         {
         case DT_LEFT:
             drawX = pRect->left;
             break;
         case DT_CENTER:
-            drawX = pRect->left + (pRect->right - pRect->left - (int)x_advance) / 2;
+            drawX = pRect->left + (pRect->right - pRect->left - (int)m.advance) / 2;
             break;
         case DT_RIGHT:
-            drawX = pRect->right - (int)x_advance;
+            drawX = pRect->right - (int)m.advance;
             break;
         }
         CGContextSaveGState(ctx);
         CGContextSetTextMatrix(ctx, CGAffineTransformMake(1, 0, 0, -1, drawX, drawY));
-        if (line)
-            CTLineDraw(line, ctx);
-        DrawTextDecLines(hdc, ascent, descent, pszBuf + iBegin, cchText, drawX, pRect->top, x_bearing, x_advance);
+        if (m.line)
+            CTLineDraw(m.line, ctx);
+        DrawTextDecLines(hdc, m.ascent, m.descent, pszBuf + iBegin, cchText, drawX, pRect->top, x_bearing, m.advance);
         CGContextRestoreGState(ctx);
     }
-    if (line)
-        CFRelease(line);
+}
+
+static void DrawSingleLine(HDC hdc, LPCSTR pszBuf, int iBegin, int cchText, LPRECT pRect, UINT uFormat)
+{
+    if(!hdc->cgCtx) return;
+    CTLineMetrics m = MeasureCTLine(hdc, pszBuf + iBegin, cchText);
+    DrawSingleLineMetrics(hdc, m, pszBuf, iBegin, cchText, pRect, uFormat);
+    ReleaseCTLineMetrics(m);
 }
 
 #define DT_ELLIPSIS (DT_PATH_ELLIPSIS | DT_END_ELLIPSIS | DT_WORD_ELLIPSIS)
@@ -3146,24 +3234,35 @@ static void DrawSingleLine(HDC hdc, LPCSTR pszBuf, int iBegin, int cchText, LPRE
 
 // 参照 cairo.gdi 的 drawLineEndWithEllipsis：当文本宽度超过 pRect 宽度时，
 // 在末尾以省略号 "..." 截断显示；未超长时退化为普通单行绘制。
+// pMeasured 非空时复用调用方量好的整行结果，连"放得下"这条常态路径也不再 shape。
 // 返回实际绘制的文本宽度（含省略号）。
-static int DrawSingleLineWithEllipsis(HDC hdc, LPCSTR pszBuf, int iBegin, int cchText, LPRECT pRect, UINT uFormat)
+static int DrawSingleLineWithEllipsis(HDC hdc, LPCSTR pszBuf, int iBegin, int cchText, LPRECT pRect, UINT uFormat,
+                                      const CTLineMetrics *pMeasured = NULL)
 {
     if (!hdc->cgCtx)
         return 0;
     int maxWidth = pRect->right - pRect->left;
-    // 测量整段文本宽度
-    CGFloat ascent = 0, descent = 0, x_advance = 0;
-    CTLineRef line = CreateCTLineWithDC(hdc, pszBuf + iBegin, cchText, &ascent, &descent, &x_advance);
-    if (line)
-        CFRelease(line);
-    if (x_advance <= maxWidth)
+    CTLineMetrics owned;
+    owned.line = NULL;
+    owned.ascent = 0;
+    owned.descent = 0;
+    owned.advance = 0;
+    const CTLineMetrics *pm = pMeasured;
+    if (!pm)
     {
-        // 未超长：按普通单行绘制（内部处理 DT_CALCRECT/对齐/下划线）
-        DrawSingleLine(hdc, pszBuf, iBegin, cchText, pRect, uFormat);
-        return (int)x_advance;
+        owned = MeasureCTLine(hdc, pszBuf + iBegin, cchText);
+        pm = &owned;
     }
-    // 超长：先扣除省略号宽度，再按字符累加确定截断点
+    if (pm->advance <= maxWidth)
+    {
+        // 未超长：直接用手上的这条 CTLine 绘制（内部处理 DT_CALCRECT/对齐/下划线）
+        DrawSingleLineMetrics(hdc, *pm, pszBuf, iBegin, cchText, pRect, uFormat);
+        int ret = (int)pm->advance;
+        ReleaseCTLineMetrics(owned);
+        return ret;
+    }
+    // 超长：先扣除省略号宽度，再按"整串一次 shaping"得到的逐字节累计宽度找截断点。
+    // 原来这里每字符建一次 CTLine，一次溢出行的成本随字符数线性增长。
     CGFloat ellA = 0, ellD = 0, ellWid = 0;
     CTLineRef ellLine = CreateCTLineWithDC(hdc, CH_ELLIPSIS, 3, &ellA, &ellD, &ellWid);
     if (ellLine)
@@ -3171,25 +3270,18 @@ static int DrawSingleLineWithEllipsis(HDC hdc, LPCSTR pszBuf, int iBegin, int cc
     int limit = maxWidth - (int)ellWid;
     if (limit < 0)
         limit = 0;
+    std::vector<int> byteWid;
+    if (pm->line)
+        ComputeByteCumulativeWidths(pm->line, pszBuf + iBegin, cchText, pm->advance, byteWid);
+    else
+        byteWid.assign(cchText > 0 ? (size_t)cchText : (size_t)0, 0);
     int i = 0;
-    int fWid = 0;
-    LPCSTR p = pszBuf + iBegin;
-    while (i < cchText)
-    {
-        LPCSTR next = nextChar(p);
-        int chLen = (int)(next - p);
-        if (chLen <= 0)
-            break;
-        CGFloat chA = 0, chD = 0, chWid = 0;
-        CTLineRef chLine = CreateCTLineWithDC(hdc, p, chLen, &chA, &chD, &chWid);
-        if (chLine)
-            CFRelease(chLine);
-        if (fWid + (int)chWid > limit)
-            break;
-        fWid += (int)chWid;
-        i += chLen;
-        p = next;
-    }
+    while (i < cchText && byteWid[i] <= limit)
+        i++;
+    // 截断点必须落在字符边界上（byteWid 按字节索引）
+    while (i > 0 && i < cchText && (((unsigned char)pszBuf[iBegin + i]) & 0xC0) == 0x80)
+        i--;
+    int fWid = (i > 0) ? byteWid[i - 1] : 0;
     // 拼接截断文本 + 省略号后按普通单行绘制
     int newLen = i + 3;
     char *pbuf = new char[newLen];
@@ -3197,6 +3289,7 @@ static int DrawSingleLineWithEllipsis(HDC hdc, LPCSTR pszBuf, int iBegin, int cc
     memcpy(pbuf + i, CH_ELLIPSIS, 3);
     DrawSingleLine(hdc, pbuf, 0, newLen, pRect, uFormat);
     delete[] pbuf;
+    ReleaseCTLineMetrics(owned);
     return fWid + (int)ellWid;
 }
 
@@ -3286,35 +3379,32 @@ void DrawMultiLine(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uForm
                 continue;
             }
             else
-            { // word is too long to draw in a single line
-                LPCSTR p3 = p1;
-                SIZE szChar;
-                double fracWid = 0;
-                szWord.cx = 0;
-                while (p3 < p2)
-                {
-                    LPCSTR p4 = CharNextA(p3);
-                    double chFrac = 0;
-                    szChar = OnMeasureText(hdc, p3, (int)(p4 - p3), &chFrac);
-                    if (fracWid + chFrac > nLineWid)
-                    {
-                        if (p3 == p1)
-                        { // a line will contain at least one char.
-                            p2 = p4;
-                            szWord.cx = szChar.cx;
-                            fracWid = chFrac;
-                        }
-                        else
-                        {
-                            p2 = p3;
-                        }
-                        break;
-                    }
-                    fracWid += chFrac;
-                    szWord.cx += szChar.cx;
-                    p3 = p4;
+            { // word is too long to draw in a single line：整词一次 shaping 拿到
+              // 逐字节累计宽度后找断点，不再逐字符建 CTLine（旧实现每个字符都要
+              // 走一遍 CTFont 缓存与一整条 CF 对象链，且用 CharNextA 依赖 locale）。
+                int nWordLen = (int)(p2 - p1);
+                std::vector<int> byteWid;
+                CGFloat wAscent = 0, wDescent = 0, wAdvance = 0;
+                CTLineRef wLine = CreateCTLineWithDCOffsets(hdc, p1, nWordLen, &wAscent, &wDescent, &wAdvance, byteWid);
+                if (wLine)
+                    CFRelease(wLine);
+                if ((int)byteWid.size() < nWordLen)
+                    byteWid.assign((size_t)nWordLen, 0); // 取不到字体度量时按零宽消费，与旧实现一致
+                int nFit = 0;
+                while (nFit < nWordLen && byteWid[nFit] <= nLineWid)
+                    nFit++;
+                // 断点落在字符边界上（byteWid 按字节索引）
+                while (nFit > 0 && nFit < nWordLen && (((unsigned char)p1[nFit]) & 0xC0) == 0x80)
+                    nFit--;
+                if (nFit == 0)
+                { // a line will contain at least one char.
+                    nFit = (int)swinx::UTF8CharLength((unsigned char)p1[0]);
+                    if (nFit > nWordLen)
+                        nFit = nWordLen;
                 }
-                szWordFrac = fracWid;
+                p2 = p1 + nFit;
+                szWordFrac = (nFit > 0) ? byteWid[nFit - 1] : 0;
+                szWord.cx = (LONG)szWordFrac;
             }
         }
         ptX += szWordFrac;
@@ -3360,6 +3450,16 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
     if(!hdc->cgCtx) return FALSE;
     CGContextRef ctx = hdc->cgCtx;
     BOOL bCalc = (uFormat & DT_CALCRECT)==DT_CALCRECT;
+    BOOL bEllipsis = (uFormat & DT_ELLIPSIS) != 0;
+    // 单行只 shape 一次：量出的 CTLine 同时供 DT_CALCRECT、OPAQUE 背景定位和最终
+    // 绘制使用，避免原来"量一遍、再为绘制 shape 一遍"（OPAQUE 下还会再多一遍）。
+    CTLineMetrics lineMetrics;
+    lineMetrics.line = NULL;
+    lineMetrics.ascent = 0;
+    lineMetrics.descent = 0;
+    lineMetrics.advance = 0;
+    if (uFormat & DT_SINGLELINE)
+        lineMetrics = MeasureCTLine(hdc, pszBuf, cchText);
     if (hdc->bkMode == OPAQUE && !bCalc)
     {
         // Win32: a single-line DrawText fills the background of the text
@@ -3370,10 +3470,10 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
         if (uFormat & DT_SINGLELINE)
         {
             RECT rcMeasure = rc;
-            if (uFormat & DT_ELLIPSIS)
-                DrawSingleLineWithEllipsis(hdc, pszBuf, 0, cchText, &rcMeasure, uFormat | DT_CALCRECT | DT_NOCLIP);
+            if (bEllipsis)
+                DrawSingleLineWithEllipsis(hdc, pszBuf, 0, cchText, &rcMeasure, uFormat | DT_CALCRECT | DT_NOCLIP, &lineMetrics);
             else
-                DrawSingleLine(hdc, pszBuf, 0, cchText, &rcMeasure, uFormat | DT_CALCRECT | DT_NOCLIP);
+                DrawSingleLineMetrics(hdc, lineMetrics, pszBuf, 0, cchText, &rcMeasure, uFormat | DT_CALCRECT | DT_NOCLIP);
             int w = rcMeasure.right - rcMeasure.left;
             int h = rcMeasure.bottom - rcMeasure.top;
             int left = rc.left, top = rc.top;
@@ -3411,21 +3511,19 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
     assert(lf);
     COLORREF crTxt = hdc->crText;
     CGContextSetRGBFillColor(ctx, GetRValue(crTxt)/255.0, GetGValue(crTxt)/255.0, GetBValue(crTxt)/255.0, GetAValue(crTxt)/255.0);
-    BOOL bEllipsis = (uFormat & DT_ELLIPSIS) != 0;
     if (uFormat & DT_SINGLELINE)
     {
         if (bCalc)
         {
             // 测量：宽度=文本宽，高度=行高，不含垂直对齐偏移（与 cairo 一致）
             if (bEllipsis)
-                DrawSingleLineWithEllipsis(hdc, pszBuf, 0, cchText, pRect, uFormat);
+                DrawSingleLineWithEllipsis(hdc, pszBuf, 0, cchText, pRect, uFormat, &lineMetrics);
             else
-                DrawSingleLine(hdc, pszBuf, 0, cchText, pRect, uFormat);
+                DrawSingleLineMetrics(hdc, lineMetrics, pszBuf, 0, cchText, pRect, uFormat);
         }
         else
         {
-            SIZE szFont = OnMeasureText(hdc, "A", 1);
-            int lineSpan = szFont.cy; // = ascent + descent
+            int lineSpan = (int)(lineMetrics.ascent + lineMetrics.descent);
             int rectHeight = pRect->bottom - pRect->top;
             int offset = 0;
             if (uFormat & DT_VCENTER)
@@ -3434,10 +3532,11 @@ int DrawTextA(HDC hdc, LPCSTR pszBuf, int cchText, LPRECT pRect, UINT uFormat)
                 offset = rectHeight - lineSpan;
             RECT rcLine = { pRect->left, pRect->top + offset, pRect->right, pRect->bottom };
             if (bEllipsis)
-                DrawSingleLineWithEllipsis(hdc, pszBuf, 0, cchText, &rcLine, uFormat);
+                DrawSingleLineWithEllipsis(hdc, pszBuf, 0, cchText, &rcLine, uFormat, &lineMetrics);
             else
-                DrawSingleLine(hdc, pszBuf, 0, cchText, &rcLine, uFormat);
+                DrawSingleLineMetrics(hdc, lineMetrics, pszBuf, 0, cchText, &rcLine, uFormat);
         }
+        ReleaseCTLineMetrics(lineMetrics);
     }
     else
     {
@@ -3847,67 +3946,36 @@ BOOL WINAPI GetTextExtentExPointA(HDC hdc, LPCSTR lpszString, int cchString, int
             *lpnFit = 0;
         return TRUE;
     }
-    CGFloat ascent = 0, descent = 0;
-    bool gotMetrics = false;
-    // Accumulate in double: CoreText advances are fractional.  Two running
-    // totals are kept: totalWid covers the whole string (psizl->cx), fitWid
-    // covers only the fitting prefix (lpnDx / lpnFit).  nMaxExtent limits how
-    // many lpnDx entries are written, never psizl->cx, exactly like gdi32.
-    double totalWid = 0;
-    double fitWid = 0;
-    int i = 0;
-    int fit = 0;  // chars that fit
-    while (i < cchString)
-    {
-        int chLen = swinx::UTF8CharLength(lpszString[i]);
-        if (i + chLen > cchString)
-            chLen = cchString - i;
-        CGFloat chAscent = 0, chDescent = 0, chWid = 0;
-        CTLineRef line = CreateCTLineWithDC(hdc, lpszString + i, chLen, &chAscent, &chDescent, &chWid);
-        if (line)
-        {
-            if (!gotMetrics)
-            {
-                ascent = chAscent;
-                descent = chDescent;
-                gotMetrics = true;
-            }
-            CFRelease(line);
-        }
-        if (chWid < 0)
-            chWid = 0; // never let a broken metric shrink the running total
-        totalWid += chWid; // cx always covers the whole string
-        double nextFitWid = fitWid + chWid;
-        // gdi32 decides the fit from the integer cumulative widths it also
-        // writes to lpnDx: a character whose (truncated) advance equals
-        // nMaxExtent still fits.  Comparing the raw fraction instead rejects
-        // such a character and reports one fewer than gdi32.
-        if ((LONG)nextFitWid > nMaxExtent)
-        {
-            // does not fit: stop filling lpnDx/lpnFit, but keep measuring the
-            // rest of the string so psizl->cx is the whole-string width
-            i += chLen;
-            continue;
-        }
-        fitWid = nextFitWid;
-        if (lpnDx)
-        {
-            // GDI fills lpnDx for the fitting prefix only; the tail stays as-is
-            for (int j = 0; j < chLen && i + j < cchString; j++)
-                lpnDx[i + j] = (int)fitWid;
-        }
-        i += chLen;
-        fit = i;
-    }
+    CGFloat ascent = 0, descent = 0, advance = 0;
+    // 一次 shaping 拿到整串宽度与逐字节累计宽度：原来每个字符建一次 CTLine，
+    // 长串时固定开销（CTFont 缓存锁 + 一条 CF 对象链）远大于度量本身。
+    std::vector<int> byteWid;
+    CTLineRef line = CreateCTLineWithDCOffsets(hdc, lpszString, cchString, &ascent, &descent, &advance, byteWid);
+    if ((int)byteWid.size() < cchString)
+        byteWid.assign((size_t)cchString, 0); // 取不到字体度量时按零宽处理
+    // gdi32 decides the fit from the integer cumulative widths it also writes to
+    // lpnDx: a character whose (truncated) advance equals nMaxExtent still fits.
+    int fit = 0; // bytes that fit
+    while (fit < cchString && byteWid[fit] <= nMaxExtent)
+        fit++;
+    // byteWid 按字节索引且同一字符的各字节同值，断点天然在字符边界；对畸形
+    // UTF-8 再退一次，避免返回半个字符
+    while (fit > 0 && fit < cchString && (((unsigned char)lpszString[fit]) & 0xC0) == 0x80)
+        fit--;
     if (lpnFit)
         *lpnFit = fit;
+    if (lpnDx)
+    {
+        // GDI fills lpnDx for the fitting prefix only; the tail stays as-is
+        for (int i = 0; i < fit; i++)
+            lpnDx[i] = byteWid[i];
+    }
     // As in gdi32, psizl->cx is always the width of the whole string; nMaxExtent
-    // only limits how many lpnDx entries are written.  Truncate like gdi32's
-    // integer A-widths: rounding the accumulated fraction up could push cx one
-    // pixel past the last lpnDx entry (or GetTextExtentPoint32) on a fractional
-    // line.
-    psizl->cx = (LONG)totalWid;
-    psizl->cy = gotMetrics ? (LONG)(ascent + descent) : 16;
+    // only limits how many lpnDx entries are written.
+    psizl->cx = (LONG)advance;
+    psizl->cy = line ? (LONG)(ascent + descent) : 16;
+    if (line)
+        CFRelease(line);
     return TRUE;
 }
 
@@ -3925,65 +3993,43 @@ BOOL WINAPI GetTextExtentExPointW(HDC hdc, LPCWSTR lpszString, int cchString, in
     tostring(lpszString, cchString, str);
     const char *lpszStringA = str.c_str();
     int cchStringA = (int)str.length();
-    CGFloat ascent = 0, descent = 0;
-    bool gotMetrics = false;
-    double totalWid = 0; // whole-string advance (psizl->cx)
-    double fitWid = 0;   // advance of the fitting prefix (lpnDx / lpnFit)
+    CGFloat ascent = 0, descent = 0, advance = 0;
+    std::vector<int> byteWid;
+    CTLineRef line = CreateCTLineWithDCOffsets(hdc, lpszStringA, cchStringA, &ascent, &descent, &advance, byteWid);
+    if ((int)byteWid.size() < cchStringA)
+        byteWid.assign((size_t)cchStringA, 0);
+    int fitBytes = 0;
+    while (fitBytes < cchStringA && byteWid[fitBytes] <= nMaxExtent)
+        fitBytes++;
+    // 把 UTF-8 字节断点映射回 WCHAR 下标（补充平面在 WCHAR 里占两个），
+    // 同时按字符写入 lpnDx 的拟合前缀
     int i = 0, iW = 0;
-    int fit = 0;
-    while (i < cchStringA)
+    while (i < fitBytes)
     {
-        int chLen = swinx::UTF8CharLength(lpszStringA[i]);
-        if (i + chLen > cchStringA)
+        int chLen = (int)swinx::UTF8CharLength((unsigned char)lpszStringA[i]);
+        if (chLen > cchStringA - i)
             chLen = cchStringA - i;
-        CGFloat chAscent = 0, chDescent = 0, chWid = 0;
-        CTLineRef line = CreateCTLineWithDC(hdc, lpszStringA + i, chLen, &chAscent, &chDescent, &chWid);
-        if (line)
-        {
-            if (!gotMetrics)
-            {
-                ascent = chAscent;
-                descent = chDescent;
-                gotMetrics = true;
-            }
-            CFRelease(line);
-        }
-        if (chWid < 0)
-            chWid = 0;
-        int wChars = (iW < cchString) ? swinx::WideCharLength(lpszString[iW]) : 0;
+        int wChars = (iW < cchString) ? (int)swinx::WideCharLength(lpszString[iW]) : 0;
         if (wChars < 1 && iW < cchString)
             wChars = 1;
         if (iW + wChars > cchString)
             wChars = cchString - iW;
-        totalWid += chWid; // cx always covers the whole string
-        double nextFitWid = fitWid + chWid;
-        // same rounding rule as the A variant: fit is decided from the truncated
-        // cumulative widths written to lpnDx, so a char that rounds to
-        // nMaxExtent still counts as fitting
-        if ((LONG)nextFitWid > nMaxExtent)
-        {
-            // does not fit: stop filling lpnDx/lpnFit, but keep measuring the
-            // rest of the string so psizl->cx is the whole-string width
-            i += chLen;
-            iW += wChars;
-            continue;
-        }
-        fitWid = nextFitWid;
         if (lpnDx)
         {
             for (int j = 0; j < wChars; j++)
-                lpnDx[iW + j] = (int)fitWid;
+                lpnDx[iW + j] = byteWid[i + chLen - 1];
         }
         i += chLen;
         iW += wChars;
-        fit = iW;
     }
     if (lpnFit)
-        *lpnFit = fit;
+        *lpnFit = iW;
     // psizl->cx is always the whole-string width (truncated like gdi32's
     // integer A-widths), never limited by nMaxExtent.
-    psizl->cx = (LONG)totalWid;
-    psizl->cy = gotMetrics ? (LONG)(ascent + descent) : 16;
+    psizl->cx = (LONG)advance;
+    psizl->cy = line ? (LONG)(ascent + descent) : 16;
+    if (line)
+        CFRelease(line);
     return TRUE;
 }
 

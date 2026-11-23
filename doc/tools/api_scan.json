@@ -11664,7 +11664,7 @@
     ]
    ]
   },
-  "SwinxSetTrayMenuProvider": {
+  "SetTrayMenuProvider": {
    "headers": [
     "shellapi.h"
    ],
@@ -11680,7 +11680,7 @@
     ]
    ]
   },
-  "SwinxUpdateTrayMenu": {
+  "UpdateTrayMenu": {
    "headers": [
     "shellapi.h"
    ],

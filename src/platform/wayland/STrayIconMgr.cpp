@@ -71,7 +71,7 @@ static const char *WATCHER_PATH = "/StatusNotifierWatcher";
  *   右键     -> 切 Shell 菜单（不调用 ContextMenu）
  *   中键     -> SecondaryActivate
  * 且它要求 Menu 属性有效才把 item 置为 ready 并绑定点击处理。
- * 所以 Wayland 下菜单只有一条路：应用通过 SwinxSetTrayMenuProvider 提供菜单
+ * 所以 Wayland 下菜单只有一条路：应用通过 SetTrayMenuProvider 提供菜单
  * 内容，这里导出成 com.canonical.dbusmenu，面板画菜单、用户点项后我们按命令
  * id 回投 WM_COMMAND —— 与 X11/Windows 下 SMenuEx 选中一项的效果相同。
  * 应用没登记 provider 时才退回旧行为：菜单里放一个 label 空、不可点的可见项

@@ -59,13 +59,13 @@
 #                                 freertos/{memory,fileapi,sysapi}.cpp.
 
 # Native dialogs / accessibility / drag&drop / clipboard are not compiled here
-# either: src/platform/linux/{dlghelper,SAtSpi,SDragdrop,SClipboard}.cpp need
+# either: src/platform/x11/{dlghelper,SAtSpi,SDragdrop,SClipboard}.cpp need
 # the X11 + DBus stack.  freertos/dlghelper.cpp + SClipboard.h are the
 # stand-ins.
 #
 # Not built on this platform (X11/DBus/ALSA stack):
 #   thirdparty/{libxcb,xcb-util*,xkbcommon,xcb-imdkit,dbus-1.14.10}; dbus is
-#   only used by src/platform/linux/{dlghelper,SAtSpi}.cpp (native dialogs /
+#   only used by src/platform/x11/{dlghelper,SAtSpi}.cpp (native dialogs /
 #   AT-SPI accessibility), which are not compiled here either.
 #
 # TODO (later slices): software-framebuffer GDI backend (cairo image surface +

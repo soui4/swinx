@@ -57,6 +57,10 @@ void SwinxWlFrameResize(HWND hFrame, int w, int h);
 /* 标题变化：重画标题栏 + 同步合成器标题（任务列表/概览里显示的就是它）。 */
 void SwinxWlFrameSetTitle(HWND hFrame, LPCSTR lpszTitle);
 
+/* 内容窗样式被 SetWindowLong(GWL_STYLE) 改动后调用：按钮的可见性取自内容窗
+ * 当前 dwStyle，这里复位已隐藏按钮的按下/悬停态并重画标题栏。 */
+void SwinxWlFrameOnContentStyleChanged(HWND hFrame);
+
 /* frame 被装饰的内容窗（没有则 0）。 */
 HWND SwinxWlFrameContent(HWND hFrame);
 

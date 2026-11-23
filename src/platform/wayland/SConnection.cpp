@@ -2815,8 +2815,14 @@ void SConnection::SetZOrder(HWND hWnd, _Window *, HWND hWndInsertAfter)
     m_bScreenDirty = true;
 }
 
-void SConnection::OnStyleChanged(HWND, _Window *, DWORD, DWORD)
+void SConnection::OnStyleChanged(HWND, _Window *wndObj, DWORD, DWORD)
 {
+    /* CSD 装饰窗的按钮可见性取自内容窗当前 dwStyle。SOUI 的
+     * SHostWnd::InitFromXml 是在窗口创建之后用 ModifyStyle 追加
+     * WS_MINIMIZEBOX/WS_MAXIMIZEBOX 的，所以必须在样式落地时刷新按钮，
+     * 否则这些窗口会一直只显示关闭按钮。 */
+    if (wndObj && wndObj->plat.frame)
+        SwinxWlFrameOnContentStyleChanged(wndObj->plat.frame);
 }
 
 void SConnection::OnExStyleChanged(HWND, _Window *, DWORD, DWORD)

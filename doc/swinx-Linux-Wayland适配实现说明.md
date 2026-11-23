@@ -223,7 +223,7 @@ graph TD
     左键单击等一个 `doubleClickTime` 后切 Shell 菜单、不调 `Activate`；左键双击才调
     `Activate`；右键立即切 Shell 菜单、**不调 `ContextMenu`**；中键调 `SecondaryActivate`。
     且它要求 `Menu` 属性指向有效 dbusmenu 对象才把 item 置为 ready 并绑定点击。
-  - **托盘菜单：应用提供内容、宿主绘制**（`SwinxSetTrayMenuProvider`，声明在
+  - **托盘菜单：应用提供内容、宿主绘制**（`SetTrayMenuProvider`，声明在
     `swinx/include/shellapi.h`）。这是 Wayland 与 X11 的根本差别：X11 托盘里那个
     图标窗口是我们进程自己的 X window（`_NET_SYSTEM_TRAY` dock + reparent），鼠标
     事件由 X server 直接送到应用，所以 `TrayWnd::NotifyOwner` 能 `PostMessage` 出
@@ -234,7 +234,7 @@ graph TD
     `com.canonical.dbusmenu` 交给面板绘制；用户点中某项后 swinx 按命令 id
     `PostMessage(hWndCmd, WM_COMMAND, MAKEWPARAM(id, 0), 0)`，语义与
     `SMenuEx::TrackPopupMenu` 选中一项完全一致（`hWndCmd` 为 0 时投给通知窗口）。
-    provider 注册成功（`SwinxSetTrayMenuProvider` 返回 TRUE）后：`ContextMenu` 只记
+    provider 注册成功（`SetTrayMenuProvider` 返回 TRUE）后：`ContextMenu` 只记
     坐标不再回投 `WM_RBUTTONDOWN`，`Event(0,"opened")` 也不回投——宿主菜单就是应用
     菜单，屏幕上只有一个菜单。`AboutToShow(0)` 会重新导出、递增 revision 并发
     `LayoutUpdated`，勾选/文本变化下次打开即生效。

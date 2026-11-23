@@ -67,6 +67,31 @@ int frameBtnSize(HWND hFrame)
     return n < 12 ? 12 : n;
 }
 
+/* 标题栏按钮按内容窗的 Win32 样式决定（与 Windows/X11 的非客户区一致）：
+ *   WS_MINIMIZEBOX -> 最小化按钮，WS_MAXIMIZEBOX -> 最大化按钮；
+ *   关闭按钮恒在——MessageBox 这类窗口只有 WS_CAPTION，没有关闭按钮就没有退出入口。
+ * 每次现读内容窗的 dwStyle，而不是在 create 时快照：SOUI 的
+ * SHostWnd::InitFromXml 是在创建之后用 SetWindowLong(GWL_STYLE) 追加这些位的，
+ * 快照会让这类窗口永远只有关闭按钮。 */
+DWORD frameContentStyle(HWND hFrame)
+{
+    FrameInfo *fi = frameInfoOf(hFrame);
+    if (!fi || !fi->content)
+        return 0;
+    WndObj cw = WndMgr::fromHwnd(fi->content);
+    return cw ? (DWORD)cw->dwStyle : 0;
+}
+
+BOOL frameHasMin(HWND hFrame)
+{
+    return (frameContentStyle(hFrame) & WS_MINIMIZEBOX) ? TRUE : FALSE;
+}
+
+BOOL frameHasMax(HWND hFrame)
+{
+    return (frameContentStyle(hFrame) & WS_MAXIMIZEBOX) ? TRUE : FALSE;
+}
+
 RECT frameCloseRect(HWND hFrame)
 {
     RECT rc = { 0, 0, 0, 0 };
@@ -130,40 +155,53 @@ void framePaint(HWND hFrame, FrameInfo *fi)
     FillRect(hdc, &rcSep, brSep);
     DeleteObject(brSep);
 
-    /* 最小化 / 最大化 / 关闭：三个按钮共用一套悬停/按下底色。 */
-    RECT rcMax = frameMaxRect(hFrame);
-    RECT rcMin = frameMinRect(hFrame);
-    if (fi && (fi->minDown || fi->minHot))
+    /* 最小化 / 最大化按内容窗样式出现，关闭恒在。按钮位置以关闭按钮为锚点
+     * 从右往左排；隐藏某个按钮时不改变其余按钮的位置（标题文本也靠关闭按钮
+     * 定位，见下），这样样式切换只影响按钮本身，不会让标题跳。 */
+    BOOL bHasMin = frameHasMin(hFrame);
+    BOOL bHasMax = frameHasMax(hFrame);
+    if (bHasMin || bHasMax)
     {
-        HBRUSH br = CreateSolidBrush(fi->minDown ? RGB(0xC8, 0xC8, 0xC8) : RGB(0xDC, 0xDC, 0xDC));
-        FillRect(hdc, &rcMin, br);
-        DeleteObject(br);
+        RECT rcMax = frameMaxRect(hFrame);
+        RECT rcMin = frameMinRect(hFrame);
+        HPEN hGlyph = CreatePen(PS_SOLID, 1, bActive ? RGB(0x4A, 0x4A, 0x4A) : RGB(0x9A, 0x9A, 0x9A));
+        HPEN hOldGlyph = (HPEN)SelectObject(hdc, hGlyph);
+        int n = frameBtnSize(hFrame) / 2;
+        if (bHasMin)
+        {
+            if (fi && (fi->minDown || fi->minHot))
+            {
+                HBRUSH br = CreateSolidBrush(fi->minDown ? RGB(0xC8, 0xC8, 0xC8) : RGB(0xDC, 0xDC, 0xDC));
+                FillRect(hdc, &rcMin, br);
+                DeleteObject(br);
+            }
+            int mx = (rcMin.left + rcMin.right) / 2;
+            int my = (rcMin.top + rcMin.bottom) / 2;
+            MoveToEx(hdc, mx - n, my, NULL); LineTo(hdc, mx + n, my);
+        }
+        if (bHasMax)
+        {
+            if (fi && (fi->maxDown || fi->maxHot))
+            {
+                HBRUSH br = CreateSolidBrush(fi->maxDown ? RGB(0xC8, 0xC8, 0xC8) : RGB(0xDC, 0xDC, 0xDC));
+                FillRect(hdc, &rcMax, br);
+                DeleteObject(br);
+            }
+            unsigned int st = SwinxWlSurfaceGetState(SwinxWlSurfaceGet(hFrame));
+            int xx = (rcMax.left + rcMax.right) / 2;
+            int yy = (rcMax.top + rcMax.bottom) / 2;
+            if (st & (SWINX_WL_TOPSTATE_MAXIMIZED | SWINX_WL_TOPSTATE_FULLSCREEN))
+            {
+                Rectangle(hdc, xx - n - 2, yy - n + 2, xx + n - 2, yy + n + 2);
+                MoveToEx(hdc, xx - n, yy - n, NULL); LineTo(hdc, xx + n, yy - n);
+                LineTo(hdc, xx + n, yy + n); LineTo(hdc, xx - n, yy + n); LineTo(hdc, xx - n, yy - n);
+            }
+            else
+                Rectangle(hdc, xx - n, yy - n, xx + n, yy + n);
+        }
+        SelectObject(hdc, hOldGlyph);
+        DeleteObject(hGlyph);
     }
-    if (fi && (fi->maxDown || fi->maxHot))
-    {
-        HBRUSH br = CreateSolidBrush(fi->maxDown ? RGB(0xC8, 0xC8, 0xC8) : RGB(0xDC, 0xDC, 0xDC));
-        FillRect(hdc, &rcMax, br);
-        DeleteObject(br);
-    }
-    HPEN hGlyph = CreatePen(PS_SOLID, 1, bActive ? RGB(0x4A, 0x4A, 0x4A) : RGB(0x9A, 0x9A, 0x9A));
-    HPEN hOldGlyph = (HPEN)SelectObject(hdc, hGlyph);
-    int n = frameBtnSize(hFrame) / 2;
-    int mx = (rcMin.left + rcMin.right) / 2;
-    int my = (rcMin.top + rcMin.bottom) / 2;
-    MoveToEx(hdc, mx - n, my, NULL); LineTo(hdc, mx + n, my);
-    unsigned int st = SwinxWlSurfaceGetState(SwinxWlSurfaceGet(hFrame));
-    int xx = (rcMax.left + rcMax.right) / 2;
-    int yy = (rcMax.top + rcMax.bottom) / 2;
-    if (st & (SWINX_WL_TOPSTATE_MAXIMIZED | SWINX_WL_TOPSTATE_FULLSCREEN))
-    {
-        Rectangle(hdc, xx - n - 2, yy - n + 2, xx + n - 2, yy + n + 2);
-        MoveToEx(hdc, xx - n, yy - n, NULL); LineTo(hdc, xx + n, yy - n);
-        LineTo(hdc, xx + n, yy + n); LineTo(hdc, xx - n, yy + n); LineTo(hdc, xx - n, yy - n);
-    }
-    else
-        Rectangle(hdc, xx - n, yy - n, xx + n, yy + n);
-    SelectObject(hdc, hOldGlyph);
-    DeleteObject(hGlyph);
 
     /* 关闭按钮：悬停/按下给一层底，再画一个 × */
     RECT rcBtn = frameCloseRect(hFrame);
@@ -266,8 +304,13 @@ LRESULT CALLBACK SwinxWlFrameProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         RECT rcBtn = frameCloseRect(hWnd);
         RECT rcMax = frameMaxRect(hWnd);
         RECT rcMin = frameMinRect(hWnd);
-        if (PtInRect(&rcBtn, pt) || PtInRect(&rcMax, pt) || PtInRect(&rcMin, pt))
-            return HTCLIENT; // 三个按钮走普通客户区消息，下面自己判定
+        BOOL inBtn = PtInRect(&rcBtn, pt);
+        if (frameHasMax(hWnd) && PtInRect(&rcMax, pt))
+            inBtn = TRUE;
+        if (frameHasMin(hWnd) && PtInRect(&rcMin, pt))
+            inBtn = TRUE;
+        if (inBtn)
+            return HTCLIENT; // 可见按钮走普通客户区消息，下面自己判定
         int titleH = frameTitleH(hWnd);
         if (pt.y >= 0 && pt.y < titleH)
             return HTCAPTION; // 标题区：wnd.cpp 会转成 xdg_toplevel_move
@@ -303,8 +346,8 @@ LRESULT CALLBACK SwinxWlFrameProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         TrackMouseEvent(&tme);
         POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
         BOOL hot = frameRectHit(frameCloseRect(hWnd), pt);
-        BOOL maxHot = frameRectHit(frameMaxRect(hWnd), pt);
-        BOOL minHot = frameRectHit(frameMinRect(hWnd), pt);
+        BOOL maxHot = frameHasMax(hWnd) && frameRectHit(frameMaxRect(hWnd), pt);
+        BOOL minHot = frameHasMin(hWnd) && frameRectHit(frameMinRect(hWnd), pt);
         if (hot != fi->closeHot || maxHot != fi->maxHot || minHot != fi->minHot)
         {
             fi->closeHot = hot;
@@ -328,8 +371,8 @@ LRESULT CALLBACK SwinxWlFrameProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
         POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
         BOOL changed = FALSE;
         fi->closeDown = frameRectHit(frameCloseRect(hWnd), pt);
-        fi->maxDown = frameRectHit(frameMaxRect(hWnd), pt);
-        fi->minDown = frameRectHit(frameMinRect(hWnd), pt);
+        fi->maxDown = frameHasMax(hWnd) && frameRectHit(frameMaxRect(hWnd), pt);
+        fi->minDown = frameHasMin(hWnd) && frameRectHit(frameMinRect(hWnd), pt);
         changed = fi->closeDown || fi->maxDown || fi->minDown;
         if (changed)
             InvalidateRect(hWnd, NULL, TRUE);
@@ -341,8 +384,8 @@ LRESULT CALLBACK SwinxWlFrameProc(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp)
             break;
         POINT pt = { GET_X_LPARAM(lp), GET_Y_LPARAM(lp) };
         BOOL doClose = fi->closeDown && frameRectHit(frameCloseRect(hWnd), pt);
-        BOOL doMax = fi->maxDown && frameRectHit(frameMaxRect(hWnd), pt);
-        BOOL doMin = fi->minDown && frameRectHit(frameMinRect(hWnd), pt);
+        BOOL doMax = frameHasMax(hWnd) && fi->maxDown && frameRectHit(frameMaxRect(hWnd), pt);
+        BOOL doMin = frameHasMin(hWnd) && fi->minDown && frameRectHit(frameMinRect(hWnd), pt);
         fi->closeDown = fi->maxDown = fi->minDown = FALSE;
         InvalidateRect(hWnd, NULL, TRUE);
         if (doClose)
@@ -575,6 +618,19 @@ void SwinxWlFrameSetTitle(HWND hFrame, LPCSTR lpszTitle)
     fi->title = lpszTitle;
     SwinxWlSurfaceSetTitle(SwinxWlSurfaceGet(hFrame), fi->title.c_str());
     InvalidateRect(hFrame, NULL, TRUE);
+}
+
+void SwinxWlFrameOnContentStyleChanged(HWND hFrame)
+{
+    FrameInfo *fi = frameInfoOf(hFrame);
+    if (!fi)
+        return;
+    /* 按钮可能刚被样式隐藏：残留的 hot/down 会让一块看不见的区域继续吃点击。
+     * 统一清掉，最坏只是丢一次悬停高亮，下一次 WM_MOUSEMOVE 会重算。 */
+    fi->minHot = fi->minDown = FALSE;
+    fi->maxHot = fi->maxDown = FALSE;
+    if (IsWindow(hFrame))
+        InvalidateRect(hFrame, NULL, TRUE);
 }
 
 HWND SwinxWlFrameContent(HWND hFrame)

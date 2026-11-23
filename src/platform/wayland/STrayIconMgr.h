@@ -53,7 +53,7 @@ struct WlTrayIcon
     std::string title;         // 显示名（取自 lpCaption/应用名）
 
     /* 菜单：Wayland 无法像 X11 那样让图标成为自己的窗口，指针事件在面板进程内
-     * 被消费，应用收不到鼠标消息。所以菜单内容由应用登记（SwinxSetTrayMenuProvider），
+     * 被消费，应用收不到鼠标消息。所以菜单内容由应用登记（SetTrayMenuProvider），
      * 这里保存回调并把它导出成 dbusmenu，面板点中某项后按命令 id 回投 WM_COMMAND。 */
     TRAYMENUPROVIDER menuProvider;
     bool menuProvided;         // 应用已登记 provider -> 菜单由宿主绘制

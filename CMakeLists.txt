@@ -30,34 +30,36 @@ if(EMSCRIPTEN)
     set(SIZEOF_UINT64_T "8" CACHE INTERNAL "emscripten: try_run cannot measure uint64_t" FORCE)
 endif()
 
-# Linux 窗口系统后端：x11（默认）| wayland。
-# 根工程可在 add_subdirectory(swinx) 之前用任一方式覆盖，无需再维护第二个开关：
-#   -DSOUI_LINUX_BACKEND=wayland
-#   -DSOUI_USE_WAYLAND=ON
-# 也可以直接传 -DSWINX_LINUX_BACKEND=wayland。
-# 只在走 linux.cmake 时生效（freertos/wasm/mobile/macOS 分支忽略该变量）。
-# 该开关是后端选择的单一事实源：linux.cmake 据此决定参与编译的源文件目录、
-# 依赖库和导出宏（SWINX_USE_X11 / SWINX_USE_WAYLAND），两个后端不会同时编译。
-# 必须在 add_subdirectory(thirdparty) 之前解析：cairo 的 Configure_features.cmake
-# 需要据此关闭 Xlib/XCB surface，避免 Wayland 构建仍然依赖 xcb 头文件与 libxcb。
-option(SOUI_USE_WAYLAND "在 Linux 上使用原生 Wayland 后端（默认 x11）" OFF)
+if(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    # Linux 窗口系统后端：x11（默认）| wayland。
+    # 根工程可在 add_subdirectory(swinx) 之前用任一方式覆盖，无需再维护第二个开关：
+    #   -DSOUI_LINUX_BACKEND=wayland
+    #   -DSOUI_USE_WAYLAND=ON
+    # 也可以直接传 -DSWINX_LINUX_BACKEND=wayland。
+    # 只在走 linux.cmake 时生效（freertos/wasm/mobile/macOS 分支忽略该变量）。
+    # 该开关是后端选择的单一事实源：linux.cmake 据此决定参与编译的源文件目录、
+    # 依赖库和导出宏（SWINX_USE_X11 / SWINX_USE_WAYLAND），两个后端不会同时编译。
+    # 必须在 add_subdirectory(thirdparty) 之前解析：cairo 的 Configure_features.cmake
+    # 需要据此关闭 Xlib/XCB surface，避免 Wayland 构建仍然依赖 xcb 头文件与 libxcb。
+    option(SOUI_USE_WAYLAND "在 Linux 上使用原生 Wayland 后端（默认 x11）" OFF)
 
-# 每次配置都重新推导，避免切换后端后被上一次的缓存值粘住。
-# 优先级：显式 SOUI_LINUX_BACKEND > SOUI_USE_WAYLAND > 命令行 SWINX_LINUX_BACKEND > 默认 x11。
-if(DEFINED SOUI_LINUX_BACKEND AND NOT "${SOUI_LINUX_BACKEND}" STREQUAL "")
-    set(_swinx_linux_backend "${SOUI_LINUX_BACKEND}")
-elseif(SOUI_USE_WAYLAND)
-    set(_swinx_linux_backend "wayland")
-elseif(DEFINED SWINX_LINUX_BACKEND AND NOT "${SWINX_LINUX_BACKEND}" STREQUAL "")
-    set(_swinx_linux_backend "${SWINX_LINUX_BACKEND}")
-else()
-    set(_swinx_linux_backend "x11")
+    # 每次配置都重新推导，避免切换后端后被上一次的缓存值粘住。
+    # 优先级：显式 SOUI_LINUX_BACKEND > SOUI_USE_WAYLAND > 命令行 SWINX_LINUX_BACKEND > 默认 x11。
+    if(DEFINED SOUI_LINUX_BACKEND AND NOT "${SOUI_LINUX_BACKEND}" STREQUAL "")
+        set(_swinx_linux_backend "${SOUI_LINUX_BACKEND}")
+    elseif(SOUI_USE_WAYLAND)
+        set(_swinx_linux_backend "wayland")
+    elseif(DEFINED SWINX_LINUX_BACKEND AND NOT "${SWINX_LINUX_BACKEND}" STREQUAL "")
+        set(_swinx_linux_backend "${SWINX_LINUX_BACKEND}")
+    else()
+        set(_swinx_linux_backend "x11")
+    endif()
+    set(SWINX_LINUX_BACKEND "${_swinx_linux_backend}")
+    if(NOT "${SWINX_LINUX_BACKEND}" MATCHES "^(x11|wayland)$")
+        message(FATAL_ERROR "SWINX_LINUX_BACKEND 必须是 'x11' 或 'wayland'（当前为 '${SWINX_LINUX_BACKEND}'）")
+    endif()
+    message(STATUS "SWINX_LINUX_BACKEND=${SWINX_LINUX_BACKEND}")
 endif()
-set(SWINX_LINUX_BACKEND "${_swinx_linux_backend}")
-if(NOT "${SWINX_LINUX_BACKEND}" MATCHES "^(x11|wayland)$")
-    message(FATAL_ERROR "SWINX_LINUX_BACKEND 必须是 'x11' 或 'wayland'（当前为 '${SWINX_LINUX_BACKEND}'）")
-endif()
-message(STATUS "####SWINX_LINUX_BACKEND=${SWINX_LINUX_BACKEND}")
 
 add_subdirectory(thirdparty)
 
@@ -73,7 +75,7 @@ endif()
 # WebAssembly port (Emscripten): src/platform/wasm/ + the POSIX system-API layer and
 # the cairo software GDI backend, producing a static libswinx.a that a JS host pumps.
 set(SOUI_PLATFORM "" CACHE STRING "swinx platform override: linux|freertos|wasm (empty = auto)")
-message(STATUS "####SOUI_PLATFORM=${SOUI_PLATFORM} (empty = auto-select by CMAKE_SYSTEM_NAME)")
+message(STATUS "SOUI_PLATFORM=${SOUI_PLATFORM} (empty = auto-select by CMAKE_SYSTEM_NAME)")
 
 if(SOUI_PLATFORM STREQUAL "freertos")
 include(freeRTOS.cmake)

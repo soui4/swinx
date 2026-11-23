@@ -93,6 +93,8 @@ extern "C"
 
 #define NIF_SHOWTIP 0x00000080
 
+#if defined(__linux__) && defined(SWINX_USE_WAYLAND)
+
     /*
      * 托盘菜单提供者（Wayland/SNI 使用）。
      *
@@ -102,12 +104,12 @@ extern "C"
      * WM_RBUTTONDOWN。面板只能通过 com.canonical.dbusmenu 询问"你的菜单有哪
      * 些项"，用户点中某一项后再通过 D-Bus 把该项的名字告诉应用。
      *
-     * 因此托盘菜单改成"回调提供菜单内容"模型：应用用 SwinxSetTrayMenuProvider
+     * 因此托盘菜单改成"回调提供菜单内容"模型：应用用 SetTrayMenuProvider
      * 把菜单内容登记进来，swinx 据此构建 dbusmenu 树交给面板绘制；用户点击某项
      * 后，swinx 把该项的 uID 以 WM_COMMAND 投给 hWndCmd，语义与
      * SMenuEx::TrackPopupMenu 选中菜单项一致，应用按命令 id 处理即可。
      *
-     * SwinxSetTrayMenuProvider 返回 TRUE 表示宿主确实接管了托盘菜单（Wayland+
+     * SetTrayMenuProvider 返回 TRUE 表示宿主确实接管了托盘菜单（Wayland+
      * SNI），应用不要再自己弹菜单；返回 FALSE 表示当前平台仍走"自己的窗口收
      * 消息"的老路（X11/Windows），应用保持原有自绘菜单逻辑。
      */
@@ -140,11 +142,12 @@ extern "C"
 
     /* 注册/注销（pProvider == NULL 注销）托盘菜单内容提供者。
      * 返回 TRUE 表示宿主接管菜单，FALSE 表示平台不支持（应用继续自绘）。 */
-    BOOL WINAPI SwinxSetTrayMenuProvider(HWND hWnd, UINT uID, const TRAYMENUPROVIDER *pProvider);
+    BOOL WINAPI SetTrayMenuProvider(HWND hWnd, UINT uID, const TRAYMENUPROVIDER *pProvider);
 
     /* 菜单内容变化（如勾选状态）后调用，通知宿主重新拉取布局。
      * 未注册 provider 或平台不支持时返回 FALSE。 */
-    BOOL WINAPI SwinxUpdateTrayMenu(HWND hWnd, UINT uID);
+    BOOL WINAPI UpdateTrayMenu(HWND hWnd, UINT uID);
+#endif// defined(__linux__) && defined(SWINX_USE_WAYLAND)
 
 #ifdef UNICODE
 #define NOTIFYICONDATA   NOTIFYICONDATAW
