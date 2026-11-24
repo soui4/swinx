@@ -189,7 +189,11 @@ static int android_ftruncate(int fd, off_t length)
 enum
 {
     kKey_SharedMem = 0x00110207, // key for shared memory
-    kGlobal_Handle_Size = 65535, // global handle size
+    // 句柄表槽位数。默认值按平台分档（见 sharedmem.h）：
+    //   单进程平台（wasm / FreeRTOS）4096 槽，桌面 65535 槽。
+    // 想在构建期调整就用 CMake 的 -DSWINX_HANDLE_TABLE_SIZE=<n>；
+    // 这里的宏在未定义时回落到平台默认值，所以源码不需要分支。
+    kGlobal_Handle_Size = SWINX_HANDLE_TABLE_SIZE,
 };
 
 static const char *kFifoRoot = "/tmp";
@@ -284,8 +288,39 @@ table used : 4 bytes
 next mutex key: 4 bytes
 table data: HandleData *
 ---------------------------------------------------------------*/
+// 进程内句柄表的锁（仅 SWINX_LOCAL_HANDLE_TABLE 使用）。单进程里既没有跨进程
+// 互斥需求，句柄表的临界区又都很短，所以读写都走同一把互斥量，不做读写分离。
+// 用 recursive_mutex 而不是 mutex：改造前 wasm 走的是 fcntl 记录锁，同一进程
+// 重复加锁永远返回成功（只是计数），个别路径因此可能是嵌套取锁的；换成不可重入
+// 锁会把"静默通过"变成死锁，这里保持原来宽松的语义。
+struct LocalHandleTableLock : ISemRwLock
+{
+    std::recursive_mutex mutex;
+    void lockShared() override
+    {
+        mutex.lock();
+    }
+    void unlockShared() override
+    {
+        mutex.unlock();
+    }
+    void lockExclusive() override
+    {
+        mutex.lock();
+    }
+    void unlockExclusive() override
+    {
+        mutex.unlock();
+    }
+};
+
 class GLobalHandleTable {
+#if SWINX_LOCAL_HANDLE_TABLE
+    LocalHandleTableLock m_lock;
+    TableHeader m_localHeader;
+#else
     SharedMemory *m_sharedMem;
+#endif
     TableHeader *m_header;
     HandleData *m_table;
     uint32_t m_key;
@@ -297,6 +332,18 @@ class GLobalHandleTable {
     {
         setlocale(LC_ALL, "zh_CN.UTF-8"); // init locale
 
+#if SWINX_LOCAL_HANDLE_TABLE
+        // 进程内表：没有共享内存、没有持久段、没有锁文件。value-init 一次到位
+        // （HandleData 是 POD，零初始化即 type == HUnknown），不必逐槽置位。
+        (void)name;
+        m_table = new HandleData[maxObjects]();
+        m_localHeader.key = key;
+        m_localHeader.totalSize = maxObjects;
+        m_localHeader.used = 0;
+        m_localHeader.magic = tableMagic();
+        m_header = &m_localHeader;
+        m_key = key;
+#else
         const uint32_t dwSize = maxObjects * sizeof(HandleData) + sizeof(TableHeader);
         for (int attempt = 0; attempt < 2; attempt++)
         {
@@ -373,15 +420,22 @@ class GLobalHandleTable {
             getRwLock()->unlockExclusive();
             return;
         }
+#endif // SWINX_LOCAL_HANDLE_TABLE
     }
     ~GLobalHandleTable()
     {
+#if SWINX_LOCAL_HANDLE_TABLE
+        delete[] m_table;
+        m_table = nullptr;
+        m_header = nullptr;
+#else
         if (m_sharedMem)
         {
             assert(m_key == m_header->key);
             delete m_sharedMem;
             m_sharedMem = nullptr;
         }
+#endif
     };
 
     TableHeader *getHeader()
@@ -390,7 +444,7 @@ class GLobalHandleTable {
     }
     HandleData *getHandleData(int iHandle)
     {
-        assert(m_sharedMem);
+        assert(m_table);
         return m_table + iHandle;
     }
 
@@ -432,12 +486,16 @@ class GLobalHandleTable {
 
     ISemRwLock *getRwLock()
     {
+#if SWINX_LOCAL_HANDLE_TABLE
+        return &m_lock;
+#else
         return m_sharedMem->getRwLock();
+#endif
     }
 
     uint32_t &getTableUsed()
     {
-        assert(m_sharedMem);
+        assert(m_header);
         return getHeader()->used;
     }
 };

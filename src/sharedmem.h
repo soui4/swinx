@@ -402,6 +402,44 @@ class TSemRwLock : public ISemRwLock {
 
 #endif // __ANDROID__ / __OHOS__ / __IOS__
 
+// ---------------------------------------------------------------------------
+// SWINX_LOCAL_HANDLE_TABLE：全局句柄表是否退化为"进程内表"
+//
+// 桌面（Linux/macOS）把全局句柄表放在一块命名共享内存里，让多个进程共享同一批
+// 命名对象（CreateEvent/CreateMutex/CreateFileMapping 的跨进程语义）。wasm 与
+// FreeRTOS 都是单进程平台，句柄只可能被本进程看到，共享内存语义没有任何用处：
+//
+//   - wasm：槽数 65535 × sizeof(HandleData)（wasm 的 wchar/MAX_PATH 布局下
+//     HandleData = 1152B）= 72MB。Emscripten 的 shm_open/mmap 落在 MEMFS，
+//     这块内存是从 wasm 线性内存里 memalign 出来的，创建即计入堆；桌面 mmap
+//     则是惰性分页、不计 RSS。于是同一个 demo 在浏览器里凭空多出 72MB，
+//     还额外触发两次线性内存扩容。
+//   - FreeRTOS：裸机没有共享内存/文件锁，句柄本来就只能进程内共享。
+//
+// 置 1 后 GLobalHandleTable 不再构造 SharedMemory，改用进程内堆表
+// （槽位数见 sysobjs.cpp 的 kGlobal_Handle_Size），锁也从 fcntl 记录锁换成
+// 进程内互斥量，同时不再产生任何残留共享段或锁文件。
+// ---------------------------------------------------------------------------
+#if defined(__EMSCRIPTEN__) || SFR_PLATFORM
+#define SWINX_LOCAL_HANDLE_TABLE 1
+#else
+#define SWINX_LOCAL_HANDLE_TABLE 0
+#endif
+
+// 句柄表槽位数。两个平台档位的差别就是这一块的体积差：wasm 下每槽
+// sizeof(HandleData) = 1152B，4096 槽约 4.7MB，而 65535 槽是 72MB。
+// 需要更多命名对象（或更大/更小内存预算）时用 CMake 变量覆盖，不要改这里：
+//   -DSWINX_HANDLE_TABLE_SIZE=2048
+// 未定义（默认）时回落到上面的平台内置值。
+#if SWINX_LOCAL_HANDLE_TABLE
+#define SWINX_HANDLE_TABLE_SIZE_DEFAULT 4096
+#else
+#define SWINX_HANDLE_TABLE_SIZE_DEFAULT 65535
+#endif
+#ifndef SWINX_HANDLE_TABLE_SIZE
+#define SWINX_HANDLE_TABLE_SIZE SWINX_HANDLE_TABLE_SIZE_DEFAULT
+#endif
+
 class SharedMemory {
     enum
     {

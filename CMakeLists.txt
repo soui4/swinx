@@ -95,6 +95,27 @@ else()
 include(linux.cmake)
 endif()
 
+# ---- 全局句柄表槽位数（可选覆盖） ------------------------------------------
+# swinx 的全局句柄表（src/platform/posix/sysobjs.cpp 的 GLobalHandleTable）在源码里
+# 有两个平台默认值：单进程平台（wasm / FreeRTOS）4096 槽，桌面 65535 槽
+# （见 src/sharedmem.h 的 SWINX_HANDLE_TABLE_SIZE）。这里给出构建期覆盖入口：
+#
+#   -DSWINX_HANDLE_TABLE_SIZE=2048
+#
+# 该数字直接等于一块内存：wasm 下每槽 sizeof(HandleData) = 1152B，4096 槽约 4.7MB、
+# 65535 槽约 72MB（这就是 wasm-demo 之前凭空多占的内存）。不传时完全不定义该宏，
+# 走源码里的内置默认值。
+set(SWINX_HANDLE_TABLE_SIZE "" CACHE STRING
+    "swinx 全局句柄表槽位数（留空 = 平台默认：wasm/FreeRTOS 4096，桌面 65535）")
+if(NOT "${SWINX_HANDLE_TABLE_SIZE}" STREQUAL "")
+    if(NOT "${SWINX_HANDLE_TABLE_SIZE}" MATCHES "^[1-9][0-9]*$")
+        message(FATAL_ERROR
+            "SWINX_HANDLE_TABLE_SIZE 必须是正整数（当前为 '${SWINX_HANDLE_TABLE_SIZE}'）")
+    endif()
+    target_compile_definitions(swinx PRIVATE SWINX_HANDLE_TABLE_SIZE=${SWINX_HANDLE_TABLE_SIZE})
+    message(STATUS "SWINX_HANDLE_TABLE_SIZE=${SWINX_HANDLE_TABLE_SIZE} (覆盖平台默认值)")
+endif()
+
 if(SOUI_ENABLE_CORE_LIB)
 	target_compile_options(swinx PRIVATE -fPIC)
 endif()
