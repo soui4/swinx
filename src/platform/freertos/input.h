@@ -31,4 +31,19 @@ void SwinxInjectMouse(HWND hWnd, UINT message, int x, int y, WPARAM fwKeys);
 // pump's TranslateMessage() turns ASCII key-downs into WM_CHAR.
 void SwinxInjectKey(HWND hWnd, UINT message, UINT vk, UINT scanCode);
 
+// post IME text: one WM_IME_CHAR per UTF-8 code point.  This is the path a
+// software keyboard (or any IME / clipboard paste) must use -- it does NOT
+// touch keyboard state and does NOT synthesize WM_KEYDOWN/WM_CHAR pairs.
+// SConnection::TranslateMessage() on this port only maps US-layout VKs and
+// deliberately has no IME, so non-ASCII input cannot go through InjectKey.
+// SEditLite/SRichEdit already handle WM_IME_CHAR on every platform.
+void SwinxInjectText(HWND hWnd, const char *pszUtf8);
+
+// Focus-driven software keyboard. SEditLite / SRichEdit call
+// ShowSoftKeyboard() when an edit gains or loses focus; on this port that
+// call is routed to the handler registered here (normally the shared
+// CSoftKeyboard component). Pass NULL to unregister. One active handler.
+typedef BOOL (*SwinxSoftKeyboardHandler)(HWND hWnd, BOOL bShow);
+void SwinxSetSoftKeyboardHandler(SwinxSoftKeyboardHandler handler);
+
 #endif // _SWINX_FREERTOS_INPUT_H_

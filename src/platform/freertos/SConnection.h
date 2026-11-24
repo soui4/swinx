@@ -73,6 +73,10 @@ public:
     void ToggleKeyState(UINT vk);
     void SetCursorPos(int x, int y);
 
+    // Focus-driven soft keyboard: forwards to the platform handler
+    // registered through input.h (no g_platformAPI on this port).
+    BOOL ShowSoftKeyboard(HWND hWnd, BOOL bShow);
+
     UINT GetDoubleClickTime() const;
     LONG GetMsgTime() const;
     DWORD GetMsgPos() const;

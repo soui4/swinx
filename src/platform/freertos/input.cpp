@@ -131,3 +131,84 @@ void SwinxInjectKey(HWND hWnd, UINT message, UINT vk, UINT scanCode)
         lp |= (LPARAM)0xC0000000;
     conn->postMsg(hWnd, message, (WPARAM)vk, lp);
 }
+
+// Decode one UTF-8 sequence.  Returns the number of bytes consumed (0 ends the
+// string, -1 means "this byte is not a valid start" and the caller skips it).
+// Overlong forms, surrogates and anything past U+10FFFF are rejected rather
+// than turned into a plausible-looking code point: a wrong character in a text
+// buffer is far harder to notice than a missing one.
+// Kept in sync with platform/wasm/input.cpp's nextCodePoint().
+static int nextCodePoint(const char *psz, unsigned int *pCp)
+{
+    unsigned char b0 = (unsigned char)psz[0];
+    if (b0 == 0)
+        return 0;
+    unsigned int cp;
+    int need;
+    if (b0 < 0x80)
+    {
+        *pCp = b0;
+        return 1;
+    }
+    else if ((b0 & 0xE0) == 0xC0)
+    {
+        cp = b0 & 0x1Fu;
+        need = 1;
+    }
+    else if ((b0 & 0xF0) == 0xE0)
+    {
+        cp = b0 & 0x0Fu;
+        need = 2;
+    }
+    else if ((b0 & 0xF8) == 0xF0)
+    {
+        cp = b0 & 0x07u;
+        need = 3;
+    }
+    else
+        return -1; // a continuation byte on its own, or 0xF8..
+
+    for (int i = 1; i <= need; ++i)
+    {
+        unsigned char b = (unsigned char)psz[i];
+        if ((b & 0xC0) != 0x80)
+            return -1;
+        cp = (cp << 6) | (b & 0x3Fu);
+    }
+    if ((need == 1 && cp < 0x80) || (need == 2 && cp < 0x800) || (need == 3 && cp < 0x10000) ||
+        (cp >= 0xD800 && cp <= 0xDFFF) || cp > 0x10FFFF)
+        return -1;
+    *pCp = cp;
+    return need + 1;
+}
+
+void SwinxInjectText(HWND hWnd, const char *pszUtf8)
+{
+    if (!pszUtf8)
+        return;
+    tid_t tid = 0;
+    WndObj wndObj = WndMgr::fromHwnd(hWnd);
+    if (wndObj)
+        tid = wndObj->tid;
+    SConnection *conn = SConnMgr::instance()->getConnection(tid);
+    if (!conn)
+        return;
+
+    const char *p = pszUtf8;
+    unsigned int cp = 0;
+    for (;;)
+    {
+        int n = nextCodePoint(p, &cp);
+        if (n == 0)
+            break; // end of string
+        if (n < 0)
+        {
+            ++p; // not a sequence start: drop the byte and keep going
+            continue;
+        }
+        // lParam 0: Win32 leaves it undefined for IME characters (the repeat /
+        // scan-code fields describe a key press, which this is not).
+        conn->postMsg(hWnd, WM_IME_CHAR, (WPARAM)cp, 0);
+        p += n;
+    }
+}

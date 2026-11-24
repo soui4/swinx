@@ -13,6 +13,7 @@
  *     commitCanvas() blits dirty regions into the framebuffer (framebuffer.h).
  */
 #include "SConnection.h"
+#include "input.h"
 #include "wndobj.h"
 #include "framebuffer.h"
 #include <gdi.h>
@@ -2199,6 +2200,21 @@ _Window *SConnection::CreateVirtualWindowObject()
 {
     // TODO: virtual _Window factory lands with the window glue
     return NULL;
+}
+
+//-----------------------------------------------------------------------------
+// Software keyboard: ShowSoftKeyboard() -> registered UI-side handler
+//-----------------------------------------------------------------------------
+static SwinxSoftKeyboardHandler s_pfnSoftKeyboard = NULL;
+
+void SwinxSetSoftKeyboardHandler(SwinxSoftKeyboardHandler handler)
+{
+    s_pfnSoftKeyboard = handler;
+}
+
+BOOL SConnection::ShowSoftKeyboard(HWND hWnd, BOOL bShow)
+{
+    return s_pfnSoftKeyboard ? s_pfnSoftKeyboard(hWnd, bShow) : FALSE;
 }
 
 //=============================================================================
