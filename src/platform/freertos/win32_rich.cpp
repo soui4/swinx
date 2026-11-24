@@ -23,10 +23,13 @@
  *                     IStream here; TOM's file-name variant returns failure
  *                     instead of pretending.
  *
- * Only the ESP-IDF component compiles this file (components/soui/CMakeLists.txt
- * adds it explicitly).  The host and Cortex-M3 builds of this port leave it
- * out: on those toolchains richedit is either disabled or backed by the host
- * OS, and a second definition of OpenClipboard() would clash.
+ * Compiled by both bare-metal builds: the ESP-IDF component lists it in
+ * components/soui/CMakeLists.txt, and the Cortex-M3 QEMU target lists it in
+ * SOUI_FR_SWINX_PLATFORM_SRCS (cmake/SouiFreeRTOS.cmake).  The latter used to
+ * exclude it (no consumer + a would-be OpenClipboard clash), but lite <edit>
+ * (SEditLite.cpp) now calls DoDragDrop/ReleaseStgMedium, so the OLE/DnD stubs
+ * here are required there too.  No duplicate symbols: gapstubs.cpp only has
+ * the non-overlapping A/W variants (GlobalAlloc/Lock/Free, OutputDebugStringA).
  *
  * KEEP IN SYNC: signatures must match swinx/include/{sysapi,fileapi,imm,ole2}.h.
  */

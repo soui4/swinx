@@ -367,10 +367,10 @@
    "files": [
     "platform/cocoa/dlghelper.mm",
     "platform/ios/dlghelper.mm",
-    "platform/linux/dlghelper.cpp",
     "platform/mobile/dlghelper.cpp",
     "platform/wasm/dlghelper.cpp",
-    "platform/wayland/dlghelper.cpp"
+    "platform/wayland/dlghelper.cpp",
+    "platform/x11/dlghelper.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -385,11 +385,6 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/dlghelper.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/dlghelper.cpp",
      "partial",
      "not-implemented"
@@ -403,6 +398,11 @@
      "platform/wayland/dlghelper.cpp",
      "partial",
      "not-implemented"
+    ],
+    [
+     "platform/x11/dlghelper.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -413,10 +413,10 @@
    "files": [
     "platform/cocoa/dlghelper.mm",
     "platform/ios/dlghelper.mm",
-    "platform/linux/dlghelper.cpp",
     "platform/mobile/dlghelper.cpp",
     "platform/wasm/dlghelper.cpp",
-    "platform/wayland/dlghelper.cpp"
+    "platform/wayland/dlghelper.cpp",
+    "platform/x11/dlghelper.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -431,11 +431,6 @@
      ""
     ],
     [
-     "platform/linux/dlghelper.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/dlghelper.cpp",
      "partial",
      "not-implemented"
@@ -449,6 +444,11 @@
      "platform/wayland/dlghelper.cpp",
      "partial",
      "not-implemented"
+    ],
+    [
+     "platform/x11/dlghelper.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -7020,10 +7020,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/sysapi.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7043,11 +7043,6 @@
      ""
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7059,6 +7054,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      ""
     ]
@@ -7072,10 +7072,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/sysapi.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7095,11 +7095,6 @@
      ""
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7111,6 +7106,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      ""
     ]
@@ -7124,10 +7124,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/sysapi.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7147,11 +7147,6 @@
      ""
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7163,6 +7158,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      ""
     ]
@@ -7176,10 +7176,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7199,11 +7199,6 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7215,6 +7210,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -7228,10 +7228,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7251,11 +7251,6 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7269,6 +7264,11 @@
      "platform/wayland/imm.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -7279,9 +7279,9 @@
    "files": [
     "platform/cocoa/imm.mm",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7296,17 +7296,17 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -7319,9 +7319,9 @@
    "files": [
     "platform/cocoa/imm.mm",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7336,17 +7336,17 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -7359,9 +7359,9 @@
    "files": [
     "platform/cocoa/imm.mm",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7376,17 +7376,17 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -7400,10 +7400,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7423,11 +7423,6 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7439,6 +7434,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -7452,10 +7452,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7475,11 +7475,6 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7491,6 +7486,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -7504,10 +7504,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7527,11 +7527,6 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7543,6 +7538,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -7556,10 +7556,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7579,11 +7579,6 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7595,6 +7590,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -7608,10 +7608,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7631,11 +7631,6 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7649,6 +7644,11 @@
      "platform/wayland/imm.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -7659,9 +7659,9 @@
    "files": [
     "platform/cocoa/imm.mm",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7676,17 +7676,17 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
     ],
     [
      "platform/wayland/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -7700,10 +7700,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7723,11 +7723,6 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7739,6 +7734,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -7751,10 +7751,10 @@
    "files": [
     "platform/cocoa/imm.mm",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7765,11 +7765,6 @@
     ],
     [
      "platform/ios/imm.mm",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
-     "platform/linux/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
@@ -7787,6 +7782,11 @@
      "platform/wayland/imm.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
     ]
    ]
   },
@@ -7797,9 +7797,9 @@
    "files": [
     "platform/cocoa/imm.mm",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7814,17 +7814,17 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
     ],
     [
      "platform/wayland/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -7838,10 +7838,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7861,11 +7861,6 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7877,6 +7872,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -7890,10 +7890,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7913,11 +7913,6 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7929,6 +7924,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -7942,10 +7942,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -7965,11 +7965,6 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -7981,6 +7976,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -7994,10 +7994,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -8017,11 +8017,6 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -8035,6 +8030,11 @@
      "platform/wayland/imm.cpp",
      "impl",
      "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/x11/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
     ]
    ]
   },
@@ -8045,9 +8045,9 @@
    "files": [
     "platform/cocoa/imm.mm",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -8062,17 +8062,17 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
     ],
     [
      "platform/wayland/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -8086,10 +8086,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/sysapi.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -8105,11 +8105,6 @@
     ],
     [
      "platform/ios/imm.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
      "impl",
      ""
     ],
@@ -8127,6 +8122,11 @@
      "platform/wayland/imm.cpp",
      "impl",
      ""
+    ],
+    [
+     "platform/x11/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -8138,10 +8138,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/sysapi.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -8157,11 +8157,6 @@
     ],
     [
      "platform/ios/imm.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/imm.cpp",
      "impl",
      ""
     ],
@@ -8179,6 +8174,11 @@
      "platform/wayland/imm.cpp",
      "impl",
      ""
+    ],
+    [
+     "platform/x11/imm.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -8190,10 +8190,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -8213,11 +8213,6 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -8229,6 +8224,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -8242,10 +8242,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -8265,11 +8265,6 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -8281,6 +8276,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -8294,10 +8294,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -8317,11 +8317,6 @@
      "简单getter/setter/拷贝"
     ],
     [
-     "platform/linux/imm.cpp",
-     "impl",
-     "简单getter/setter/拷贝"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -8333,6 +8328,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "impl",
+     "简单getter/setter/拷贝"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "impl",
      "简单getter/setter/拷贝"
     ]
@@ -8346,10 +8346,10 @@
     "platform/cocoa/imm.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/imm.mm",
-    "platform/linux/imm.cpp",
     "platform/mobile/imm.cpp",
     "platform/wasm/imm.cpp",
-    "platform/wayland/imm.cpp"
+    "platform/wayland/imm.cpp",
+    "platform/x11/imm.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -8369,11 +8369,6 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/imm.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/imm.cpp",
      "impl",
      ""
@@ -8385,6 +8380,11 @@
     ],
     [
      "platform/wayland/imm.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/imm.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -9501,9 +9501,9 @@
    "files": [
     "platform/cocoa/ole2.mm",
     "platform/ios/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -9518,17 +9518,17 @@
      ""
     ],
     [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/ole2.cpp",
      "impl",
      ""
     ],
     [
      "platform/wayland/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/x11/ole2.cpp",
      "impl",
      ""
     ]
@@ -9541,9 +9541,9 @@
    "files": [
     "platform/cocoa/ole2.mm",
     "platform/ios/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "stub",
    "site_classes": [
@@ -9558,17 +9558,17 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/ole2.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
     [
      "platform/wayland/ole2.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/ole2.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -9581,9 +9581,9 @@
    "files": [
     "platform/cocoa/ole2.mm",
     "platform/ios/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "stub",
    "site_classes": [
@@ -9598,17 +9598,17 @@
      "仅返回常量/无操作"
     ],
     [
-     "platform/linux/ole2.cpp",
-     "stub",
-     "仅返回常量/无操作"
-    ],
-    [
      "platform/mobile/ole2.cpp",
      "stub",
      "仅返回常量/无操作"
     ],
     [
      "platform/wayland/ole2.cpp",
+     "stub",
+     "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/ole2.cpp",
      "stub",
      "仅返回常量/无操作"
     ]
@@ -9622,10 +9622,10 @@
     "platform/cocoa/ole2.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
     "platform/wasm/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -9645,11 +9645,6 @@
      ""
     ],
     [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/ole2.cpp",
      "stub",
      "仅返回常量/无操作"
@@ -9663,6 +9658,11 @@
      "platform/wayland/ole2.cpp",
      "impl",
      ""
+    ],
+    [
+     "platform/x11/ole2.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -9674,10 +9674,10 @@
     "platform/cocoa/ole2.mm",
     "platform/freertos/dlghelper.cpp",
     "platform/ios/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
     "platform/wasm/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -9697,11 +9697,6 @@
      ""
     ],
     [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/ole2.cpp",
      "impl",
      ""
@@ -9713,6 +9708,11 @@
     ],
     [
      "platform/wayland/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/x11/ole2.cpp",
      "impl",
      ""
     ]
@@ -9726,10 +9726,10 @@
     "platform/cocoa/ole2.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
     "platform/wasm/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -9745,11 +9745,6 @@
     ],
     [
      "platform/ios/ole2.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/ole2.cpp",
      "impl",
      ""
     ],
@@ -9767,6 +9762,11 @@
      "platform/wayland/ole2.cpp",
      "impl",
      ""
+    ],
+    [
+     "platform/x11/ole2.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -9778,10 +9778,10 @@
     "platform/cocoa/ole2.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
     "platform/wasm/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -9801,11 +9801,6 @@
      ""
     ],
     [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/ole2.cpp",
      "impl",
      ""
@@ -9817,6 +9812,11 @@
     ],
     [
      "platform/wayland/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/x11/ole2.cpp",
      "impl",
      ""
     ]
@@ -9830,10 +9830,10 @@
     "platform/cocoa/ole2.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
     "platform/wasm/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -9853,11 +9853,6 @@
      ""
     ],
     [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/ole2.cpp",
      "impl",
      ""
@@ -9871,6 +9866,11 @@
      "platform/wayland/ole2.cpp",
      "stub",
      "仅返回常量/无操作"
+    ],
+    [
+     "platform/x11/ole2.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -9882,10 +9882,10 @@
     "platform/cocoa/ole2.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
     "platform/wasm/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -9905,11 +9905,6 @@
      ""
     ],
     [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/ole2.cpp",
      "impl",
      ""
@@ -9921,6 +9916,11 @@
     ],
     [
      "platform/wayland/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/x11/ole2.cpp",
      "impl",
      ""
     ]
@@ -9934,10 +9934,10 @@
     "platform/cocoa/ole2.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
     "platform/wasm/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -9957,11 +9957,6 @@
      ""
     ],
     [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/ole2.cpp",
      "impl",
      ""
@@ -9975,6 +9970,11 @@
      "platform/wayland/ole2.cpp",
      "impl",
      ""
+    ],
+    [
+     "platform/x11/ole2.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -9986,10 +9986,10 @@
     "platform/cocoa/ole2.mm",
     "platform/freertos/win32_rich.cpp",
     "platform/ios/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
     "platform/wasm/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
@@ -10009,11 +10009,6 @@
      ""
     ],
     [
-     "platform/linux/ole2.cpp",
-     "impl",
-     ""
-    ],
-    [
      "platform/mobile/ole2.cpp",
      "impl",
      ""
@@ -10027,6 +10022,11 @@
      "platform/wayland/ole2.cpp",
      "impl",
      ""
+    ],
+    [
+     "platform/x11/ole2.cpp",
+     "impl",
+     ""
     ]
    ]
   },
@@ -10036,19 +10036,14 @@
    ],
    "files": [
     "platform/cocoa/ole2.mm",
-    "platform/linux/ole2.cpp",
     "platform/mobile/ole2.cpp",
-    "platform/wayland/ole2.cpp"
+    "platform/wayland/ole2.cpp",
+    "platform/x11/ole2.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
      "platform/cocoa/ole2.mm",
-     "impl",
-     ""
-    ],
-    [
-     "platform/linux/ole2.cpp",
      "impl",
      ""
     ],
@@ -10059,6 +10054,11 @@
     ],
     [
      "platform/wayland/ole2.cpp",
+     "impl",
+     ""
+    ],
+    [
+     "platform/x11/ole2.cpp",
      "impl",
      ""
     ]
@@ -11557,12 +11557,12 @@
     "shellapi.h"
    ],
    "files": [
-    "platform/posix/shellapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/posix/shellapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -11573,12 +11573,12 @@
     "shellapi.h"
    ],
    "files": [
-    "platform/posix/shellapi.cpp"
+    "platform/common/sysapi.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/posix/shellapi.cpp",
+     "platform/common/sysapi.cpp",
      "impl",
      ""
     ]
@@ -21507,13 +21507,13 @@
     "wnd.h"
    ],
    "files": [
-    "platform/linux/SConnection.cpp",
+    "platform/x11/SConnection.cpp",
     "wnd.cpp"
    ],
    "agg": "impl",
    "site_classes": [
     [
-     "platform/linux/SConnection.cpp",
+     "platform/x11/SConnection.cpp",
      "impl",
      ""
     ],

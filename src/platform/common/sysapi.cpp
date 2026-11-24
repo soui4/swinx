@@ -27,6 +27,7 @@
  *   DestroyCursor                 各平台是否真有光标系统不一样
  */
 #include <windows.h>
+#include <shlobj.h>
 #include "sysapi.h"
 
 #include <ctype.h>
@@ -317,4 +318,269 @@ FILE *_wfopen(const wchar_t *path, const wchar_t *mode)
     FILE *ret = fopen(u8path, u8mode);
     free(u8path);
     return ret;
+}
+
+// ---- DragQueryFileA/W: CF_HDROP file-list parsing ----------------------
+// Pure DROPFILES decoding; lives in common/ so every port (including the
+// freertos/ESP32-S3 build, which does not compile platform/posix/) links it.
+
+// Locate the next line terminator (CRLF or LF) in a DROPFILES string table.
+// Returns the terminator pointer, or NULL at the end; nEndLen is its length.
+static const wchar_t *getLineEnd(const wchar_t *p, int &nEndLen)
+{
+    const wchar_t *end = wcsstr(p, L"\r\n");
+    nEndLen = 0;
+    if (!end)
+    {
+        end = wcsstr(p, L"\n");
+        if (end)
+            nEndLen = 1;
+    }
+    else
+    {
+        nEndLen = 2;
+    }
+    return end;
+}
+
+static const char *getLineEnd(const char *p, int &nEndLen)
+{
+    const char *end = strstr(p, "\r\n");
+    nEndLen = 0;
+    if (!end)
+    {
+        end = strstr(p, "\n");
+        if (end)
+            nEndLen = 1;
+    }
+    else
+    {
+        nEndLen = 2;
+    }
+    return end;
+}
+
+// Walk iFile lines from the start of the file list, returning the pointer to
+// the requested entry and its length (excluding the terminator).
+static const wchar_t *GetDragQueryLineAt(const wchar_t *buf, UINT iFile, UINT &outLen)
+{
+    outLen = 0;
+    UINT i = 0;
+    while (i < iFile)
+    {
+        int nEndLen = 0;
+        const wchar_t *end = getLineEnd(buf, nEndLen);
+        if (!end)
+            return NULL;
+        i++;
+        buf = end + nEndLen;
+    }
+
+    int nEndLen = 0;
+    const wchar_t *end = getLineEnd(buf, nEndLen);
+    if (!end)
+        end = buf + wcslen(buf);
+
+    outLen = end - buf;
+    return buf;
+}
+
+static const char *GetDragQueryLineAt(const char *buf, UINT iFile, UINT &outLen)
+{
+    outLen = 0;
+    UINT i = 0;
+    while (i < iFile)
+    {
+        int nEndLen = 0;
+        const char *end = getLineEnd(buf, nEndLen);
+        if (!end)
+            return NULL;
+        i++;
+        buf = end + nEndLen;
+    }
+
+    int nEndLen = 0;
+    const char *end = getLineEnd(buf, nEndLen);
+    if (!end)
+        end = buf + strlen(buf);
+
+    outLen = end - buf;
+    return buf;
+}
+
+// iFile == -1 asks for the number of files (Win32 semantics).
+static UINT DragQueryFileSize(HDROP hDrop)
+{
+    DROPFILES *pDropfiles = (DROPFILES *)hDrop;
+    if (pDropfiles->fWide)
+    {
+        const wchar_t *buf = (const wchar_t *)((char *)pDropfiles + pDropfiles->pFiles);
+        if (!buf)
+            return 0;
+        UINT i = 0;
+        while (buf && *buf)
+        {
+            int nEndLen = 0;
+            const wchar_t *end = getLineEnd(buf, nEndLen);
+            if (end)
+            {
+                i++;
+                buf = end + nEndLen;
+            }
+            else
+            {
+                if (buf[0] != 0)
+                    i++;
+                break;
+            }
+        }
+        return i;
+    }
+    else
+    {
+        const char *buf = (const char *)hDrop + sizeof(DROPFILES);
+        if (!buf)
+            return 0;
+        UINT i = 0;
+        while (buf && *buf)
+        {
+            int nEndLen = 0;
+            const char *end = getLineEnd(buf, nEndLen);
+            if (end)
+            {
+                i++;
+                buf = end + nEndLen;
+            }
+            else
+            {
+                if (buf[0] != 0)
+                    i++;
+                break;
+            }
+        }
+        return i;
+    }
+}
+
+UINT WINAPI DragQueryFileA(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(cch) LPSTR lpszFile, _In_ UINT cch)
+{
+    if ((int)iFile == -1)
+    {
+        return DragQueryFileSize(hDrop);
+    }
+    DROPFILES *pDropfiles = (DROPFILES *)hDrop;
+    if (pDropfiles->fWide)
+    {
+        // Wide input, ANSI output: transcode.
+        const wchar_t *buf = (const wchar_t *)((char *)pDropfiles + pDropfiles->pFiles);
+        UINT wideLen = 0;
+        const wchar_t *pLine = GetDragQueryLineAt(buf, iFile, wideLen);
+        if (!pLine)
+            return 0;
+
+        if (!lpszFile)
+            return wideLen;
+
+        int ansiLen = WideCharToMultiByte(CP_UTF8, 0, pLine, wideLen, NULL, 0, NULL, NULL);
+        if (ansiLen <= 0)
+            return 0;
+
+        if (ansiLen > (int)cch)
+        {
+            SetLastError(ERROR_BUFFER_OVERFLOW);
+            return 0;
+        }
+
+        int convertedLen = WideCharToMultiByte(CP_UTF8, 0, pLine, wideLen, lpszFile, cch, NULL, NULL);
+        if (convertedLen > 0 && convertedLen < (int)cch)
+        {
+            lpszFile[convertedLen] = 0;
+        }
+        return convertedLen;
+    }
+    else
+    {
+        const char *buf = (char *)pDropfiles + pDropfiles->pFiles;
+        UINT lineLen = 0;
+        const char *pLine = GetDragQueryLineAt(buf, iFile, lineLen);
+        if (!pLine)
+            return 0;
+
+        if (!lpszFile)
+            return lineLen;
+        if ((int)lineLen > (int)cch)
+        {
+            SetLastError(ERROR_BUFFER_OVERFLOW);
+            return 0;
+        }
+        if (lineLen > 8 && strncmp(pLine, "file:///", 8) == 0)
+        {
+            // Strip the file URI scheme prefix.
+            pLine += 7;
+            lineLen -= 7;
+        }
+        memcpy(lpszFile, pLine, lineLen);
+        if (lineLen + 1 <= cch)
+        {
+            lpszFile[lineLen] = 0;
+        }
+        return lineLen;
+    }
+}
+
+UINT WINAPI DragQueryFileW(_In_ HDROP hDrop, _In_ UINT iFile, _Out_writes_opt_(cch) LPWSTR lpszFile, _In_ UINT cch)
+{
+    if ((int)iFile == -1)
+    {
+        return DragQueryFileSize(hDrop);
+    }
+    DROPFILES *pDropfiles = (DROPFILES *)hDrop;
+    if (pDropfiles->fWide)
+    {
+        // Wide input, wide output: direct copy, no transcoding.
+        const wchar_t *buf = (const wchar_t *)((char *)pDropfiles + pDropfiles->pFiles);
+        UINT lineLen = 0;
+        const wchar_t *pLine = GetDragQueryLineAt(buf, iFile, lineLen);
+        if (!pLine)
+            return 0;
+        if (!lpszFile)
+            return lineLen;
+
+        if (lineLen > cch)
+        {
+            SetLastError(ERROR_BUFFER_OVERFLOW);
+            return 0;
+        }
+        wmemcpy(lpszFile, pLine, lineLen);
+        if (lineLen + 1 <= cch)
+        {
+            lpszFile[lineLen] = 0;
+        }
+        return lineLen;
+    }
+    else
+    {
+        // ANSI input, wide output: transcode.
+        const char *buf = (char *)pDropfiles + pDropfiles->pFiles;
+        UINT lineLen = 0;
+        const char *pLine = GetDragQueryLineAt(buf, iFile, lineLen);
+        if (!pLine)
+            return 0;
+        if (!lpszFile)
+            return lineLen;
+
+        int wideLen = MultiByteToWideChar(CP_UTF8, 0, pLine, lineLen, NULL, 0);
+        if (wideLen <= 0)
+            return 0;
+        if (wideLen > (int)cch)
+        {
+            SetLastError(ERROR_BUFFER_OVERFLOW);
+            return 0;
+        }
+
+        int convertedLen = MultiByteToWideChar(CP_UTF8, 0, pLine, lineLen, lpszFile, cch);
+        if (convertedLen > 0 && convertedLen < (int)cch)
+            lpszFile[convertedLen] = 0;
+        return convertedLen;
+    }
 }
