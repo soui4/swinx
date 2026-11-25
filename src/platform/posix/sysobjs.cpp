@@ -2338,11 +2338,31 @@ start_wait:
     {
         // check for state again
         bool bValid = true;
-        for (DWORD i = 0; i < nCount; i++)
+        if (!bWaitAll)
         {
-            if (states[i] && tmpHandles[i] != INVALID_HANDLE_VALUE)
+            // A wait-any call consumes only its selected object; leave every
+            // other signaled object available to the next wait.
+            bValid = false;
+            for (DWORD i = 0; i < nCount; i++)
             {
-                if (!GetSynHandle(tmpHandles[i])->onWaitDone())
+                if (!states[i])
+                    continue;
+                if (tmpHandles[i] == INVALID_HANDLE_VALUE
+                    || GetSynHandle(tmpHandles[i])->onWaitDone())
+                {
+                    nRet = WAIT_OBJECT_0 + i;
+                    bValid = true;
+                    break;
+                }
+                states[i] = false;
+            }
+        }
+        else
+        {
+            for (DWORD i = 0; i < nCount; i++)
+            {
+                if (states[i] && tmpHandles[i] != INVALID_HANDLE_VALUE
+                    && !GetSynHandle(tmpHandles[i])->onWaitDone())
                 {
                     states[i] = false; // reset to false
                     bValid = false;
